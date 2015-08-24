@@ -27,6 +27,7 @@ struct net_buffer
 {
 	unsigned char		*	buf;
 	unsigned char		*	hwmk;
+	char				*	ptr;
 	int						len;
 	int						sz;
 };

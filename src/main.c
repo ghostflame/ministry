@@ -159,6 +159,10 @@ int main( int ac, char **av )
 	// create the data hash structures
 	data_init( );
 
+	// set up stats and connect to graphite
+	stats_init( );
+
+	// lights up networking and starts listening
 	if( net_start( ) )
 		fatal( "Failed to start networking." );
 

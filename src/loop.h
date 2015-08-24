@@ -11,7 +11,7 @@ void loop_mark_done( char *tag );
 void loop_end( char *reason );
 void loop_kill( int sig );
 
-void loop_control( char *name, loop_call_fn *fp, int usec, int sync, int offset );
+void loop_control( char *name, loop_call_fn *fp, void *arg, int usec, int sync, int offset );
 
 void loop_start( void );
 

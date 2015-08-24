@@ -132,6 +132,7 @@ NBUF *net_make_buf( int sz )
 		n->sz   = sz;
 		n->buf  = (unsigned char *) allocz( sz );
 		n->hwmk = n->buf + ( ( 5 * sz ) / 6 );
+		n->ptr  = (char *) n->buf;
 	}
 
 	return n;

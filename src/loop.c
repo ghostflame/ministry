@@ -35,7 +35,7 @@ void loop_mark_done( char *tag )
 
 
 // every tick, set the time
-void loop_set_time( void )
+void loop_set_time( void *arg )
 {
 	get_time( );
 }
@@ -43,7 +43,7 @@ void loop_set_time( void )
 
 // we do integer maths here to avoid creeping
 // double-precision addition inaccuracies
-void loop_control( char *name, loop_call_fn *fp, int usec, int sync, int offset )
+void loop_control( char *name, loop_call_fn *fp, void *arg, int usec, int sync, int offset )
 {
 	unsigned long long timer, next;
 	struct timeval now;
@@ -72,7 +72,7 @@ void loop_control( char *name, loop_call_fn *fp, int usec, int sync, int offset 
 		timer += usec;
 
 		// get an accurate time
-		(*fp)( );
+		(*fp)( arg );
 
 		// calculate how long to sleep for
 		gettimeofday( &now, NULL );
@@ -96,8 +96,8 @@ void loop_start( void )
 	get_time( );
 
 	// throw the data submission loops
-	thread_throw( &stats_loop_stats, NULL );
-	thread_throw( &stats_loop_adder, NULL );
+	stats_start( ctl->stats->stats );
+	stats_start( ctl->stats->adder );
 
 	// throw the memory control loop
 	thread_throw( &mem_loop, NULL );
@@ -108,7 +108,7 @@ void loop_start( void )
 	data_start( ctl->net->adder );
 
 	// this just gather sets the time and doesn't exit
-	loop_control( "time set", &loop_set_time, ctl->tick_usec, 1, 0 );
+	loop_control( "time set", &loop_set_time, NULL, ctl->tick_usec, 1, 0 );
 }
 
 

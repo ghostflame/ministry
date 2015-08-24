@@ -335,7 +335,7 @@ void mem_free_dadd( DADD **d )
 
 
 
-void mem_check( void )
+void mem_check( void *arg )
 {
 	struct rusage ru;
 
@@ -354,7 +354,7 @@ void *mem_loop( void *arg )
 {
 	THRD *t = (THRD *) arg;
 
-	loop_control( "memory control", &mem_check, 10000000, 0, 0 );
+	loop_control( "memory control", &mem_check, NULL, 10000000, 0, 0 );
 
 	free( t );
 	return NULL;

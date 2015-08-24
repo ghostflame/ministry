@@ -14,14 +14,17 @@ inline int cmp_floats( const void *p1, const void *p2 )
 
 
 
-void stats_report_one( DSTAT *d, int which )
+void stats_report_one( DSTAT *d, ST_THR *cfg, time_t ts )
 {
 	float sum, *vals = NULL;
 	PTLIST *list, *p;
 	int i, j, nt;
+	NBUF *b;
 
 	list = d->processing;
 	d->processing = NULL;
+
+	b = cfg->target->out;
 
 	for( j = 0, p = list; p; p = p->next )
 		j += p->count;
@@ -42,11 +45,14 @@ void stats_report_one( DSTAT *d, int which )
 
 		qsort( vals, j, sizeof( float ), cmp_floats );
 
-		info( "[%d] %s.count %d",    which, d->path, j );
-		info( "[%d] %s.mean %f",     which, d->path, sum / (float) j );
-		info( "[%d] %s.upper %f",    which, d->path, vals[j - 1] );
-		info( "[%d] %s.lower %f",    which, d->path, vals[0] );
-		info( "[%d] %s.upper_90 %f", which, d->path, vals[nt] );
+		b->len += snprintf( b->ptr + b->len, b->sz - b->len, "%s.count %d %ld\n",    d->path, j, ts );
+		b->len += snprintf( b->ptr + b->len, b->sz - b->len, "%s.mean %f %ld\n",     d->path, sum / (float) j, ts );
+		b->len += snprintf( b->ptr + b->len, b->sz - b->len, "%s.upper %f %ld\n",    d->path, vals[j-1], ts );
+		b->len += snprintf( b->ptr + b->len, b->sz - b->len, "%s.lower %f %ld\n",    d->path, vals[0], ts );
+		b->len += snprintf( b->ptr + b->len, b->sz - b->len, "%s.upper_90 %f %ld\n", d->path, vals[nt], ts );
+
+		if( ( b->buf + b->len ) > b->hwmk )
+			net_write_data( cfg->target );
 
 		free( vals );
 	}
@@ -57,19 +63,19 @@ void stats_report_one( DSTAT *d, int which )
 
 
 
-void *stats_stats_pass( void *arg )
+void stats_stats_pass( void *arg )
 {
-	int i, m, *p;
+	ST_THR *c;
 	DSTAT *d;
-	THRD *t;
+	time_t t;
+	int i;
 
-	t = (THRD *) arg;
-	p = (int *) t->arg;
-	m = *p;
+	t = ctl->curr_time.tv_sec;
+	c = (ST_THR *) arg;
 
 	// take the data
 	for( i = 0; i < ctl->data->hsize; i++ )
-		if( ( i % ctl->stats->stats_threads ) == m )
+		if( ( i % c->max ) == c->id )
 			for( d = ctl->data->stats[i]; d; d = d->next )
 			{
 				lock_stats( d );
@@ -85,32 +91,33 @@ void *stats_stats_pass( void *arg )
 
 	// and report it
 	for( i = 0; i < ctl->data->hsize; i++ )
-		if( ( i % ctl->stats->stats_threads ) == m )
+		if( ( i % c->max ) == c->id )
 			for( d = ctl->data->stats[i]; d; d = d->next )
 				if( d->processing )
-					stats_report_one( d, m );
+					stats_report_one( d, c, t );
 
-
-	free( p );
-	free( t );
-	return NULL;
+	// anything left?
+	if( c->target->out->len )
+		net_write_data( c->target );
 }
 
 
 
-void *stats_adder_pass( void *arg )
+void stats_adder_pass( void *arg )
 {
-	int i, m, *p;
+	ST_THR *c;
+	time_t t;
 	DADD *d;
-	THRD *t;
+	NBUF *b;
+	int i;
 
-	t = (THRD *) arg;
-	p = (int *) t->arg;
-	m = *p;
+	t = ctl->curr_time.tv_sec;
+	c = (ST_THR *) arg;
+	b = c->target->out;
 
 	// take the data
 	for( i = 0; i < ctl->data->hsize; i++ )
-		if( ( i % ctl->stats->adder_threads ) == m )
+		if( ( i % c->max ) == c->id )
 			for( d = ctl->data->add[i]; d; d = d->next )
 			{
 				lock_adder( d );
@@ -127,85 +134,112 @@ void *stats_adder_pass( void *arg )
 
 	// and report it
 	for( i = 0; i < ctl->data->hsize; i++ )
-		if( ( i % ctl->stats->adder_threads ) == m )
+		if( ( i % c->max ) == c->id )
 			for( d = ctl->data->add[i]; d; d = d->next )
 				if( d->report > 0 )
-					info( "[%d] %s %llu", m, d->path, d->report );
+				{
+					b->len += snprintf( b->ptr + b->len, b->sz - b->len, "%s %llu %ld\n", d->path, d->report, t );
+
+					if( ( b->buf + b->len ) > b->hwmk )
+						net_write_data( c->target );
+				}
+
+	// any left?
+	if( b->len )
+		net_write_data( c->target );
+}
 
 
-	free( p );
+
+void *stats_loop( void *arg )
+{
+	ST_CFG *cf;
+	ST_THR *c;
+	THRD *t;
+
+	t  = (THRD *) arg;
+	c  = (ST_THR *) t->arg;
+	cf = c->conf;
+
+	// try to connect now
+	c->link = net_connect( c->target );
+
+	// and then loop round
+	loop_control( cf->type, cf->loopfn, c, cf->period, 1, cf->offset );
+
 	free( t );
 	return NULL;
 }
 
 
 
-void stats_run_stats( void )
+void stats_start( ST_CFG *cf )
 {
-	int **vals;
 	int i;
 
-	debug( "Stats run." );
+	for( i = 0; i < cf->threads; i++ )
+		thread_throw( &stats_loop, &(cf->ctls[i]) );
 
-	// this is to avoid problems with thread throw
-	vals = (int **) allocz( ctl->stats->stats_threads * sizeof( int * ) );
-
-	for( i = 0; i < ctl->stats->stats_threads; i++ )
-	{
-		vals[i]    = (int *) allocz( sizeof( int ) );
-		*(vals[i]) = i;
-
-		thread_throw( &stats_stats_pass, vals[i] );
-	}
-
-	free( vals );
+	info( "Started %s data processing loops.", cf->type );
 }
 
-void stats_run_adder( void )
+
+
+
+// return a copy of a prefix without a trailing .
+char *stats_prefix( char *s )
 {
-	int **vals;
+	int len;
+	
+	len = strlen( s );
+	if( len > 0 && s[len - 1] == '.' )
+		len--;
+
+	return str_copy( s, len );
+}
+
+
+
+
+void stats_init_control( ST_CFG *c, char *name )
+{
+	ST_THR *t;
 	int i;
 
-	debug( "Adder run." );
+	// convert msec to usec
+	c->period *= 1000;
+	c->offset *= 1000;
 
-	// this is to avoid problems with thread throw
-	vals = (int **) allocz( ctl->stats->adder_threads * sizeof( int * ) );
+	// make the control structures
+	c->ctls = (ST_THR *) allocz( c->threads * sizeof( ST_THR ) );
 
-	for( i = 0; i < ctl->stats->adder_threads; i++ )
+	for( i = 0; i < c->threads; i++ )
 	{
-		vals[i]    = (int *) allocz( sizeof( int ) );
-		*(vals[i]) = i;
+		t = &(c->ctls[i]);
 
-		thread_throw( &stats_adder_pass, vals[i] );
+		t->conf   = c;
+		t->id     = i;
+		t->max    = c->threads;
+		t->target = net_make_sock( 0, MIN_NETBUF_SZ, name, &(ctl->stats->target) );
 	}
-
-	free( vals );
 }
 
 
 
-void *stats_loop_stats( void *arg )
+void stats_init( void )
 {
-	THRD *t = (THRD *) arg;
+	STAT_CTL *s = ctl->stats;
+	char name[256];
 
-	loop_control( "stats generation", stats_run_stats, 10000000, 1, 0 );
+	snprintf( name, 256, "%s:%hu", s->host, s->port );
 
-	free( t );
-	return NULL;
+	s->target.sin_family = AF_INET;
+	s->target.sin_port   = htons( s->port );
+	inet_aton( s->host, &(s->target.sin_addr) );
+
+	stats_init_control( s->stats, name );
+	stats_init_control( s->adder, name );
 }
-
-
-void *stats_loop_adder( void *arg )
-{
-	THRD *t = (THRD *) arg;
-
-	loop_control( "adder generation", stats_run_adder, 10000000, 1, 0 );
-
-	free( t );
-	return NULL;
-}
-
-
 
 
 STAT_CTL *stats_config_defaults( void )
@@ -214,31 +248,81 @@ STAT_CTL *stats_config_defaults( void )
 
 	s = (STAT_CTL *) allocz( sizeof( STAT_CTL ) );
 
-	s->stats_threads = DEFAULT_STATS_THREADS;
-	s->adder_threads = DEFAULT_ADDER_THREADS;
+	s->stats          = (ST_CFG *) allocz( sizeof( ST_CFG ) );
+	s->stats->threads = DEFAULT_STATS_THREADS;
+	s->stats->loopfn  = &stats_stats_pass;
+	s->stats->period  = DEFAULT_STATS_MSEC;
+	s->stats->prefix  = stats_prefix( DEFAULT_STATS_PREFIX );
+	s->stats->type    = "stats";
+
+	s->adder          = (ST_CFG *) allocz( sizeof( ST_CFG ) );
+	s->adder->threads = DEFAULT_ADDER_THREADS;
+	s->adder->loopfn  = &stats_adder_pass;
+	s->adder->period  = DEFAULT_STATS_MSEC;
+	s->adder->prefix  = stats_prefix( DEFAULT_ADDER_PREFIX );
+	s->adder->type    = "adder";
+
+	s->host           = strdup( DEFAULT_TARGET_HOST );
+	s->port           = DEFAULT_TARGET_PORT;
 
 	return s;
 }
 
 int stats_config_line( AVP *av )
 {
+	ST_CFG *sc;
+	char *d;
 	int t;
 
-	if( attIs( "adder_threads" ) )
+	// nothing without a . so far
+	if( !( d = strchr( av->att, '.' ) ) )
+		return -1;
+	d++;
+
+	if( !strncasecmp( av->att, "target.", 7 ) )
 	{
-		t = atoi( av->val );
-		if( t > 0 )
-			ctl->stats->adder_threads = t;
-		else
-			warn( "Adder threads must be > 0, value %d given.", t );
+		if( !strcasecmp( d, "host" ) )
+		{
+			free( ctl->stats->host );
+			ctl->stats->host = strdup( av->val );
+		}
+		else if( !strcasecmp( d, "port" ) )
+		{
+			ctl->stats->port = (unsigned short) strtoul( av->val, NULL, 10 );
+			if( ctl->stats->port == 0 )
+				ctl->stats->port = DEFAULT_TARGET_PORT;
+		}
+		return 0;
 	}
-	else if( attIs( "stats_threads" ) )
+
+	if( !strncasecmp( av->att, "stats.", 6 ) )
+		sc = ctl->stats->stats;
+	else if( !strncasecmp( av->att, "adder.", 6 ) )
+		sc = ctl->stats->adder;
+	else
+		return -1;
+
+	if( !strcasecmp( d, "threads" ) )
 	{
 		t = atoi( av->val );
 		if( t > 0 )
-			ctl->stats->stats_threads = t;
+			sc->threads = t;
 		else
 			warn( "Stats threads must be > 0, value %d given.", t );
+	}
+	else if( !strcasecmp( d, "prefix" ) )
+	{
+		free( sc->prefix );
+		sc->prefix = stats_prefix( av->val );
+		debug( "%s set to '%s'", av->att, sc->prefix );
+	}
+	else if( !strcasecmp( d, "period" ) )
+	{
+		t = atoi( av->val );
+		if( t > 0 )
+			sc->period = t;
+		else
+			warn( "Stats period must be > 0, value %d given.", t );
 	}
 	else
 		return -1;

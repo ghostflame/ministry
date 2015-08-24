@@ -1,12 +1,7 @@
 Graphite Connectivity
-	Config for targets
-	Connector objects
-	Start connections to graphite
 	Reconnection
 
 Stats generation
-	Change to control object including network
-	Create output string buffer, fill, send
 	Prefix config and prepending
 
 Monitoring

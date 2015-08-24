@@ -11,6 +11,8 @@ typedef struct stats_control		STAT_CTL;
 
 typedef struct net_in_port			NET_PORT;
 typedef struct net_type				NET_TYPE;
+typedef struct stat_config			ST_CFG;
+typedef struct stat_thread_ctl		ST_THR;
 typedef struct config_context		CCTXT;
 typedef struct points_list			PTLIST;
 typedef struct data_stat_entry		DSTAT;
@@ -23,7 +25,7 @@ typedef struct words_data			WORDS;
 typedef struct av_pair				AVP;
 
 // function types
-typedef void loop_call_fn ( void );
+typedef void loop_call_fn ( void * );
 typedef void * throw_fn ( void * );
 typedef void line_fn ( HOST *, char *, int );
 
