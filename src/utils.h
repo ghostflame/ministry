@@ -1,0 +1,91 @@
+#ifndef MINISTRY_UTILS_H
+#define MINISTRY_UTILS_H
+
+#define DEFAULT_PID_FILE	"/var/run/ministry"
+
+
+// for fast string allocation, free not possible
+#define PERM_SPACE_BLOCK	0x1000000	// 1M
+
+// for breaking up strings on a delimiter
+#define STRWORDS_MAX		255
+#define STRWORDS_HWM		254
+
+// var_val status
+#define VV_LINE_UNKNOWN		0
+#define VV_LINE_BROKEN		1
+#define VV_LINE_COMMENT		2
+#define VV_LINE_BLANK		3
+#define VV_LINE_NOATT		4
+#define VV_LINE_ATTVAL		5
+
+// var_val flags
+#define	VV_NO_EQUAL			0x01	// don't check for equal
+#define	VV_NO_SPACE			0x02	// don't check for space
+#define	VV_NO_TAB			0x04	// don't check for tabs
+#define	VV_NO_VALS			0x08	// there's just attributes
+#define	VV_VAL_WHITESPACE	0x10	// don't clean value whitespace
+#define	VV_AUTO_VAL			0x20	// put "1" as value where none present
+#define VV_LOWER_ATT		0x40	// lowercase the attribute
+
+
+
+#define tvdiff( a, b )		( ( 1000000 * ( (int) a.tv_sec - (int) b.tv_sec ) ) + (int) a.tv_usec - (int) b.tv_usec )
+#define tvll( a )			( ( 1000000 * (unsigned long long) a.tv_sec ) + (unsigned long long) a.tv_usec )
+#define tvinfo( a )			info( "%ld.%06.ld", (long) a.tv_sec, (long) a.tv_usec )
+#define tvadd( a, usec )	a.tv_usec += usec; while( a.tv_usec >= 1000000 ) { a.tv_sec++; a.tv_usec -= 1000000; }
+#define tvdupe( a, b )		b.tv_sec = a.tv_sec; b.tv_usec = a.tv_usec
+
+
+struct words_data
+{
+	char				*	wd[STRWORDS_MAX];
+	int						len[STRWORDS_MAX];
+	int						in_len;
+	int						wc;
+};
+
+
+struct av_pair
+{
+	char				*	att;
+	char				*	val;
+	int						alen;
+	int						vlen;
+	int						status;
+};
+
+
+// FUNCTIONS
+
+// zero'd memory
+void *allocz( size_t size );
+
+// report time to nearest usec
+double timedbl( double *dp );
+void get_time( void );
+
+// allocation of strings that can't be freed
+char *perm_str( int len );
+char *str_dup( char *src, int len );
+
+// this can be freed
+char *str_copy( char *src, int len );
+
+// get string length, up to a maximum
+int str_nlen( char *src, int max );
+
+// processing a config line in variable/value
+int var_val( char *line, int len, AVP *av, int flags );
+
+// break up a string by delimiter
+int strwords( WORDS *w, char *src, int len, char sep );
+
+// handle pidfile
+void pidfile_write( void );
+void pidfile_remove( void );
+
+// proper float summation
+void kahan_summation( float *list, int len, float *sum );
+
+#endif
