@@ -1,0 +1,23 @@
+Graphite Connectivity
+	Config for targets
+	Connector objects
+	Start connections to graphite
+	Reconnection
+
+Stats generation
+	Change to control object including network
+	Create output string buffer, fill, send
+	Prefix config and prepending
+
+Monitoring
+	Self stats, push on the tick
+
+Memory
+	Zero d->sum to trigger garbage collection
+	Removal/gc must be safe somehow
+
+Operational Readiness
+	Documentation for config
+	Document non-statsd format
+	RPM spec file
+
