@@ -186,7 +186,7 @@ void data_line_statsd( HOST *h, char *line, int len )
 	cl++;
 	len -= plen + 1;
 
-	if( !( vb = memchr( line, '|', len ) ) )
+	if( !( vb = memchr( cl, '|', len ) ) )
 	{
 		h->invalid++;
 		return;
