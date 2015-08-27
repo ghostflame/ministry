@@ -14,15 +14,15 @@ inline int cmp_floats( const void *p1, const void *p2 )
 
 
 
-void stats_report_one( DSTAT *d, ST_THR *cfg, time_t ts )
+void stats_report_one( DHASH *d, ST_THR *cfg, time_t ts )
 {
 	float sum, *vals = NULL;
 	PTLIST *list, *p;
 	int i, j, nt;
 	NBUF *b;
 
-	list = d->processing;
-	d->processing = NULL;
+	list = d->proc.points;
+	d->proc.points = NULL;
 
 	b = cfg->target->out;
 
@@ -66,7 +66,7 @@ void stats_report_one( DSTAT *d, ST_THR *cfg, time_t ts )
 void stats_stats_pass( void *arg )
 {
 	ST_THR *c;
-	DSTAT *d;
+	DHASH *d;
 	time_t t;
 	int i;
 
@@ -80,21 +80,23 @@ void stats_stats_pass( void *arg )
 			{
 				lock_stats( d );
 
-				d->processing = d->points;
-				d->points     = NULL;
+				d->proc.points = d->in.points;
+				d->in.points   = NULL;
 
 				unlock_stats( d );
-
-				if( !d->processing )
-					d->empty++;
 			}
 
 	// and report it
 	for( i = 0; i < ctl->data->hsize; i++ )
 		if( ( i % c->max ) == c->id )
 			for( d = ctl->data->stats[i]; d; d = d->next )
-				if( d->processing )
+				if( d->proc.points )
+				{
+					d->empty = 0;
 					stats_report_one( d, c, t );
+				}
+				else
+					d->empty++;
 
 	// anything left?
 	if( c->target->out->len )
@@ -107,7 +109,7 @@ void stats_adder_pass( void *arg )
 {
 	ST_THR *c;
 	time_t t;
-	DADD *d;
+	DHASH *d;
 	NBUF *b;
 	int i;
 
@@ -118,31 +120,32 @@ void stats_adder_pass( void *arg )
 	// take the data
 	for( i = 0; i < ctl->data->hsize; i++ )
 		if( ( i % c->max ) == c->id )
-			for( d = ctl->data->add[i]; d; d = d->next )
+			for( d = ctl->data->adder[i]; d; d = d->next )
 			{
 				lock_adder( d );
 
-				d->report = d->total;
-				d->total  = 0;
+				d->proc.total = d->in.total;
+				d->in.total   = 0;
 
 				unlock_adder( d );
-
-				if( !d->total )
-					d->empty++;
 			}
 
 
 	// and report it
 	for( i = 0; i < ctl->data->hsize; i++ )
 		if( ( i % c->max ) == c->id )
-			for( d = ctl->data->add[i]; d; d = d->next )
-				if( d->report > 0 )
+			for( d = ctl->data->adder[i]; d; d = d->next )
+				if( d->proc.total > 0 )
 				{
-					b->len += snprintf( b->ptr + b->len, b->sz - b->len, "%s %llu %ld\n", d->path, d->report, t );
+					d->empty = 0;
+
+					b->len += snprintf( b->ptr + b->len, b->sz - b->len, "%s %llu %ld\n", d->path, d->proc.total, t );
 
 					if( ( b->buf + b->len ) > b->hwmk )
 						net_write_data( c->target );
 				}
+				else
+					d->empty++;
 
 	// any left?
 	if( b->len )

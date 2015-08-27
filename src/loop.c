@@ -102,6 +102,9 @@ void loop_start( void )
 	// throw the memory control loop
 	thread_throw( &mem_loop, NULL );
 
+	// and gc
+	thread_throw( &mem_gc_loop, NULL );
+
 	// throw the data listener loop
 	data_start( ctl->net->data );
 	data_start( ctl->net->statsd );

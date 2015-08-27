@@ -41,111 +41,92 @@ uint32_t data_path_cksum( char *str, int len )
 }
 
 
-inline DSTAT *data_find_stat( uint32_t hval, uint32_t indx, char *path, int len )
+inline DHASH *data_find_path( DHASH *list, uint32_t hval, char *path, int len )
 {
-	DSTAT *d;
+	DHASH *h;
 
-	for( d = ctl->data->stats[indx]; d; d = d->next )
-	{
-		if( d->sum == hval
-		 && d->len == len
-		 && !memcmp( d->path, path, len ) )
+	for( h = list; h; h = h->next )
+		if( h->sum == hval
+		 && h->len == len
+		 && !memcmp( h->path, path, len ) )
 			break;
-	}
 
-	return d;
+	return h;
 }
 
-inline DADD *data_find_add( uint32_t hval, uint32_t indx, char *path, int len )
-{
-	DADD *d;
-
-	for( d = ctl->data->add[indx]; d; d = d->next )
-	{
-		if( d->sum == hval
-		 && d->len == len
-		 && !memcmp( d->path, path, len ) )
-			break;
-	}
-
-	return d;
-}
+#define data_find_stats( idx, h, p, l )		data_find_path( ctl->data->stats[idx], h, p, l )
+#define data_find_adder( idx, h, p, l )		data_find_path( ctl->data->adder[idx], h, p, l )
 
 
-
-void data_point_add( char *path, int len, unsigned long long val )
+void data_point_adder( char *path, int len, unsigned long long val )
 {
 	uint32_t hval, indx;
-	DADD *d;
+	DHASH *d;
 
 	hval = data_path_cksum( path, len );
 	indx = hval % ctl->data->hsize;
 
-	if( !( d = data_find_add( hval, indx, path, len ) ) )
+	if( !( d = data_find_adder( indx, hval, path, len ) ) )
 	{
-		pthread_mutex_lock( &(ctl->locks->addtable ) );
+		lock_table( indx );
 
-		if( !( d = data_find_add( hval, indx, path, len ) ) )
+		if( !( d = data_find_adder( indx, hval, path, len ) ) )
 		{
-			d = mem_new_dadd( path, len );
+			d = mem_new_dhash( path, len, DATA_HTYPE_ADDER );
 			d->id   = ++(ctl->data->apaths);
-			d->len  = len;
-			d->path = str_copy( path, len );
 			d->sum  = hval;
 
-			d->next = ctl->data->add[indx];
-			ctl->data->add[indx] = d;
+			d->next = ctl->data->adder[indx];
+			ctl->data->adder[indx] = d;
 		}
 
-		pthread_mutex_unlock( &(ctl->locks->addtable) );
+		unlock_table( indx );
 	}
 
 	// lock that path
 	lock_adder( d );
 
 	// add in that data point
-	d->total += val;
+	d->in.total += val;
 
 	// and unlock
 	unlock_adder( d );
 }
 
 
-void data_point_stat( char *path, int len, float val )
+void data_point_stats( char *path, int len, float val )
 {
 	uint32_t hval, indx;
 	PTLIST *p;
-	DSTAT *d;
+	DHASH *d;
 
 	hval = data_path_cksum( path, len );
 	indx = hval % ctl->data->hsize;
 
 	// there is a theoretical race condition here
 	// so we check again in a moment under lock
-	if( !( d = data_find_stat( hval, indx, path, len ) ) )
+	if( !( d = data_find_stats( indx, hval, path, len ) ) )
 	{
-		pthread_mutex_lock( &(ctl->locks->stattable) );
+		lock_table( indx );
 
-		if( !( d = data_find_stat( hval, indx, path, len ) ) )
+		if( !( d = data_find_stats( indx, hval, path, len ) ) )
 		{
-			d = mem_new_dstat( path, len );
+			d = mem_new_dhash( path, len, DATA_HTYPE_STATS );
 			d->id   = ++(ctl->data->spaths);
-			d->len  = len;
-			d->path = str_copy( path, len );
 			d->sum  = hval;
 
 			d->next = ctl->data->stats[indx];
 			ctl->data->stats[indx] = d;
 		}
 
-		pthread_mutex_unlock( &(ctl->locks->stattable) );
+		unlock_table( indx );
 	}
 
 	// lock that path
 	lock_stats( d );
 
 	// find where to store the points
-	for( p = d->points; p; p = p->next )
+	for( p = d->in.points; p; p = p->next )
 		if( p->count < PTLIST_SIZE )
 			break;
 
@@ -153,13 +134,12 @@ void data_point_stat( char *path, int len, float val )
 	if( !p )
 	{
 		p = mem_new_point( );
-		p->next   = d->points;
-		d->points = p;
+		p->next = d->in.points;
+		d->in.points = p;
 	}
 
 	// keep that data point
 	p->vals[p->count++] = val;
-	d->total++;
 
 	// and unlock
 	unlock_stats( d );
@@ -199,12 +179,12 @@ void data_line_statsd( HOST *h, char *line, int len )
 	{
 		case 'c':
 			// counter - integer
-			data_point_add( line, plen, strtoull( cl, NULL, 10 ) );
+			data_point_adder( line, plen, strtoull( cl, NULL, 10 ) );
 			h->points++;
 			break;
 		case 'm':
 			// msec - double
-			data_point_stat( line, plen, strtod( cl, NULL ) );
+			data_point_stats( line, plen, strtod( cl, NULL ) );
 			h->points++;
 			break;
 		default:
@@ -229,7 +209,7 @@ void data_line_data( HOST *h, char *line, int len )
 	// looks OK
 	h->points++;
 
-	data_point_stat( h->val->wd[0], h->val->len[0],
+	data_point_stats( h->val->wd[0], h->val->len[0],
 	                 strtod( h->val->wd[1], NULL ) );
 }
 
@@ -250,7 +230,7 @@ void data_line_adder( HOST *h, char *line, int len )
 	h->points++;
 
 	// and put that in
-	data_point_add( h->val->wd[0], h->val->len[0],
+	data_point_adder( h->val->wd[0], h->val->len[0],
 				strtoull( h->val->wd[1], NULL, 10 ) );
 }
 
@@ -463,8 +443,8 @@ void data_start( NET_TYPE *nt )
 // allocate the hash structures now that hsize is finalized
 void data_init( void )
 {
-	ctl->data->stats = (DSTAT **) allocz( ctl->data->hsize * sizeof( DSTAT * ) );
-	ctl->data->add   = (DADD **)  allocz( ctl->data->hsize * sizeof( DADD * )  );
+	ctl->data->stats = (DHASH **) allocz( ctl->data->hsize * sizeof( DHASH * ) );
+	ctl->data->adder = (DHASH **) allocz( ctl->data->hsize * sizeof( DHASH * ) );
 }
 
 

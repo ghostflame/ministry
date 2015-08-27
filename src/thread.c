@@ -54,20 +54,21 @@ LOCK_CTL *lock_config_defaults( void )
 
 	// used in mem.c
 	pthread_mutex_init( &(l->hostalloc), NULL );
-	pthread_mutex_init( &(l->statalloc), NULL );
-	pthread_mutex_init( &(l->addalloc), NULL );
+	pthread_mutex_init( &(l->hashalloc), NULL );
 	pthread_mutex_init( &(l->pointalloc), NULL );
 
 	// used in loop control
 	pthread_mutex_init( &(l->loop), NULL );
-	pthread_mutex_init( &(l->stattable), NULL );
-	pthread_mutex_init( &(l->addtable), NULL );
+
+	// used to lock table positions
+	for( i = 0; i < HASHT_MUTEX_COUNT; i++ )
+		pthread_mutex_init( l->table + i, NULL );
 
 	// used to lock paths
-	for( i = 0; i < DSTAT_MUTEX_COUNT; i++ )
-		pthread_mutex_init( l->dstat + i, NULL );
-	for( i = 0; i < DADD_MUTEX_COUNT; i++ )
-		pthread_mutex_init( l->dadd + i, NULL );
+	for( i = 0; i < DSTATS_MUTEX_COUNT; i++ )
+		pthread_mutex_init( l->dstats + i, NULL );
+	for( i = 0; i < DADDER_MUTEX_COUNT; i++ )
+		pthread_mutex_init( l->dadder + i, NULL );
 
 	l->init_done = 1;
 	return l;
@@ -83,20 +84,21 @@ void lock_shutdown( void )
 
 	// used in mem.c
 	pthread_mutex_destroy( &(l->hostalloc) );
-	pthread_mutex_destroy( &(l->statalloc) );
-	pthread_mutex_destroy( &(l->addalloc) );
+	pthread_mutex_destroy( &(l->hashalloc) );
 	pthread_mutex_destroy( &(l->pointalloc) );
 
 	// used in loop control
 	pthread_mutex_destroy( &(l->loop) );
-	pthread_mutex_destroy( &(l->stattable) );
-	pthread_mutex_destroy( &(l->addtable) );
+
+	// used to lock table positions
+	for( i = 0; i < HASHT_MUTEX_COUNT; i++ )
+		pthread_mutex_destroy( l->table + i );
 
 	// used to lock paths
-	for( i = 0; i < DSTAT_MUTEX_COUNT; i++ )
-		pthread_mutex_destroy( l->dstat + i );
-	for( i = 0; i < DADD_MUTEX_COUNT; i++ )
-		pthread_mutex_destroy( l->dadd + i );
+	for( i = 0; i < DSTATS_MUTEX_COUNT; i++ )
+		pthread_mutex_destroy( l->dstats + i );
+	for( i = 0; i < DADDER_MUTEX_COUNT; i++ )
+		pthread_mutex_destroy( l->dadder + i );
 
 	l->init_done = 0;
 }

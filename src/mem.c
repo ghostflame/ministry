@@ -167,13 +167,13 @@ void mem_free_point_list( PTLIST *list )
 
 
 // this must always be called from inside a lock
-void __mem_new_dstat( int count )
+void __mem_new_dhash( int count )
 {
-    DSTAT *dlist, *d;
+    DHASH *dlist, *d;
     int i;
 
     // allocate a block of paths and words
-    dlist = (DSTAT *) allocz( count * sizeof( DSTAT ) );
+    dlist = (DHASH *) allocz( count * sizeof( DHASH ) );
 
     d = dlist + 1;
 
@@ -182,30 +182,31 @@ void __mem_new_dstat( int count )
         dlist[i].next = d++;
 
     // and insert them
-    dlist[count - 1].next = ctl->mem->dstat;
-    ctl->mem->dstat = dlist;
-    ctl->mem->free_dstat += count;
-    ctl->mem->mem_dstat  += count;
+    dlist[count - 1].next = ctl->mem->dhash;
+    ctl->mem->dhash = dlist;
+    ctl->mem->free_dhash += count;
+    ctl->mem->mem_dhash  += count;
 }
 
 
 
-DSTAT *mem_new_dstat( char *str, int len )
+DHASH *mem_new_dhash( char *str, int len, int type )
 {
-	DSTAT *d;
+	DHASH *d;
 
-	pthread_mutex_lock( &(ctl->locks->statalloc) );
+	pthread_mutex_lock( &(ctl->locks->hashalloc) );
 
-	if( !ctl->mem->dstat )
-        __mem_new_dstat( NEW_DSTAT_BLOCK_SZ );
+	if( !ctl->mem->dhash )
+        __mem_new_dhash( NEW_DHASH_BLOCK_SZ );
 
-	d = ctl->mem->dstat;
-	ctl->mem->dstat = d->next;
-	--(ctl->mem->free_dstat);
+	d = ctl->mem->dhash;
+	ctl->mem->dhash = d->next;
+	--(ctl->mem->free_dhash);
 
-	pthread_mutex_unlock( &(ctl->locks->statalloc) );
+	pthread_mutex_unlock( &(ctl->locks->hashalloc) );
 
 	d->next = NULL;
+	d->type = type;
 
 	if( len >= d->sz )
 	{
@@ -223,9 +224,9 @@ DSTAT *mem_new_dstat( char *str, int len )
 }
 
 
-void mem_free_dstat( DSTAT **d )
+void mem_free_dhash( DHASH **d )
 {
-	DSTAT *sd;
+	DHASH *sd;
 
 	if( !d || !*d )
 		return;
@@ -236,101 +237,138 @@ void mem_free_dstat( DSTAT **d )
 	*(sd->path) = '\0';
 	sd->len     = 0;
 
-	if( sd->points )
+	if( sd->type == DATA_HTYPE_STATS && sd->in.points )
 	{
-		mem_free_point_list( sd->points );
-		sd->points = NULL;
+		mem_free_point_list( sd->in.points );
+		sd->in.points = NULL;
 	}
+	else
+		sd->in.total = 0;
+
+	sd->type = 0;
 
 	// ignore processing, it gets tidied up anyway
 
-	pthread_mutex_lock( &(ctl->locks->statalloc) );
+	pthread_mutex_lock( &(ctl->locks->hashalloc) );
 
-	sd->next = ctl->mem->dstat;
-	ctl->mem->dstat = sd;
-	++(ctl->mem->free_dstat);
+	sd->next = ctl->mem->dhash;
+	ctl->mem->dhash = sd;
+	++(ctl->mem->free_dhash);
 
-	pthread_mutex_unlock( &(ctl->locks->statalloc) );
+	pthread_mutex_unlock( &(ctl->locks->hashalloc) );
 }
 
 
-// this must always be called from inside a lock
-void __mem_new_dadd( int count )
+void mem_free_dhash_list( DHASH *list )
 {
-    DADD *dlist, *d;
-    int i;
+	DHASH *freed, *d, *end;
+	PTLIST *ptfree, *p;
+	int j = 0;
 
-    // allocate a block of paths and words
-    dlist = (DADD *) allocz( count * sizeof( DADD ) );
+	freed = end = NULL;
+	ptfree = NULL;
 
-    d = dlist + 1;
-
-    // link them up
-    for( i = 0; i < count; i++ )
-        dlist[i].next = d++;
-
-    // and insert them
-    dlist[count - 1].next = ctl->mem->dadd;
-    ctl->mem->dadd = dlist;
-    ctl->mem->free_dadd += count;
-    ctl->mem->mem_dadd  += count;
-}
-
-
-
-
-DADD *mem_new_dadd( char *str, int len )
-{
-	DADD *d;
-
-	pthread_mutex_lock( &(ctl->locks->addalloc) );
-
-	if( !ctl->mem->dadd )
-        __mem_new_dadd( NEW_DADD_BLOCK_SZ );
-
-	d = ctl->mem->dadd;
-	ctl->mem->dadd = d->next;
-	--(ctl->mem->free_dadd);
-
-	pthread_mutex_unlock( &(ctl->locks->addalloc) );
-
-	d->next = NULL;
-
-	if( len >= d->sz )
+	while( list )
 	{
-	  	free( d->path );
-		d->sz   = len + 1;
-		d->path = (char *) allocz( d->sz );
+		d    = list;
+		list = d->next;
+
+		*(d->path) = '\0';
+		d->len     = 0;
+
+		if( d->type == DATA_HTYPE_STATS && d->in.points )
+		{
+			for( p = d->in.points; p->next; p = p->next );
+
+			p->next = ptfree;
+			ptfree  = p;
+
+			d->in.points = NULL;
+		}
+		else
+			d->in.total = 0;
+
+		d->next = freed;
+		freed   = d;
+
+		if( !end )
+			end = d;
+
+		j++;
 	}
 
-	// copy the string into place
-	memcpy( d->path, str, len );
-	d->path[len] = '\0';
-	d->len = len;
+	pthread_mutex_lock( &(ctl->locks->hashalloc) );
 
-	return d;
+	end->next = ctl->mem->dhash;
+	ctl->mem->dhash = d;
+	ctl->mem->free_dhash += j;
+
+	pthread_mutex_unlock( &(ctl->locks->hashalloc) );
+
+	if( ptfree )
+		mem_free_point_list( ptfree );
 }
 
-void mem_free_dadd( DADD **d )
+
+
+void mem_gc_list( DHASH **list, DHASH **flist, unsigned int idx )
 {
-	DADD *sd;
+	DHASH *h, *prev, *next;
+	int lock = 0;
 
-	if( !d || !*d )
-		return;
+	for( prev = NULL, h = *list; h; h = next )
+	{
+		next = h->next;
 
-	sd = *d;
-	*d = NULL;
+		if( h->sum == 0 )
+		{
+			if( !lock )
+			{
+				lock_table( idx );
+				lock = 1;
+			}
 
-	*(sd->path) = '\0';
-	sd->len     = 0;
+			// remove s
+			if( prev )
+				prev->next = next;
+			else
+				*list = next;
 
-	pthread_mutex_lock( &(ctl->locks->addalloc) );
+			// update the free list
+			h->next = *flist;
+			*flist  = h;
 
-	sd->next = ctl->mem->dadd;
-	ctl->mem->dadd = sd;
-	++(ctl->mem->free_dadd);
+			debug( "GC on path %s", h->path );
+		}
+		else if( h->empty > ctl->mem->gc_thresh )
+		{
+			// flatten the checksum
+			// this means searches will pass
+			// over this node
+			// and we will clear it out next time
+			debug( "Marking path %s dead.", h->path );
+			h->sum = 0;
+		}
+	}
 
-	pthread_mutex_unlock( &(ctl->locks->addalloc) );
+	if( lock )
+		unlock_table( idx );
+}
+
+
+void mem_gc( void *arg )
+{
+	DHASH *flist = NULL;
+	unsigned int i;
+
+	for( i = 0; i < ctl->data->hsize; i++ )
+	{
+		mem_gc_list( &(ctl->data->stats[i]), &flist, i );
+		mem_gc_list( &(ctl->data->adder[i]), &flist, i );
+	}
+
+	if( flist )
+		mem_free_dhash_list( flist );
 }
 
 
@@ -346,6 +384,18 @@ void mem_check( void *arg )
 
 	if( ru.ru_maxrss > ctl->mem->max_mb )
 		loop_end( "Memory usage exceeds configured maximum." );
+}
+
+
+
+void *mem_gc_loop( void *arg )
+{
+	THRD *t = (THRD *) arg;
+
+	loop_control( "gc", &mem_gc, NULL, 10000000, 0, 2000000 );
+
+	free( t );
+	return NULL;
 }
 
 
@@ -368,15 +418,26 @@ MEM_CTL *mem_config_defaults( void )
 
 	m = (MEM_CTL *) allocz( sizeof( MEM_CTL ) );
 
-	m->max_mb = MEM_MAX_MB;
+	m->max_mb    = MEM_MAX_MB;
+	m->gc_thresh = DEFAULT_GC_THRESH;
 
 	return m;
 }
 
 int mem_config_line( AVP *av )
 {
+	int t;
+
 	if( attIs( "max_mb" ) )
 		ctl->mem->max_mb = 1024 * atoi( av->val );
+	else if( attIs( "gc_thresh" ) )
+	{
+		t = atoi( av->val );
+		if( !t )
+			t = DEFAULT_GC_THRESH;
+		info( "Garbage collection threshold set to %d stats intervals.", t );
+		ctl->mem->gc_thresh = t;
+	}
 	else
 		return -1;
 

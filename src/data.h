@@ -6,6 +6,9 @@
 #define DATA_HASH_SIZE			100003
 #define DATA_SUBMIT_INTV		10000000
 
+#define	DATA_HTYPE_STATS		1
+#define	DATA_HTYPE_ADDER		2
+
 #define LINE_SEPARATOR			'\n'
 #define FIELD_SEPARATOR			' '
 
@@ -35,42 +38,33 @@ struct points_list
 };
 
 
-struct data_stat_entry
+union data_hash_vals
 {
-	DSTAT			*	next;
-	char			*	path;
 	PTLIST			*	points;
-	PTLIST			*	processing;
-	time_t				last;
-	uint16_t			len;
-	uint16_t			sz;
-	uint32_t			id;
-	uint32_t			sum;
-	uint32_t			total;
-	uint16_t			empty;
-	uint16_t			unsafe;
+	unsigned long long	total;
 };
 
-struct data_add_entry
+
+struct data_hash_entry
 {
-	DADD			*	next;
+	DHASH			*	next;
 	char			*	path;
-	unsigned long long	total;
-	unsigned long long	report;
 	uint16_t			len;
 	uint16_t			sz;
-	uint32_t			sum;
 	uint32_t			id;
+	uint32_t			sum;
 	uint16_t			empty;
-	uint16_t			unsafe;
+	uint16_t			type;
+	DVAL				in;
+	DVAL				proc;
 };
 
 
 
 struct data_control
 {
-	DSTAT			**	stats;
-	DADD			**	add;
+  	DHASH			**	stats;
+	DHASH			**	adder;
 
 	unsigned long		spaths;
 	unsigned long		apaths;

@@ -1,3 +1,6 @@
+Refactor
+	Unify stats/data object usage via union
+
 Graphite Connectivity
 	Reconnection
 
@@ -6,10 +9,6 @@ Stats generation
 
 Monitoring
 	Self stats, push on the tick
-
-Memory
-	Zero d->sum to trigger garbage collection
-	Removal/gc must be safe somehow
 
 Operational Readiness
 	Documentation for config
