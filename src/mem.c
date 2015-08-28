@@ -365,10 +365,10 @@ void mem_gc( void *arg )
 	DHASH *flist = NULL;
 	unsigned int i;
 
-	for( i = 0; i < ctl->data->hsize; i++ )
+	for( i = 0; i < ctl->mem->hashsize; i++ )
 	{
-		mem_gc_list( &(ctl->data->stats[i]), &flist, i );
-		mem_gc_list( &(ctl->data->adder[i]), &flist, i );
+		mem_gc_list( &(ctl->stats->stats->data[i]), &flist, i );
+		mem_gc_list( &(ctl->stats->adder->data[i]), &flist, i );
 	}
 
 	if( flist )
@@ -424,6 +424,7 @@ MEM_CTL *mem_config_defaults( void )
 
 	m->max_mb    = MEM_MAX_MB;
 	m->gc_thresh = DEFAULT_GC_THRESH;
+	m->hashsize  = DEFAULT_MEM_HASHSIZE;
 
 	return m;
 }
@@ -434,6 +435,8 @@ int mem_config_line( AVP *av )
 
 	if( attIs( "max_mb" ) )
 		ctl->mem->max_mb = 1024 * atoi( av->val );
+	else if( attIs( "hashsize" ) )
+		ctl->mem->hashsize = atoi( av->val );
 	else if( attIs( "gc_thresh" ) )
 	{
 		t = atoi( av->val );

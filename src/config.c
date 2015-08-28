@@ -238,8 +238,6 @@ int config_read( char *inpath )
 			lrv = log_config_line( &av );
 		else if( secIs( "network" ) )
 		  	lrv = net_config_line( &av );
-		else if( secIs( "data" ) )
-			lrv = data_config_line( &av );
 		else if( secIs( "memory" ) )
 			lrv = mem_config_line( &av );
 		else if( secIs( "stats" ) )
@@ -284,7 +282,6 @@ MIN_CTL *config_create( void )
 	c->locks      = lock_config_defaults( );
 	c->mem        = mem_config_defaults( );
 	c->net        = net_config_defaults( );
-	c->data       = data_config_defaults( );
 	c->stats      = stats_config_defaults( );
 
 	c->cfg_file   = "conf/ministry.conf";

@@ -89,9 +89,9 @@ void stats_stats_pass( void *arg )
 #endif
 
 	// take the data
-	for( i = 0; i < ctl->data->hsize; i++ )
+	for( i = 0; i < ctl->mem->hashsize; i++ )
 		if( ( i % c->max ) == c->id )
-			for( d = ctl->data->stats[i]; d; d = d->next )
+			for( d = c->conf->data[i]; d; d = d->next )
 			{
 				lock_stats( d );
 
@@ -109,9 +109,9 @@ void stats_stats_pass( void *arg )
 #endif
 
 	// and report it
-	for( i = 0; i < ctl->data->hsize; i++ )
+	for( i = 0; i < ctl->mem->hashsize; i++ )
 		if( ( i % c->max ) == c->id )
-			for( d = ctl->data->stats[i]; d; d = d->next )
+			for( d = c->conf->data[i]; d; d = d->next )
 				if( d->proc.points )
 				{
 					d->empty = 0;
@@ -154,9 +154,9 @@ void stats_adder_pass( void *arg )
 #endif
 
 	// take the data
-	for( i = 0; i < ctl->data->hsize; i++ )
+	for( i = 0; i < ctl->mem->hashsize; i++ )
 		if( ( i % c->max ) == c->id )
-			for( d = ctl->data->adder[i]; d; d = d->next )
+			for( d = c->conf->data[i]; d; d = d->next )
 			{
 				lock_adder( d );
 
@@ -174,9 +174,9 @@ void stats_adder_pass( void *arg )
 #endif
 
 	// and report it
-	for( i = 0; i < ctl->data->hsize; i++ )
+	for( i = 0; i < ctl->mem->hashsize; i++ )
 		if( ( i % c->max ) == c->id )
-			for( d = ctl->data->adder[i]; d; d = d->next )
+			for( d = c->conf->data[i]; d; d = d->next )
 				if( d->proc.total > 0 )
 				{
 					d->empty = 0;
@@ -278,9 +278,14 @@ void stats_init_control( ST_CFG *c, char *name )
 	ST_THR *t;
 	int i;
 
+	// create the hash structure
+	c->data = (DHASH **) allocz( ctl->mem->hashsize * sizeof( DHASH * ) );
+
 	// convert msec to usec
 	c->period *= 1000;
 	c->offset *= 1000;
+	// offset can't be bigger than period
+	c->offset  = c->offset % c->period;
 
 	// make the control structures
 	c->ctls = (ST_THR *) allocz( c->threads * sizeof( ST_THR ) );
@@ -395,6 +400,14 @@ int stats_config_line( AVP *av )
 			sc->period = t;
 		else
 			warn( "Stats period must be > 0, value %d given.", t );
+	}
+	else if( !strcasecmp( d, "offset" ) )
+	{
+		t = atoi( av->val );
+		if( t > 0 )
+			sc->offset = t;
+		else
+			warn( "Stats offset must be > 0, value %d given.", t );
 	}
 	else
 		return -1;

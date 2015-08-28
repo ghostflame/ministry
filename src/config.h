@@ -30,7 +30,6 @@ struct ministry_control
 	LOCK_CTL			*	locks;
 	MEM_CTL				*	mem;
 	NET_CTL				*	net;
-	DATA_CTL			*	data;
 	STAT_CTL			*	stats;
 
 	struct timeval			init_time;

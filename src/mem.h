@@ -6,6 +6,7 @@
 #define NEW_DHASH_BLOCK_SZ				256
 #define MEM_MAX_MB						4096
 #define DEFAULT_GC_THRESH				360
+#define DEFAULT_MEM_HASHSIZE			100003
 
 
 struct memory_control
@@ -24,6 +25,7 @@ struct memory_control
 
 	int				max_mb;
 	int				gc_thresh;
+	int				hashsize;
 };
 
 

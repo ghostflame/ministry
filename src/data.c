@@ -54,8 +54,8 @@ inline DHASH *data_find_path( DHASH *list, uint32_t hval, char *path, int len )
 	return h;
 }
 
-#define data_find_stats( idx, h, p, l )		data_find_path( ctl->data->stats[idx], h, p, l )
-#define data_find_adder( idx, h, p, l )		data_find_path( ctl->data->adder[idx], h, p, l )
+#define data_find_stats( idx, h, p, l )		data_find_path( ctl->stats->stats->data[idx], h, p, l )
+#define data_find_adder( idx, h, p, l )		data_find_path( ctl->stats->adder->data[idx], h, p, l )
 
 
 void data_point_adder( char *path, int len, unsigned long long val )
@@ -64,7 +64,7 @@ void data_point_adder( char *path, int len, unsigned long long val )
 	DHASH *d;
 
 	hval = data_path_cksum( path, len );
-	indx = hval % ctl->data->hsize;
+	indx = hval % ctl->mem->hashsize;
 
 	if( !( d = data_find_adder( indx, hval, path, len ) ) )
 	{
@@ -73,11 +73,11 @@ void data_point_adder( char *path, int len, unsigned long long val )
 		if( !( d = data_find_adder( indx, hval, path, len ) ) )
 		{
 			d = mem_new_dhash( path, len, DATA_HTYPE_ADDER );
-			d->id   = ++(ctl->data->apaths);
+			d->id   = ++(ctl->stats->adder->dcount);
 			d->sum  = hval;
 
-			d->next = ctl->data->adder[indx];
-			ctl->data->adder[indx] = d;
+			d->next = ctl->stats->adder->data[indx];
+			ctl->stats->adder->data[indx] = d;
 		}
 
 		unlock_table( indx );
@@ -101,7 +101,7 @@ void data_point_stats( char *path, int len, float val )
 	DHASH *d;
 
 	hval = data_path_cksum( path, len );
-	indx = hval % ctl->data->hsize;
+	indx = hval % ctl->mem->hashsize;
 
 	// there is a theoretical race condition here
 	// so we check again in a moment under lock
@@ -112,11 +112,11 @@ void data_point_stats( char *path, int len, float val )
 		if( !( d = data_find_stats( indx, hval, path, len ) ) )
 		{
 			d = mem_new_dhash( path, len, DATA_HTYPE_STATS );
-			d->id   = ++(ctl->data->spaths);
+			d->id   = ++(ctl->stats->stats->dcount);
 			d->sum  = hval;
 
-			d->next = ctl->data->stats[indx];
-			ctl->data->stats[indx] = d;
+			d->next = ctl->stats->stats->data[indx];
+			ctl->stats->stats->data[indx] = d;
 		}
 
 		unlock_table( indx );
@@ -440,45 +440,5 @@ void data_start( NET_TYPE *nt )
 }
 
 
-// allocate the hash structures now that hsize is finalized
-void data_init( void )
-{
-	ctl->data->stats = (DHASH **) allocz( ctl->data->hsize * sizeof( DHASH * ) );
-	ctl->data->adder = (DHASH **) allocz( ctl->data->hsize * sizeof( DHASH * ) );
-}
-
-
-DATA_CTL *data_config_defaults( void )
-{
-	DATA_CTL *d;
-
-	d              = (DATA_CTL *) allocz( sizeof( DATA_CTL ) );
-	d->hsize       = DATA_HASH_SIZE;
-	d->submit_intv = DATA_SUBMIT_INTV;
-
-	return d;
-}
-
-
-int data_config_line( AVP *av )
-{
-	if( attIs( "hashsize" ) )
-		ctl->data->hsize = atoi( av->val );
-	else if( attIs( "submit" ) )
-	{
-		ctl->data->submit_intv = atoi( av->val );
-		// we assume a value too low is in seconds
-		if( ctl->data->submit_intv < 500 )
-		{
-			info( "Converting submit interval %d to usec.",
-				ctl->data->submit_intv );
-			ctl->data->submit_intv *= 1000000;
-		}
-	}
-	else
-		return -1;
-
-	return 0;
-}
 
 

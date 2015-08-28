@@ -1,2 +1,115 @@
 # ministry
 A drop-in replacement for statsd written in threaded C
+
+Etsy's statsd can be found here:  https://github.com/etsy/statsd
+
+It supports statsd-link input format:
+```
+	<metric path>:<value>|<type - c or ms>\n
+```
+As well as a simpler input format:
+```
+	<metric path> <value>\n
+```
+
+## Ministry Config
+
+Ministry config matches that of Coal (https://github.com/ghostflame/coal), in
+that it follows a Section/Variable=Value format, eg:
+
+```
+[Main]
+basedir = /tmp
+tick_usec = 200000
+
+[Logging]
+level = info
+
+[Network]
+data.udp.port = 9125
+statsd.udp.port = 8125
+```
+
+It supports including files (though not drop-in directories).  When a file
+is included, the section context is carried over, so the included file need
+not specify a section.  For example:
+
+conf/ministry.conf:
+
+```
+[Logging]
+include = conf/log.conf
+```
+
+And then conf/log.conf
+```
+level = info
+```
+
+Strings such as log level, yes/no, are case insensitive.
+
+
+The section values are:
+
+### Main
+Controls overall behaviour.
+
+- tick_usec = (integer) usec between main ticks (for clock maintenance).
+- daemon    = (integer/string) yes, y, >0 to daemonize
+- pidfile   = (path) path to pidfile
+- basedir   = (path) working dir to cd to.  Relative paths are from here.
+
+
+### Logging
+Controls the logging code.
+
+- filename  = (path) File to log to
+- level     = (string) Log level (debug,info,notice,warn,error,fatal)
+
+
+### Network
+Controls network ports, timeouts.
+
+- timeout   = (integer) Time to consider a TCP connection dead.
+- rcv_tmout = (integer) Seconds for receive timeout - affects signals.
+
+The rest are for one of the 3 types of socket - data, adder or statsd, and
+must all be prefixed with one of those three.  The type as a whole, with
+both TCP and UDP reception, are enabled by default.
+
+- type.enable     = (integer) 0 or !0, to disable or enable respectively
+- type.enable_tcp = (integer) 0 or !0, to disable or enable TCP respectively
+- type.enable_udp = (integer) 0 or !0, to disable or enable UDP respectively
+- type.label      = (string) How this socket is described in logs
+
+After this, everything is by protocol, udp or tcp.
+
+- type.proto.bind    = (string) IP address to bind this socket to
+- type.proto.port    = (integer-list) Comma-separated ports to listen on
+- type.proto.backlog = (integer) TCP only; listen backlog.
+
+
+
+### Memory
+Controls memory management.
+
+- max_mb     = (integer) Max RSS in MB.  Process exits if this is exceeded.
+- gc_thresh  = (integer) Submit intervals without data before a path is GC'd.
+- hashsize    = (integer) Size of the hash table - affects performance
+
+
+### Stats
+Controls stats submission and prefixes.
+
+- target.host  = (string) IP address of the graphite target host.
+- target.port  = (integer) Graphite target port.
+
+The rest are either for stats or adder control and should be prefixed with
+one of those types.
+
+- type.threads = (integer) Number of independent processing threads to run
+- type.prefix  = (string) Prefix to put before type paths
+- type.period  = (integer) Submit interval in milliseconds for this type
+- type.offset  = (integer) Submit delay in milliseconds for this type
+
+

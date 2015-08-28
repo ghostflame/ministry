@@ -1,5 +1,8 @@
 Refactor
-	none
+	Make path counting lock separate - it's not covered by table lock
+
+Network
+	List of TCP ports as well
 
 Graphite Connectivity
 	Reconnection
@@ -11,7 +14,5 @@ Monitoring
 	Self stats, push on the tick
 
 Operational Readiness
-	Documentation for config
-	Document non-statsd format
 	RPM spec file
 

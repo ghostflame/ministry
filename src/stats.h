@@ -40,6 +40,10 @@ struct stat_config
 	int					period;		// msec
 	int					offset;		// msec
 	loop_call_fn	*	loopfn;
+
+	// and the data
+	DHASH			**	data;
+	int					dcount;
 };
 
 

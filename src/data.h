@@ -3,8 +3,6 @@
 
 // rounds the structure to 4k
 #define PTLIST_SIZE				1021
-#define DATA_HASH_SIZE			100003
-#define DATA_SUBMIT_INTV		10000000
 
 #define	DATA_HTYPE_STATS		1
 #define	DATA_HTYPE_ADDER		2
@@ -68,11 +66,6 @@ struct data_control
 
 	unsigned long		spaths;
 	unsigned long		apaths;
-
-	int					hsize;
-
-	// in usec
-	int					submit_intv;
 };
 
 
@@ -85,10 +78,5 @@ line_fn data_line_statsd;
 line_fn data_line_adder;
 
 void data_start( NET_TYPE *nt );
-
-void data_init( void );
-
-DATA_CTL *data_config_defaults( void );
-int data_config_line( AVP *av );
 
 #endif

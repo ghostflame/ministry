@@ -156,9 +156,6 @@ int main( int ac, char **av )
 	if( set_signals( ) )
 		fatal( "Failed to set signalling." );
 
-	// create the data hash structures
-	data_init( );
-
 	// set up stats and connect to graphite
 	stats_init( );
 

@@ -663,7 +663,7 @@ int net_config_line( AVP *av )
 		else if( attIs( "rcv_tmout" ) )
 		{
 			ctl->net->rcv_tmout = (unsigned int) atoi( av->val );
-			debug( "Receive timeout set to %u usec.", ctl->net->rcv_tmout );
+			debug( "Receive timeout set to %u sec.", ctl->net->rcv_tmout );
 		}
 		else
 			return -1;
