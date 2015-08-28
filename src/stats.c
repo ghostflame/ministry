@@ -55,7 +55,15 @@ void stats_report_one( DHASH *d, ST_THR *cfg, time_t ts )
 		b->len += snprintf( b->ptr + b->len, b->sz - b->len, "%s%s.upper_90 %f %ld\n", pref, d->path, vals[nt], ts );
 
 		if( ( b->buf + b->len ) > b->hwmk )
+		{
+#ifdef DEBUG
+		  	b->ptr[b->len] = '\0';
+		    printf( "%s", b->ptr );
+			b->len = 0;
+#else
 			net_write_data( cfg->target );
+#endif
+		}
 
 		free( vals );
 	}
@@ -76,6 +84,10 @@ void stats_stats_pass( void *arg )
 	t = ctl->curr_time.tv_sec;
 	c = (ST_THR *) arg;
 
+#ifdef DEBUG
+	debug( "[%02d] Stats claim", c->id );
+#endif
+
 	// take the data
 	for( i = 0; i < ctl->data->hsize; i++ )
 		if( ( i % c->max ) == c->id )
@@ -88,6 +100,13 @@ void stats_stats_pass( void *arg )
 
 				unlock_stats( d );
 			}
+
+	// sleep a bit to avoid contention
+	usleep( 1000 + ( random( ) % 30011 ) );
+
+#ifdef DEBUG
+	debug( "[%02d] Stats report", c->id );
+#endif
 
 	// and report it
 	for( i = 0; i < ctl->data->hsize; i++ )
@@ -103,7 +122,15 @@ void stats_stats_pass( void *arg )
 
 	// anything left?
 	if( c->target->out->len )
+	{
+#ifdef DEBUG
+	  	c->target->out->ptr[c->target->out->len] = '\0';
+		printf( "%s", c->target->out->ptr );
+		c->target->out->len = 0;
+#else
 		net_write_data( c->target );
+#endif
+	}
 }
 
 
@@ -122,6 +149,10 @@ void stats_adder_pass( void *arg )
 	c = (ST_THR *) arg;
 	b = c->target->out;
 
+#ifdef DEBUG
+	debug( "[%02d] Adder claim", c->id );
+#endif
+
 	// take the data
 	for( i = 0; i < ctl->data->hsize; i++ )
 		if( ( i % c->max ) == c->id )
@@ -135,6 +166,12 @@ void stats_adder_pass( void *arg )
 				unlock_adder( d );
 			}
 
+	// sleep a short time to avoid contention
+	usleep( 1000 + ( random( ) % 30011 ) );
+
+#ifdef DEBUG
+	debug( "[%02d] Adder report", c->id );
+#endif
 
 	// and report it
 	for( i = 0; i < ctl->data->hsize; i++ )
@@ -147,14 +184,30 @@ void stats_adder_pass( void *arg )
 					b->len += snprintf( b->ptr + b->len, b->sz - b->len, "%s%s %llu %ld\n", p, d->path, d->proc.total, t );
 
 					if( ( b->buf + b->len ) > b->hwmk )
+					{
+#ifdef DEBUG
+						b->ptr[b->len] = '\0';
+						printf( "%s", b->ptr );
+						b->len = 0;
+#else
 						net_write_data( c->target );
+#endif
+					}
 				}
 				else
 					d->empty++;
 
 	// any left?
 	if( b->len )
+	{
+#ifdef DEBUG
+	  	b->ptr[b->len] = '\0';
+		printf( "%s", b->ptr );
+		b->len = 0;
+#else
 		net_write_data( c->target );
+#endif
+	}
 }
 
 
@@ -200,12 +253,17 @@ char *stats_prefix( char *s )
 	int len, dot = 0;
 	char *p;
 	
-	len = strlen( s );
-	if( len > 0 && s[len - 1] == '.' )
+	if( !( len = strlen( s ) ) )
+		return strdup( "" );
+
+	// do we need a dot?
+	if( s[len - 1] != '.' )
 		dot = 1;
 
+	// include space for a dot
 	p = (char *) allocz( len + dot + 1 );
 	memcpy( p, s, len );
+
 	if( dot )
 		p[len] = '.';
 

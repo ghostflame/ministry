@@ -338,7 +338,9 @@ void mem_gc_list( DHASH **list, DHASH **flist, unsigned int idx )
 			h->next = *flist;
 			*flist  = h;
 
+#ifdef DEBUG
 			debug( "GC on path %s", h->path );
+#endif
 		}
 		else if( h->empty > ctl->mem->gc_thresh )
 		{
@@ -346,7 +348,9 @@ void mem_gc_list( DHASH **list, DHASH **flist, unsigned int idx )
 			// this means searches will pass
 			// over this node
 			// and we will clear it out next time
+#ifdef DEBUG
 			debug( "Marking path %s dead.", h->path );
+#endif
 			h->sum = 0;
 		}
 	}
