@@ -3,9 +3,10 @@ Refactor
 
 Network
 	List of TCP ports as well
-
-Graphite Connectivity
-	Reconnection
+	Transfer network io to an io thread; mutexed buffer list; allows for
+	reconnect logic without interrupting stats generation.  Max buffer
+	allowance
+	Reconnection to target
 
 Stats generation
 	none
