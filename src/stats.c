@@ -19,12 +19,15 @@ void stats_report_one( DHASH *d, ST_THR *cfg, time_t ts )
 	float sum, *vals = NULL;
 	PTLIST *list, *p;
 	int i, j, nt;
+	char *pref;
 	NBUF *b;
 
 	list = d->proc.points;
 	d->proc.points = NULL;
 
 	b = cfg->target->out;
+
+	pref = ctl->stats->stats->prefix;
 
 	for( j = 0, p = list; p; p = p->next )
 		j += p->count;
@@ -45,11 +48,11 @@ void stats_report_one( DHASH *d, ST_THR *cfg, time_t ts )
 
 		qsort( vals, j, sizeof( float ), cmp_floats );
 
-		b->len += snprintf( b->ptr + b->len, b->sz - b->len, "%s.count %d %ld\n",    d->path, j, ts );
-		b->len += snprintf( b->ptr + b->len, b->sz - b->len, "%s.mean %f %ld\n",     d->path, sum / (float) j, ts );
-		b->len += snprintf( b->ptr + b->len, b->sz - b->len, "%s.upper %f %ld\n",    d->path, vals[j-1], ts );
-		b->len += snprintf( b->ptr + b->len, b->sz - b->len, "%s.lower %f %ld\n",    d->path, vals[0], ts );
-		b->len += snprintf( b->ptr + b->len, b->sz - b->len, "%s.upper_90 %f %ld\n", d->path, vals[nt], ts );
+		b->len += snprintf( b->ptr + b->len, b->sz - b->len, "%s%s.count %d %ld\n",    pref, d->path, j, ts );
+		b->len += snprintf( b->ptr + b->len, b->sz - b->len, "%s%s.mean %f %ld\n",     pref, d->path, sum / (float) j, ts );
+		b->len += snprintf( b->ptr + b->len, b->sz - b->len, "%s%s.upper %f %ld\n",    pref, d->path, vals[j-1], ts );
+		b->len += snprintf( b->ptr + b->len, b->sz - b->len, "%s%s.lower %f %ld\n",    pref, d->path, vals[0], ts );
+		b->len += snprintf( b->ptr + b->len, b->sz - b->len, "%s%s.upper_90 %f %ld\n", pref, d->path, vals[nt], ts );
 
 		if( ( b->buf + b->len ) > b->hwmk )
 			net_write_data( cfg->target );
@@ -111,9 +114,11 @@ void stats_adder_pass( void *arg )
 	time_t t;
 	DHASH *d;
 	NBUF *b;
+	char *p;
 	int i;
 
 	t = ctl->curr_time.tv_sec;
+	p = ctl->stats->adder->prefix;
 	c = (ST_THR *) arg;
 	b = c->target->out;
 
@@ -139,7 +144,7 @@ void stats_adder_pass( void *arg )
 				{
 					d->empty = 0;
 
-					b->len += snprintf( b->ptr + b->len, b->sz - b->len, "%s %llu %ld\n", d->path, d->proc.total, t );
+					b->len += snprintf( b->ptr + b->len, b->sz - b->len, "%s%s %llu %ld\n", p, d->path, d->proc.total, t );
 
 					if( ( b->buf + b->len ) > b->hwmk )
 						net_write_data( c->target );
@@ -189,16 +194,22 @@ void stats_start( ST_CFG *cf )
 
 
 
-// return a copy of a prefix without a trailing .
+// return a copy of a prefix with a trailing .
 char *stats_prefix( char *s )
 {
-	int len;
+	int len, dot = 0;
+	char *p;
 	
 	len = strlen( s );
 	if( len > 0 && s[len - 1] == '.' )
-		len--;
+		dot = 1;
 
-	return str_copy( s, len );
+	p = (char *) allocz( len + dot + 1 );
+	memcpy( p, s, len );
+	if( dot )
+		p[len] = '.';
+
+	return p;
 }
 
 
