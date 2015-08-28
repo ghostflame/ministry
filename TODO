@@ -1,11 +1,11 @@
 Refactor
-	Unify stats/data object usage via union
+	none
 
 Graphite Connectivity
 	Reconnection
 
 Stats generation
-	Prefix config and prepending
+	none
 
 Monitoring
 	Self stats, push on the tick
