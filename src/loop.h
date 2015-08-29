@@ -1,7 +1,7 @@
 #ifndef MINISTRY_LOOP_H
 #define MINISTRY_LOOP_H
 
-#define DEFAULT_TICK_USEC		10000
+#define DEFAULT_TICK_MSEC		20
 
 
 

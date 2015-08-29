@@ -132,8 +132,8 @@ int config_file_dupe( CCTXT *c, char *path )
 
 int config_line( AVP *av )
 {
-	if( attIs( "tick_usec" ) )
-		ctl->tick_usec = atoi( av->val );
+	if( attIs( "tick_msec" ) )
+		ctl->tick_usec = 1000 * atoi( av->val );
 	else if( attIs( "daemon" ) )
 	{
 	  	if( valIs( "yes" ) || valIs( "y" ) || atoi( av->val ) )
@@ -287,7 +287,7 @@ MIN_CTL *config_create( void )
 	c->cfg_file   = "conf/ministry.conf";
 	c->pidfile    = strdup( DEFAULT_PID_FILE );
 
-	c->tick_usec  = DEFAULT_TICK_USEC;
+	c->tick_usec  = 1000 * DEFAULT_TICK_MSEC;
 
 	gettimeofday( &(c->init_time), NULL );
 	tvdupe( c->init_time, c->curr_time );

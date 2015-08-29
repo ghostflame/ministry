@@ -378,6 +378,8 @@ NET_CTL *net_config_defaults( void )
 	net            = (NET_CTL *) allocz( sizeof( NET_CTL ) );
 	net->dead_time = NET_DEAD_CONN_TIMER;
 	net->rcv_tmout = NET_RCV_TMOUT;
+	net->reconn    = 1000 * NET_RECONN_MSEC;
+	net->io_usec   = 1000 * NET_IO_MSEC;
 
 	net->data      = net_type_defaults( DEFAULT_DATA_PORT,   &data_line_data,   "ministry data socket" );
 	net->statsd    = net_type_defaults( DEFAULT_STATSD_PORT, &data_line_statsd, "stats compat socket" );
@@ -414,6 +416,20 @@ int net_config_line( AVP *av )
 		{
 			ctl->net->rcv_tmout = (unsigned int) atoi( av->val );
 			debug( "Receive timeout set to %u sec.", ctl->net->rcv_tmout );
+		}
+		else if( attIs( "reconn_msec" ) )
+		{
+			ctl->net->reconn = 1000 * atoi( av->val );
+			if( ctl->net->reconn )
+				ctl->net->reconn = 1000 * NET_RECONN_MSEC;
+			debug( "Reconnect time set to %d usec.", ctl->net->reconn );
+		}
+		else if( attIs( "io_msec" ) )
+		{
+			ctl->net->io_usec = 1000 * atoi( av->val );
+			if( ctl->net->io_usec )
+				ctl->net->io_usec = 1000 * NET_IO_MSEC;
+			debug( "Io loop time set to %d usec.", ctl->net->io_usec );
 		}
 		else
 			return -1;

@@ -70,8 +70,10 @@ Controls the logging code.
 ### Network
 Controls network ports, timeouts.
 
-- timeout   = (integer) Time to consider a TCP connection dead.
-- rcv_tmout = (integer) Seconds for receive timeout - affects signals.
+- timeout     = (integer) Time to consider a TCP connection dead.
+- rcv_tmout   = (integer) Seconds for receive timeout - affects signals.
+- reconn_msec = (integer) Milliseconds between target reconnect attempts.
+- io_msec     = (integer) Milliseconds between io loop checks.
 
 Then there are target specifications, for where to submit data to.
 

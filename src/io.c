@@ -308,42 +308,60 @@ void io_buf_send( IOBUF *buf )
 }
 
 
-void io_send( NSOCK *s )
+void io_grab_buffer( NSOCK *s )
 {
 	IOBUF *b, *prev;
+
+	if( !s->in )
+		return;
+
+	pthread_mutex_lock( &(ctl->locks->iobuffers) );
+
+	// remove the last buffer
+	for( prev = NULL, b = s->in; b->next; prev = b, b = b->next );
+
+	if( prev )
+		prev->next = NULL;
+	else
+		s->in = NULL;
+
+	pthread_mutex_unlock( &(ctl->locks->iobuffers) );
+
+	// and attach it to out
+	s->out = b;
+}
+
+
+
+void io_send( NSOCK *s )
+{
 	int l, rv;
 
+#ifdef DEBUG
+	info( "IO Send" );
+#endif
+
 	if( !s->out )
+		io_grab_buffer( s );
+
+	while( s->out )
 	{
-		if( !s->in )
-			return;
+		// try to send the out buffer
+		l  = s->out->len;
+		rv = io_write_data( s );
 
-		pthread_mutex_lock( &(ctl->locks->iobuffers) );
-
-		// remove the last buffer
-		for( prev = NULL, b = s->in; b->next; prev = b, b = b->next );
-
-		if( prev )
-			prev->next = NULL;
-		else
-			s->in = NULL;
-
-		pthread_mutex_unlock( &(ctl->locks->iobuffers) );
-
-		// and attach it to out
-		s->out = b;
-	}
-
-	// try to send the out buffer
-	l = s->out->len;
-	rv = io_write_data( s );
-
-	if( l == rv )
-	{
-		// and free that buffer
+		// did we sent it all?
+		if( rv < l )
+			break;
+	
+		// free that buffer
 		mem_free_buf( &(s->out) );
+
+		// and get another
+		io_grab_buffer( s );
 	}
 
+	// did we have problems?
 	if( s->flags & HOST_CLOSE )
 	{
 		net_disconnect( &(s->sock), "send target" );
@@ -356,13 +374,10 @@ void *io_loop( void *arg )
 {
 	struct sockaddr_in sa, *sp;
 	struct addrinfo *ai;
-	char name[256];
 	NSOCK *s;
 	THRD *t;
 
 	t = (THRD *) arg;
-
-	snprintf( name, 256, "%s:%hu", ctl->net->host, ctl->net->port );
 
 	// find out where we are connecting to
 	if( getaddrinfo( ctl->net->host, NULL, NULL, &ai ) || !ai )
@@ -385,7 +400,7 @@ void *io_loop( void *arg )
 	freeaddrinfo( ai );
 
 	// make a socket
-	s = net_make_sock( 0, 0, name, &sa );
+	s = net_make_sock( 0, 0, "io target", &sa );
 	ctl->net->target = s;
 
 	// say we've started
@@ -400,7 +415,7 @@ void *io_loop( void *arg )
 		{
 			// don't try to reconnect at once
 			// sleep a few seconds
-			usleep( 2000000 );
+			usleep( ctl->net->reconn );
 			continue;
 		}
 
@@ -408,7 +423,7 @@ void *io_loop( void *arg )
 		io_send( s );
 
 		// and sleep a little
-		usleep( 1000 );
+		usleep( ctl->net->io_usec );
 	}
 
 	loop_mark_done( "io" );

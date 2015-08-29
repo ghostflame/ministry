@@ -16,6 +16,8 @@
 #define DEFAULT_NET_BACKLOG				32
 #define NET_DEAD_CONN_TIMER				3600	// 1 hr
 #define NET_RCV_TMOUT					3		// in sec
+#define NET_RECONN_MSEC					3000	// in msec
+#define NET_IO_MSEC						500		// in msec
 
 #define NTYPE_ENABLED					0x0001
 #define NTYPE_TCP_ENABLED				0x0002
@@ -104,6 +106,8 @@ struct network_control
 
 	time_t					dead_time;
 	unsigned int			rcv_tmout;
+	int						reconn;
+	int						io_usec;
 
 	NSOCK				*	target;
 	char				*	host;
