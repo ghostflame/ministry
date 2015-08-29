@@ -40,14 +40,15 @@ void mem_free_host( HOST **h )
 	sh = *h;
 	*h = NULL;
 
-	sh->points        = 0;
-	sh->last          = 0;
-	sh->started       = 0;
-	sh->net->sock     = -1;
-	sh->net->flags    = 0;
-	sh->net->out->len = 0;
-	sh->net->in->len  = 0;
-
+	sh->points         = 0;
+	sh->type           = NULL;
+	sh->last           = 0;
+	sh->flags          = 0;
+	sh->started        = 0;
+	sh->net->sock      = -1;
+	sh->net->flags     = 0;
+	sh->net->out->len  = 0;
+	sh->net->in->len   = 0;
 	sh->net->keep->buf = NULL;
 	sh->net->keep->len = 0;
 

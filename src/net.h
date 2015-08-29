@@ -13,6 +13,8 @@
 #define HOST_CLOSE						0x01
 #define HOST_NEW						0x02
 
+#define SOCK_CLOSE						0x10
+
 #define DEFAULT_NET_BACKLOG				32
 #define NET_DEAD_CONN_TIMER				3600	// 1 hr
 #define NET_RCV_TMOUT					3		// in sec

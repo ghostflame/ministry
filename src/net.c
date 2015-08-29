@@ -51,12 +51,11 @@ void *net_watched_socket( void *arg )
 			//pthread_cancel( nt );
 			notice( "Connection from host %s timed out.", h->net->name );
             h->net->flags |= HOST_CLOSE;
-			// net_close_host( h );
 			break;
 		}
 
 		// we are not busy threads around these parts
-		usleep( 200000 );
+		usleep( 1000000 );
 	}
 
 	debug( "Watcher of thread %lu, exiting." );
@@ -109,10 +108,12 @@ HOST *net_get_host( int sock, NET_TYPE *type )
 	h->peer      = from;
 	h->net->name = str_copy( buf, l );
 	h->net->sock = d;
+	h->type      = type;
 	// should be a unique timestamp
 	h->started   = ctl->curr_time.tv_sec;
 	h->last      = h->started;
-	h->type      = type;
+
+	debug( "Host start time is %ld", h->started );
 
 	return h;
 }
