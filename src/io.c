@@ -35,7 +35,8 @@ int io_read_data( NSOCK *s )
 
 	if( !( i = recv( s->sock, s->in->buf + s->in->len, s->in->sz - ( s->in->len + 2 ), MSG_DONTWAIT ) ) )
 	{
-	  	// that would be the fin, then
+		// that would be the fin, then
+		debug( "Received a FIN, perhaps, from %s", s->name );
 		s->flags |= HOST_CLOSE;
 		return 0;
 	}
@@ -47,9 +48,9 @@ int io_read_data( NSOCK *s )
 			err( "Recv error for host %s -- %s",
 				s->name, Err );
 			s->flags |= HOST_CLOSE;
-			return 0;
+			return i;
 		}
-		return i;
+		return 0;
 	}
 
 	// got some data then
@@ -73,7 +74,10 @@ int io_read_lines( HOST *h )
 
 	// do we have anything at all?
 	if( !n->in->len )
+	{
+		debug( "No incoming data from %s", h->net->name );
 		return 0;
+	}
 
 	// mark the socket as active
 	h->last = ctl->curr_time.tv_sec;

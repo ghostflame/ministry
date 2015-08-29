@@ -289,11 +289,15 @@ void data_handle_connection( HOST *h )
 
 		// they went away?
 		if( p.revents & POLLHUP )
+		{
+			debug( "Received pollhup event from %s", h->net->name );
 			break;
+		}
 
 		// 0 means gone away
 		if( ( rv = io_read_lines( h ) ) <= 0 )
 		{
+			debug( "Received 0 lines from %s -- gone away?", h->net->name );
 			h->flags |= HOST_CLOSE;
 			break;
 		}
@@ -308,7 +312,10 @@ void data_handle_connection( HOST *h )
 
 		// allow data fetch to tell us to close this host down
 		if( h->flags & HOST_CLOSE )
+		{
+			debug( "Host %s flagged as closed.", h->net->name );
 			break;
+		}
 	}
 }
 
