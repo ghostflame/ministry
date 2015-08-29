@@ -27,8 +27,10 @@ void shut_down( int exval )
 	int i;
 
 	get_time( );
-	diff = (double) tvdiff( ctl->curr_time, ctl->init_time );
-	info( "Ministry shutting down after %.3fs", diff / 1000000.0 );
+
+	tvdiff( ctl->curr_time, ctl->init_time, diff );
+
+	info( "Ministry shutting down after %.3fs", diff );
 
 	// shut down ports
 	net_stop( );
@@ -156,15 +158,17 @@ int main( int ac, char **av )
 	if( set_signals( ) )
 		fatal( "Failed to set signalling." );
 
-	// set up stats and connect to graphite
+	// set up stats and data structures
 	stats_init( );
 
 	// lights up networking and starts listening
+	// also connects to graphite
 	if( net_start( ) )
 		fatal( "Failed to start networking." );
 
 	get_time( );
-	diff = (double) tvdiff( ctl->curr_time, ctl->init_time );
+	tvdiff( ctl->curr_time, ctl->init_time, diff );
+
 	info( "Ministry started up in %.3fs.", diff / 1000000.0 );
 
 	// only exits on a signal that removes RUN_LOOP

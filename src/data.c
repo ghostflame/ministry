@@ -41,6 +41,26 @@ uint32_t data_path_cksum( char *str, int len )
 }
 
 
+
+uint32_t data_get_id( ST_CFG *st )
+{
+	uint32_t id;
+
+	pthread_mutex_lock( &(ctl->locks->hashstats) );
+
+	// grab an id - these never drop
+	id = ++(st->did);
+
+	// and keep stats - gc reduces this
+	st->dcurr++;
+
+	pthread_mutex_unlock( &(ctl->locks->hashstats) );
+
+	return id;
+}
+
+
+
 inline DHASH *data_find_path( DHASH *list, uint32_t hval, char *path, int len )
 {
 	DHASH *h;
@@ -73,14 +93,16 @@ void data_point_adder( char *path, int len, unsigned long long val )
 		if( !( d = data_find_adder( indx, hval, path, len ) ) )
 		{
 			d = mem_new_dhash( path, len, DATA_HTYPE_ADDER );
-			d->id   = ++(ctl->stats->adder->dcount);
-			d->sum  = hval;
+			d->sum = hval;
 
 			d->next = ctl->stats->adder->data[indx];
 			ctl->stats->adder->data[indx] = d;
 		}
 
 		unlock_table( indx );
+
+		// and grab an ID for it
+		d->id = data_get_id( ctl->stats->adder );
 	}
 
 	// lock that path
@@ -112,14 +134,16 @@ void data_point_stats( char *path, int len, float val )
 		if( !( d = data_find_stats( indx, hval, path, len ) ) )
 		{
 			d = mem_new_dhash( path, len, DATA_HTYPE_STATS );
-			d->id   = ++(ctl->stats->stats->dcount);
-			d->sum  = hval;
+			d->sum = hval;
 
 			d->next = ctl->stats->stats->data[indx];
 			ctl->stats->stats->data[indx] = d;
 		}
 
 		unlock_table( indx );
+
+		// and grab an ID for it
+		d->id = data_get_id( ctl->stats->stats );
 	}
 
 	// lock that path
@@ -268,7 +292,7 @@ void data_handle_connection( HOST *h )
 			break;
 
 		// 0 means gone away
-		if( ( rv = net_read_lines( h ) ) <= 0 )
+		if( ( rv = io_read_lines( h ) ) <= 0 )
 		{
 			h->flags |= HOST_CLOSE;
 			break;
@@ -321,8 +345,8 @@ void *data_loop_udp( void *arg )
 {
 	socklen_t sl;
 	NET_PORT *n;
+	IOBUF *b;
 	THRD *t;
-	NBUF *b;
 	HOST *h;
 	int i;
 

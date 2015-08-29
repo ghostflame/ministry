@@ -1,18 +1,14 @@
 Refactor
-	Make path counting lock separate - it's not covered by table lock
+	none
 
 Network
-	List of TCP ports as well
-	Transfer network io to an io thread; mutexed buffer list; allows for
-	reconnect logic without interrupting stats generation.  Max buffer
-	allowance
-	Reconnection to target
+	Implement max buffered data
 
 Stats generation
 	none
 
 Monitoring
-	Self stats, push on the tick
+	more self stats?
 
 Operational Readiness
 	RPM spec file

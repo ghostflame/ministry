@@ -4,6 +4,8 @@
 
 loop_call_fn stats_stats_pass;
 loop_call_fn stats_adder_pass;
+loop_call_fn stats_self_pass;
+
 
 throw_fn stats_loop;
 
@@ -15,19 +17,15 @@ throw_fn stats_loop;
 
 #define DEFAULT_STATS_PREFIX		"stats.timers"
 #define DEFAULT_ADDER_PREFIX		""
-
-#define DEFAULT_TARGET_HOST			"127.0.0.1"
-#define DEFAULT_TARGET_PORT			2003			// graphite
+#define DEFAULT_SELF_PREFIX			"stats.ministry"
 
 
 struct stat_thread_ctl
 {
 	ST_THR			*	next;
-	NSOCK			*	target;
 	ST_CFG			*	conf;
 	int					id;
 	int					max;
-	int					link;		// are we connected?
 };
 
 
@@ -37,13 +35,15 @@ struct stat_config
 	char			*	prefix;
 	char			*	type;
 	int					threads;
+	int					enable;
 	int					period;		// msec
 	int					offset;		// msec
 	loop_call_fn	*	loopfn;
 
 	// and the data
 	DHASH			**	data;
-	int					dcount;
+	int					dcurr;
+	uint32_t			did;
 };
 
 
@@ -52,10 +52,7 @@ struct stats_control
 {
 	ST_CFG			*	stats;
 	ST_CFG			*	adder;
-
-	char			*	host;
-	struct sockaddr_in	target;
-	unsigned short		port;
+	ST_CFG			*	self;
 };
 
 

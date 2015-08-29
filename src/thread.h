@@ -26,8 +26,11 @@ struct lock_control
 	pthread_mutex_t			hostalloc;					// mem hosts
 	pthread_mutex_t			hashalloc;					// control of dhash allocation
 	pthread_mutex_t			pointalloc;					// point list structures
+	pthread_mutex_t			bufalloc;					// buffer structures
 
+	pthread_mutex_t			hashstats;					// used for counters
 	pthread_mutex_t			loop;						// thread startup/shutdown
+	pthread_mutex_t			iobuffers;					// writing/taking io buffers
 
 	pthread_mutex_t			table[HASHT_MUTEX_COUNT];	// hash table locks
 	pthread_mutex_t			dstats[DSTATS_MUTEX_COUNT];	// path stat data

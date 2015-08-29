@@ -1,4 +1,4 @@
-# ministry
+# Ministry
 A drop-in replacement for statsd written in threaded C
 
 Etsy's statsd can be found here:  https://github.com/etsy/statsd
@@ -73,20 +73,28 @@ Controls network ports, timeouts.
 - timeout   = (integer) Time to consider a TCP connection dead.
 - rcv_tmout = (integer) Seconds for receive timeout - affects signals.
 
+Then there are target specifications, for where to submit data to.
+
+- target.host  = (string) IP address of the graphite target host.
+- target.port  = (integer) Graphite target port.
+
 The rest are for one of the 3 types of socket - data, adder or statsd, and
 must all be prefixed with one of those three.  The type as a whole, with
 both TCP and UDP reception, are enabled by default.
 
-- type.enable     = (integer) 0 or !0, to disable or enable respectively
-- type.enable_tcp = (integer) 0 or !0, to disable or enable TCP respectively
-- type.enable_udp = (integer) 0 or !0, to disable or enable UDP respectively
-- type.label      = (string) How this socket is described in logs
+- type.enable      = (integer) 0 or !0, to disable or enable respectively
+- type.enable_tcp  = (integer) 0 or !0, to disable or enable TCP respectively
+- type.enable_udp  = (integer) 0 or !0, to disable or enable UDP respectively
+- type.label       = (string) How this socket is described in logs
 
 After this, everything is by protocol, udp or tcp.
 
-- type.proto.bind    = (string) IP address to bind this socket to
-- type.proto.port    = (integer-list) Comma-separated ports to listen on
-- type.proto.backlog = (integer) TCP only; listen backlog.
+- type.udp.bind    = (string) IP address to bind this socket to
+- type.udp.port    = (integer-list) Comma-separated ports to listen on
+
+- type.tcp.bind    = (string) IP address to bind this socket to
+- type.udp.port    = (integer) Port to listen for connections on
+- type.tcp.backlog = (integer) connection listen backlog.
 
 
 
@@ -101,10 +109,7 @@ Controls memory management.
 ### Stats
 Controls stats submission and prefixes.
 
-- target.host  = (string) IP address of the graphite target host.
-- target.port  = (integer) Graphite target port.
-
-The rest are either for stats or adder control and should be prefixed with
+These are either for stats, self or adder control and should be prefixed with
 one of those types.
 
 - type.threads = (integer) Number of independent processing threads to run
@@ -112,4 +117,5 @@ one of those types.
 - type.period  = (integer) Submit interval in milliseconds for this type
 - type.offset  = (integer) Submit delay in milliseconds for this type
 
+Self stats loop threads are overridden to 1.
 

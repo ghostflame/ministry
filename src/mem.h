@@ -14,14 +14,17 @@ struct memory_control
 	HOST		*	hosts;
 	PTLIST		*	points;
 	DHASH		*	dhash;
+	IOBUF		*	bufs;
 
 	int				free_hosts;
 	int				free_points;
 	int				free_dhash;
+	int				free_bufs;
 
 	int				mem_hosts;
 	int				mem_points;
 	int				mem_dhash;
+	int				mem_bufs;
 
 	int				max_mb;
 	int				gc_thresh;
@@ -29,8 +32,6 @@ struct memory_control
 };
 
 
-loop_call_fn mem_gc;
-throw_fn mem_gc_loop;
 throw_fn mem_loop;
 
 HOST *mem_new_host( void );
@@ -43,6 +44,10 @@ void mem_free_point_list( PTLIST *list );
 DHASH *mem_new_dhash( char *str, int len, int type );
 void mem_free_dhash( DHASH **d );
 void mem_free_dhash_list( DHASH *list );
+
+IOBUF *mem_new_buf( int sz );
+void mem_free_buf( IOBUF **n );
+void mem_free_buf_list( IOBUF *list );
 
 MEM_CTL *mem_config_defaults( void );
 int mem_config_line( AVP *av );

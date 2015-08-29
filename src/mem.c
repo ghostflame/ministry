@@ -311,69 +311,122 @@ void mem_free_dhash_list( DHASH *list )
 
 
 
-void mem_gc_list( DHASH **list, DHASH **flist, unsigned int idx )
+IOBUF *mem_new_buf( int sz )
 {
-	DHASH *h, *prev, *next;
-	int lock = 0;
+	IOBUF *b;
 
-	for( prev = NULL, h = *list; h; h = next )
+	// dangerous returning one with memory attached
+	if( sz == 0 )
+		return (IOBUF *) allocz( sizeof( IOBUF ) );
+
+
+	pthread_mutex_lock( &(ctl->locks->bufalloc) );
+	if( ctl->mem->bufs )
 	{
-		next = h->next;
+		b = ctl->mem->bufs;
+		ctl->mem->bufs = b->next;
+		--(ctl->mem->free_bufs);
+		pthread_mutex_unlock( &(ctl->locks->bufalloc) );
 
-		if( h->sum == 0 )
-		{
-			if( !lock )
-			{
-				lock_table( idx );
-				lock = 1;
-			}
+		b->next = NULL;
+	}
+	else
+	{
+		++(ctl->mem->mem_bufs);
+		pthread_mutex_unlock( &(ctl->locks->bufalloc) );
 
-			// remove s
-			if( prev )
-				prev->next = next;
-			else
-				*list = next;
 
-			// update the free list
-			h->next = *flist;
-			*flist  = h;
-
-#ifdef DEBUG
-			debug( "GC on path %s", h->path );
-#endif
-		}
-		else if( h->empty > ctl->mem->gc_thresh )
-		{
-			// flatten the checksum
-			// this means searches will pass
-			// over this node
-			// and we will clear it out next time
-#ifdef DEBUG
-			debug( "Marking path %s dead.", h->path );
-#endif
-			h->sum = 0;
-		}
+		b = (IOBUF *) allocz( sizeof( IOBUF ) );
 	}
 
-	if( lock )
-		unlock_table( idx );
+	if( sz < 0 )
+		sz = MIN_NETBUF_SZ;
+
+	if( b->sz < sz )
+	{
+		if( b->buf )
+			free( b->buf );
+
+		b->buf = (char *) allocz( sz );
+		b->sz  = sz;
+	}
+
+	b->hwmk = b->buf + ( ( 5 * b->sz ) / 6 );
+	b->done = 0;
+
+	return b;
 }
 
 
-void mem_gc( void *arg )
+void mem_free_buf( IOBUF **b )
 {
-	DHASH *flist = NULL;
-	unsigned int i;
+	IOBUF *sb;
 
-	for( i = 0; i < ctl->mem->hashsize; i++ )
+	if( !b || !*b )
+		return;
+
+	sb = *b;
+	*b = NULL;
+
+	if( sb->sz )
+		sb->buf[0] = '\0';
+	else
 	{
-		mem_gc_list( &(ctl->stats->stats->data[i]), &flist, i );
-		mem_gc_list( &(ctl->stats->adder->data[i]), &flist, i );
+		sb->buf  = NULL;
+		sb->hwmk = NULL;
 	}
 
-	if( flist )
-		mem_free_dhash_list( flist );
+	sb->len  = 0;
+
+	pthread_mutex_lock( &(ctl->locks->bufalloc) );
+
+	sb->next = ctl->mem->bufs;
+	ctl->mem->bufs = sb;
+	++(ctl->mem->free_bufs);
+
+	pthread_mutex_unlock( &(ctl->locks->bufalloc) );
 }
+
+
+void mem_free_buf_list( IOBUF *list )
+{
+	IOBUF *b, *freed, *end;
+	int j = 0;
+
+	freed = end = NULL;
+
+	while( list )
+	{
+		b    = list;
+		list = b->next;
+
+		if( b->sz )
+			b->buf[0] = '\0';
+		else
+		{
+			b->buf  = NULL;
+			b->hwmk = NULL;
+		}
+
+		b->len  = 0;
+		b->next = freed;
+		freed   = b;
+
+		if( !end )
+			end = b;
+
+		j++;
+	}
+
+	pthread_mutex_lock( &(ctl->locks->bufalloc) );
+
+	end->next = ctl->mem->bufs;
+	ctl->mem->bufs = freed;
+	ctl->mem->free_bufs += j;
+
+	pthread_mutex_unlock( &(ctl->locks->bufalloc) );
+}
+
 
 
 
@@ -390,17 +443,6 @@ void mem_check( void *arg )
 		loop_end( "Memory usage exceeds configured maximum." );
 }
 
-
-
-void *mem_gc_loop( void *arg )
-{
-	THRD *t = (THRD *) arg;
-
-	loop_control( "gc", &mem_gc, NULL, 10000000, 0, 2000000 );
-
-	free( t );
-	return NULL;
-}
 
 
 

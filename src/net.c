@@ -118,26 +118,6 @@ HOST *net_get_host( int sock, NET_TYPE *type )
 }
 
 
-NBUF *net_make_buf( int sz )
-{
-	NBUF *n;
-
-	n = (NBUF *) allocz( sizeof( NBUF ) );
-
-	if( sz != 0 )
-	{
-		if( sz < 0 )
-			sz = MIN_NETBUF_SZ;
-
-		n->sz   = sz;
-		n->buf  = (unsigned char *) allocz( sz );
-		n->hwmk = n->buf + ( ( 5 * sz ) / 6 );
-		n->ptr  = (char *) n->buf;
-	}
-
-	return n;
-}
-
 
 
 NSOCK *net_make_sock( int insz, int outsz, char *name, struct sockaddr_in *peer )
@@ -145,22 +125,22 @@ NSOCK *net_make_sock( int insz, int outsz, char *name, struct sockaddr_in *peer 
 	NSOCK *ns;
 
 	ns = (NSOCK *) allocz( sizeof( NSOCK ) );
+
 	if( name )
 		ns->name = strdup( name );
-	ns->peer = peer;
 
-	ns->keep = net_make_buf( 0 );
+	ns->peer = peer;
+	ns->keep = mem_new_buf( 0 );
 
 	if( insz )
 	{
-		ns->in = net_make_buf( insz );
+		ns->in = mem_new_buf( insz );
 		ns->keep->buf  = ns->in->buf;
 		ns->keep->sz   = insz;
 		ns->keep->hwmk = ns->in->hwmk;
 	}
 	if( outsz )
-		ns->out = net_make_buf( outsz );
-
+		ns->out = mem_new_buf( outsz );
 
 	// no socket yet
 	ns->sock = -1;
@@ -168,58 +148,6 @@ NSOCK *net_make_sock( int insz, int outsz, char *name, struct sockaddr_in *peer 
 	return ns;
 }
 
-
-
-int net_connect( NSOCK *s )
-{
-	int opt = 1;
-	char *label;
-
-	if( s->sock != -1 )
-	{
-		warn( "Net connect called on connected socket - disconnecting." );
-		shutdown( s->sock, SHUT_RDWR );
-		close( s->sock );
-		s->sock = -1;
-	}
-
-	if( !s->name || !*(s->name) )
-		label = "unknown socket";
-	else
-		label = s->name;
-
-	if( ( s->sock = socket( AF_INET, SOCK_STREAM, 0 ) ) < 0 )
-	{
-		err( "Unable to make tcp socket for %s -- %s",
-			label, Err );
-		return -1;
-	}
-
-	if( setsockopt( s->sock, SOL_SOCKET, SO_KEEPALIVE, &opt, sizeof( int ) ) )
-	{
-		err( "Unable to set keepalive on socket for %s -- %s",
-			label, Err );
-		close( s->sock );
-		s->sock = -1;
-		return -1;
-	}
-
-	if( connect( s->sock, (struct sockaddr *) s->peer, sizeof( struct sockaddr_in ) ) < 0 )
-	{
-		err( "Unable to connect to %s:%hu for %s -- %s",
-			inet_ntoa( s->peer->sin_addr ), ntohs( s->peer->sin_port ),
-			label, Err );
-		close( s->sock );
-		s->sock = -1;
-		return -1;
-	}
-
-	info( "Connected (%d) to remote host %s:%hu for %s.",
-		s->sock, inet_ntoa( s->peer->sin_addr ),
-		ntohs( s->peer->sin_port ), label );
-
-	return s->sock;
-}
 
 
 
@@ -323,190 +251,7 @@ int net_listen_udp( unsigned short port, uint32_t ip )
 
 
 
-int net_write_data( NSOCK *s )
-{
-	unsigned char *ptr;
-	int rv, b, tries;
-	struct pollfd p;
 
-	p.fd     = s->sock;
-	p.events = POLLOUT;
-	tries    = 3;
-	ptr      = s->out->buf;
-
-	while( s->out->len > 0 )
-	{
-		if( ( rv = poll( &p, 1, 20 ) ) < 0 )
-		{
-			warn( "Poll error writing to host %s -- %s",
-				s->name, Err );
-			s->flags |= HOST_CLOSE;
-			return -1;
-		}
-
-		if( !rv )
-		{
-			// wait another 20msec and try again
-			if( tries-- > 0 )
-				continue;
-
-			// we cannot write just yet
-			return 0;
-		}
-
-		if( ( b = send( s->sock, ptr, s->out->len, 0 ) ) < 0 )
-		{
-			warn( "Error writing to host %s -- %s",
-				s->name, Err );
-			s->flags |= HOST_CLOSE;
-			return -2;
-		}
-
-		s->out->len -= b;
-		ptr         += b;
-	}
-
-	// weirdness
-	if( s->out->len < 0 )
-		s->out->len = 0;
-
-	//debug( "Wrote to %d bytes to %d/%s", ( ptr - s->out.buf ), s->sock, s->name );
-
-	// what we wrote
-	return ptr - s->out->buf;
-}
-
-
-
-int net_read_data( NSOCK *s )
-{
-	int i;
-
-	if( s->keep->len )
-	{
-	  	// can we shift the kept string
-		if( ( s->keep->buf - s->in->buf ) >= s->keep->len )
-			memcpy( s->in->buf, s->keep->buf, s->keep->len );
-		else
-		{
-			// no, we can't
-			unsigned char *p, *q;
-
-			i = s->keep->len;
-			p = s->in->buf;
-			q = s->keep->buf;
-
-			while( i-- > 0 )
-				*p++ = *q++;
-		}
-
-		s->keep->buf = NULL;
-		s->in->len   = s->keep->len;
-		s->keep->len = 0;
-	}
-	else
-		s->in->len = 0;
-
-	if( !( i = recv( s->sock, s->in->buf + s->in->len, s->in->sz - ( s->in->len + 2 ), MSG_DONTWAIT ) ) )
-	{
-	  	// that would be the fin, then
-		s->flags |= HOST_CLOSE;
-		return 0;
-	}
-	else if( i < 0 )
-	{
-		if( errno != EAGAIN
-		 && errno != EWOULDBLOCK )
-		{
-			err( "Recv error for host %s -- %s",
-				s->name, Err );
-			s->flags |= HOST_CLOSE;
-			return 0;
-		}
-		return i;
-	}
-
-	// got some data then
-	s->in->len += i;
-
-	//debug( "Received %d bytes on socket %d/%s", i, s->sock, s->name );
-
-	return i;
-}
-
-
-int net_read_lines( HOST *h )
-{
-	int i, keeplast = 0, l;
-	NSOCK *n = h->net;
-	char *w;
-
-	// try to read some data
-	if( ( i = net_read_data( n ) ) <= 0 )
-		return i;
-
-	// do we have anything at all?
-	if( !n->in->len )
-		return 0;
-
-	// mark the socket as active
-	h->last = ctl->curr_time.tv_sec;
-
-	if( n->in->buf[n->in->len - 1] == LINE_SEPARATOR )
-		// remove any trailing separator
-		n->in->buf[--(n->in->len)] = '\0';
-	else
-	 	// make a note to keep the last line back
-		keeplast = 1;
-
-	if( strwords( h->all, (char *) n->in->buf, n->in->len, LINE_SEPARATOR ) < 0 )
-	{
-		debug( "Invalid buffer from data host %s.", n->name );
-		return -1;
-	}
-
-	// clean \r's
-	for( i = 0; i < h->all->wc; i++ )
-	{
-		w = h->all->wd[i];
-		l = h->all->len[i];
-
-		// might be at the start
-		if( *w == '\r' )
-		{
-			++(h->all->wd[i]);
-			--(h->all->len[i]);
-			--l;
-		}
-
-		// remove trailing carriage returns
-		if( *(w + l - 1) == '\r' )
-			h->all->wd[--(h->all->len[i])] = '\0';
-	}
-
-
-
-	// claw back the last line - it was incomplete
-	if( h->all->wc && keeplast )
-	{
-		// if we have several lines we can't move the last line
-		if( --(h->all->wc) )
-		{
-			// move it next time
-			n->keep->buf = (unsigned char *) h->all->wd[h->all->wc];
-			n->keep->len = h->all->len[h->all->wc];
-		}
-		else
-		{
-			// it's the only line
-			n->in->len   = h->all->len[0];
-			n->keep->buf = NULL;
-			n->keep->len = 0;
-		}
-	}
-
-	return h->all->wc;
-}
 
 
 int net_startup( NET_TYPE *nt )
@@ -595,6 +340,7 @@ void net_shutdown( NET_TYPE *nt )
 }
 
 
+
 void net_stop( void )
 {
 	notice( "Stopping networking." );
@@ -636,6 +382,10 @@ NET_CTL *net_config_defaults( void )
 	net->data      = net_type_defaults( DEFAULT_DATA_PORT,   &data_line_data,   "ministry data socket" );
 	net->statsd    = net_type_defaults( DEFAULT_STATSD_PORT, &data_line_statsd, "stats compat socket" );
 	net->adder     = net_type_defaults( DEFAULT_ADDER_PORT,  &data_line_adder,  "combiner socket" );
+
+	// default graphite target, localhost 2003
+	net->host      = strdup( DEFAULT_TARGET_HOST );
+	net->port      = DEFAULT_TARGET_PORT;
 
 	return net;
 }
@@ -680,6 +430,24 @@ int net_config_line( AVP *av )
 		nt = ctl->net->statsd;
 	else if( !strncasecmp( av->att, "adder.", 6 ) )
 		nt = ctl->net->adder;
+	else if( !strncasecmp( av->att, "target.", 7 ) )
+	{
+		if( !strcasecmp( d, "host" ) )
+		{
+			free( ctl->net->host );
+			ctl->net->host = strdup( av->val );
+		}
+		else if( !strcasecmp( d, "port" ) )
+		{
+			ctl->net->port = (unsigned short) strtoul( av->val, NULL, 10 );
+			if( ctl->net->port == 0 )
+				ctl->net->port = DEFAULT_TARGET_PORT;
+		}
+		else
+			return -1;
+
+		return 0;
+	}
 	else
 		return -1;
 

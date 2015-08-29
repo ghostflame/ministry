@@ -98,12 +98,16 @@ void loop_start( void )
 	// throw the data submission loops
 	stats_start( ctl->stats->stats );
 	stats_start( ctl->stats->adder );
+	stats_start( ctl->stats->self );
 
 	// throw the memory control loop
 	thread_throw( &mem_loop, NULL );
 
 	// and gc
-	thread_throw( &mem_gc_loop, NULL );
+	thread_throw( &gc_loop, NULL );
+
+	// and the network io loop
+	thread_throw( &io_loop, NULL );
 
 	// throw the data listener loop
 	data_start( ctl->net->data );

@@ -44,8 +44,10 @@
 // in order
 #include "utils.h"
 #include "net.h"
+#include "io.h"
 #include "log.h"
 #include "data.h"
+#include "gc.h"
 #include "mem.h"
 #include "stats.h"
 

@@ -8,7 +8,7 @@ VER    = $(MAXV).$(MINV).$(MICV)
 
 BINDIR = ../bin
 
-FILES  = utils log loop thread mem net data stats config main
+FILES  = utils log loop thread mem gc net io data stats config main
 
 OBJS   = $(FILES:%=%.o)
 
