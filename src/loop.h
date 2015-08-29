@@ -1,7 +1,7 @@
 #ifndef MINISTRY_LOOP_H
 #define MINISTRY_LOOP_H
 
-#define DEFAULT_TICK_MSEC		20
+#define DEFAULT_TICK_MSEC		5
 
 
 

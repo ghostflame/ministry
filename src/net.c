@@ -380,6 +380,7 @@ NET_CTL *net_config_defaults( void )
 	net->rcv_tmout = NET_RCV_TMOUT;
 	net->reconn    = 1000 * NET_RECONN_MSEC;
 	net->io_usec   = 1000 * NET_IO_MSEC;
+	net->max_bufs  = IO_MAX_WAITING;
 
 	net->data      = net_type_defaults( DEFAULT_DATA_PORT,   &data_line_data,   "ministry data socket" );
 	net->statsd    = net_type_defaults( DEFAULT_STATSD_PORT, &data_line_statsd, "stats compat socket" );
@@ -420,16 +421,23 @@ int net_config_line( AVP *av )
 		else if( attIs( "reconn_msec" ) )
 		{
 			ctl->net->reconn = 1000 * atoi( av->val );
-			if( ctl->net->reconn )
+			if( ctl->net->reconn <= 0 )
 				ctl->net->reconn = 1000 * NET_RECONN_MSEC;
 			debug( "Reconnect time set to %d usec.", ctl->net->reconn );
 		}
 		else if( attIs( "io_msec" ) )
 		{
 			ctl->net->io_usec = 1000 * atoi( av->val );
-			if( ctl->net->io_usec )
+			if( ctl->net->io_usec <= 0 )
 				ctl->net->io_usec = 1000 * NET_IO_MSEC;
 			debug( "Io loop time set to %d usec.", ctl->net->io_usec );
+		}
+		else if( attIs( "max_waiting" ) )
+		{
+			ctl->net->max_bufs = atoi( av->val );
+			if( ctl->net->max_bufs <= 0 )
+				ctl->net->max_bufs = IO_MAX_WAITING;
+			debug( "Max waiting buffers set to %d.", ctl->net->max_bufs );
 		}
 		else
 			return -1;

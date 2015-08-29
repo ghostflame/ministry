@@ -59,19 +59,6 @@ struct data_hash_entry
 
 
 
-struct data_control
-{
-  	DHASH			**	stats;
-	DHASH			**	adder;
-
-	unsigned long		spaths;
-	unsigned long		apaths;
-};
-
-
-
-
-
 
 line_fn data_line_data;
 line_fn data_line_statsd;

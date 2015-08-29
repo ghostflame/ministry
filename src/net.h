@@ -40,6 +40,7 @@ struct net_socket
 
 	int						sock;
 	int						flags;
+	int						bufs;
 
 	struct sockaddr_in	*	peer;
 	char				*	name;
@@ -108,6 +109,7 @@ struct network_control
 	unsigned int			rcv_tmout;
 	int						reconn;
 	int						io_usec;
+	int						max_bufs;
 
 	NSOCK				*	target;
 	char				*	host;

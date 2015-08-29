@@ -10,14 +10,14 @@ HOST *mem_new_host( void )
 	{
 		h = ctl->mem->hosts;
 		ctl->mem->hosts = h->next;
-		--(ctl->mem->free_hosts);
+		ctl->mem->free_hosts--;
 		pthread_mutex_unlock( &(ctl->locks->hostalloc) );
 
 		h->next = NULL;
 	}
 	else
 	{
-		++(ctl->mem->mem_hosts);
+		ctl->mem->mem_hosts++;
 		pthread_mutex_unlock( &(ctl->locks->hostalloc) );
 
 		h      = (HOST *) allocz( sizeof( HOST ) );
@@ -61,7 +61,7 @@ void mem_free_host( HOST **h )
 
 	sh->next = ctl->mem->hosts;
 	ctl->mem->hosts = sh;
-	++(ctl->mem->free_hosts);
+	ctl->mem->free_hosts++;
 
 	pthread_mutex_unlock( &(ctl->locks->hostalloc) );
 }
@@ -352,7 +352,6 @@ IOBUF *mem_new_buf( int sz )
 	}
 
 	b->hwmk = b->buf + ( ( 5 * b->sz ) / 6 );
-	b->done = 0;
 
 	return b;
 }
@@ -376,7 +375,7 @@ void mem_free_buf( IOBUF **b )
 		sb->hwmk = NULL;
 	}
 
-	sb->len  = 0;
+	sb->len = 0;
 
 	pthread_mutex_lock( &(ctl->locks->bufalloc) );
 
@@ -430,7 +429,7 @@ void mem_free_buf_list( IOBUF *list )
 
 
 
-void mem_check( void *arg )
+void mem_check( unsigned long long tval, void *arg )
 {
 	struct rusage ru;
 

@@ -138,7 +138,7 @@ int io_read_lines( HOST *h )
 
 int io_write_data( NSOCK *s )
 {
-	int rv, wr, tries, sent;
+	int rv, len, wr, tries, sent;
 	struct pollfd p;
 	char *ptr;
 	IOBUF *b;
@@ -149,8 +149,10 @@ int io_write_data( NSOCK *s )
 	sent     = 0;
 	b        = s->out;
 	ptr      = b->buf;
+	len      = b->len;
 
-	while( b->len > 0 )
+
+	while( len > 0 )
 	{
 		if( ( rv = poll( &p, 1, 20 ) ) < 0 )
 		{
@@ -170,7 +172,7 @@ int io_write_data( NSOCK *s )
 			return sent;
 		}
 
-		if( ( wr = write( s->sock, ptr, b->len ) ) < 0 )
+		if( ( wr = send( s->sock, ptr, len, MSG_NOSIGNAL ) ) < 0 )
 		{
 			warn( "Error writing to host %s -- %s",
 				s->name, Err );
@@ -178,13 +180,13 @@ int io_write_data( NSOCK *s )
 			return sent;
 		}
 
-		b->len -= wr;
-		ptr    += wr;
-		sent   += wr;
+		len  -= wr;
+		ptr  += wr;
+		sent += wr;
 	}
 
 	// weirdness
-	if( b->len < 0 )
+	if( len >= b->len )
 		b->len = 0;
 
 	//debug( "Wrote to %d bytes to %d/%s", sent, s->sock, s->name );
@@ -285,6 +287,8 @@ int io_connect( NSOCK *s )
 // attach a buffer for sending
 void io_buf_send( IOBUF *buf )
 {
+	int freebuf = 0;
+
 	if( !buf )
 		return;
 
@@ -292,19 +296,28 @@ void io_buf_send( IOBUF *buf )
 	if( !buf->len )
 	{
 		warn( "Empty buffer passed to io_buf_send." );
-
 		mem_free_buf( &buf );
 		return;
 	}
 
-	buf->done = 1;
-
 	pthread_mutex_lock( &(ctl->locks->iobuffers) );
 
-	buf->next = ctl->net->target->in;
-	ctl->net->target->in = buf;
+	if( ctl->net->target->bufs >= ctl->net->max_bufs )
+		freebuf = 1;
+	else
+	{
+		buf->next = ctl->net->target->in;
+		ctl->net->target->in = buf;
+		ctl->net->target->bufs++;
+	}
 
 	pthread_mutex_unlock( &(ctl->locks->iobuffers) );
+
+	if( freebuf )
+	{
+		debug( "Throwing away buffer - too much waiting already." );
+		mem_free_buf( &buf );
+	}
 }
 
 
@@ -312,6 +325,8 @@ void io_grab_buffer( NSOCK *s )
 {
 	IOBUF *b, *prev;
 
+	// this is safe here because this thread is the only
+	// one that takes things away from this pointer
 	if( !s->in )
 		return;
 
@@ -325,6 +340,14 @@ void io_grab_buffer( NSOCK *s )
 	else
 		s->in = NULL;
 
+	// and decrement the buffers
+	s->bufs--;
+	if( s->bufs < 0 )
+	{
+		warn( "Target socket buffers went below 0." );
+		s->bufs = 0;
+	}
+
 	pthread_mutex_unlock( &(ctl->locks->iobuffers) );
 
 	// and attach it to out
@@ -335,7 +358,7 @@ void io_grab_buffer( NSOCK *s )
 
 void io_send( NSOCK *s )
 {
-	int l, rv;
+	int l, rv, i;
 
 #ifdef DEBUG
 	info( "IO Send" );
@@ -344,28 +367,37 @@ void io_send( NSOCK *s )
 	if( !s->out )
 		io_grab_buffer( s );
 
+	i = 0;
+
 	while( s->out )
 	{
+		i++;
+
 		// try to send the out buffer
-		l  = s->out->len;
+		l = s->out->len;
 		rv = io_write_data( s );
 
 		// did we sent it all?
-		if( rv < l )
+
+		// did we have problems?
+		if( s->flags & HOST_CLOSE )
+		{
+			net_disconnect( &(s->sock), "send target" );
+			s->flags &= ~HOST_CLOSE;
 			break;
-	
-		// free that buffer
-		mem_free_buf( &(s->out) );
+		}
 
-		// and get another
-		io_grab_buffer( s );
-	}
+		if( rv == l )
+		{
+			// free that buffer
+			mem_free_buf( &(s->out) );
 
-	// did we have problems?
-	if( s->flags & HOST_CLOSE )
-	{
-		net_disconnect( &(s->sock), "send target" );
-		s->flags &= ~HOST_CLOSE;
+			// and get another
+			io_grab_buffer( s );
+		}
+		else
+			// try again later
+			break;
 	}
 }
 

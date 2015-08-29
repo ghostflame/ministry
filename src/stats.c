@@ -79,7 +79,7 @@ void stats_report_one( DHASH *d, ST_THR *cfg, time_t ts, IOBUF **buf )
 
 
 
-void stats_stats_pass( void *arg )
+void stats_stats_pass( unsigned long long tval, void *arg )
 {
 	ST_THR *c;
 	DHASH *d;
@@ -87,7 +87,7 @@ void stats_stats_pass( void *arg )
 	IOBUF *b;
 	int i;
 
-	t = ctl->curr_time.tv_sec;
+	t = (time_t) ( tval / 1000000 );
 	c = (ST_THR *) arg;
 	b = mem_new_buf( IO_BUF_SZ );
 
@@ -144,7 +144,7 @@ void stats_stats_pass( void *arg )
 
 
 
-void stats_adder_pass( void *arg )
+void stats_adder_pass( unsigned long long tval, void *arg )
 {
 	char *prfx;
 	ST_THR *c;
@@ -156,7 +156,7 @@ void stats_adder_pass( void *arg )
 	c = (ST_THR *) arg;
 	b = mem_new_buf( IO_BUF_SZ );
 
-	ts   = ctl->curr_time.tv_sec;
+	ts   = (time_t) ( tval / 1000000 );
 	prfx = ctl->stats->adder->prefix;
 
 #ifdef DEBUG
@@ -228,14 +228,14 @@ void stats_adder_pass( void *arg )
 
 
 // report our own pass
-void stats_self_pass( void *arg )
+void stats_self_pass( unsigned long long tval, void *arg )
 {
 	double upt;
 	char *prfx;
 	time_t ts;
 	IOBUF *b;
 
-	ts   = ctl->curr_time.tv_sec;
+	ts   = (time_t) ( tval / 1000000 );
 	prfx = ctl->stats->self->prefix;
 
 	tvdiff( ctl->curr_time, ctl->init_time, upt );
@@ -246,6 +246,15 @@ void stats_self_pass( void *arg )
 	bprintf( b, "uptime %.3f", upt );
 	bprintf( b, "paths.stats.curr %d", ctl->stats->stats->dcurr );
 	bprintf( b, "paths.adder.curr %d", ctl->stats->adder->dcurr );
+	bprintf( b, "mem.free.hosts %d",   ctl->mem->free_hosts );
+	bprintf( b, "mem.free.points %d",  ctl->mem->free_points );
+	bprintf( b, "mem.free.dhash %d",   ctl->mem->free_dhash );
+	bprintf( b, "mem.free.bufs %d",    ctl->mem->free_bufs );
+	bprintf( b, "mem.alloc.hosts %d",  ctl->mem->mem_hosts );
+	bprintf( b, "mem.alloc.points %d", ctl->mem->mem_points );
+	bprintf( b, "mem.alloc.dhash %d",  ctl->mem->mem_dhash );
+	bprintf( b, "mem.alloc.bufs %d",   ctl->mem->mem_bufs );
+
 
 #ifndef DEBUG
 	io_buf_send( b );

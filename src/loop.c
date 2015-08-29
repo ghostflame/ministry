@@ -35,9 +35,10 @@ void loop_mark_done( char *tag )
 
 
 // every tick, set the time
-void loop_set_time( void *arg )
+void loop_set_time( unsigned long long tval, void *arg )
 {
-	get_time( );
+	ctl->curr_time.tv_sec  = tval / 1000000;
+	ctl->curr_time.tv_usec = tval % 1000000;
 }
 
 
@@ -68,14 +69,16 @@ void loop_control( char *name, loop_call_fn *fp, void *arg, int usec, int sync, 
 
 	while( ctl->run_flags & RUN_LOOP )
 	{
+		// call the payload
+		(*fp)( timer, arg );
+
 		// advance the clock
 		timer += usec;
 
-		// get an accurate time
-		(*fp)( arg );
+		// get the current time
+		gettimeofday( &now, NULL );
 
 		// calculate how long to sleep for
-		gettimeofday( &now, NULL );
 		sleepfor = timer - tvll( now );
 
 		// and sleep a bit
