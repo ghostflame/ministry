@@ -49,11 +49,9 @@ int log_write_ts( char *to, int len )
 	int usec;
 	time_t sec;
 #ifdef LOG_CURR_TIME
-	double ct, ts, us;
 
-	us   = modf( ctl->curr_time, &ts );
-	usec = (int) ( 1000000.0 * us );
-	sec  = (time_t) ts;
+	sec  = (time_t) ctl->curr_time.tv_sec;
+	usec = (int)    ctl->curr_time.tv_usec;
 #else
 	struct timeval tv;
 

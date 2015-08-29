@@ -230,15 +230,19 @@ void stats_adder_pass( unsigned long long tval, void *arg )
 // report our own pass
 void stats_self_pass( unsigned long long tval, void *arg )
 {
+	struct timeval now;
 	double upt;
 	char *prfx;
 	time_t ts;
 	IOBUF *b;
 
 	ts   = (time_t) ( tval / 1000000 );
-	prfx = ctl->stats->self->prefix;
 
-	tvdiff( ctl->curr_time, ctl->init_time, upt );
+	now.tv_sec  = ts;
+	now.tv_usec = tval % 1000000;
+
+	prfx = ctl->stats->self->prefix;
+	tvdiff( now, ctl->init_time, upt );
 
 	b = mem_new_buf( IO_BUF_SZ );
 
