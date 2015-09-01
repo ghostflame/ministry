@@ -461,7 +461,7 @@ int stats_config_line( AVP *av )
 		else
 			warn( "Stats period must be > 0, value %d given.", t );
 	}
-	else if( !strcasecmp( d, "offset" ) )
+	else if( !strcasecmp( d, "offset" ) || !strcasecmp( d, "delay" ) )
 	{
 		t = atoi( av->val );
 		if( t > 0 )

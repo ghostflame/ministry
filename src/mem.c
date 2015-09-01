@@ -474,7 +474,7 @@ int mem_config_line( AVP *av )
 {
 	int t;
 
-	if( attIs( "max_mb" ) )
+	if( attIs( "max_mb" ) || attIs( "max_size" ) )
 		ctl->mem->max_mb = 1024 * atoi( av->val );
 	else if( attIs( "hashsize" ) )
 		ctl->mem->hashsize = atoi( av->val );

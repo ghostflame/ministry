@@ -194,7 +194,7 @@ int log_config_line( AVP *av )
 	LOG_CTL *lc = ctl->log;
 	int lvl;
 
-	if( attIs( "filename" ) )
+	if( attIs( "filename" ) || attIs( "file" ) || attIs( "logfile" ) )
 	{
 	 	free( lc->filename );
 		lc->filename = strdup( av->val );
