@@ -100,20 +100,16 @@ int main( int ac, char **av )
 		switch( oc )
 		{
 			case 'c':
-				info( "Config file %s", optarg );
 				ctl->cfg_file = strdup( optarg );
 				break;
 			case 'd':
-				info( "Daemon mode." );
 				ctl->run_flags |= RUN_DAEMON;
 				break;
 			case 'D':
-				info( "Debug!" );
 				ctl->log->level = LOG_LEVEL_DEBUG;
 				ctl->run_flags  = RUN_DEBUG;
 				break;
 			case 'v':
-				info( "Stdout logging." );
 				ctl->log->force_stdout = 1;
 				break;
 			case 't':
@@ -138,6 +134,13 @@ int main( int ac, char **av )
 		return 0;
 	}
 
+
+	if( !ctl->log->force_stdout )
+		debug( "Starting logging - no more logs to stdout." );
+
+	log_start( );
+	notice( "Ministry starting up." );
+
 	if( chdir( ctl->basedir ) )
 		fatal( "Could not chdir to base dir %s -- %s", ctl->basedir, Err );
 	else
@@ -154,6 +157,8 @@ int main( int ac, char **av )
 		else
 			info( "Ministry running in daemon mode, pid %d.", getpid( ) );
 	}
+
+	pidfile_write( );
 
 	if( set_signals( ) )
 		fatal( "Failed to set signalling." );
