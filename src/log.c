@@ -1,3 +1,12 @@
+/**************************************************************************
+* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
+* Copyright 2015 John Denholm                                             *
+*                                                                         *
+* log.c - handles log writing and log config                              *
+*                                                                         *
+* Updates:                                                                *
+**************************************************************************/
+
 #include "ministry.h"
 
 char *log_level_strings[LOG_LEVEL_MAX] =

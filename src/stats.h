@@ -1,3 +1,12 @@
+/**************************************************************************
+* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
+* Copyright 2015 John Denholm                                             *
+*                                                                         *
+* stats.h - defines stats structures and routines                         *
+*                                                                         *
+* Updates:                                                                *
+**************************************************************************/
+
 #ifndef MINISTRY_STATS_H
 #define MINISTRY_STATS_H
 

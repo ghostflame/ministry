@@ -1,3 +1,13 @@
+/**************************************************************************
+* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
+* Copyright 2015 John Denholm                                             *
+*                                                                         *
+* utils.h - routine declations and utility structures                     *
+*                                                                         *
+* Updates:                                                                *
+**************************************************************************/
+
+
 #ifndef MINISTRY_UTILS_H
 #define MINISTRY_UTILS_H
 

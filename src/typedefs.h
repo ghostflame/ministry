@@ -1,3 +1,12 @@
+/**************************************************************************
+* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
+* Copyright 2015 John Denholm                                             *
+*                                                                         *
+* typedefs.h - major typedefs for other structures                        *
+*                                                                         *
+* Updates:                                                                *
+**************************************************************************/
+
 #ifndef MINISTRY_TYPEDEFS_H
 #define MINISTRY_TYPEDEFS_H
 

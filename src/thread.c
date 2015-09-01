@@ -1,3 +1,12 @@
+/**************************************************************************
+* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
+* Copyright 2015 John Denholm                                             *
+*                                                                         *
+* thread.c - thread spawning and mutex control                            *
+*                                                                         *
+* Updates:                                                                *
+**************************************************************************/
+
 #include "ministry.h"
 
 

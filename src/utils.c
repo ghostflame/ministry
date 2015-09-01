@@ -1,3 +1,12 @@
+/**************************************************************************
+* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
+* Copyright 2015 John Denholm                                             *
+*                                                                         *
+* utils.c - various routines for strings, config and maths                *
+*                                                                         *
+* Updates:                                                                *
+**************************************************************************/
+
 #include "ministry.h"
 
 
@@ -320,6 +329,9 @@ void pidfile_remove( void )
 }
 
 
+// an implementation of Kaham Summation
+// https://en.wikipedia.org/wiki/Kahan_summation_algorithm
+// useful to avoid floating point errors
 inline void kahan_sum( float val, float *sum, float *low )
 {
 	float y, t;

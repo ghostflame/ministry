@@ -3,7 +3,7 @@ A drop-in replacement for statsd written in threaded C
 
 Etsy's statsd can be found here:  https://github.com/etsy/statsd
 
-It supports statsd-link input format:
+It supports statsd's input format:
 ```
 	<metric path>:<value>|<type - c or ms>\n
 ```

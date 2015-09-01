@@ -1,3 +1,12 @@
+/**************************************************************************
+* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
+* Copyright 2015 John Denholm                                             *
+*                                                                         *
+* net.c - networking setup and config                                     *
+*                                                                         *
+* Updates:                                                                *
+**************************************************************************/
+
 #include "ministry.h"
 
 

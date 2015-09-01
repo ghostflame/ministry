@@ -1,3 +1,12 @@
+/**************************************************************************
+* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
+* Copyright 2015 John Denholm                                             *
+*                                                                         *
+* net.h - network structures, defaults and declarations                   *
+*                                                                         *
+* Updates:                                                                *
+**************************************************************************/
+
 #ifndef MINISTRY_NETWORK_H
 #define MINISTRY_NETWORK_H
 

@@ -1,3 +1,13 @@
+/**************************************************************************
+* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
+* Copyright 2015 John Denholm                                             *
+*                                                                         *
+* config.h - defines main config structure                                * 
+*                                                                         *
+* Updates:                                                                *
+**************************************************************************/
+
+
 #ifndef MINISTRY_CONFIG_H
 #define MINISTRY_CONFIG_H
 

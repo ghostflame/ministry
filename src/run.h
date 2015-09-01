@@ -1,3 +1,12 @@
+/**************************************************************************
+* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
+* Copyright 2015 John Denholm                                             *
+*                                                                         *
+* run.h - defines run flags and states                                    *
+*                                                                         *
+* Updates:                                                                *
+**************************************************************************/
+
 #ifndef MINISTRY_RUN_H
 #define MINISTRY_RUN_H
 

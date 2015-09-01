@@ -1,3 +1,14 @@
+/**************************************************************************
+* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
+* Copyright 2015 John Denholm                                             *
+*                                                                         *
+* data.h - defines data structures and format                             *
+*                                                                         *
+* Updates:                                                                *
+**************************************************************************/
+
+
+
 #ifndef MINISTRY_DATA_H
 #define MINISTRY_DATA_H
 

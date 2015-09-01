@@ -1,3 +1,12 @@
+/**************************************************************************
+* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
+* Copyright 2015 John Denholm                                             *
+*                                                                         *
+* io.h - defines network buffers and io routines                          *
+*                                                                         *
+* Updates:                                                                *
+**************************************************************************/
+
 #ifndef MINISTRY_IO_H
 #define MINISTRY_IO_H
 
