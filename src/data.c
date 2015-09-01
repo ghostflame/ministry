@@ -298,7 +298,7 @@ void data_handle_connection( HOST *h )
 		if( ( rv = io_read_lines( h ) ) <= 0 )
 		{
 			debug( "Received 0 lines from %s -- gone away?", h->net->name );
-			h->flags |= HOST_CLOSE;
+			h->net->flags |= HOST_CLOSE;
 			break;
 		}
 
@@ -311,7 +311,7 @@ void data_handle_connection( HOST *h )
 				(*(h->type->handler))( h, h->all->wd[i], h->all->len[i] );
 
 		// allow data fetch to tell us to close this host down
-		if( h->flags & HOST_CLOSE )
+		if( h->net->flags & HOST_CLOSE )
 		{
 			debug( "Host %s flagged as closed.", h->net->name );
 			break;

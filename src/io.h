@@ -17,7 +17,7 @@ struct io_buffer
 
 
 // r/w
-int io_read_data( HOST *h );
+int io_read_data( NSOCK *s );
 int io_read_lines( HOST *h );
 int io_write_data( NSOCK *s );
 

@@ -4,9 +4,8 @@
 // does not have it's own config, runs off mem.c config
 
 
-int io_read_data( HOST *h )
+int io_read_data( NSOCK *s )
 {
-	NSOCK *s = h->net;
 	int i;
 
 	if( s->keep->len )
@@ -38,7 +37,7 @@ int io_read_data( HOST *h )
 	{
 		// that would be the fin, then
 		debug( "Received a FIN, perhaps, from %s", s->name );
-		h->flags |= HOST_CLOSE;
+		s->flags |= HOST_CLOSE;
 		return 0;
 	}
 	else if( i < 0 )
@@ -48,7 +47,7 @@ int io_read_data( HOST *h )
 		{
 			err( "Recv error for host %s -- %s",
 				s->name, Err );
-			h->flags |= HOST_CLOSE;
+			s->flags |= HOST_CLOSE;
 			return i;
 		}
 		return 0;
@@ -70,13 +69,13 @@ int io_read_lines( HOST *h )
 	char *w;
 
 	// try to read some data
-	if( ( i = io_read_data( h ) ) <= 0 )
+	if( ( i = io_read_data( n ) ) <= 0 )
 		return i;
 
 	// do we have anything at all?
 	if( !n->in->len )
 	{
-		debug( "No incoming data from %s", h->net->name );
+		debug( "No incoming data from %s", n->name );
 		return 0;
 	}
 
@@ -163,7 +162,7 @@ int io_write_data( NSOCK *s )
 		{
 			warn( "Poll error writing to host %s -- %s",
 				s->name, Err );
-			s->flags |= SOCK_CLOSE;
+			s->flags |= HOST_CLOSE;
 			return sent;
 		}
 
@@ -181,7 +180,7 @@ int io_write_data( NSOCK *s )
 		{
 			warn( "Error writing to host %s -- %s",
 				s->name, Err );
-			s->flags |= SOCK_CLOSE;
+			s->flags |= HOST_CLOSE;
 			return sent;
 		}
 
@@ -387,10 +386,10 @@ void io_send( NSOCK *s )
 		// did we sent it all?
 
 		// did we have problems?
-		if( s->flags & SOCK_CLOSE )
+		if( s->flags & HOST_CLOSE )
 		{
 			net_disconnect( &(s->sock), "send target" );
-			s->flags &= ~SOCK_CLOSE;
+			s->flags &= ~HOST_CLOSE;
 			break;
 		}
 
