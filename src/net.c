@@ -466,12 +466,12 @@ int net_config_line( AVP *av )
 		nt = ctl->net->adder;
 	else if( !strncasecmp( av->att, "target.", 7 ) )
 	{
-		if( !strcasecmp( d, "host" ) )
+		if( !strcasecmp( p, "host" ) )
 		{
 			free( ctl->net->host );
 			ctl->net->host = strdup( av->val );
 		}
-		else if( !strcasecmp( d, "port" ) )
+		else if( !strcasecmp( p, "port" ) )
 		{
 			ctl->net->port = (unsigned short) strtoul( av->val, NULL, 10 );
 			if( ctl->net->port == 0 )
