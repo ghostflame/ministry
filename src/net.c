@@ -27,7 +27,7 @@
 
 void *net_watched_socket( void *arg )
 {
-	double stime;
+	double starttime;
 	//pthread_t nt;
 	THRD *t;
 	HOST *h;
@@ -36,8 +36,8 @@ void *net_watched_socket( void *arg )
 	h = (HOST *) t->arg;
 
 	// capture the start time - it's sort of a thread id
-	stime = h->started;
-	debug( "Connection from %s starts at %.6f", h->net->name, stime );
+	starttime = h->started;
+	debug( "Connection from %s starts at %.6f", h->net->name, starttime );
 
 	// capture the thread ID of the watched thread
 	// when throwing the handler function
@@ -47,7 +47,7 @@ void *net_watched_socket( void *arg )
 	while( ctl->run_flags & RUN_LOOP )
 	{
 		// safe because we never destroy host structures
-		if( h->started != stime )
+		if( h->started != starttime )
 		{
             debug( "Socket has been freed or re-used." );
 			break;

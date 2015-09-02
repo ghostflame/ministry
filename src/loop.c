@@ -44,7 +44,7 @@ void loop_set_time( unsigned long long tval, void *arg )
 
 // we do integer maths here to avoid creeping
 // double-precision addition inaccuracies
-void loop_control( char *name, loop_call_fn *fp, void *arg, int usec, int sync, int offset )
+void loop_control( char *name, loop_call_fn *fp, void *arg, int usec, int doSync, int offset )
 {
 	unsigned long long timer, next;
 	struct timeval now;
@@ -54,7 +54,7 @@ void loop_control( char *name, loop_call_fn *fp, void *arg, int usec, int sync, 
 	timer = tvll( now );
 
 	// do we synchronise to a clock?
-	if( sync )
+	if( doSync )
 	{
 		next     = timer + offset + usec - ( timer % usec );
 		sleepfor = (int) ( next - timer );
