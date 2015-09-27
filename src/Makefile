@@ -1,16 +1,16 @@
 CC     = /usr/bin/gcc -Wall -Wshadow
 
 MAXV   = 0
-MINV   = 0
-MICV   = 1
+MINV   = 1
+MICV   = 0
 
 VER    = $(MAXV).$(MINV).$(MICV)
 
-BINDIR = ../bin
-
 FILES  = utils log loop thread mem gc net io data stats config main
+HEADS  = config data gc io log loop mem ministry net run stats thread typedefs utils
 
 OBJS   = $(FILES:%=%.o)
+HDRS   = $(HEADS:%=%.h)
 
 IFLAGS = -I. 
 DFLAGS = -g -pg -ggdb3 -DDEBUG
@@ -18,6 +18,7 @@ TFLAGS = -pthread
 CFLAGS = $(TFLAGS) $(IFLAGS)
 LFLAGS = $(TFLAGS) $(IFLAGS) -lm
 
+BINDIR = /usr/bin
 BIN    = ministry
 
 
@@ -31,16 +32,20 @@ debug: $(BIN)
 fast:  CFLAGS += -O2
 fast:  $(BIN)
 
-$(BIN): $(OBJS)
-	@mkdir -p $(BINDIR)
-	$(CC) -o $(BINDIR)/$(BIN) $(LFLAGS) $(OBJS)
+
+
+$(BIN): $(HDRS) $(OBJS)
+	$(CC) -o $(BIN) $(LFLAGS) $(OBJS)
 	@echo "Ministry constructed.  Submit your forms, citizen!"
 
 install:
-	@install -m755 $(BINDIR)/$(BIN) $(MIN_BIN_DIR)/$(BIN)
-	@echo "Installed ministry as $(MIN_BIN_DIR)/$(BIN)"
+	@install -m755 $(BIN) $(BINDIR)/$(BIN)
+	@echo "Installed ministry as $(BINDIR)/$(BIN)"
+
+uninstall:
+	@echo "Removing ministry binary."
+	@rm -f $(BINDIR)/$(BIN)
 
 clean:
-	@rm -f core* *.core $(OBJS) $(BINDIR)/$(BIN)
-
+	@rm -f core* *.core $(OBJS) $(BIN)
 

@@ -32,5 +32,4 @@
 *.dSYM/
 
 # directories
-bin/*
 logs/*

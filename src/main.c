@@ -20,6 +20,7 @@ Options:\n\
  -d           Daemonize in the background\n\
  -D           Switch on debug output (overrides config)\n\
  -v           Verbose logging to console\n\
+ -p           Override configured pidfile\n\
  -t           Just test the config is valid and exit\n\n\
 Ministry is a statsd-alternative processing engine.  It runs on very\n\
 similiar lines, taking data paths and producing statistics on them.\n\
@@ -105,7 +106,7 @@ int main( int ac, char **av )
 	// make a control structure
 	ctl = config_create( );
 
-	while( ( oc = getopt( ac, av, "hHDdvtc:" ) ) != -1 )
+	while( ( oc = getopt( ac, av, "hHDdvtc:p:" ) ) != -1 )
 		switch( oc )
 		{
 			case 'c':
@@ -113,6 +114,10 @@ int main( int ac, char **av )
 				break;
 			case 'd':
 				ctl->run_flags |= RUN_DAEMON;
+				break;
+			case 'p':
+				free( ctl->pidfile );
+				ctl->pidfile = strdup( optarg );
 				break;
 			case 'D':
 				ctl->log->level = LOG_LEVEL_DEBUG;

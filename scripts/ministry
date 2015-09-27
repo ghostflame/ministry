@@ -1,0 +1,94 @@
+#!/bin/sh
+#
+# ministry    init file for starting up the ministry daemon
+#
+# chkconfig:    - 22 78
+# description:  Starts and stops the ministry daemon.
+
+# Source function library
+. /etc/init.d/functions
+
+EXEC=/usr/bin/ministry
+
+PIDFILE=/var/run/ministry.pid
+CONFIG=/etc/ministry/ministry.conf
+LOCKFILE=/var/subsys/ministry
+EXTRA=''
+
+# any system overrides?
+if [ -e /etc/sysconfig/ministry ] && . /etc/sysconfig/ministry
+
+start()
+{
+	[ -f $CONFIG ] || exit 6
+	[ -x $EXEC   ] || exit 5
+
+	echo -n $"Starting `basename $EXEC`: "
+	$EXEC -d -c $CONFIG $EXTRA
+	retval=$?
+	echo
+	[ $retval -eq 0 ] && touch $LOCKFILE
+	return $retval
+}
+
+stop()
+{
+	echo $"Killing `basename $EXEC` and waiting for threads."
+	echo -n $"Stopping `basename $EXEC`: "
+	killproc -p $PIDFILE -d 20 `basename $EXEC`
+	retval=$?
+	echo
+	[ $retval -eq 0 ] && rm -f $LOCKFILE
+	return $retval
+}
+
+restart()
+{
+	stop
+	start
+}
+
+reload()
+{
+	stop
+	start
+}
+
+rh_status()
+{
+	status -p $PIDFILE `basename $EXEC`
+}
+
+rh_status_q()
+{
+	rh_status > /dev/null 2>&1
+}
+
+case "$1" in
+	start)
+		rh_status_q && exit 0
+		$1
+		;;
+	stop)
+		rh_status_q || exit 0
+		$1
+		;;
+	restart)
+		$1
+		;;
+	reload)
+		$1
+		;;
+	status)
+		rh_status
+		;;
+	condrestart|try-restart
+		rh_status_q || exit 0
+		restart
+		;;
+	*)
+		echo $"Usage: $0 {start|stop|status|restart|reload|condrestart|try-restart}"
+		exit 2
+esac
+exit $?
+

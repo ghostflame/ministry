@@ -12,7 +12,7 @@
 #define MINISTRY_CONFIG_H
 
 #define DEFAULT_BASE_DIR		"/etc/ministry"
-#define DEFAULT_CONFIG_FILE		"ministry.conf"
+#define DEFAULT_CONFIG_FILE		"/etc/ministry/ministry.conf"
 
 
 

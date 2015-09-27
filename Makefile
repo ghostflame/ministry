@@ -1,12 +1,15 @@
 DIRS   = src
 TARGET = all
 
-INSDIR = /opt/ministry
+LOGDIR = /var/log/ministry
+CFGDIR = /etc/ministry
+INISCR = /etc/init.d/ministry
+
+
 SUBDIR = bin conf logs data
 
-all:
-	@mkdir -p bin logs
-	@-for d in $(DIRS); do ( cd $$d && $(MAKE) $(MFLAGS) $(TARGET) ); done
+all:  subdirs
+all:  code
 
 debug: TARGET = debug
 debug: all
@@ -14,23 +17,31 @@ debug: all
 fast:  TARGET = fast
 fast:  all
 
+subdirs:
+	@mkdir -p logs
+
+code:
+	@cd src && $(MAKE) $(MFLAGS) $(TARGET)
+
 install:
-	@mkdir $(INSDIR)
-	@-for d in $(SUBDIR); do mkdir -p $(INSDIR)/$(SUBDIR); done
-	@echo "Created ministry install location $(INSDIR)"
-	@export MIN_INSTALL_DIR=$(INSDIR)
-	@export MIN_BIN_DIR=$(INSDIR)/bin
-	@-for d in $(DIRS); do ( cd $$d && $(MAKE) $(MFLAGS) install ); done
+	@echo "Creating ministry install locations"
+	@mkdir -p $(LOGDIR) $(CFGDIR)
+	@cd src && $(MAKE) $(MFLAGS) install
+	@echo "Creating config and init script."
+	@install -m755 scripts/ministry $(INISCR)
+	@install -m755 conf/basic.conf $(CFGDIR)/ministry.conf
 
 uninstall:
 	@echo "Warning: this may delete your ministry config/log files!"
 	@echo "Use make target 'remove' to actually remove ministry."
 
 remove:
-	@rm -rf $(INSDIR)
+	@cd src && $(MAKE) $(MFLAGS) uninstall
+	@rm -rf $(LOGDIR) $(CFGDIR) $(INISCR)
 
 clean:
-	@-for d in $(DIRS); do ( cd $$d && $(MAKE) $(MFLAGS) clean ); done
+	@cd src && $(MAKE) $(MFLAGS) clean
 	@rm -f logs/* core*
 	@echo "done."
+
 
