@@ -26,8 +26,8 @@
 #define lock_stats( d )			pthread_mutex_lock(   &(ctl->locks->dstats[d->id & DSTATS_MUTEX_MASK]) )
 #define unlock_stats( d )		pthread_mutex_unlock( &(ctl->locks->dstats[d->id & DSTATS_MUTEX_MASK]) )
 
-#define lock_table( idx )		pthread_mutex_lock(   &(ctl->locks->table[idx & HASHT_MUTEX_COUNT]) )
-#define unlock_table( idx )		pthread_mutex_unlock( &(ctl->locks->table[idx & HASHT_MUTEX_COUNT]) )
+#define lock_table( idx )		pthread_mutex_lock(   &(ctl->locks->table[idx & HASHT_MUTEX_MASK]) )
+#define unlock_table( idx )		pthread_mutex_unlock( &(ctl->locks->table[idx & HASHT_MUTEX_MASK]) )
 
 
 struct lock_control
