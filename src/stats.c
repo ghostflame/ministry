@@ -23,7 +23,7 @@ inline int cmp_floats( const void *p1, const void *p2 )
 }
 
 // this macro is some serious va args abuse
-#define bprintf( bf, fmt, ... )		b->len += snprintf( bf->buf + bf->len, bf->sz - bf->len, "%s" fmt " %ld\n", prfx, ## __VA_ARGS__, ts )
+#define bprintf( bf, fmt, ... )		bf->len += snprintf( bf->buf + bf->len, bf->sz - bf->len, "%s" fmt " %ld\n", prfx, ## __VA_ARGS__, ts )
 
 
 void stats_report_one( DHASH *d, ST_THR *cfg, time_t ts, IOBUF **buf )

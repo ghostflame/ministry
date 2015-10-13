@@ -187,8 +187,7 @@ int main( int ac, char **av )
 
 	get_time( );
 	tvdiff( ctl->curr_time, ctl->init_time, diff );
-
-	info( "Ministry started up in %.3fs.", diff / 1000000.0 );
+	info( "Ministry started up in %.3fs.", diff );
 
 	// only exits on a signal that removes RUN_LOOP
 	loop_start( );
