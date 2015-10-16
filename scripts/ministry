@@ -8,15 +8,17 @@
 # Source function library
 . /etc/init.d/functions
 
-EXEC=/usr/bin/ministry
+EXEC='/usr/bin/ministry'
 
-PIDFILE=/var/run/ministry.pid
-CONFIG=/etc/ministry/ministry.conf
-LOCKFILE=/var/subsys/ministry
+PIDFILE='/var/run/ministry.pid'
+CONFIG='/etc/ministry/ministry.conf'
+LOCKFILE='/var/lock/subsys/ministry'
 EXTRA=''
 
 # any system overrides?
-if [ -e /etc/sysconfig/ministry ] && . /etc/sysconfig/ministry
+if [ -e /etc/sysconfig/ministry ]; then
+	. /etc/sysconfig/ministry
+fi
 
 start()
 {
@@ -30,6 +32,7 @@ start()
 	[ $retval -eq 0 ] && touch $LOCKFILE
 	return $retval
 }
+
 
 stop()
 {
@@ -52,6 +55,18 @@ reload()
 {
 	stop
 	start
+}
+
+rh_configcheck()
+{
+	[ -f $CONFIG ] || exit 6
+	[ -x $EXEC   ] || exit 5
+
+	echo -n $"Running config test for `basename $EXEC`: "
+	$EXEC -c $CONFIG $EXTRA -t
+	retval=$?
+	echo
+	return $retval
 }
 
 rh_status()
@@ -82,12 +97,15 @@ case "$1" in
 	status)
 		rh_status
 		;;
-	condrestart|try-restart
+	configtest)
+		rh_configcheck
+		;;
+	condrestart)
 		rh_status_q || exit 0
 		restart
 		;;
 	*)
-		echo $"Usage: $0 {start|stop|status|restart|reload|condrestart|try-restart}"
+		echo $"Usage: $0 {start|stop|status|restart|reload|condrestart|configtest}"
 		exit 2
 esac
 exit $?

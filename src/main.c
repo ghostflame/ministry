@@ -100,7 +100,8 @@ int set_signals( void )
 
 int main( int ac, char **av )
 {
-	int oc, justTest = 0;
+	int oc, justTest = 0, debug = 0;
+	char *pidfile = NULL;
 	double diff;
 
 	// make a control structure
@@ -116,12 +117,12 @@ int main( int ac, char **av )
 				ctl->run_flags |= RUN_DAEMON;
 				break;
 			case 'p':
-				free( ctl->pidfile );
-				ctl->pidfile = strdup( optarg );
+				pidfile = strdup( optarg );
 				break;
 			case 'D':
+				debug = 1;
 				ctl->log->level = LOG_LEVEL_DEBUG;
-				ctl->run_flags  = RUN_DEBUG;
+				ctl->run_flags |= RUN_DEBUG;
 				break;
 			case 'v':
 				ctl->log->force_stdout = 1;
@@ -141,6 +142,18 @@ int main( int ac, char **av )
 	// try to read the config
 	if( config_read( ctl->cfg_file ) )
 		fatal( "Unable to read config file '%s'", ctl->cfg_file );
+
+	// enforce what we got in arguments
+	if( debug )
+	{
+		ctl->log->level = LOG_LEVEL_DEBUG;
+		ctl->run_flags |= RUN_DEBUG;
+	}
+	if( pidfile )
+	{
+		free( ctl->pidfile );
+		ctl->pidfile = pidfile;
+	}
 
 	if( justTest )
 	{
