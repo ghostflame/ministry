@@ -29,8 +29,8 @@ inline int cmp_floats( const void *p1, const void *p2 )
 void stats_report_one( DHASH *d, ST_THR *cfg, time_t ts, IOBUF **buf )
 {
 	float sum, *vals = NULL;
+	int i, j, nt, med;
 	PTLIST *list, *p;
-	int i, j, nt;
 	char *prfx;
 	IOBUF *b;
 
@@ -57,12 +57,16 @@ void stats_report_one( DHASH *d, ST_THR *cfg, time_t ts, IOBUF **buf )
 		// 90th percent offset
 		nt = ( j * 9 ) / 10;
 
+		// median offset
+		med = j / 2;
+
 		qsort( vals, j, sizeof( float ), cmp_floats );
 
 		bprintf( b, "%s.count %d",    d->path, j );
 		bprintf( b, "%s.mean %f",     d->path, sum / (float) j );
 		bprintf( b, "%s.upper %f",    d->path, vals[j-1] );
 		bprintf( b, "%s.lower %f",    d->path, vals[0] );
+		bprintf( b, "%s.median %f",   d->path, vals[med] );
 		bprintf( b, "%s.upper_90 %f", d->path, vals[nt] );
 
 		if( b->len > IO_BUF_HWMK )
