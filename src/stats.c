@@ -28,10 +28,10 @@ inline int cmp_floats( const void *p1, const void *p2 )
 
 void stats_report_one( DHASH *d, ST_THR *cfg, time_t ts, IOBUF **buf )
 {
+	int i, j, tind, thr, med;
 	float sum, *vals = NULL;
-	int i, j, nt, med;
 	PTLIST *list, *p;
-	char *prfx;
+	char *prfx, *ul;
 	IOBUF *b;
 
 	list = d->proc.points;
@@ -54,9 +54,6 @@ void stats_report_one( DHASH *d, ST_THR *cfg, time_t ts, IOBUF **buf )
 		sum = 0;
 		kahan_summation( vals, j, &sum );
 
-		// 90th percent offset
-		nt = ( j * 9 ) / 10;
-
 		// median offset
 		med = j / 2;
 
@@ -67,7 +64,22 @@ void stats_report_one( DHASH *d, ST_THR *cfg, time_t ts, IOBUF **buf )
 		bprintf( b, "%s.upper %f",    d->path, vals[j-1] );
 		bprintf( b, "%s.lower %f",    d->path, vals[0] );
 		bprintf( b, "%s.median %f",   d->path, vals[med] );
-		bprintf( b, "%s.upper_90 %f", d->path, vals[nt] );
+
+		// variable thresholds
+		for( i = 0; i < ctl->stats->thr_count; i++ )
+		{
+			// exclude lunacy
+			if( !( thr = ctl->stats->thresholds[i] ) )
+				continue;
+
+			// decide on a string
+			ul = ( thr < 50 ) ? "lower" : "upper";
+
+			// find the right index into our values
+			tind = ( j * thr ) / 100;
+
+			bprintf( b, "%s.%s_%d %f", d->path, ul, thr, vals[tind] );
+		}
 
 		if( b->len > IO_BUF_HWMK )
 		{
@@ -426,22 +438,55 @@ STAT_CTL *stats_config_defaults( void )
 
 int stats_config_line( AVP *av )
 {
+	STAT_CTL *s;
 	ST_CFG *sc;
+	WORDS wd;
+	int i, t;
 	char *d;
-	int t;
 
-	// nothing without a . so far
+	s = ctl->stats;
+
 	if( !( d = strchr( av->att, '.' ) ) )
-		return -1;
+	{
+		if( attIs( "thresholds" ) )
+		{
+			if( strwords( &wd, av->val, av->vlen, ',' ) <= 0 )
+			{
+				warn( "Invalid thresholds string: %s", av->val );
+				return -1;
+			}
+			s->thr_count = wd.wc;
+			if( s->thr_count > 20 )
+			{
+				warn( "Threshold list being truncated at 20" );
+				s->thr_count = 20;
+			}
+			s->thresholds = (int *) allocz( s->thr_count * sizeof( int ) );
+			for( i = 0; i < s->thr_count; i++ )
+			{
+			 	t = atoi( wd.wd[i] );
+				// remove lunacy
+				if( t < 0 || t == 50 || t >= 100 )
+					t = 0;
+				s->thresholds[i] = t;
+			}
+
+			debug( "Acquired %d thresholds.", s->thr_count );
+		}
+		else
+			return -1;
+
+		return 0;
+	}
 
 	d++;
 
 	if( !strncasecmp( av->att, "stats.", 6 ) )
-		sc = ctl->stats->stats;
+		sc = s->stats;
 	else if( !strncasecmp( av->att, "adder.", 6 ) )
-		sc = ctl->stats->adder;
+		sc = s->adder;
 	else if( !strncasecmp( av->att, "self.", 5 ) )
-		sc = ctl->stats->self;
+		sc = s->self;
 	else
 		return -1;
 

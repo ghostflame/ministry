@@ -29,6 +29,7 @@ throw_fn stats_loop;
 #define DEFAULT_SELF_PREFIX			"stats.ministry"
 
 
+
 struct stat_thread_ctl
 {
 	ST_THR			*	next;
@@ -62,6 +63,9 @@ struct stats_control
 	ST_CFG			*	stats;
 	ST_CFG			*	adder;
 	ST_CFG			*	self;
+
+	int				*	thresholds;
+	int					thr_count;
 };
 
 
