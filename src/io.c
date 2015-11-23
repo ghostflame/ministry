@@ -164,7 +164,6 @@ int io_write_data( NSOCK *s )
 	ptr      = b->buf;
 	len      = b->len;
 
-
 	while( len > 0 )
 	{
 		if( ( rv = poll( &p, 1, 20 ) ) < 0 )
@@ -202,8 +201,6 @@ int io_write_data( NSOCK *s )
 	if( len >= b->len )
 		b->len = 0;
 
-	//debug( "Wrote to %d bytes to %d/%s", sent, s->sock, s->name );
-
 	// what we wrote
 	return sent;
 }
@@ -215,7 +212,10 @@ int io_connected( NSOCK *s )
 	int err;
 
 	if( s->sock < 0 )
+	{
+		warn( "Invalid socket, so not connected." );
 		return -1;
+	}
 
 	err = 0;
 	len = sizeof( int );
@@ -297,12 +297,31 @@ int io_connect( NSOCK *s )
 
 
 
+inline int io_decr_buf( IOBUF *buf )
+{
+	pthread_mutex_lock(   &(ctl->locks->bufref) );
+	--(buf->refs);
+	pthread_mutex_unlock( &(ctl->locks->bufref) );
+
+	if( buf->refs <= 0 )
+	{
+		mem_free_buf( &buf );
+		return 0;
+	}
+
+	return 1;
+}
+
 
 
 // attach a buffer for sending
+// this is called from multiple threads
+// they should never fight over a buffer
+// but WILL fight over targets
 void io_buf_send( IOBUF *buf )
 {
-	int freebuf = 0;
+	TARGET *t;
+	IOLIST *i;
 
 	if( !buf )
 		return;
@@ -315,72 +334,119 @@ void io_buf_send( IOBUF *buf )
 		return;
 	}
 
-	pthread_mutex_lock( &(ctl->locks->iobuffers) );
+	// set the buffer to be handled by each target
+	// we have to do it here to prevent us getting
+	// tripped up midway through handing it to the
+	// io threads
+	buf->refs = ctl->net->tcount;
 
-	if( ctl->net->target->bufs >= ctl->net->max_bufs )
-		freebuf = 1;
-	else
+	// as soon as the buffer is assigned to one target
+	// it's ref count is subject to multithreaded activity
+
+	// give a ref to each io thread
+	for( t = ctl->net->targets; t; t = t->next )
 	{
-		buf->next = ctl->net->target->in;
-		ctl->net->target->in = buf;
-		ctl->net->target->bufs++;
-	}
+		// unless it's full already in which case
+		// decrement and maybe free
+		if( t->bufs > ctl->net->max_bufs )
+		{
+			// might free that buf now
+			if( !io_decr_buf( buf ) )
+				break;
 
-	pthread_mutex_unlock( &(ctl->locks->iobuffers) );
+			continue;
+		}
+		
 
-	if( freebuf )
-	{
-		debug( "Throwing away buffer - too much waiting already." );
-		mem_free_buf( &buf );
+		// create the iolist structure
+		// and hand it off into the queue
+		i = mem_new_iolist( );
+		i->buf = buf;
+
+		// and attach it
+		lock_target( t );
+
+		if( !t->qend )
+		{
+			t->qend = t->qhead = i;
+		}
+		else
+		{
+			// make the doubly-linked list
+			i->next        = t->qhead;
+			t->qhead->prev = i;
+			t->qhead       = i;
+
+			t->bufs++;
+		}
+
+		unlock_target( t );
 	}
 }
 
 
-void io_grab_buffer( NSOCK *s )
+void io_grab_buffer( TARGET *t )
 {
-	IOBUF *b, *prev;
+	IOLIST *l;
 
-	// this is safe here because this thread is the only
-	// one that takes things away from this pointer
-	if( !s->in )
-		return;
+	lock_target( t );
 
-	pthread_mutex_lock( &(ctl->locks->iobuffers) );
+	t->sock->out = NULL;
 
-	// remove the last buffer
-	for( prev = NULL, b = s->in; b->next; prev = b, b = b->next );
-
-	if( prev )
-		prev->next = NULL;
-	else
-		s->in = NULL;
-
-	// and decrement the buffers
-	s->bufs--;
-	if( s->bufs < 0 )
+	if( !t->qend )
 	{
-		warn( "Target socket buffers went below 0." );
-		s->bufs = 0;
+		unlock_target( t );
+		return;
 	}
 
-	pthread_mutex_unlock( &(ctl->locks->iobuffers) );
+	// take one off the end
+	l = t->qend;
+	t->qend = l->prev;
+	t->bufs--;
 
-	// and attach it to out
-	s->out = b;
+	// was that the last one?
+	if( t->qend )
+		t->qend->next = NULL;
+	else
+		t->qhead = NULL;
+
+	unlock_target( t );
+
+	t->sock->out = l->buf;
+
+	mem_free_iolist( &l );
 }
 
 
-
-void io_send( NSOCK *s )
+void io_send( uint64_t tval, void *arg )
 {
 	int l, rv, i;
+	TARGET *t;
+	NSOCK *s;
 
-#ifdef DEBUG
-	debug( "IO Send" );
-#endif
+	t = (TARGET *) arg;
+	s = t->sock;
 
+	// are we waiting to reconnect?
+	if( t->countdown > 0 )
+	{
+		t->countdown--;
+		return;
+	}
+
+	// keep trying if we are not connected
+	if( io_connected( t->sock ) < 0
+	 && io_connect( t->sock ) < 0 )
+	{
+		// don't try to reconnect at once
+		// sleep a few seconds
+		t->countdown = t->reconn_ct;
+		return;
+	}
+
+	// right, were we working on anything?
 	if( !s->out )
-		io_grab_buffer( s );
+		io_grab_buffer( t );
 
 	i = 0;
 
@@ -389,7 +455,7 @@ void io_send( NSOCK *s )
 		i++;
 
 		// try to send the out buffer
-		l = s->out->len;
+		l  = s->out->len;
 		rv = io_write_data( s );
 
 		// did we sent it all?
@@ -404,11 +470,9 @@ void io_send( NSOCK *s )
 
 		if( rv == l )
 		{
-			// free that buffer
-			mem_free_buf( &(s->out) );
-
-			// and get another
-			io_grab_buffer( s );
+			// drop that buffer and get a new one
+			io_decr_buf( s->out );
+			io_grab_buffer( t );
 		}
 		else
 			// try again later
@@ -417,19 +481,21 @@ void io_send( NSOCK *s )
 }
 
 
+
 void *io_loop( void *arg )
 {
 	struct sockaddr_in sa, *sp;
 	struct addrinfo *ai;
-	NSOCK *s;
+	TARGET *d;
 	THRD *t;
 
 	t = (THRD *) arg;
+	d = (TARGET *) t->arg;
 
 	// find out where we are connecting to
-	if( getaddrinfo( ctl->net->host, NULL, NULL, &ai ) || !ai )
+	if( getaddrinfo( d->host, NULL, NULL, &ai ) || !ai )
 	{
-		err( "Could not look up target host %s -- %s", ctl->net->host, Err );
+		err( "Could not look up target host %s -- %s", d->host, Err );
 		loop_end( "Unable to loop up network target." );
 		free( t );
 		return NULL;
@@ -441,51 +507,74 @@ void *io_loop( void *arg )
 	sa.sin_family = sp->sin_family;
 	sa.sin_addr   = sp->sin_addr;
 	// and we already have a port
-	sa.sin_port   = htons( ctl->net->port );
+	sa.sin_port   = htons( d->port );
 
 	// done with that
 	freeaddrinfo( ai );
 
 	// make a socket
-	s = net_make_sock( 0, 0, "io target", &sa );
-	ctl->net->target = s;
+	d->sock = net_make_sock( 0, 0, NULL, &sa );
 
-	// say we've started
-	loop_mark_start( "io" );
+	// how long do we count down after 
+	d->reconn_ct = ctl->net->reconn / ctl->net->io_usec;
+	if( ctl->net->reconn % ctl->net->io_usec )
+		d->reconn_ct++;
+
+	// init it's mutex
+	pthread_mutex_init( &(d->lock), NULL );
+
 
 	// now loop around sending
-	while( ctl->run_flags & RUN_LOOP )
-	{
-		// keep trying if we are not connected
-		if( io_connected( s ) < 0
-		 && io_connect( s ) < 0 )
-		{
-			// don't try to reconnect at once
-			// sleep a few seconds
-			usleep( ctl->net->reconn );
-			continue;
-		}
+	loop_control( "io", io_send, d, ctl->net->io_usec, 0, 0 );
 
-		// right, we're good
-		io_send( s );
 
-		// and sleep a little
-		usleep( ctl->net->io_usec );
-	}
-
-	loop_mark_done( "io" );
+	// and tear down the mutex
+	pthread_mutex_destroy( &(d->lock) );
 
 	// shut down that socket.  Never mind freeing stuff,
 	// we are exiting.
-	if( s->sock > -1 )
+	if( d->sock->sock > -1 )
 	{
-		shutdown( s->sock, SHUT_RDWR );
-		close( s->sock );
-		s->sock = -1;
+		shutdown( d->sock->sock, SHUT_RDWR );
+		close( d->sock->sock );
+		d->sock->sock = -1;
 	}
 
 	free( t );
 	return NULL;
 }
+
+
+void io_start( void )
+{
+	TARGET *t;
+
+	// make a default target if we have none
+	if( ! ctl->net->targets )
+	{
+		t = (TARGET *) allocz( sizeof( TARGET ) );
+		t->host = str_dup( DEFAULT_TARGET_HOST, 0 );
+		t->port = DEFAULT_TARGET_PORT;
+
+		ctl->net->targets = t;
+		ctl->net->tcount  = 1;
+
+		info( "Created default target of %s:%hu", t->host, t->port );
+	}
+
+	// start one loop for each target
+	for( t = ctl->net->targets; t; t = t->next )
+		thread_throw( io_loop, t );
+}
+
+
+void io_stop( void )
+{
+	TARGET *t;
+
+	for( t = ctl->net->targets; t; t = t->next )
+		pthread_mutex_destroy( &(t->lock) );
+}
+
 
 

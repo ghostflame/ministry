@@ -59,7 +59,10 @@ void shut_down( int exval )
 	else
 		warn( "Shutting down without thread completion." );
 
-	// clean up the pidfile
+	// shut down all those mutex locks
+	lock_shutdown( );
+	io_stop( );
+
 	pidfile_remove( );
 
 	notice( "Ministry exiting." );

@@ -67,7 +67,7 @@ int gc_hash_list( DHASH **list, DHASH **flist, unsigned int idx )
 
 
 
-void gc_pass( unsigned long long tval, void *arg )
+void gc_pass( uint64_t tval, void *arg )
 {
 	DHASH *flist = NULL;
 	unsigned int i;

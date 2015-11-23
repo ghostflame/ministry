@@ -50,7 +50,7 @@ struct points_list
 union data_hash_vals
 {
 	PTLIST			*	points;
-	unsigned long long	total;
+	uint64_t			total;
 };
 
 

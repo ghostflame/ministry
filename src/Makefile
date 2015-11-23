@@ -2,7 +2,7 @@ CC     = /usr/bin/gcc -Wall -Wshadow
 
 MAXV   = 0
 MINV   = 1
-MICV   = 2
+MICV   = 3
 
 VER    = $(MAXV).$(MINV).$(MICV)
 
@@ -13,7 +13,7 @@ OBJS   = $(FILES:%=%.o)
 HDRS   = $(HEADS:%=%.h)
 
 IFLAGS = -I. 
-DFLAGS = -g -pg -ggdb3 -DDEBUG
+DFLAGS = -g -pg -ggdb3
 TFLAGS = -pthread
 CFLAGS = $(TFLAGS) $(IFLAGS)
 LFLAGS = $(TFLAGS) $(IFLAGS) -lm
@@ -32,7 +32,8 @@ debug: $(BIN)
 fast:  CFLAGS += -O2
 fast:  $(BIN)
 
-
+version:
+	@echo $(VER)
 
 $(BIN): $(HDRS) $(OBJS)
 	$(CC) -o $(BIN) $(LFLAGS) $(OBJS)

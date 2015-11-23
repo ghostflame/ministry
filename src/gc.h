@@ -13,5 +13,4 @@
 loop_call_fn gc_pass;
 throw_fn gc_loop;
 
-
 #endif

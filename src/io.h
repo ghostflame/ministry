@@ -15,6 +15,7 @@
 #define IO_BUF_HWMK				0x3c000		// 240k
 #define IO_MAX_WAITING			128			// makes for 128 * 256k = 32M
 
+
 struct io_buffer
 {
 	IOBUF		*	next;
@@ -22,7 +23,17 @@ struct io_buffer
 	char		*	hwmk;
 	int				len;
 	int				sz;
+	int				id;
+	int				refs;		// how many outstanding to send?
 };
+
+struct io_buffer_list
+{
+	IOLIST		*	next;
+	IOLIST		*	prev;
+	IOBUF		*	buf;
+};
+
 
 
 // r/w
@@ -35,7 +46,11 @@ int io_connect( NSOCK *s );
 
 void io_buf_send( IOBUF *buf );
 
+loop_call_fn io_send;
 throw_fn io_loop;
+
+void io_start( void );
+void io_stop( void );
 
 
 #endif

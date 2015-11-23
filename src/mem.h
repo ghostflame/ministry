@@ -2,46 +2,66 @@
 * This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
 *                                                                         *
-* mem.h - defines memory control structures and routines                  *
+* config.h - defines main config structures                               *
 *                                                                         *
 * Updates:                                                                *
 **************************************************************************/
 
+
 #ifndef MINISTRY_MEM_H
 #define MINISTRY_MEM_H
 
+#define DEFAULT_MEM_MAX_KB			( 10 * 1024 * 1024 )
+#define DEFAULT_MEM_CHECK_INTV		5000		// msec
+#define DEFAULT_MEM_HASHSIZE		100003
 
-#define NEW_PTLIST_BLOCK_SZ				128
-#define NEW_DHASH_BLOCK_SZ				256
-#define MEM_MAX_MB						4096
-#define DEFAULT_GC_THRESH				360
-#define DEFAULT_MEM_HASHSIZE			100003
+#define MEM_ALLOCSZ_HOSTS			128
+#define MEM_ALLOCSZ_POINTS			512
+#define MEM_ALLOCSZ_DHASH			512
+#define MEM_ALLOCSZ_IOBUF			128
+#define MEM_ALLOCSZ_IOLIST			512
+
+#define DEFAULT_GC_THRESH			360
 
 
-struct memory_control
+// universal type for memory management
+// means we can only manage things that start
+// with a next pointer
+struct mem_type_blank
 {
-	HOST		*	hosts;
-	PTLIST		*	points;
-	DHASH		*	dhash;
-	IOBUF		*	bufs;
-
-	int				free_hosts;
-	int				free_points;
-	int				free_dhash;
-	int				free_bufs;
-
-	int				mem_hosts;
-	int				mem_points;
-	int				mem_dhash;
-	int				mem_bufs;
-
-	int				max_mb;
-	int				gc_thresh;
-	int				hashsize;
+	MTBLANK			*	next;
 };
 
 
-throw_fn mem_loop;
+struct mem_type_control
+{
+	MTBLANK			*	flist;
+
+	uint32_t			fcount;
+	uint32_t			total;
+
+	uint16_t			alloc_sz;
+	uint16_t			alloc_ct;
+
+	pthread_mutex_t		lock;
+};
+
+
+struct mem_control
+{
+	MTYPE			*	hosts;
+	MTYPE			*	points;
+	MTYPE			*	dhash;
+	MTYPE			*	iobufs;
+	MTYPE			*	iolist;
+
+	int					curr_kb;
+	int					max_kb;
+	int					gc_thresh;
+	int					hashsize;
+	int					interval;	// msec
+};
+
 
 HOST *mem_new_host( void );
 void mem_free_host( HOST **h );
@@ -50,15 +70,24 @@ PTLIST *mem_new_point( void );
 void mem_free_point( PTLIST **p );
 void mem_free_point_list( PTLIST *list );
 
+IOLIST *mem_new_iolist( void );
+void mem_free_iolist( IOLIST **l );
+void mem_free_iolist_list( IOLIST *list );
+
 DHASH *mem_new_dhash( char *str, int len, int type );
 void mem_free_dhash( DHASH **d );
 void mem_free_dhash_list( DHASH *list );
 
 IOBUF *mem_new_buf( int sz );
-void mem_free_buf( IOBUF **n );
+void mem_free_buf( IOBUF **b );
 void mem_free_buf_list( IOBUF *list );
 
-MEM_CTL *mem_config_defaults( void );
+loop_call_fn mem_check;
+throw_fn mem_loop;
+
+void mem_shutdown( void );
 int mem_config_line( AVP *av );
+MEM_CTL *mem_config_defaults( void );
+
 
 #endif

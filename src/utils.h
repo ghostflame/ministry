@@ -41,7 +41,7 @@
 
 
 #define tvdiff( a, b, d )	d = (double) ( (int) a.tv_sec - (int) b.tv_sec ) + ( (double) ( (int) a.tv_usec - (int) b.tv_usec ) ) / 1000000.0
-#define tvll( a )			( ( 1000000 * (unsigned long long) a.tv_sec ) + (unsigned long long) a.tv_usec )
+#define tvll( a )			( ( 1000000 * (uint64_t) a.tv_sec ) + (uint64_t) a.tv_usec )
 #define tvinfo( a )			info( "%ld.%06.ld", (long) a.tv_sec, (long) a.tv_usec )
 #define tvadd( a, usec )	a.tv_usec += usec; while( a.tv_usec >= 1000000 ) { a.tv_sec++; a.tv_usec -= 1000000; }
 #define tvdupe( a, b )		b.tv_sec = a.tv_sec; b.tv_usec = a.tv_usec

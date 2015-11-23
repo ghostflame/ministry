@@ -81,7 +81,7 @@ struct host_data
 struct net_in_port
 {
 	int						sock;
-	unsigned long long		counter;
+	uint64_t				counter;
 
 	uint16_t				port;
 	uint16_t				back;
@@ -104,6 +104,22 @@ struct net_type
 };
 
 
+struct network_target
+{
+	TARGET				*	next;
+	NSOCK				*	sock;
+	IOLIST				*	qhead;
+	IOLIST				*	qend;
+	char				*	host;
+
+	uint32_t				reconn_ct;
+	uint32_t				countdown;
+	uint16_t				port;
+	int16_t					bufs;
+
+	pthread_mutex_t			lock;
+};
+
 
 
 struct network_control
@@ -112,15 +128,14 @@ struct network_control
 	NET_TYPE			*	statsd;
 	NET_TYPE			*	adder;
 
+	TARGET				*	targets;
+
 	time_t					dead_time;
 	unsigned int			rcv_tmout;
 	int						reconn;
 	int						io_usec;
 	int						max_bufs;
-
-	NSOCK				*	target;
-	char				*	host;
-	unsigned short			port;
+	int						tcount;
 };
 
 

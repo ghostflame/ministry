@@ -35,7 +35,7 @@ void loop_mark_done( char *tag )
 
 
 // every tick, set the time
-void loop_set_time( unsigned long long tval, void *arg )
+void loop_set_time( uint64_t tval, void *arg )
 {
 	ctl->curr_time.tv_sec  = tval / 1000000;
 	ctl->curr_time.tv_usec = tval % 1000000;
@@ -46,7 +46,7 @@ void loop_set_time( unsigned long long tval, void *arg )
 // double-precision addition inaccuracies
 void loop_control( char *name, loop_call_fn *fp, void *arg, int usec, int doSync, int offset )
 {
-	unsigned long long timer, next;
+	uint64_t timer, next;
 	struct timeval now;
 	int sleepfor;
 
@@ -109,8 +109,8 @@ void loop_start( void )
 	// and gc
 	thread_throw( &gc_loop, NULL );
 
-	// and the network io loop
-	thread_throw( &io_loop, NULL );
+	// and the network io loops
+	io_start( );
 
 	// throw the data listener loop
 	data_start( ctl->net->data );

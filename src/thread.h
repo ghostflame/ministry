@@ -29,6 +29,10 @@
 #define lock_table( idx )		pthread_mutex_lock(   &(ctl->locks->table[idx & HASHT_MUTEX_MASK]) )
 #define unlock_table( idx )		pthread_mutex_unlock( &(ctl->locks->table[idx & HASHT_MUTEX_MASK]) )
 
+#define lock_target( t )		pthread_mutex_lock(   &(t->lock) )
+#define unlock_target( t )		pthread_mutex_unlock( &(t->lock) )
+
+
 
 struct lock_control
 {
@@ -36,10 +40,11 @@ struct lock_control
 	pthread_mutex_t			hashalloc;					// control of dhash allocation
 	pthread_mutex_t			pointalloc;					// point list structures
 	pthread_mutex_t			bufalloc;					// buffer structures
+	pthread_mutex_t			listalloc;					// buflist structures
 
 	pthread_mutex_t			hashstats;					// used for counters
 	pthread_mutex_t			loop;						// thread startup/shutdown
-	pthread_mutex_t			iobuffers;					// writing/taking io buffers
+	pthread_mutex_t			bufref;						// controlled buffer refcount
 
 	pthread_mutex_t			table[HASHT_MUTEX_COUNT];	// hash table locks
 	pthread_mutex_t			dstats[DSTATS_MUTEX_COUNT];	// path stat data

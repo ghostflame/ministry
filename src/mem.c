@@ -2,7 +2,7 @@
 * This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
 *                                                                         *
-* mem.c - curated memory allocation and RSS checking                      *
+* mem.c - memory control, free list management                            *
 *                                                                         *
 * Updates:                                                                *
 **************************************************************************/
@@ -10,34 +10,145 @@
 #include "ministry.h"
 
 
+
+
+// grab some more memory of the proper size
+// must be called inside a lock
+void __mtype_alloc_free( MTYPE *mt, int count )
+{
+	MTBLANK *p, *list;
+	int i, max;
+	void *vp;
+
+	if( !count )
+		count = mt->alloc_ct;
+
+	list = (MTBLANK *) allocz( mt->alloc_sz * count );
+
+	// the last one needs a null next
+	max = count - 1;
+
+	vp = p = list;
+
+	// link them up
+	for( i = 0; i < max; i++ )
+	{
+		vp     += mt->alloc_sz;
+		p->next = (MTBLANK *) vp;
+		p       = p->next;
+	}
+
+	// and attach to the free list (it might not be null)
+	p->next = mt->flist;
+
+	// and update our type
+	mt->flist   = list;
+	mt->fcount += count;
+	mt->total  += count;
+}
+
+
+inline void *__mtype_new( MTYPE *mt )
+{
+	MTBLANK *b;
+
+	pthread_mutex_lock( &(mt->lock) );
+
+	if( !mt->fcount )
+		__mtype_alloc_free( mt, 0 );
+
+	b         = mt->flist;
+	mt->flist = b->next;
+	--(mt->fcount);
+
+	pthread_mutex_unlock( &(mt->lock) );
+
+	b->next = NULL;
+
+	return (void *) b;
+}
+
+inline void *__mtype_new_list( MTYPE *mt, int count )
+{
+	MTBLANK *top, *end;
+	int i;
+
+	if( count <= 0 )
+		return NULL;
+
+	pthread_mutex_lock( &(mt->lock) );
+
+	// get enough
+	while( mt->fcount < count )
+		__mtype_alloc_free( mt, 0 );
+
+	top = end = mt->flist;
+
+	// run down count - 1 elements
+	for( i = count - 1; i > 0; i-- )
+		end = end->next;
+
+	// end is now the last in the list we want
+	mt->flist   = end->next;
+	mt->fcount -= count;
+
+	pthread_mutex_unlock( &(mt->lock) );
+
+	end->next = NULL;
+
+	return (void *) top;
+}
+
+
+
+inline void __mtype_free( MTYPE *mt, void *p )
+{
+	MTBLANK *b = (MTBLANK *) p;
+
+	pthread_mutex_lock( &(mt->lock) );
+
+	b->next   = mt->flist;
+	mt->flist = p;
+	++(mt->fcount);
+
+	pthread_mutex_unlock( &(mt->lock) );
+}
+
+
+inline void __mtype_free_list( MTYPE *mt, int count, void *first, void *last )
+{
+	MTBLANK *l = (MTBLANK *) last;
+
+	pthread_mutex_lock( &(mt->lock) );
+
+	l->next     = mt->flist;
+	mt->flist   = first;
+	mt->fcount += count;
+
+	pthread_mutex_unlock( &(mt->lock) );
+}
+
+
+
+
+
 HOST *mem_new_host( void )
 {
 	HOST *h;
 
-	pthread_mutex_lock( &(ctl->locks->hostalloc) );
-	if( ctl->mem->hosts )
-	{
-		h = ctl->mem->hosts;
-		ctl->mem->hosts = h->next;
-		ctl->mem->free_hosts--;
-		pthread_mutex_unlock( &(ctl->locks->hostalloc) );
+	h = (HOST *) __mtype_new( ctl->mem->hosts );
 
-		h->next = NULL;
-	}
-	else
+	// is this one set up?
+	if( ! h->net )
 	{
-		ctl->mem->mem_hosts++;
-		pthread_mutex_unlock( &(ctl->locks->hostalloc) );
-
-		h      = (HOST *) allocz( sizeof( HOST ) );
-		h->net = net_make_sock( MIN_NETBUF_SZ, MIN_NETBUF_SZ, NULL, &(h->peer) );
+		h->net = net_make_sock( MIN_NETBUF_SZ, MIN_NETBUF_SZ,
+		                        NULL, &(h->peer) );
 		h->all = (WORDS *) allocz( sizeof( WORDS ) );
 		h->val = (WORDS *) allocz( sizeof( WORDS ) );
 	}
 
 	return h;
 }
-
 
 void mem_free_host( HOST **h )
 {
@@ -57,8 +168,8 @@ void mem_free_host( HOST **h )
 	sh->net->flags     = 0;
 	sh->net->out->len  = 0;
 	sh->net->in->len   = 0;
-	sh->net->keep->buf = NULL;
 	sh->net->keep->len = 0;
+	sh->net->keep->buf = NULL;
 
 	if( sh->net->name )
 	{
@@ -66,61 +177,15 @@ void mem_free_host( HOST **h )
 		sh->net->name = NULL;
 	}
 
-	pthread_mutex_lock( &(ctl->locks->hostalloc) );
-
-	sh->next = ctl->mem->hosts;
-	ctl->mem->hosts = sh;
-	ctl->mem->free_hosts++;
-
-	pthread_mutex_unlock( &(ctl->locks->hostalloc) );
-}
-
-
-
-// this must always be called inside a lock
-void __mem_new_points( int count )
-{
-    PTLIST *list, *p;
-    int i;
-
-    // allocate a block of points
-    list = (PTLIST *) allocz( count * sizeof( PTLIST ) );
-
-    p = list + 1;
-
-    // link them up
-    for( i = 0; i < count; i++ )
-        list[i].next = p++;
-
-    // and insert them
-    list[count - 1].next = ctl->mem->points;
-    ctl->mem->points  = list;
-    ctl->mem->free_points += count;
-    ctl->mem->mem_points  += count;
+	__mtype_free( ctl->mem->hosts, sh );
 }
 
 
 
 PTLIST *mem_new_point( void )
 {
-	PTLIST *p;
-
-	pthread_mutex_lock( &(ctl->locks->pointalloc) );
-
-    if( !ctl->mem->points )
-        __mem_new_points( NEW_PTLIST_BLOCK_SZ );
-
-	p = ctl->mem->points;
-	ctl->mem->points = p->next;
-	--(ctl->mem->free_points);
-
-	pthread_mutex_unlock( &(ctl->locks->pointalloc) );
-
-	p->next = NULL;
-
-	return p;
+	return (PTLIST *) __mtype_new( ctl->mem->points );
 }
-
 
 void mem_free_point( PTLIST **p )
 {
@@ -132,20 +197,14 @@ void mem_free_point( PTLIST **p )
 	sp = *p;
 	*p = NULL;
 
-	memset( sp, 0, sizeof( PTLIST ) );
+	sp->count = 0;
 
-	pthread_mutex_lock( &(ctl->locks->pointalloc) );
-
-	sp->next = ctl->mem->points;
-	ctl->mem->points = sp;
-	++(ctl->mem->free_points);
-
-	pthread_mutex_unlock( &(ctl->locks->pointalloc) );
+	__mtype_free( ctl->mem->points, sp );
 }
 
 void mem_free_point_list( PTLIST *list )
 {
-	PTLIST *freed, *p, *end;
+	PTLIST *p, *freed, *end;
 	int j = 0;
 
 	freed = end = NULL;
@@ -155,9 +214,9 @@ void mem_free_point_list( PTLIST *list )
 		p    = list;
 		list = p->next;
 
-		memset( p, 0, sizeof( PTLIST ) );
-		p->next = freed;
-		freed   = p;
+		p->count = 0;
+		p->next  = freed;
+		freed    = p;
 
 		if( !end )
 			end = p;
@@ -165,73 +224,31 @@ void mem_free_point_list( PTLIST *list )
 		j++;
 	}
 
-	pthread_mutex_lock( &(ctl->locks->pointalloc) );
-
-	end->next = ctl->mem->points;
-	ctl->mem->points = freed;
-	ctl->mem->free_points += j;
-
-	pthread_mutex_unlock( &(ctl->locks->pointalloc) );
-}
-
-
-// this must always be called from inside a lock
-void __mem_new_dhash( int count )
-{
-    DHASH *dlist, *d;
-    int i;
-
-    // allocate a block of paths and words
-    dlist = (DHASH *) allocz( count * sizeof( DHASH ) );
-
-    d = dlist + 1;
-
-    // link them up
-    for( i = 0; i < count; i++ )
-        dlist[i].next = d++;
-
-    // and insert them
-    dlist[count - 1].next = ctl->mem->dhash;
-    ctl->mem->dhash = dlist;
-    ctl->mem->free_dhash += count;
-    ctl->mem->mem_dhash  += count;
+	__mtype_free_list( ctl->mem->points, j, freed, end );
 }
 
 
 
 DHASH *mem_new_dhash( char *str, int len, int type )
 {
-	DHASH *d;
+	DHASH *d = __mtype_new( ctl->mem->dhash );
 
-	pthread_mutex_lock( &(ctl->locks->hashalloc) );
-
-	if( !ctl->mem->dhash )
-        __mem_new_dhash( NEW_DHASH_BLOCK_SZ );
-
-	d = ctl->mem->dhash;
-	ctl->mem->dhash = d->next;
-	--(ctl->mem->free_dhash);
-
-	pthread_mutex_unlock( &(ctl->locks->hashalloc) );
-
-	d->next = NULL;
 	d->type = type;
 
 	if( len >= d->sz )
 	{
-	  	free( d->path );
+		free( d->path );
 		d->sz   = len + 1;
 		d->path = (char *) allocz( d->sz );
 	}
 
-	// copy the string into place
+	// copy the string
 	memcpy( d->path, str, len );
 	d->path[len] = '\0';
 	d->len = len;
 
 	return d;
 }
-
 
 void mem_free_dhash( DHASH **d )
 {
@@ -256,21 +273,12 @@ void mem_free_dhash( DHASH **d )
 
 	sd->type = 0;
 
-	// ignore processing, it gets tidied up anyway
-
-	pthread_mutex_lock( &(ctl->locks->hashalloc) );
-
-	sd->next = ctl->mem->dhash;
-	ctl->mem->dhash = sd;
-	++(ctl->mem->free_dhash);
-
-	pthread_mutex_unlock( &(ctl->locks->hashalloc) );
+	__mtype_free( ctl->mem->dhash, sd );
 }
-
 
 void mem_free_dhash_list( DHASH *list )
 {
-	DHASH *freed, *d, *end;
+	DHASH *d, *freed, *end;
 	PTLIST *ptfree, *p;
 	int j = 0;
 
@@ -290,15 +298,17 @@ void mem_free_dhash_list( DHASH *list )
 			for( p = d->in.points; p->next; p = p->next );
 
 			p->next = ptfree;
-			ptfree  = p;
+			ptfree  = d->in.points;
 
 			d->in.points = NULL;
 		}
 		else
 			d->in.total = 0;
 
-		d->next = freed;
-		freed   = d;
+
+
+		d->next  = freed;
+		freed    = d;
 
 		if( !end )
 			end = d;
@@ -306,13 +316,7 @@ void mem_free_dhash_list( DHASH *list )
 		j++;
 	}
 
-	pthread_mutex_lock( &(ctl->locks->hashalloc) );
-
-	end->next = ctl->mem->dhash;
-	ctl->mem->dhash = d;
-	ctl->mem->free_dhash += j;
-
-	pthread_mutex_unlock( &(ctl->locks->hashalloc) );
+	__mtype_free_list( ctl->mem->dhash, j, freed, end );
 
 	if( ptfree )
 		mem_free_point_list( ptfree );
@@ -320,33 +324,65 @@ void mem_free_dhash_list( DHASH *list )
 
 
 
+IOLIST *mem_new_iolist( void )
+{
+	return __mtype_new( ctl->mem->iolist );
+}
+
+void mem_free_iolist( IOLIST **l )
+{
+	IOLIST *sl;
+
+	if( !l || !*l )
+		return;
+
+	sl = *l;
+	*l = NULL;
+
+	sl->prev = NULL;
+	sl->buf  = NULL;
+
+	__mtype_free( ctl->mem->iolist, sl );
+}
+
+void mem_free_iolist_list( IOLIST *list )
+{
+	IOLIST *l, *freed, *end;
+	int j = 0;
+
+	freed = end = NULL;
+
+	while( list )
+	{
+		l    = list;
+		list = l->next;
+
+		l->buf  = NULL;
+		l->prev = NULL;
+
+		l->next = freed;
+		freed   = l;
+
+		if( !end )
+			end = l;
+
+		j++;
+	}
+
+	__mtype_free_list( ctl->mem->iolist, j, freed, end );
+}
+
+
 IOBUF *mem_new_buf( int sz )
 {
 	IOBUF *b;
 
 	// dangerous returning one with memory attached
+	// if not asked for it
 	if( sz == 0 )
 		return (IOBUF *) allocz( sizeof( IOBUF ) );
 
-
-	pthread_mutex_lock( &(ctl->locks->bufalloc) );
-	if( ctl->mem->bufs )
-	{
-		b = ctl->mem->bufs;
-		ctl->mem->bufs = b->next;
-		--(ctl->mem->free_bufs);
-		pthread_mutex_unlock( &(ctl->locks->bufalloc) );
-
-		b->next = NULL;
-	}
-	else
-	{
-		++(ctl->mem->mem_bufs);
-		pthread_mutex_unlock( &(ctl->locks->bufalloc) );
-
-
-		b = (IOBUF *) allocz( sizeof( IOBUF ) );
-	}
+	b = (IOBUF *) __mtype_new( ctl->mem->iobufs );
 
 	if( sz < 0 )
 		sz = MIN_NETBUF_SZ;
@@ -366,6 +402,7 @@ IOBUF *mem_new_buf( int sz )
 }
 
 
+
 void mem_free_buf( IOBUF **b )
 {
 	IOBUF *sb;
@@ -380,19 +417,12 @@ void mem_free_buf( IOBUF **b )
 		sb->buf[0] = '\0';
 	else
 	{
-		sb->buf  = NULL;
-		sb->hwmk = NULL;
+		sb->buf = sb->hwmk = NULL;
 	}
 
 	sb->len = 0;
 
-	pthread_mutex_lock( &(ctl->locks->bufalloc) );
-
-	sb->next = ctl->mem->bufs;
-	ctl->mem->bufs = sb;
-	++(ctl->mem->free_bufs);
-
-	pthread_mutex_unlock( &(ctl->locks->bufalloc) );
+	__mtype_free( ctl->mem->iobufs, sb );
 }
 
 
@@ -412,8 +442,7 @@ void mem_free_buf_list( IOBUF *list )
 			b->buf[0] = '\0';
 		else
 		{
-			b->buf  = NULL;
-			b->hwmk = NULL;
+			b->buf = b->hwmk = NULL;
 		}
 
 		b->len  = 0;
@@ -426,42 +455,146 @@ void mem_free_buf_list( IOBUF *list )
 		j++;
 	}
 
-	pthread_mutex_lock( &(ctl->locks->bufalloc) );
-
-	end->next = ctl->mem->bufs;
-	ctl->mem->bufs = freed;
-	ctl->mem->free_bufs += j;
-
-	pthread_mutex_unlock( &(ctl->locks->bufalloc) );
+	__mtype_free_list( ctl->mem->iobufs, j, freed, end );
 }
 
 
 
+static int mem_check_counter = 0;
+static int mem_check_max     = 1;
 
-void mem_check( unsigned long long tval, void *arg )
+void mem_check( uint64_t tval, void *arg )
 {
 	struct rusage ru;
 
+	// we only do this every so often, but we need the faster
+	// loop for responsiveness to shutdown
+	if( ++mem_check_counter < mem_check_max )
+		return;
+
+	mem_check_counter = 0;
+
 	getrusage( RUSAGE_SELF, &ru );
 
-	//debug( "Checking memory size against maximum: %d vs %d KB",
-	//		ru.ru_maxrss, ctl->mem->max_mb );
+	ctl->mem->curr_kb = ru.ru_maxrss;
 
-	if( ru.ru_maxrss > ctl->mem->max_mb )
+	if( ctl->mem->curr_kb > ctl->mem->max_kb )
 		loop_end( "Memory usage exceeds configured maximum." );
 }
-
-
 
 
 void *mem_loop( void *arg )
 {
 	THRD *t = (THRD *) arg;
+	int usec;
 
-	loop_control( "memory control", &mem_check, NULL, 10000000, 0, 0 );
+	usec = 1000 * ctl->mem->interval;
+
+	// don't make us wait too long
+	if( usec > 3000000 )
+	{
+		mem_check_max = 10;
+		usec /= 10;
+	}
+
+	loop_control( "memory control", mem_check, NULL, usec, 0, 0 );
 
 	free( t );
 	return NULL;
+}
+
+
+
+int mem_config_line( AVP *av )
+{
+	MTYPE *mt;
+	char *d;
+	int t;
+
+	if( !( d = strchr( av->att, '.' ) ) )
+	{
+		// just the singles
+		if( attIs( "max_mb" ) || attIs( "max_size" ) )
+			ctl->mem->max_kb = 1024 * atoi( av->val );
+		else if( attIs( "max_kb" ) )
+			ctl->mem->max_kb = atoi( av->val );
+		else if( attIs( "interval" ) || attIs( "msec" ) )
+			ctl->mem->interval = atoi( av->val );
+		else if( attIs( "hashsize" ) )
+			ctl->mem->hashsize = atoi( av->val );
+		else if( attIs( "gc_thresh" ) )
+		{
+			t = atoi( av->val );
+			if( !t )
+				t = DEFAULT_GC_THRESH;
+			info( "Garbage collection threshold set to %d stats intervals.", t );
+			ctl->mem->gc_thresh = t;
+		}
+		else
+			return -1;
+
+		return 0;
+	}
+
+	*d++ = '\0';
+
+	// after this, it's per-type control
+	if( !strncasecmp( av->att, "hosts.", 6 ) )
+		mt = ctl->mem->hosts;
+	else if( !strncasecmp( av->att, "iobufs.", 7 ) )
+		mt = ctl->mem->iobufs;
+	else if( !strncasecmp( av->att, "points.", 7 ) )
+		mt = ctl->mem->points;
+	else if( !strncasecmp( av->att, "dhash.", 6 ) )
+		mt = ctl->mem->dhash;
+	else if( !strncasecmp( av->att, "iolist.", 7 ) )
+		mt = ctl->mem->iolist;
+	else
+		return -1;
+
+	if( !strcasecmp( d, "block" ) )
+	{
+		mt->alloc_ct = (uint16_t) atoi( av->val );
+		info( "Allocation block for %s set to %hu", av->att, mt->alloc_ct );
+	}
+	else
+		return -1;
+
+	// done this way because GC might become a thing
+
+	return 0;
+}
+
+// shut down memory locks
+void mem_shutdown( void )
+{
+	MEM_CTL *m;
+
+	m = ctl->mem;
+
+	pthread_mutex_destroy( &(m->hosts->lock)  );
+	pthread_mutex_destroy( &(m->points->lock) );
+	pthread_mutex_destroy( &(m->iobufs->lock) );
+	pthread_mutex_destroy( &(m->dhash->lock)  );
+	pthread_mutex_destroy( &(m->iolist->lock) );
+}
+
+
+MTYPE *__mem_type_ctl( int sz, int ct )
+{
+	MTYPE *mt;
+
+	mt           = (MTYPE *) allocz( sizeof( MTYPE ) );
+	mt->alloc_sz = sz;
+	mt->alloc_ct = ct;
+
+	// and alloc some already
+	__mtype_alloc_free( mt, mt->alloc_ct );
+
+	// init the mutex
+	pthread_mutex_init( &(mt->lock), NULL );
+
+	return mt;
 }
 
 
@@ -472,33 +605,17 @@ MEM_CTL *mem_config_defaults( void )
 
 	m = (MEM_CTL *) allocz( sizeof( MEM_CTL ) );
 
-	m->max_mb    = MEM_MAX_MB;
+	m->hosts     = __mem_type_ctl( sizeof( HOST ),   MEM_ALLOCSZ_HOSTS  );
+	m->iobufs    = __mem_type_ctl( sizeof( IOBUF ),  MEM_ALLOCSZ_IOBUF  );
+	m->points    = __mem_type_ctl( sizeof( PTLIST ), MEM_ALLOCSZ_POINTS );
+	m->dhash     = __mem_type_ctl( sizeof( DHASH ),  MEM_ALLOCSZ_DHASH  );
+	m->iolist    = __mem_type_ctl( sizeof( IOLIST ), MEM_ALLOCSZ_IOLIST );
+
+	m->max_kb    = DEFAULT_MEM_MAX_KB;
+	m->interval  = DEFAULT_MEM_CHECK_INTV;
 	m->gc_thresh = DEFAULT_GC_THRESH;
 	m->hashsize  = DEFAULT_MEM_HASHSIZE;
 
 	return m;
 }
-
-int mem_config_line( AVP *av )
-{
-	int t;
-
-	if( attIs( "max_mb" ) || attIs( "max_size" ) )
-		ctl->mem->max_mb = 1024 * atoi( av->val );
-	else if( attIs( "hashsize" ) )
-		ctl->mem->hashsize = atoi( av->val );
-	else if( attIs( "gc_thresh" ) )
-	{
-		t = atoi( av->val );
-		if( !t )
-			t = DEFAULT_GC_THRESH;
-		info( "Garbage collection threshold set to %d stats intervals.", t );
-		ctl->mem->gc_thresh = t;
-	}
-	else
-		return -1;
-
-	return 0;
-}
-
 

@@ -13,7 +13,7 @@
 typedef struct ministry_control		MIN_CTL;
 typedef struct log_control			LOG_CTL;
 typedef struct lock_control			LOCK_CTL;
-typedef struct memory_control		MEM_CTL;
+typedef struct mem_control			MEM_CTL;
 typedef struct network_control		NET_CTL;
 typedef struct stats_control		STAT_CTL;
 
@@ -23,18 +23,21 @@ typedef struct stat_config			ST_CFG;
 typedef struct stat_thread_ctl		ST_THR;
 typedef struct config_context		CCTXT;
 typedef struct points_list			PTLIST;
+typedef struct mem_type_blank		MTBLANK;
+typedef struct mem_type_control		MTYPE;
 typedef union  data_hash_vals		DVAL;
 typedef struct data_hash_entry		DHASH;
 typedef struct io_buffer			IOBUF;
+typedef struct io_buffer_list		IOLIST;
 typedef struct net_socket			NSOCK;
-typedef struct net_target			TARGET;
+typedef struct network_target		TARGET;
 typedef struct host_data			HOST;
 typedef struct thread_data			THRD;
 typedef struct words_data			WORDS;
 typedef struct av_pair				AVP;
 
 // function types
-typedef void loop_call_fn ( unsigned long long, void * );
+typedef void loop_call_fn ( uint64_t, void * );
 typedef void * throw_fn ( void * );
 typedef void line_fn ( HOST *, char *, int );
 

@@ -132,12 +132,19 @@ HOST *net_get_host( int sock, NET_TYPE *type )
 
 NSOCK *net_make_sock( int insz, int outsz, char *name, struct sockaddr_in *peer )
 {
+	char namebuf[32];
 	NSOCK *ns;
 
 	ns = (NSOCK *) allocz( sizeof( NSOCK ) );
 
 	if( name )
 		ns->name = strdup( name );
+	else
+	{
+		snprintf( namebuf, 32, "%s:%hu", inet_ntoa( peer->sin_addr ),
+			ntohs( peer->sin_port ) );
+		ns->name = strdup( namebuf );
+	}
 
 	ns->peer = peer;
 	ns->keep = mem_new_buf( 0 );
@@ -368,7 +375,7 @@ NET_TYPE *net_type_defaults( unsigned short port, line_fn *lfn, char *label )
 	nt            = (NET_TYPE *) allocz( sizeof( NET_TYPE ) );
 	nt->tcp       = (NET_PORT *) allocz( sizeof( NET_PORT ) );
 	nt->tcp->ip   = INADDR_ANY;
-	nt->tcp->back = 20;
+	nt->tcp->back = DEFAULT_NET_BACKLOG;
 	nt->tcp->port = port;
 	nt->tcp->type = nt;
 	nt->handler   = lfn;
@@ -396,9 +403,7 @@ NET_CTL *net_config_defaults( void )
 	net->statsd    = net_type_defaults( DEFAULT_STATSD_PORT, &data_line_statsd, "stats compat socket" );
 	net->adder     = net_type_defaults( DEFAULT_ADDER_PORT,  &data_line_adder,  "combiner socket" );
 
-	// default graphite target, localhost 2003
-	net->host      = strdup( DEFAULT_TARGET_HOST );
-	net->port      = DEFAULT_TARGET_PORT;
+	// can't add default target, it's a linked list
 
 	return net;
 }
@@ -407,12 +412,14 @@ NET_CTL *net_config_defaults( void )
 #define ntflag( f )			if( atoi( av->val ) ) nt->flags |= NTYPE_##f; else nt->flags &= ~NTYPE_##f
 
 
+
 int net_config_line( AVP *av )
 {
 	struct in_addr ina;
 	char *d, *p, *cp;
 	NET_TYPE *nt;
 	int i, tcp;
+	TARGET *t;
 	WORDS *w;
 
 
@@ -449,6 +456,35 @@ int net_config_line( AVP *av )
 				ctl->net->max_bufs = IO_MAX_WAITING;
 			debug( "Max waiting buffers set to %d.", ctl->net->max_bufs );
 		}
+		else if( attIs( "target" ) || attIs( "targets" ) )
+		{
+			w  = (WORDS *) allocz( sizeof( WORDS ) );
+			cp = strdup( av->val );
+			strwords( w, cp, 0, ',' );
+
+			for( i = 0; i < w->wc; i++ )
+			{
+				t = (TARGET *) allocz( sizeof( TARGET ) );
+
+				if( ( p = memchr( w->wd[i], ':', w->len[i] ) ) )
+				{
+					t->host = str_dup( w->wd[i], p - w->wd[i] );
+					t->port = (uint16_t) strtoul( p + 1, NULL, 10 );
+				}
+				else
+				{
+					t->host = str_dup( w->wd[i], w->len[i] );
+					t->port = DEFAULT_TARGET_PORT;
+				}
+
+				t->next = ctl->net->targets;
+				ctl->net->targets = t;
+				ctl->net->tcount++;
+			}
+
+			free( cp );
+			free( w );
+		}
 		else
 			return -1;
 
@@ -464,24 +500,6 @@ int net_config_line( AVP *av )
 		nt = ctl->net->statsd;
 	else if( !strncasecmp( av->att, "adder.", 6 ) )
 		nt = ctl->net->adder;
-	else if( !strncasecmp( av->att, "target.", 7 ) )
-	{
-		if( !strcasecmp( p, "host" ) )
-		{
-			free( ctl->net->host );
-			ctl->net->host = strdup( av->val );
-		}
-		else if( !strcasecmp( p, "port" ) )
-		{
-			ctl->net->port = (unsigned short) strtoul( av->val, NULL, 10 );
-			if( ctl->net->port == 0 )
-				ctl->net->port = DEFAULT_TARGET_PORT;
-		}
-		else
-			return -1;
-
-		return 0;
-	}
 	else
 		return -1;
 

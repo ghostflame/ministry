@@ -88,7 +88,7 @@ inline DHASH *data_find_path( DHASH *list, uint32_t hval, char *path, int len )
 #define data_find_adder( idx, h, p, l )		data_find_path( ctl->stats->adder->data[idx], h, p, l )
 
 
-void data_point_adder( char *path, int len, unsigned long long val )
+void data_point_adder( char *path, int len, uint64_t val )
 {
 	uint32_t hval, indx;
 	DHASH *d;
