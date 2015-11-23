@@ -23,7 +23,6 @@ struct io_buffer
 	char		*	hwmk;
 	int				len;
 	int				sz;
-	int				id;
 	int				refs;		// how many outstanding to send?
 };
 
@@ -39,7 +38,7 @@ struct io_buffer_list
 // r/w
 int io_read_data( NSOCK *s );
 int io_read_lines( HOST *h );
-int io_write_data( NSOCK *s );
+int io_write_data( NSOCK *s, int off );
 
 int io_connected( NSOCK *s );
 int io_connect( NSOCK *s );

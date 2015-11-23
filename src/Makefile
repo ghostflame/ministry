@@ -2,7 +2,7 @@ CC     = /usr/bin/gcc -Wall -Wshadow
 
 MAXV   = 0
 MINV   = 1
-MICV   = 3
+MICV   = 4
 
 VER    = $(MAXV).$(MINV).$(MICV)
 

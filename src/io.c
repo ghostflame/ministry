@@ -148,8 +148,11 @@ int io_read_lines( HOST *h )
 }
 
 
-
-int io_write_data( NSOCK *s )
+// we have to pass an offset in because
+// we cannot modify the buffer, else later
+// threads writing the same buffer will
+// perceive it to be empty
+int io_write_data( NSOCK *s, int off )
 {
 	int rv, len, wr, tries, sent;
 	struct pollfd p;
@@ -161,8 +164,8 @@ int io_write_data( NSOCK *s )
 	tries    = 3;
 	sent     = 0;
 	b        = s->out;
-	ptr      = b->buf;
-	len      = b->len;
+	ptr      = b->buf + off;
+	len      = b->len - off;
 
 	while( len > 0 )
 	{
@@ -197,11 +200,7 @@ int io_write_data( NSOCK *s )
 		sent += wr;
 	}
 
-	// weirdness
-	if( len >= b->len )
-		b->len = 0;
-
-	// what we wrote
+	// what we wrote - adds to offset
 	return sent;
 }
 
@@ -391,6 +390,7 @@ void io_grab_buffer( TARGET *t )
 
 	lock_target( t );
 
+	t->curr_off  = 0;
 	t->sock->out = NULL;
 
 	if( !t->qend )
@@ -413,6 +413,7 @@ void io_grab_buffer( TARGET *t )
 	unlock_target( t );
 
 	t->sock->out = l->buf;
+	t->curr_len  = l->buf->len;
 
 	mem_free_iolist( &l );
 }
@@ -420,7 +421,6 @@ void io_grab_buffer( TARGET *t )
 
 void io_send( uint64_t tval, void *arg )
 {
-	int l, rv, i;
 	TARGET *t;
 	NSOCK *s;
 
@@ -448,17 +448,11 @@ void io_send( uint64_t tval, void *arg )
 	if( !s->out )
 		io_grab_buffer( t );
 
-	i = 0;
-
+	// while there's something to send
 	while( s->out )
 	{
-		i++;
-
 		// try to send the out buffer
-		l  = s->out->len;
-		rv = io_write_data( s );
-
-		// did we sent it all?
+		t->curr_off += io_write_data( s, t->curr_off );
 
 		// did we have problems?
 		if( s->flags & HOST_CLOSE )
@@ -468,7 +462,8 @@ void io_send( uint64_t tval, void *arg )
 			break;
 		}
 
-		if( rv == l )
+		// did we sent it all?
+		if( t->curr_off >= t->curr_len )
 		{
 			// drop that buffer and get a new one
 			io_decr_buf( s->out );
@@ -485,7 +480,7 @@ void io_send( uint64_t tval, void *arg )
 void *io_loop( void *arg )
 {
 	struct sockaddr_in sa, *sp;
-	struct addrinfo *ai;
+	struct addrinfo *ai, *ap;
 	TARGET *d;
 	THRD *t;
 
@@ -501,10 +496,23 @@ void *io_loop( void *arg )
 		return NULL;
 	}
 
-	sp = (struct sockaddr_in *) ai->ai_addr;
+	// find an AF_INET answer - we don't do ipv6 yet
+	for( ap = ai; ap; ap = ap->ai_next )
+		if( ap->ai_family == AF_INET )
+			break;
+
+	// none?
+	if( !ap )
+	{
+		err( "Could not find an IPv4 answer for address %s", d->host );
+		freeaddrinfo( ai );
+		return NULL;
+	}
+
+	sp = (struct sockaddr_in *) ap->ai_addr;
 
 	// we'll take the first address thanks
-	sa.sin_family = sp->sin_family;
+	sa.sin_family = ap->ai_family;
 	sa.sin_addr   = sp->sin_addr;
 	// and we already have a port
 	sa.sin_port   = htons( d->port );

@@ -33,3 +33,6 @@
 
 # directories
 logs/*
+
+# binary
+src/ministry

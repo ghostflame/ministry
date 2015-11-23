@@ -117,6 +117,10 @@ struct network_target
 	uint16_t				port;
 	int16_t					bufs;
 
+	// offsets into the current buffer
+	int						curr_off;
+	int						curr_len;
+
 	pthread_mutex_t			lock;
 };
 
