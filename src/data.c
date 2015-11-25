@@ -18,34 +18,31 @@ static uint32_t data_cksum_primes[8] =
 
 uint32_t data_path_cksum( char *str, int len )
 {
-#ifdef CKSUM_64BIT
-	register uint64_t *p, sum = 0xbeef;
-#else
 	register uint32_t *p, sum = 0xbeef;
-#endif
 	int rem;
 
-#ifdef CKSUM_64BIT
-	rem = len & 0x7;
-	len = len >> 3;
-
-	for( p = (uint64_t *) str; len > 0; len-- )
-#else
 	rem = len & 0x3;
 	len = len >> 2;
+	p   = (uint32_t *) str;
 
-	for( p = (uint32_t *) str; len > 0; len-- )
-#endif
+	// a little unrolling for good measure
+	while( len > 4 )
+	{
+		sum ^= *p++;
+		sum ^= *p++;
+		sum ^= *p++;
+		sum ^= *p++;
+		len -= 4;
+	}
+
+	// and the rest
+	while( len-- > 0 )
 		sum ^= *p++;
 
 	// and capture the rest
 	str = (char *) p;
 	while( rem-- > 0 )
 		sum += *str++ * data_cksum_primes[rem];
-
-#ifdef CKSUM_64BIT
-	sum = ( ( sum >> 32 ) ^ ( sum & 0xffffffff ) ) & 0xffffffff;
-#endif
 
 	return sum;
 }
