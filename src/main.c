@@ -114,7 +114,7 @@ int main( int ac, char **av )
 		switch( oc )
 		{
 			case 'c':
-				free( cfl->cfg_file );
+				free( ctl->cfg_file );
 				ctl->cfg_file = strdup( optarg );
 				break;
 			case 'd':

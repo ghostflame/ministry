@@ -400,8 +400,14 @@ void stats_init_control( ST_CFG *c, int alloc_data )
 
 void stats_init( void )
 {
+	struct timeval tv;
+
 	stats_init_control( ctl->stats->stats, 1 );
 	stats_init_control( ctl->stats->adder, 1 );
+
+	// let's not always seed from 1, eh?
+	gettimeofday( &tv, NULL );
+	srandom( tv.tv_usec );
 
 	// we only allow one thread for this, and no data
 	ctl->stats->self->threads = 1;
