@@ -6,6 +6,7 @@ CFGDIR = /etc/ministry
 INISCR = /etc/init.d/ministry
 MANDIR = /usr/share/man
 
+VERS   = $(shell sed -rn 's/^Version:\t(.*)/\1/p' ministry.spec)
 
 SUBDIR = bin conf logs data
 
@@ -41,7 +42,7 @@ uninstall:
 	@echo "Use make target 'remove' to actually remove ministry."
 
 version:
-	@cd src && $(MAKE) $(MFLAGS) --no-print-directory version
+	@echo $(VERS)
 
 remove:
 	@cd src && $(MAKE) $(MFLAGS) uninstall

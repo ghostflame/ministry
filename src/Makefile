@@ -1,11 +1,5 @@
 CC     = /usr/bin/gcc -Wall -Wshadow
 
-MAXV   = 0
-MINV   = 1
-MICV   = 7
-
-VER    = $(MAXV).$(MINV).$(MICV)
-
 FILES  = utils log loop thread mem gc net io data stats config main
 HEADS  = config data gc io log loop mem ministry net run stats thread typedefs utils
 
@@ -32,8 +26,6 @@ debug: $(BIN)
 fast:  CFLAGS += -O2
 fast:  $(BIN)
 
-version:
-	@echo $(VER)
 
 $(BIN): $(HDRS) $(OBJS)
 	$(CC) -o $(BIN) $(LFLAGS) $(OBJS)
