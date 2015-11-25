@@ -1,0 +1,92 @@
+.\" Ministry manual page
+.TH MINISTRY "1" "Nov 2015" "Networking Utilities" "User Commands"
+.SH NAME
+ministry \- stats daemon
+.SH SYNOPSIS
+.nf
+.BI "ministry [" -Ddvp "|" -t "] -c <" config-file ">"
+.fi
+.SH DESCRIPTION
+.PP
+\fBMinistry\fP is a statsd-like statistics daemon that listens on network sockets, UDP or TCP, for
+data points, and either adds them or produces metrics suitable for ingestion by graphite, coal or
+other time-series databases.  It is written in highly-threaded C.
+.PP
+The main options are:
+.TP
+\fB\-h\fR
+print help
+.TP
+\fB\-c\fR \fI<FILE>\fR
+select config file
+.TP
+\fB\-t\fR
+just test config and exit
+.TP
+\fB\-D\fR
+run in debug mode
+.TP
+\fB\-v\fR
+run in verbose mode, with more output to stdout
+.TP
+\fB\-p\fR \fI<FILE>\fR
+override the configured pidfile
+.PP
+The config file format is in sections, denoted as \fB[Section]\fR and is of a general format of:
+.TP
+\fBvariable\fR = \fIvalue\fR
+.PP
+It may use the keyword \fBinclude\fR to read in another file - the current section context is kept.
+.PP
+The default config file is /etc/ministry/ministry.conf
+.SH Behaviour
+.PP
+\fBMinistry\fR performs two separate functions - summation of data against paths and generating
+simple statistics about input data against paths.  In each case, \fBministry\fR expects graphite-
+style dot-delimited, directory-safe strings.  Data submitted to the adder port is simply summed
+and then reported onwards.
+.PP
+The stats port creates an array of values against the path and at submission time this array is
+sorted to assess the lowest, highest and median value.  Any configured threshold values are also
+calculated.  Then the data is summed to create the arithmetic mean.  The count is also submitted.
+.SH Formats
+.PP
+\fBMinistry\fR accepts data in two formats; a subset of the statsd format and a simpler, new format
+specific to \fBministry\fR.  The new format is:
+.TP
+\fBpath\fR(dot-delimited string) \fIvalue\fR(number)\\n
+.PP
+\fBMinistry\fR would normally listen on two ports (or sets of ports) to delineate stats traffic
+from adder traffic.
+.PP
+The subset of statsd formats supported is:
+.TP
+\fBpath\fR(dot-delimited string):\fIvalue\fR(float)|ms\\n
+.TP
+\fBpath\fR(dot-delimited string):\fIvalue\fR(int)|c\\n
+.PP
+The first format is used to create stats, the second to aggregate values submitted - they are just
+added up.
+.SH Threading
+.PP
+\fBMinistry\fR can open up a number of ports, listening on both TCP and UDP for data.  The threading
+model runs one thread per TCP port and spawns a new thread per accepted connection, allowing it to
+engage multiple cores to handle multiple connections.  However, UDP does not allow that option.
+.PP
+To permit multiple cores to be used to handle UDP traffic, the config permits multiple UDP ports to
+be specified for any format port.  A single thread is created to handle packets received by each
+port.
+.PP
+Data is inserted into the data hashes the by the thread handling the incoming packets - so either a
+TCP connection handling thread or a UDP port thread.  Mutexes control the individual hash structures
+to mediate data addition collisions.
+.PP
+At the point of the stats submission timers going off, new threads are created for that single
+data submission cycle.  The number of them is configurable.  They walk the data hash 'stealing' the
+incoming data points, dropping them on a processing list instead.  Only after all points have been
+moved from incoming to processing do they go back and begin stats generation.  This means that the
+stats arriving are very cleanly delineated at the submission timer.
+.SH SEE ALSO
+.BR ministry.conf (5)
+.SH AUTHOR
+\fBMinistry\fP is written and maintained by John Denholm, Sky Betting And Gaming.

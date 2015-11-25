@@ -294,7 +294,7 @@ MIN_CTL *config_create( void )
 	c->net        = net_config_defaults( );
 	c->stats      = stats_config_defaults( );
 
-	c->cfg_file   = "conf/ministry.conf";
+	c->cfg_file   = strdup( DEFAULT_CONFIG_FILE );
 	c->pidfile    = strdup( DEFAULT_PID_FILE );
 
 	c->tick_usec  = 1000 * DEFAULT_TICK_MSEC;

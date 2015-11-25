@@ -20,7 +20,7 @@ Options:\n\
  -d           Daemonize in the background\n\
  -D           Switch on debug output (overrides config)\n\
  -v           Verbose logging to console\n\
- -p           Override configured pidfile\n\
+ -p <file>    Override configured pidfile\n\
  -t           Just test the config is valid and exit\n\n\
 Ministry is a statsd-alternative processing engine.  It runs on very\n\
 similiar lines, taking data paths and producing statistics on them.\n\
@@ -114,6 +114,7 @@ int main( int ac, char **av )
 		switch( oc )
 		{
 			case 'c':
+				free( cfl->cfg_file );
 				ctl->cfg_file = strdup( optarg );
 				break;
 			case 'd':

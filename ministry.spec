@@ -1,5 +1,5 @@
 Name:		ministry
-Version:	0.1.4
+Version:	0.1.6
 Release:	1%{?dist}
 Summary:	A statsd implementation in threaded C.
 
@@ -15,20 +15,20 @@ be high-performance and reasonable to work with.
 %prep
 %setup -q
 
-
-
 %build
 make %{?_smp_mflags}
-
 
 %install
 make install DESTDIR=%{buildroot}
 
-
 %files
 %doc
-
-
+/usr/bin/ministry
+/etc/init.d/ministry
+/etc/ministry/
+/usr/share/man/man1/ministry.1.gz
+/usr/share/man/man5/ministry.conf.5.gz
+/var/log/ministry/
 
 %changelog
 
