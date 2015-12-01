@@ -1,10 +1,11 @@
 DIRS   = src
 TARGET = all
 
-LOGDIR = /var/log/ministry
-CFGDIR = /etc/ministry
-INISCR = /etc/init.d/ministry
-MANDIR = /usr/share/man
+LOGDIR = $(DESTDIR)/var/log/ministry
+CFGDIR = $(DESTDIR)/etc/ministry
+INIDIR = $(DESTDIR)/etc/init.d
+INISCR = $(DESTDIR)/etc/init.d/ministry
+MANDIR = $(DESTDIR)/usr/share/man
 
 VERS   = $(shell sed -rn 's/^Version:\t(.*)/\1/p' ministry.spec)
 
@@ -27,7 +28,7 @@ code:
 
 install:
 	@echo "Creating ministry install locations"
-	@mkdir -p $(LOGDIR) $(CFGDIR)
+	@mkdir -p $(LOGDIR) $(CFGDIR) $(INIDIR) $(MANDIR) $(MANDIR)/man1 $(MANDIR)/man5
 	@cd src && $(MAKE) $(MFLAGS) install
 	@echo "Creating config and init script."
 	@install -m755 dist/ministry.init $(INISCR)

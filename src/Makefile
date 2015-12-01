@@ -12,7 +12,7 @@ TFLAGS = -pthread
 CFLAGS = $(TFLAGS) $(IFLAGS)
 LFLAGS = $(TFLAGS) $(IFLAGS) -lm
 
-BINDIR = /usr/bin
+BINDIR = $(DESTDIR)/usr/bin
 BIN    = ministry
 
 
@@ -31,7 +31,8 @@ $(BIN): $(HDRS) $(OBJS)
 	$(CC) -o $(BIN) $(LFLAGS) $(OBJS)
 	@echo "Ministry constructed.  Submit your forms, citizen!"
 
-install:
+install: $(BIN)
+	@mkdir -p $(BINDIR)
 	@install -m755 $(BIN) $(BINDIR)/$(BIN)
 	@echo "Installed ministry as $(BINDIR)/$(BIN)"
 
