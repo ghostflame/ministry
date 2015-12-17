@@ -555,7 +555,7 @@ int net_config_line( AVP *av )
 		else
 			warn( "Cannot set a backlog for a udp connection." );
 	}
-	else if( !strcasecmp( d, "port" ) )
+	else if( !strcasecmp( d, "port" ) || !strcasecmp( d, "ports" ) )
 	{
 		if( tcp )
 			nt->tcp->port = (unsigned short) strtoul( av->val, NULL, 10 );

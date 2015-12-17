@@ -6,6 +6,7 @@ CFGDIR = $(DESTDIR)/etc/ministry
 INIDIR = $(DESTDIR)/etc/init.d
 INISCR = $(DESTDIR)/etc/init.d/ministry
 MANDIR = $(DESTDIR)/usr/share/man
+DOCDIR = $(DESTDIR)/usr/share/doc/ministry
 
 VERS   = $(shell sed -rn 's/^Version:\t(.*)/\1/p' ministry.spec)
 
@@ -28,15 +29,16 @@ code:
 
 install:
 	@echo "Creating ministry install locations"
-	@mkdir -p $(LOGDIR) $(CFGDIR) $(INIDIR) $(MANDIR) $(MANDIR)/man1 $(MANDIR)/man5
+	@mkdir -p $(LOGDIR) $(CFGDIR) $(INIDIR) $(MANDIR) $(MANDIR)/man1 $(MANDIR)/man5 $(DOCDIR)
 	@cd src && $(MAKE) $(MFLAGS) install
 	@echo "Creating config and init script."
 	@install -m755 dist/ministry.init $(INISCR)
-	@install -m755 conf/basic.conf $(CFGDIR)/ministry.conf
+	@install -m755 conf/install.conf $(CFGDIR)/ministry.conf
 	@gzip -c dist/ministry.1 > $(MANDIR)/man1/ministry.1.gz
 	@chmod 644 $(MANDIR)/man1/ministry.1.gz
 	@gzip -c dist/ministry.conf.5 > $(MANDIR)/man5/ministry.conf.5.gz
 	@chmod 644 $(MANDIR)/man5/ministry.conf.5.gz
+	@cp LICENSE BUGS README.md $(DOCDIR)
 
 uninstall:
 	@echo "Warning: this may delete your ministry config/log files!"
@@ -47,7 +49,7 @@ version:
 
 remove:
 	@cd src && $(MAKE) $(MFLAGS) uninstall
-	@rm -rf $(LOGDIR) $(CFGDIR) $(INISCR) $(MANDIR)/man1/ministry.1.gz $(MANDIR)/man5/ministry.conf.5.gz
+	@rm -rf $(LOGDIR) $(CFGDIR) $(INISCR) $(MANDIR)/man1/ministry.1.gz $(MANDIR)/man5/ministry.conf.5.gz $(DOCDIR)
 
 clean:
 	@cd src && $(MAKE) $(MFLAGS) clean

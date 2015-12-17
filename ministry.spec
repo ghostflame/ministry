@@ -1,5 +1,5 @@
 Name:		ministry
-Version:	0.1.9
+Version:	0.1.10
 Release:	1%{?dist}
 Summary:	A statsd implementation in threaded C.
 
@@ -29,6 +29,7 @@ DESTDIR=%{buildroot} make install
 /usr/share/man/man1/ministry.1.gz
 /usr/share/man/man5/ministry.conf.5.gz
 /var/log/ministry/
+/usr/share/doc/ministry/
 
 %changelog
 

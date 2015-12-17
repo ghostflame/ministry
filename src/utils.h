@@ -11,7 +11,7 @@
 #ifndef MINISTRY_UTILS_H
 #define MINISTRY_UTILS_H
 
-#define DEFAULT_PID_FILE	"/var/run/ministry"
+#define DEFAULT_PID_FILE	"/var/run/ministry/ministry.pid"
 
 
 // for fast string allocation, free not possible

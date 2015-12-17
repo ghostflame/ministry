@@ -9,9 +9,10 @@
 . /etc/init.d/functions
 
 EXEC='/usr/bin/ministry'
+USER='root'
 
-PIDFILE='/var/run/ministry.pid'
 CONFIG='/etc/ministry/ministry.conf'
+PIDFILE='/var/run/ministry/ministry.pid'
 LOCKFILE='/var/lock/subsys/ministry'
 EXTRA=''
 
@@ -20,13 +21,23 @@ if [ -e /etc/sysconfig/ministry ]; then
 	. /etc/sysconfig/ministry
 fi
 
+
 start()
 {
 	[ -f $CONFIG ] || exit 6
 	[ -x $EXEC   ] || exit 5
 
+	# make sure our pidfile dir is OK
+	d=$(dirname $PIDFILE)
+	mkdir -p $d
+
 	echo -n $"Starting `basename $EXEC`: "
-	$EXEC -d -c $CONFIG $EXTRA
+	if [ $USER != "root" ]; then
+		chown $USER:$USER $d
+		daemon --user $USER $EXEC -d -p $PIDFILE -c $CONFIG $EXTRA
+	else
+		daemon $EXEC -d -p $PIDFILE -c $CONFIG $EXTRA
+	fi
 	retval=$?
 	echo
 	[ $retval -eq 0 ] && touch $LOCKFILE

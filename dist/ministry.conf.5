@@ -71,7 +71,7 @@ A list of integer percentage values to generate thresholds at.  Must be 0 < x < 
 The rest of these are of the form stats.XXX, adder.XXX or self.XXX, affecting the behaviour of either
 stats reporting, adder reporting or self reporting.
 .TP
-\fBTYPE.thread\fR
+\fBTYPE.threads\fR
 How many reporting threads to run (not used for self) (default 2)
 .TP
 \fBTYPE.enable\fR
@@ -96,7 +96,7 @@ is in and recorded by the interval is closed (defaults are 0 for all)
 \fBtimeout\fR
 Number of seconds a client connection must have been silent for before being considered dead.
 .TP
-\fBrvc_tmout\fR
+\fBrcv_tmout\fR
 Number of seconds to set on UDP sockets for SO_RCVTIMEO (prevents receive blocking indefinitely).
 .TP
 \fBreconn_msec\fR
