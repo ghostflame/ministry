@@ -74,6 +74,9 @@ LOCK_CTL *lock_config_defaults( void )
 	// used in loop control
 	pthread_mutex_init( &(l->loop), NULL );
 
+	// used in synths/stats
+	pthread_mutex_init( &(l->synth), NULL );
+
 	// used to control io buffer expiry
 	pthread_mutex_init( &(l->bufref), NULL );
 
@@ -94,6 +97,7 @@ LOCK_CTL *lock_config_defaults( void )
 void lock_shutdown( void )
 {
 	LOCK_CTL *l = ctl->locks;
+	ST_THR *t;
 	int i;
 
 	if( !l || !l->init_done )
@@ -112,6 +116,9 @@ void lock_shutdown( void )
 	// used in loop control
 	pthread_mutex_destroy( &(l->loop) );
 
+	// used in synths/stats
+	pthread_mutex_destroy( &(l->synth) );
+
 	// used in buffer refs
 	pthread_mutex_destroy( &(l->bufref) );
 
@@ -124,6 +131,10 @@ void lock_shutdown( void )
 		pthread_mutex_destroy( l->dstats + i );
 	for( i = 0; i < DADDER_MUTEX_COUNT; i++ )
 		pthread_mutex_destroy( l->dadder + i );
+
+	// used in stats thread control
+	for( t = ctl->stats->adder->ctls; t; t = t->next )
+		pthread_mutex_destroy( &(t->lock) );
 
 	l->init_done = 0;
 }

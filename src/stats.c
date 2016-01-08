@@ -146,10 +146,12 @@ void stats_stats_pass( uint64_t tval, void *arg )
 			for( d = c->conf->data[i]; d; d = d->next )
 				if( d->proc.points )
 				{
-					d->empty = 0;
+					if( d->empty > 0 )
+						d->empty = 0;
+
 					stats_report_one( d, c, t, &b );
 				}
-				else
+				else if( d->empty >= 0 )
 					d->empty++;
 
 	// anything left?
@@ -201,6 +203,28 @@ void stats_adder_pass( uint64_t tval, void *arg )
 				unlock_adder( d );
 			}
 
+	//debug( "[%02d] Unlocking adder lock.", c->id );
+
+	// synth thread is waiting for this
+	unlock_stthr( c );
+
+	//debug( "[%02d] Trying to lock synth.", c->id );
+
+	// try to lock the synth thread
+	lock_synth( );
+
+	//debug( "[%02d] Unlocking synth.", c->id );
+
+	// and then unlock it
+	unlock_synth( );
+
+	//debug( "[%02d] Trying to get our own lock back.", c->id );
+
+	// and lock our own again
+	lock_stthr( c );
+
+	//debug( "[%02d] Sleeping a little before processing.", c->id );
+
 	// sleep a short time to avoid contention
 	usleep( 1000 + ( random( ) % 30011 ) );
 
@@ -214,7 +238,8 @@ void stats_adder_pass( uint64_t tval, void *arg )
 			for( d = c->conf->data[i]; d; d = d->next )
 				if( d->proc.total > 0 )
 				{
-					d->empty = 0;
+					if( d->empty > 0 )
+						d->empty = 0;
 
 					bprintf( b, "%s %lu", d->path, d->proc.total );
 
@@ -231,7 +256,7 @@ void stats_adder_pass( uint64_t tval, void *arg )
 #endif
 					}
 				}
-				else
+				else if( d->empty >= 0 )
 					d->empty++;
 
 	// any left?
@@ -317,6 +342,9 @@ void *stats_loop( void *arg )
 	// and then loop round
 	loop_control( cf->type, cf->loopfn, c, cf->period, 1, cf->offset );
 
+	// and unlock ourself
+	unlock_stthr( c );
+
 	free( t );
 	return NULL;
 }
@@ -333,6 +361,7 @@ void stats_start( ST_CFG *cf )
 		return;
 	}
 
+	// throw each of the threads
 	for( i = 0; i < cf->threads; i++ )
 		thread_throw( &stats_loop, &(cf->ctls[i]) );
 
@@ -393,6 +422,11 @@ void stats_init_control( ST_CFG *c, int alloc_data )
 		t->conf   = c;
 		t->id     = i;
 		t->max    = c->threads;
+
+		pthread_mutex_init( &(t->lock), NULL );
+
+		// and that starts locked
+		lock_stthr( t );
 	}
 }
 

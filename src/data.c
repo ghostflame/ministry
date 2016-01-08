@@ -85,6 +85,20 @@ inline DHASH *data_find_path( DHASH *list, uint32_t hval, char *path, int len )
 #define data_find_adder( idx, h, p, l )		data_find_path( ctl->stats->adder->data[idx], h, p, l )
 
 
+DHASH *data_locate( char *path, int len, int adder )
+{
+	uint32_t hval, indx;
+
+	hval = data_path_cksum( path, len );
+	indx = hval % ctl->mem->hashsize;
+
+	return ( adder == DATA_HTYPE_ADDER ) ?
+	       data_find_adder( indx, hval, path, len ) :
+	       data_find_stats( indx, hval, path, len );
+}
+
+
+
 void data_point_adder( char *path, int len, uint64_t val )
 {
 	uint32_t hval, indx;

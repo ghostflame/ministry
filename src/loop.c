@@ -103,6 +103,9 @@ void loop_start( void )
 	stats_start( ctl->stats->adder );
 	stats_start( ctl->stats->self );
 
+	// and a synthetics loop
+	thread_throw( &synth_loop, NULL );
+
 	// throw the memory control loop
 	thread_throw( &mem_loop, NULL );
 

@@ -1,7 +1,7 @@
 CC     = /usr/bin/gcc -Wall -Wshadow
 
-FILES  = utils log loop thread mem gc net io data stats config main
-HEADS  = config data gc io log loop mem ministry net run stats thread typedefs utils
+FILES  = utils log loop thread mem gc net io data synth stats config main
+HEADS  = config data gc io log loop mem ministry net run stats synth thread typedefs utils
 
 OBJS   = $(FILES:%=%.o)
 HDRS   = $(HEADS:%=%.h)

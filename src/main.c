@@ -197,6 +197,9 @@ int main( int ac, char **av )
 	// set up stats and data structures
 	stats_init( );
 
+	// and any synethics
+	synth_init( );
+
 	// lights up networking and starts listening
 	// also connects to graphite
 	if( net_start( ) )

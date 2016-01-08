@@ -59,6 +59,7 @@
 #include "data.h"
 #include "gc.h"
 #include "mem.h"
+#include "synth.h"
 #include "stats.h"
 
 // last
