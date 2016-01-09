@@ -24,7 +24,7 @@ make %{?_smp_mflags}
 %pre
 # make the user we want
 getent group  ministry > /dev/null || groupadd -r ministry
-getent passwd ministry > /dev/null || useradd  -r -g ministry -M -d %{buildroot}/etc/ministry -s /sbin/nologin -c 'Minister for Statistics' ministry
+getent passwd ministry > /dev/null || useradd  -r -g ministry -M -d /etc/ministry -s /sbin/nologin -c 'Minister for Statistics' ministry
 # note, we do not remove the group/user post uninstall
 # see https://fedoraproject.org/wiki/Packaging:UsersAndGroups for reasoning
 mkdir -p /var/log/ministry

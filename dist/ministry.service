@@ -9,8 +9,8 @@ User=ministry
 Group=ministry
 PermissionsStartOnly=true
 
-ExecStartPre=-mkdir -p -m755 /run/ministry
-ExecStartPre=chown ministry:ministry /run/ministry
+ExecStartPre=/bin/mkdir -p -m755 /run/ministry
+ExecStartPre=/bin/chown ministry:ministry /run/ministry
 PIDFile=/run/ministry/ministry.pid
 
 ExecStart=/usr/bin/ministry -c /etc/ministry/ministry.conf -p /run/ministry/ministry.pid -d

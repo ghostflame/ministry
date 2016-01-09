@@ -14,7 +14,7 @@
 #define	Err		strerror( errno )
 #endif
 
-#define	DEFAULT_LOG_FILE	"logs/ministry.log"
+#define	DEFAULT_LOG_FILE	"/var/log/ministry/ministry.log"
 #define LOG_LINE_MAX		8192
 
 
