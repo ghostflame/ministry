@@ -10,7 +10,7 @@
 #ifndef MINISTRY_SYNTH_H
 #define MINISTRY_SYNTH_H
 
-#define SYNTH_PART_MAX			4
+#define SYNTH_PART_MAX			32
 
 
 struct synth_data
@@ -18,6 +18,7 @@ struct synth_data
 	SYNTH			*	next;
 
 	synth_fn		*	fn;
+	char			*	op_name;
 
 	DHASH			*	dhash[SYNTH_PART_MAX];
 	char			*	paths[SYNTH_PART_MAX];
@@ -26,11 +27,12 @@ struct synth_data
 	DHASH			*	target;
 	char			*	target_path;
 
-	uint64_t			factor;			// defaults to 1
+	double				factor;			// defaults to 1
 
 	int					parts;
 	int					missing;
 	int					min_parts;
+	int					max_parts;
 };
 
 
@@ -49,6 +51,9 @@ synth_fn synth_diff;
 synth_fn synth_div;
 synth_fn synth_max;
 synth_fn synth_min;
+synth_fn synth_spread;
+synth_fn synth_mean;
+synth_fn synth_count;
 
 loop_call_fn synth_pass;
 

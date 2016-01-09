@@ -33,7 +33,6 @@ void synth_div( SYNTH *s )
 	a = s->dhash[0];
 	b = s->dhash[1];
 
-	// UGH, this is integer maths
 	s->target->proc.total = ( b->proc.total > 0 ) ? ( s->factor * a->proc.total ) / b->proc.total : 0;
 }
 
@@ -44,8 +43,10 @@ void synth_max( SYNTH *s )
 	s->target->proc.total = s->dhash[0]->proc.total;
 
 	for( i = 1; i < s->parts; i++ )
-		if( s->dhash[i]->proc.total > s->target->proc.total )
+		if( s->target->proc.total < s->dhash[i]->proc.total )
 			s->target->proc.total = s->dhash[i]->proc.total;
+
+	s->target->proc.total *= s->factor;
 }
 
 void synth_min( SYNTH *s )
@@ -55,10 +56,47 @@ void synth_min( SYNTH *s )
 	s->target->proc.total = s->dhash[0]->proc.total;
 
 	for( i = 1; i < s->parts; i++ )
-		if( s->dhash[i]->proc.total < s->target->proc.total )
+		if( s->target->proc.total > s->dhash[i]->proc.total )
 			s->target->proc.total = s->dhash[i]->proc.total;
+
+	s->target->proc.total *= s->factor;
 }
 
+void synth_spread( SYNTH *s )
+{
+	double min, max;
+	int i;
+
+	min = max = s->dhash[0]->proc.total;
+	for( i = 1; i < s->parts; i++ )
+	{
+		if( max < s->dhash[i]->proc.total )
+			max = s->dhash[i]->proc.total;
+		if( min > s->dhash[i]->proc.total )
+			min = s->dhash[i]->proc.total;
+	}
+
+	s->target->proc.total = s->factor * ( max - min );
+}
+
+void synth_mean( SYNTH *s )
+{
+	synth_sum( s );
+	s->target->proc.total /= s->parts;
+}
+
+void synth_count( SYNTH *s )
+{
+	int i;
+
+	s->target->proc.total = 0;
+
+	for( i = 0; i < s->parts; i++ )
+		if( s->dhash[i]->proc.total != 0 )
+			s->target->proc.total += 1;
+
+	s->target->proc.total *= s->factor;
+}
 
 
 
@@ -219,6 +257,29 @@ SYN_CTL *synth_config_defaults( void )
 static SYNTH __synth_cfg_tmp;
 static int __synth_cfg_state = 0;
 
+struct synth_fn_def
+{
+	char			*	names[3];
+	synth_fn		*	fn;
+	int					min_parts;
+	int					max_parts;
+};
+
+struct synth_fn_def synth_fn_defs[] =
+{
+	// the first name is the 'proper' name
+	{ { "sum",    "add",     "plus" }, synth_sum,    1, 0 },
+	{ { "diff",   "minus",   NULL   }, synth_diff,   2, 2 },
+	{ { "ratio",  "div",     NULL   }, synth_div,    2, 2 },
+	{ { "max",    "highest", NULL   }, synth_max,    1, 0 },
+	{ { "min",    "lowest",  NULL   }, synth_min,    1, 0 },
+	{ { "spread", "width",   NULL   }, synth_spread, 1, 0 },
+	{ { "mean",   "average", NULL   }, synth_mean,   1, 0 },
+	{ { "count",  "nonzero", NULL   }, synth_count,  1, 0 },
+	// last entry is a marker
+	{ { NULL,     NULL,      NULL   }, NULL,         0, 0 },
+};
+
 int synth_config_path( SYNTH *s, AVP *av )
 {
 	char *p;
@@ -242,15 +303,18 @@ int synth_config_path( SYNTH *s, AVP *av )
 }
 
 
+
 int synth_config_line( AVP *av )
 {
 	SYNTH *ns, *s = &__synth_cfg_tmp;
+	struct synth_fn_def *def;
 
 	// empty?
 	if( !__synth_cfg_state )
 	{
 		memset( s, 0, sizeof( SYNTH ) );
 		s->factor = 1;
+		s->min_parts = 1;
 	}
 
 	if( attIs( "path" ) || attIs( "target" ) )
@@ -270,37 +334,26 @@ int synth_config_line( AVP *av )
 	}
 	else if( attIs( "factor" ) )
 	{
-		s->factor = strtoull( av->val, NULL, 10 );
+		s->factor = strtod( av->val, NULL );
 		__synth_cfg_state = 1;
 	}
 	else if( attIs( "operation" ) )
 	{
-		if( valIs( "add" ) || valIs( "plus" ) || valIs( "sum" ) )
+		for( def = synth_fn_defs; def->fn; def++ )
 		{
-			s->fn = synth_sum;
-			s->min_parts = 1;
+			if( valIs( def->names[0] )
+			 || ( def->names[1] && valIs( def->names[1] ) )
+			 || ( def->names[2] && valIs( def->names[2] ) ) )
+			{
+				s->fn        = def->fn;
+				s->min_parts = def->min_parts;
+				s->max_parts = def->max_parts;
+				s->op_name   = def->names[0];
+				break;
+			}
 		}
-		else if( valIs( "diff" ) || valIs( "minus" ) )
-		{
-			s->fn = synth_diff;
-			s->min_parts = 2;
-		}
-		else if( valIs( "div" ) || valIs( "ratio" ) )
-		{
-			s->fn = synth_div;
-			s->min_parts = 2;
-		}
-		else if( valIs( "max" ) || valIs( "greatest" ) )
-		{
-			s->fn = synth_max;
-			s->min_parts = 1;
-		}
-		else if( valIs( "min" ) || valIs( "least" ) )
-		{
-			s->fn = synth_min;
-			s->min_parts = 1;
-		}
-		else
+
+		if( !def )
 		{
 			err( "Synthetic operation %s not recognised.", av->val );
 			return -1;
@@ -321,8 +374,16 @@ int synth_config_line( AVP *av )
 
 		if( s->parts < s->min_parts )
 		{
-			err( "Synthetic %s does not have enough sources (needs %d).", s->target_path, s->min_parts );
+			err( "Synthetic %s does not have enough sources (needs %d).",
+				s->target_path, s->min_parts );
 			return -1;
+		}
+
+		// will we have unused sources?
+		if( s->max_parts > 0 && s->parts > s->max_parts )
+		{
+			warn( "Synthetic %s has %d sources but only %d will be used!",
+				s->target_path, s->parts, s->max_parts );
 		}
 
 		// make a new synth and copy the contents
@@ -334,6 +395,9 @@ int synth_config_line( AVP *av )
 		ns->next = ctl->synth->list;
 		ctl->synth->list = ns;
 		ctl->synth->scount++;
+
+		debug( "Added synthetic %s (%s/%d).", ns->target_path,
+			ns->op_name, ns->parts );
 
 		__synth_cfg_state = 0;
 	}

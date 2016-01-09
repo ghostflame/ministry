@@ -12,6 +12,7 @@ lamp.requests $A
 lamp.timings.bet.total.mean $B
 this.that.theother $C
 tx.bets $D
+basic.counter 1
 foo.bar $RANDOM" 
 }
 
@@ -31,7 +32,7 @@ foo.bar:$RANDOM|ms"
 }
 
 
-( while usleep 1000000; do
+( while usleep 10000; do
 
 	a=$(($RANDOM / 20))
 	b=$((1000 + ( $RANDOM / 100)))
