@@ -99,7 +99,7 @@ DHASH *data_locate( char *path, int len, int adder )
 
 
 
-void data_point_adder( char *path, int len, uint64_t val )
+void data_point_adder( char *path, int len, double val )
 {
 	uint32_t hval, indx;
 	DHASH *d;
@@ -276,7 +276,7 @@ void data_line_adder( HOST *h, char *line, int len )
 
 	// and put that in
 	data_point_adder( h->val->wd[0], h->val->len[0],
-				strtoull( h->val->wd[1], NULL, 10 ) );
+				strtod( h->val->wd[1], NULL ) );
 }
 
 

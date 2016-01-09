@@ -1,16 +1,16 @@
-DIRS   = src
-TARGET = all
+DIRS    = src
+TARGET  = all
 
-LOGDIR = $(DESTDIR)/var/log/ministry
-CFGDIR = $(DESTDIR)/etc/ministry
-INIDIR = $(DESTDIR)/etc/init.d
-INISCR = $(DESTDIR)/etc/init.d/ministry
-MANDIR = $(DESTDIR)/usr/share/man
-DOCDIR = $(DESTDIR)/usr/share/doc/ministry
+VERS    = $(shell sed -rn 's/^Version:\t(.*)/\1/p' ministry.spec)
 
-VERS   = $(shell sed -rn 's/^Version:\t(.*)/\1/p' ministry.spec)
+# set some defaults if they are not in the environment
+CFGDIR ?= $(DESTDIR)/etc/ministry
+LRTDIR ?= $(DESTDIR)/etc/logrotate.d
+LOGDIR ?= $(DESTDIR)/var/log/ministry
+MANDIR ?= $(DESTDIR)/usr/share/man
+DOCDIR ?= $(DESTDIR)/usr/share/doc/ministry
+UNIDIR ?= $(DESTDIR)/usr/lib/systemd/system
 
-SUBDIR = bin conf logs data
 
 all:  subdirs
 all:  code
@@ -27,13 +27,20 @@ subdirs:
 code:
 	@cd src && $(MAKE) $(MFLAGS) $(TARGET)
 
-install:
-	@echo "Creating ministry install locations"
-	@mkdir -p $(LOGDIR) $(CFGDIR) $(INIDIR) $(MANDIR) $(MANDIR)/man1 $(MANDIR)/man5 $(DOCDIR)
+install: baseinstall
+	@mkdir -p $(LOGDIR)
+
+rpminstall: baseinstall
+
+baseinstall:
+	@echo "Making installation directories"
+	@mkdir -p $(CFGDIR) $(LRTDIR) $(MANDIR)/man1 $(MANDIR)/man5 $(DOCDIR) $(UNIDIR)
 	@cd src && $(MAKE) $(MFLAGS) install
-	@echo "Creating config and init script."
-	@install -m755 dist/ministry.init $(INISCR)
+	@echo "Creating config and scripts."
+	@install -m755 dist/ministry.service $(UNIDIR)/ministry.service
+	@install -m644 dist/ministry.logrotate $(LRTDIR)/ministry
 	@install -m755 conf/install.conf $(CFGDIR)/ministry.conf
+	@echo "Creating manual pages and docs."
 	@gzip -c dist/ministry.1 > $(MANDIR)/man1/ministry.1.gz
 	@chmod 644 $(MANDIR)/man1/ministry.1.gz
 	@gzip -c dist/ministry.conf.5 > $(MANDIR)/man5/ministry.conf.5.gz
@@ -41,7 +48,7 @@ install:
 	@cp LICENSE BUGS README.md $(DOCDIR)
 
 uninstall:
-	@echo "Warning: this may delete your ministry config/log files!"
+	@echo "Warning: this may delete your ministry config files!"
 	@echo "Use make target 'remove' to actually remove ministry."
 
 version:
@@ -49,7 +56,8 @@ version:
 
 remove:
 	@cd src && $(MAKE) $(MFLAGS) uninstall
-	@rm -rf $(LOGDIR) $(CFGDIR) $(INISCR) $(MANDIR)/man1/ministry.1.gz $(MANDIR)/man5/ministry.conf.5.gz $(DOCDIR)
+	@service ministry stop || :
+	@rm -rf $(LOGDIR) $(DOCDIR) $(CFGDIR) $(UNIDIR)/ministry.service $(MANDIR)/man1/ministry.1.gz $(MANDIR)/man5/ministry.conf.5.gz $(LRTDIR)/ministry
 
 clean:
 	@cd src && $(MAKE) $(MFLAGS) clean
