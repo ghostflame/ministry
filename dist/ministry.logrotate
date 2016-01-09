@@ -1,0 +1,8 @@
+/var/log/ministry/*.log {
+    weekly
+    missingok
+    rotate 7
+    compress
+    notifempty
+    lastaction 'pkill -HUP ministry'
+}
