@@ -105,7 +105,7 @@ Controls memory management.
 
 - max_mb     = (integer) Max RSS in MB.  Process exits if this is exceeded.
 - gc_thresh  = (integer) Submit intervals without data before a path is GC'd.
-- hashsize    = (integer) Size of the hash table - affects performance
+- hashsize   = (integer) Size of the hash table - affects performance
 
 
 ### Stats
@@ -120,4 +120,17 @@ one of those types.
 - type.offset  = (integer) Submit delay in milliseconds for this type
 
 Self stats loop threads are overridden to 1.
+
+
+### Synth
+Creates synthetic metrics from submitted ones.  These come in blocks of
+config ending with a 'done' line.
+
+- target    = (string) metric to create
+- source    = (string) first source metric
+- source    = (string) second source metric
+- source    = (string) ...
+- operation = (string) what function to use (sum|diff|ratio|...)
+- factor    = (double) factor to multiply result be, defaults to 1
+
 

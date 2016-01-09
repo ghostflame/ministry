@@ -257,13 +257,6 @@ SYN_CTL *synth_config_defaults( void )
 static SYNTH __synth_cfg_tmp;
 static int __synth_cfg_state = 0;
 
-struct synth_fn_def
-{
-	char			*	names[3];
-	synth_fn		*	fn;
-	int					min_parts;
-	int					max_parts;
-};
 
 struct synth_fn_def synth_fn_defs[] =
 {

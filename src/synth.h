@@ -43,6 +43,15 @@ struct synth_control
 	int					wait_usec;
 };
 
+// just used for parsing config lines
+struct synth_fn_def
+{
+	char			*	names[3];
+	synth_fn		*	fn;
+	int					min_parts;
+	int					max_parts;
+};
+
 
 
 
