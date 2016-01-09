@@ -36,6 +36,7 @@ struct stat_thread_ctl
 	ST_CFG			*	conf;
 	int					id;
 	int					max;
+	pthread_mutex_t		lock;
 };
 
 

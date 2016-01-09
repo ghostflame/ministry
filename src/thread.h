@@ -32,6 +32,11 @@
 #define lock_target( t )		pthread_mutex_lock(   &(t->lock) )
 #define unlock_target( t )		pthread_mutex_unlock( &(t->lock) )
 
+#define lock_stthr( s )			lock_target( s )
+#define unlock_stthr( s )		unlock_target( s )
+
+#define lock_synth( )			pthread_mutex_lock(   &(ctl->locks->synth) )
+#define unlock_synth( )			pthread_mutex_unlock( &(ctl->locks->synth) )
 
 
 struct lock_control
@@ -44,6 +49,7 @@ struct lock_control
 
 	pthread_mutex_t			hashstats;					// used for counters
 	pthread_mutex_t			loop;						// thread startup/shutdown
+	pthread_mutex_t			synth;						// synthetics control
 	pthread_mutex_t			bufref;						// controlled buffer refcount
 
 	pthread_mutex_t			table[HASHT_MUTEX_COUNT];	// hash table locks

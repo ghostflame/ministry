@@ -19,13 +19,14 @@ examines the config line.  This means that config names are essentially namespac
 in which they are found, and as such names may be present in more than one section.  Section names
 are not case sensitive.  In fact, only values are case-preserving - all config variable names are
 examined case-insensitively.
-.SH Sections
+.SH FORMAT
+.SS Section Format
 .PP
-Sections are expected to be presented inside square brackets.  Valid sections are:  (none),
-\fBlogging\fR, \fBnetwork\fR, \fBmemory\fR and \fBstats\fR.  e.g.
+Sections are expected to be presented inside square brackets.  Valid sections are:  \fBmain\fR,
+\fBlogging\fR, \fBnetwork\fR, \fBmemory\fR, \fBsynth\fR and \fBstats\fR.  e.g.
 .PP
 \fB[Logging]\fR
-.SH Line Format
+.SS Line Format
 .PP
 Config lines are expected to follow \fBvariable\fR = \fIvalue\fR
 .PP
@@ -35,17 +36,44 @@ config variables contain dots.  Wherever lists of values are permitted, they sho
 comma-separated without intervening spaces.  e.g.
 .PP
 \fBstats.udp.ports = 8100,8101,8102,8103\fR
+.SS File Inclusion
+Ministry can read in other config files using an \fBinclude\fR = \fIfilename\fR directive.
 .SH CONFIG
 .PP
 The config variables accepted by \fBministry\fR are presented here by section.
-.SH Logging
+.SS (Anywhere)
+.PP
+These values can appear in any section.  Just include for now.
+.TP
+\fBinclude\fR
+The name of another file to read in.  \fBMinistry\fR will refuse to read what it believes is the
+same file twice - it could be fooled with symlinks or multiple hardlinks.  This is a protection
+against circular includes.  Included files are read in depth-first, meaning reading the current
+file is paused until the included file is read (possibly recursively).  This is important for any
+duplication of config values, as the last one read will win.  If include is found within a section,
+that section context is preserved into the new file, until it is changed by a new section heading.
+.SS [Main]
+.PP
+These are a few unsectioned variables controlling overall \fBministry\fR behaviour.
+.TP
+\fBtick_msec\fR
+Overall internal tick time in msec.  Controls internal time accuracy (default 20)
+.TP
+\fBdaemon\fR
+Whether \fBministry\fR disconnects from the controlling terminal with the daemon(2) system call
+(default 0).  This can also be switched on with the -d CLI option.
+.TP
+\fBpidfile\fR
+Filename \fBministry\fR will write its process ID to (default /var/run/ministry.pid).  This can also
+be overriden with the -p <file> CLI option.
+.SS [Logging]
 .TP
 \fBfilename\fR | \fBfile\fR | \fBlogfile\fR
 File name to write the log to
 .TP
 \fBlevel\fR
 Log level, one of FATAL, ERR, WARN, NOTICE, INFO or DEBUG
-.SH Memory
+.SS [Memory]
 .TP
 \fBmax_mb\fR | \fBmax_size\fR
 Maximum in-memory size (in MB) before \fBministry\fR self-terminates (default 10GB)
@@ -64,7 +92,7 @@ recommended to reduce hash collisions, but this is not vital (default 100003)
 .TP
 \fBgc_thresh\fR
 How many submission cycles a path must lie empty for before it is deleted (default 360)
-.SH Stats
+.SS [Stats]
 \fBthresholds\fR
 A list of integer percentage values to generate thresholds at.  Must be 0 < x < 100.
 .PP
@@ -91,7 +119,7 @@ and is used to offset reporting into that interval.  This is useful when systems
 So if a reporting system submits adder data every 10 seconds, and \fBministry\fR reports every 10
 seconds, it might be prudent to set an offset of 3 or 4 seconds, so that all data for the interval
 is in and recorded by the interval is closed (defaults are 0 for all)
-.SH Network
+.SS [Network]
 .TP
 \fBtimeout\fR
 Number of seconds a client connection must have been silent for before being considered dead.
@@ -139,28 +167,63 @@ Backlog for incoming tcp connections (default 32)
 \fBTYPE.PROTO.port\fR
 A list of listen ports, comma separated.  By default, statsd-compatible listens on 8125, the default
 statsd port, new-style stats is on 9125 and new-style adder is on 9225.
-.SH No Section
+.SS [Synth]
 .PP
-These are a few unsectioned variables controlling overall \fBministry\fR behaviour.
+Synthetic metrics are derived from submitted metrics and calculated at the point of downstream
+metric generation.  The generating function has two phases, gathering and calculation.  After it
+has gathered the metrics from the paths (allowing new data to accrue) it then performs synthetic
+metric calculations.
+.PP
+Synthetics config comes in blocks, terminated by 'done' on a line on its own.  Each must have a
+target path and at least one source (some operations need two), and an operation specifier.  There
+may also be a static factor applied to the metric (this makes percentages easy to generator - just
+set factor to 100).
+.PP
+There is no limit to the number of synthetics that are specified.  They do not take wildcards
+(ministry has no wildcard search mechanism and it would be astonishingly expensive in large data
+sets - it would have to check what matched every submission interval).
 .TP
-\fBtick_msec\fR
-Overall internal tick time in msec.  Controls internal time accuracy (default 20)
+\fBtarget\fR
+The metric path to create.
 .TP
-\fBdaemon\fR
-Whether \fBministry\fR disconnects from the controlling terminal with the daemon(2) system call
-(default 0).  This can also be switched on with the -d CLI option.
+\fBsource\fR
+A source path to take values from.
 .TP
-\fBpidfile\fR
-Filename \fBministry\fR will write its process ID to (default /var/run/ministry.pid).  This can also
-be overriden with the -p <file> CLI option.
+\fBoperation\fR
+Operation to perform.  One of sum, diff, ratio, min, max, spread, mean or count.
 .TP
-\fBinclude\fR
-The name of another file to read in.  \fBMinistry\fR will refuse to read what it believes is the
-same file twice - it could be fooled with symlinks or multiple hardlinks.  This is a protection
-against circular includes.  Included files are read in depth-first, meaning reading the current
-file is paused until the included file is read (possibly recursively).  This is important for any
-duplication of config values, as the last one read will win.  If include is found within a section,
-that section context is preserved into the new file, until it is changed by a new section heading.
+\fBfactor\fR
+A double precision number that the synthetic metric value is multiplied by.  Default 1.
+.TP
+\fBdone\fR
+No value - signifies the end of the synthetic block.  Error checking on source count is performed
+when this config line is found.  Subsequent lines are taken to be a new synthetic block.
+.SS Synthetic Operation Types
+.TP
+\fBsum\fR
+The sum of the values of all source metrics.
+.TP
+\fBdiff\fR
+The value of second metric is subtracted from the value of the first.
+.TP
+\fBratio\fR
+The value of the first metric is divided by the value of the second (or zero if the second metric
+value is zero).
+.TP
+\fBmin\fR
+The lowest of all source metric values.
+.TP
+\fBmax\fR
+The highest of all source metric values.
+.TP
+\fBspread\fR
+The gap between the highest and lowest source metric values.
+.TP
+\fBmean\fR
+The arithmetic mean of the values of all source metrics.
+.TP
+\fBcount\fR
+The number of source metrics with a non-zero value.
 .SH SEE ALSO
 .BR ministry (1)
 .SH AUTHOR

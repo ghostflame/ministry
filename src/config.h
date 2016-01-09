@@ -41,6 +41,7 @@ struct ministry_control
 	MEM_CTL				*	mem;
 	NET_CTL				*	net;
 	STAT_CTL			*	stats;
+	SYN_CTL				*	synth;
 
 	struct timeval			init_time;
 	struct timeval			curr_time;

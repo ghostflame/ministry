@@ -62,14 +62,15 @@ struct data_hash_entry
 	uint16_t			sz;
 	uint32_t			id;
 	uint32_t			sum;
-	uint16_t			empty;
 	uint16_t			type;
+	int16_t				empty;
 	DVAL				in;
 	DVAL				proc;
 };
 
 
-
+DHASH *data_locate( char *path, int len, int adder );
+void data_point_adder( char *path, int len, double val );
 
 line_fn data_line_data;
 line_fn data_line_statsd;

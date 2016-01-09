@@ -252,6 +252,8 @@ int config_read( char *inpath )
 			lrv = mem_config_line( &av );
 		else if( secIs( "stats" ) )
 			lrv = stats_config_line( &av );
+		else if( secIs( "synth" ) )
+			lrv = synth_config_line( &av );
 		else
 			lrv = config_line( &av );
 
@@ -293,6 +295,7 @@ MIN_CTL *config_create( void )
 	c->mem        = mem_config_defaults( );
 	c->net        = net_config_defaults( );
 	c->stats      = stats_config_defaults( );
+	c->synth      = synth_config_defaults( );
 
 	c->cfg_file   = strdup( DEFAULT_CONFIG_FILE );
 	c->pidfile    = strdup( DEFAULT_PID_FILE );
