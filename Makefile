@@ -3,6 +3,7 @@ TARGET  = all
 
 VERS    = $(shell sed -rn 's/^Version:\t(.*)/\1/p' ministry.spec)
 
+# set some defaults if they are not in the environment
 CFGDIR ?= $(DESTDIR)/etc/ministry
 LRTDIR ?= $(DESTDIR)/etc/logrotate.d
 LOGDIR ?= $(DESTDIR)/var/log/ministry
@@ -26,7 +27,14 @@ subdirs:
 code:
 	@cd src && $(MAKE) $(MFLAGS) $(TARGET)
 
-install:
+install: baseinstall
+	@mkdir -p $(LOGDIR)
+
+rpminstall: baseinstall
+
+baseinstall:
+	@echo "Making installation directories"
+	@mkdir -p $(CFGDIR) $(LRTDIR) $(MANDIR)/man1 $(MANDIR)/man5 $(DOCDIR) $(UNIDIR)
 	@cd src && $(MAKE) $(MFLAGS) install
 	@echo "Creating config and scripts."
 	@install -m755 dist/ministry.service $(UNIDIR)/ministry.service
@@ -40,7 +48,7 @@ install:
 	@cp LICENSE BUGS README.md $(DOCDIR)
 
 uninstall:
-	@echo "Warning: this may delete your ministry config/log files!"
+	@echo "Warning: this may delete your ministry config files!"
 	@echo "Use make target 'remove' to actually remove ministry."
 
 version:

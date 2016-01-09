@@ -22,22 +22,27 @@ be high-performance and reasonable to work with.
 make %{?_smp_mflags}
 
 %pre
-mkdir %{_docdir}/ministry
-mkdir %{buildroot}/var/log/ministry
-mkdir %{buildroot}/etc/ministry
+# make the user we want
 getent group  ministry > /dev/null || groupadd -r ministry
-getent passwd ministry > /dev/null || useradd  -r -g ministry -d %{buildroot}/var/log/ministry -s /sbin/nologin -c 'Minister for Statistics' ministry
-chown ministry:ministry %{buildroot}/var/log/ministry
+getent passwd ministry > /dev/null || useradd  -r -g ministry -M -d %{buildroot}/etc/ministry -s /sbin/nologin -c 'Minister for Statistics' ministry
 # note, we do not remove the group/user post uninstall
 # see https://fedoraproject.org/wiki/Packaging:UsersAndGroups for reasoning
+mkdir -p /var/log/ministry
+chown ministry:ministry /var/log/ministry
+
 
 
 %install
-DESTDIR=%{buildroot} BINDIR=%{_bindir} CFGDIR=%{buildroot}/etc/ministry LOGDIR=%{buildroot}/var/log/ministry DOCDIR=%{_docdir}/ministry MANDIR=%{_mandir} UNIDIR=%{_unitdir} make install
-
-%postun
-# tidy up logs
-rm -rf /var/log/ministry
+DESTDIR=%{buildroot} \
+BINDIR=%{buildroot}%{_bindir} \
+LRTDIR=%{buildroot}/etc/logrotate.d \
+CFGDIR=%{buildroot}/etc/ministry \
+LOGDIR=%{buildroot}/var/log/ministry \
+DOCDIR=%{buildroot}%{_docdir}/ministry \
+MANDIR=%{buildroot}%{_mandir} \
+UNIDIR=%{buildroot}%{_unitdir} \
+USER=ministry GROUP=ministry \
+make rpminstall
 
 
 %files
