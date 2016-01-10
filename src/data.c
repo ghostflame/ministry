@@ -461,8 +461,8 @@ void *data_loop_tcp( void *arg )
 		// go get that then
 		if( p.revents & POLL_EVENTS )
 		{
-			h = net_get_host( p.fd, n->type );
-			thread_throw_watched( data_connection, h );
+			if( ( h = net_get_host( p.fd, n->type ) ) )
+				thread_throw_watched( data_connection, h );
 		}
 	}
 

@@ -10,6 +10,43 @@
 #include "ministry.h"
 
 
+// these need init'd, done in net_config_defaults
+uint32_t net_masks[33];
+
+
+
+int net_ip_check( struct sockaddr_in *sin )
+{
+#ifdef DEBUG_IP_CHECK
+	struct in_addr ina;
+	char network[64];
+#endif
+	uint32_t ip;
+	IPNET *i;
+
+	ip = sin->sin_addr.s_addr;
+
+	for( i = ctl->net->ipcheck->list; i; i = i->next )
+		if( ( ip & net_masks[i->bits] ) == i->net )
+		{
+#ifdef DEBUG_IP_CHECK
+			ina.s_addr = i->net;
+			strcpy( network, inet_ntoa( ina ) );
+			debug( "%sing IP %s based on network %s/%hu",
+				( i->type == IP_NET_WHITELIST ) ? "Allow" : "Deny",
+				inet_ntoa( sin->sin_addr ), network, i->bits );
+#endif
+			return i->type;
+		}
+
+	return ctl->net->ipcheck->deflt;
+}
+
+
+
+
+
+
 /*
  * Watched sockets
  *
@@ -110,8 +147,22 @@ HOST *net_get_host( int sock, NET_TYPE *type )
 		return NULL;
 	}
 
+	// get a name
 	l = snprintf( buf, 32, "%s:%hu", inet_ntoa( from.sin_addr ),
 		ntohs( from.sin_port ) );
+
+	// are we doing blacklisting/whitelisting?
+	if( ctl->net->ipcheck->enabled
+	 && net_ip_check( &from ) != 0 )
+	{
+		if( ctl->net->ipcheck->verbose )
+			warn( "Denying connection from %s based on ip check.", buf );
+
+		shutdown( d, SHUT_RDWR );
+		close( d );
+		return NULL;
+	}
+
 
 	h            = mem_new_host( );
 	h->peer      = from;
@@ -320,6 +371,8 @@ int net_startup( NET_TYPE *nt )
 
 int net_start( void )
 {
+	IPCHK *c = ctl->net->ipcheck;
+	IPNET *n, *list;
 	int ret = 0;
 
 	notice( "Starting networking." );
@@ -327,6 +380,18 @@ int net_start( void )
 	ret += net_startup( ctl->net->data );
 	ret += net_startup( ctl->net->statsd );
 	ret += net_startup( ctl->net->adder );
+
+	// reverse the ip check list
+	list = NULL;
+	while( c->list )
+	{
+		n = c->list;
+		c->list = n->next;
+
+		n->next = list;
+		list = n;
+	}
+	c->list = list;
 
 	return ret;
 }
@@ -391,6 +456,7 @@ NET_TYPE *net_type_defaults( unsigned short port, line_fn *lfn, char *label )
 NET_CTL *net_config_defaults( void )
 {
 	NET_CTL *net;
+	int i;
 
 	net            = (NET_CTL *) allocz( sizeof( NET_CTL ) );
 	net->dead_time = NET_DEAD_CONN_TIMER;
@@ -403,13 +469,65 @@ NET_CTL *net_config_defaults( void )
 	net->statsd    = net_type_defaults( DEFAULT_STATSD_PORT, &data_line_statsd, "stats compat socket" );
 	net->adder     = net_type_defaults( DEFAULT_ADDER_PORT,  &data_line_adder,  "combiner socket" );
 
+	// ip checking
+	net->ipcheck   = (IPCHK *) allocz( sizeof( IPCHK ) );
+
 	// can't add default target, it's a linked list
+
+	// init our net_masks
+	net_masks[0] = 0;
+	for( i = 1; i < 33; i++ )
+		net_masks[i] = net_masks[i-1] | ( 1 << ( i - 1 ) );
 
 	return net;
 }
 
 
 #define ntflag( f )			if( atoi( av->val ) ) nt->flags |= NTYPE_##f; else nt->flags &= ~NTYPE_##f
+
+
+int net_add_list_member( char *str, int len, uint16_t type )
+{
+	struct in_addr ina;
+	IPNET *ip;
+	int bits;
+	char *sl;
+
+	if( ( sl = memchr( str, '/', len ) ) )
+	{
+		*sl++ = '\0';
+		bits = atoi( sl );
+	}
+	else
+		bits = 32;
+
+	if( bits < 0 || bits > 32 )
+	{
+		err( "Invalid network bits %d", bits );
+		return -1;
+	}
+
+	// did that look OK?
+	if( !inet_aton( str, &ina ) )
+	{
+		err( "Invalid ip address %s", str );
+		return -1;
+	}
+
+	ip = (IPNET *) allocz( sizeof( IPNET ) );
+	ip->bits = bits;
+	ip->type = type;
+	// and grab the network from that
+	// doing this makes 172.16.10.10/16 work as a network
+	ip->net = ina.s_addr & net_masks[bits];
+
+	// add it into the list
+	// this needs reversing at net start
+	ip->next = ctl->net->ipcheck->list;
+	ctl->net->ipcheck->list = ip;
+
+	return 0;
+}
 
 
 
@@ -491,7 +609,7 @@ int net_config_line( AVP *av )
 		return 0;
 	}
 
-	/* then it's data., statsd. or adder. */
+	/* then it's data., statsd. or adder. (or ipcheck) */
 	p = d + 1;
 
 	if( !strncasecmp( av->att, "data.", 5 ) )
@@ -500,6 +618,21 @@ int net_config_line( AVP *av )
 		nt = ctl->net->statsd;
 	else if( !strncasecmp( av->att, "adder.", 6 ) )
 		nt = ctl->net->adder;
+	else if( !strncasecmp( av->att, "ipcheck.", 9 ) )
+	{
+		if( !strcasecmp( p, "enable" ) )
+			ctl->net->ipcheck->enabled = atoi( av->val );
+		else if( !strcasecmp( p, "verbose" ) )
+			ctl->net->ipcheck->verbose = atoi( av->val );
+		else if( !strcasecmp( p, "whitelist" ) )
+			return net_add_list_member( av->val, av->vlen, IP_NET_WHITELIST );
+		else if( !strcasecmp( p, "blacklist" ) )
+			return net_add_list_member( av->val, av->vlen, IP_NET_BLACKLIST );
+		else if( !strcasecmp( p, "drop_unknown" ) )
+			ctl->net->ipcheck->deflt = 1;
+
+		return 0;
+	}
 	else
 		return -1;
 

@@ -25,6 +25,8 @@ typedef struct stat_thread_ctl		ST_THR;
 typedef struct config_context		CCTXT;
 typedef struct points_list			PTLIST;
 typedef struct mem_type_blank		MTBLANK;
+typedef struct ip_network			IPNET;
+typedef struct ip_check				IPCHK;
 typedef struct mem_type_control		MTYPE;
 typedef union  data_hash_vals		DVAL;
 typedef struct data_hash_entry		DHASH;
@@ -34,7 +36,7 @@ typedef struct net_socket			NSOCK;
 typedef struct network_target		TARGET;
 typedef struct host_data			HOST;
 typedef struct thread_data			THRD;
-typedef struct synth_data           SYNTH;
+typedef struct synth_data			SYNTH;
 typedef struct words_data			WORDS;
 typedef struct av_pair				AVP;
 
