@@ -111,14 +111,14 @@ Prefix string for all metrics of this type.  (defaults:  stats.timers., (blank) 
 \fBTYPE.period\fR
 Reporting interval, in msec.  (default 10000 for all)
 .TP
-\fBTYPE.delay\fB
+\fBTYPE.delay\fR
 Reporting delay, in msec.  \fBMinistry\fR's timing loop aligns reporting intervals to the clock, so,
 e.g. 10 second reporting would occur on 10-second boundaries.  The delay must be less than the period
 and is used to offset reporting into that interval.  This is useful when systems report data to
 \fBministry\fR on their own timing cycle but metrics may or may not make it into a given interval.
 So if a reporting system submits adder data every 10 seconds, and \fBministry\fR reports every 10
 seconds, it might be prudent to set an offset of 3 or 4 seconds, so that all data for the interval
-is in and recorded by the interval is closed (defaults are 0 for all)
+is in and recorded by the interval is closed (defaults are 0 for all).
 .SS [Network]
 .TP
 \fBtimeout\fR

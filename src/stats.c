@@ -197,8 +197,9 @@ void stats_adder_pass( uint64_t tval, void *arg )
 			{
 				lock_adder( d );
 
-				d->proc.total = d->in.total;
-				d->in.total   = 0;
+				d->proc.sum     = d->in.sum;
+				d->in.sum.total = 0;
+				d->in.sum.count = 0;
 
 				unlock_adder( d );
 			}
@@ -236,12 +237,12 @@ void stats_adder_pass( uint64_t tval, void *arg )
 	for( i = 0; i < ctl->mem->hashsize; i++ )
 		if( ( i % c->max ) == c->id )
 			for( d = c->conf->data[i]; d; d = d->next )
-				if( d->proc.total != 0 )
+				if( d->proc.sum.count > 0 )
 				{
 					if( d->empty > 0 )
 						d->empty = 0;
 
-					bprintf( b, "%s %f", d->path, d->proc.total );
+					bprintf( b, "%s %f", d->path, d->proc.sum.total );
 
 					if( b->len > IO_BUF_HWMK )
 					{

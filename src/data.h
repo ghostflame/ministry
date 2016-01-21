@@ -46,11 +46,17 @@ struct points_list
 	float				vals[PTLIST_SIZE];
 };
 
+struct path_sum
+{
+	double				total;
+	uint64_t			count;
+};
+
 
 union data_hash_vals
 {
 	PTLIST			*	points;
-	double				total;
+	PTSUM				sum;
 };
 
 

@@ -269,7 +269,10 @@ void mem_free_dhash( DHASH **d )
 		sd->in.points = NULL;
 	}
 	else
-		sd->in.total = 0;
+	{
+		sd->in.sum.total = 0;
+		sd->in.sum.count = 0;
+	}
 
 	sd->type = 0;
 
@@ -303,7 +306,10 @@ void mem_free_dhash_list( DHASH *list )
 			d->in.points = NULL;
 		}
 		else
-			d->in.total = 0;
+		{
+			d->in.sum.total = 0;
+			d->in.sum.count = 0;
+		}
 
 
 

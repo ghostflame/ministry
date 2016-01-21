@@ -130,7 +130,8 @@ void data_point_adder( char *path, int len, double val )
 	lock_adder( d );
 
 	// add in that data point
-	d->in.total += val;
+	d->in.sum.total += val;
+	d->in.sum.count++;
 
 	// and unlock
 	unlock_adder( d );

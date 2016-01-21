@@ -13,17 +13,17 @@ void synth_sum( SYNTH *s )
 {
 	int i;
 
-	s->target->proc.total = 0;
+	s->target->proc.sum.total = 0;
 
 	for( i = 0; i < s->parts; i++ )
-		s->target->proc.total += s->dhash[i]->proc.total;
+		s->target->proc.sum.total += s->dhash[i]->proc.sum.total;
 
-	s->target->proc.total *= s->factor;
+	s->target->proc.sum.total *= s->factor;
 }
 
 void synth_diff( SYNTH *s )
 {
-	s->target->proc.total = s->factor * ( s->dhash[0]->proc.total - s->dhash[1]->proc.total );
+	s->target->proc.sum.total = s->factor * ( s->dhash[0]->proc.sum.total - s->dhash[1]->proc.sum.total );
 }
 
 void synth_div( SYNTH *s )
@@ -33,33 +33,33 @@ void synth_div( SYNTH *s )
 	a = s->dhash[0];
 	b = s->dhash[1];
 
-	s->target->proc.total = ( b->proc.total > 0 ) ? ( s->factor * a->proc.total ) / b->proc.total : 0;
+	s->target->proc.sum.total = ( b->proc.sum.total > 0 ) ? ( s->factor * a->proc.sum.total ) / b->proc.sum.total : 0;
 }
 
 void synth_max( SYNTH *s )
 {
 	int i;
 
-	s->target->proc.total = s->dhash[0]->proc.total;
+	s->target->proc.sum.total = s->dhash[0]->proc.sum.total;
 
 	for( i = 1; i < s->parts; i++ )
-		if( s->target->proc.total < s->dhash[i]->proc.total )
-			s->target->proc.total = s->dhash[i]->proc.total;
+		if( s->target->proc.sum.total < s->dhash[i]->proc.sum.total )
+			s->target->proc.sum.total = s->dhash[i]->proc.sum.total;
 
-	s->target->proc.total *= s->factor;
+	s->target->proc.sum.total *= s->factor;
 }
 
 void synth_min( SYNTH *s )
 {
 	int i;
 
-	s->target->proc.total = s->dhash[0]->proc.total;
+	s->target->proc.sum.total = s->dhash[0]->proc.sum.total;
 
 	for( i = 1; i < s->parts; i++ )
-		if( s->target->proc.total > s->dhash[i]->proc.total )
-			s->target->proc.total = s->dhash[i]->proc.total;
+		if( s->target->proc.sum.total > s->dhash[i]->proc.sum.total )
+			s->target->proc.sum.total = s->dhash[i]->proc.sum.total;
 
-	s->target->proc.total *= s->factor;
+	s->target->proc.sum.total *= s->factor;
 }
 
 void synth_spread( SYNTH *s )
@@ -67,35 +67,35 @@ void synth_spread( SYNTH *s )
 	double min, max;
 	int i;
 
-	min = max = s->dhash[0]->proc.total;
+	min = max = s->dhash[0]->proc.sum.total;
 	for( i = 1; i < s->parts; i++ )
 	{
-		if( max < s->dhash[i]->proc.total )
-			max = s->dhash[i]->proc.total;
-		if( min > s->dhash[i]->proc.total )
-			min = s->dhash[i]->proc.total;
+		if( max < s->dhash[i]->proc.sum.total )
+			max = s->dhash[i]->proc.sum.total;
+		if( min > s->dhash[i]->proc.sum.total )
+			min = s->dhash[i]->proc.sum.total;
 	}
 
-	s->target->proc.total = s->factor * ( max - min );
+	s->target->proc.sum.total = s->factor * ( max - min );
 }
 
 void synth_mean( SYNTH *s )
 {
 	synth_sum( s );
-	s->target->proc.total /= s->parts;
+	s->target->proc.sum.total /= s->parts;
 }
 
 void synth_count( SYNTH *s )
 {
 	int i;
 
-	s->target->proc.total = 0;
+	s->target->proc.sum.total = 0;
 
 	for( i = 0; i < s->parts; i++ )
-		if( s->dhash[i]->proc.total != 0 )
-			s->target->proc.total += 1;
+		if( s->dhash[i]->proc.sum.count > 0 )
+			s->target->proc.sum.total += 1;
 
-	s->target->proc.total *= s->factor;
+	s->target->proc.sum.total *= s->factor;
 }
 
 

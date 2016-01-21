@@ -24,6 +24,7 @@ typedef struct stat_config			ST_CFG;
 typedef struct stat_thread_ctl		ST_THR;
 typedef struct config_context		CCTXT;
 typedef struct points_list			PTLIST;
+typedef struct path_sum				PTSUM;
 typedef struct mem_type_blank		MTBLANK;
 typedef struct ip_network			IPNET;
 typedef struct ip_check				IPCHK;
