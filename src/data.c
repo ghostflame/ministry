@@ -116,6 +116,10 @@ void data_point_adder( char *path, int len, double val )
 			d = mem_new_dhash( path, len, DATA_HTYPE_ADDER );
 			d->sum = hval;
 
+#ifdef DEBUG
+			debug( "Added new adder path (%u: %u) %s", indx, hval, path );
+#endif
+
 			d->next = ctl->stats->adder->data[indx];
 			ctl->stats->adder->data[indx] = d;
 		}

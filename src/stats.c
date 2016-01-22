@@ -305,7 +305,9 @@ void stats_self_pass( uint64_t tval, void *arg )
 	// TODO - more stats
 	bprintf( b, "uptime %.3f", upt );
 	bprintf( b, "paths.stats.curr %d", ctl->stats->stats->dcurr );
+	bprintf( b, "paths.stats.gc %d",   ctl->stats->stats->gc_count );
 	bprintf( b, "paths.adder.curr %d", ctl->stats->adder->dcurr );
+	bprintf( b, "paths.adder.gc %d",   ctl->stats->adder->gc_count );
 	bprintf( b, "mem.total.kb %d", ctl->mem->curr_kb );
 
 	// memory

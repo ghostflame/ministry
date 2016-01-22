@@ -54,6 +54,7 @@ struct stat_config
 	// and the data
 	DHASH			**	data;
 	int					dcurr;
+	int					gc_count;
 	uint32_t			did;
 };
 

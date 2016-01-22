@@ -237,7 +237,8 @@ DHASH *mem_new_dhash( char *str, int len, int type )
 
 	if( len >= d->sz )
 	{
-		free( d->path );
+		if( d->path )
+			free( d->path );
 		d->sz   = len + 1;
 		d->path = (char *) allocz( d->sz );
 	}

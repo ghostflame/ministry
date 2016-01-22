@@ -7,7 +7,7 @@ OBJS   = $(FILES:%=%.o)
 HDRS   = $(HEADS:%=%.h)
 
 IFLAGS = -I. 
-DFLAGS = -g -pg -ggdb3
+DFLAGS = -g -pg -ggdb3 -DDEBUG
 TFLAGS = -pthread
 CFLAGS = $(TFLAGS) $(IFLAGS)
 LFLAGS = $(TFLAGS) $(IFLAGS) -lm
