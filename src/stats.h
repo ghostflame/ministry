@@ -36,6 +36,8 @@ struct stat_thread_ctl
 	ST_CFG			*	conf;
 	int					id;
 	int					max;
+	int					points;
+	int					active;
 	pthread_mutex_t		lock;
 };
 
@@ -54,6 +56,7 @@ struct stat_config
 	// and the data
 	DHASH			**	data;
 	int					dcurr;
+	int					gc_count;
 	uint32_t			did;
 };
 

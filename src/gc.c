@@ -90,6 +90,8 @@ void gc_pass( uint64_t tval, void *arg )
 		pthread_mutex_lock( &(ctl->locks->hashstats) );
 
 		ctl->stats->stats->dcurr -= fs;
+		ctl->stats->stats->gc_count += fs;
+
 		if( ctl->stats->stats->dcurr < 0 )
 		{
 			warn( "Stats dcurr went < 0." );
@@ -97,6 +99,8 @@ void gc_pass( uint64_t tval, void *arg )
 		}
 
 		ctl->stats->adder->dcurr -= fa;
+		ctl->stats->adder->gc_count += fa;
+
 		if( ctl->stats->adder->dcurr < 0 )
 		{
 			warn( "Adder dcurr went < 0." );

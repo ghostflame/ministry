@@ -116,6 +116,10 @@ void data_point_adder( char *path, int len, double val )
 			d = mem_new_dhash( path, len, DATA_HTYPE_ADDER );
 			d->sum = hval;
 
+#ifdef DEBUG
+			debug( "Added new adder path (%u: %u) %s", indx, hval, path );
+#endif
+
 			d->next = ctl->stats->adder->data[indx];
 			ctl->stats->adder->data[indx] = d;
 		}
@@ -130,7 +134,8 @@ void data_point_adder( char *path, int len, double val )
 	lock_adder( d );
 
 	// add in that data point
-	d->in.total += val;
+	d->in.sum.total += val;
+	d->in.sum.count++;
 
 	// and unlock
 	unlock_adder( d );
@@ -461,8 +466,8 @@ void *data_loop_tcp( void *arg )
 		// go get that then
 		if( p.revents & POLL_EVENTS )
 		{
-			h = net_get_host( p.fd, n->type );
-			thread_throw_watched( data_connection, h );
+			if( ( h = net_get_host( p.fd, n->type ) ) )
+				thread_throw_watched( data_connection, h );
 		}
 	}
 

@@ -14,6 +14,8 @@
 #define DEFAULT_STATSD_PORT				8125
 #define DEFAULT_ADDER_PORT				9225
 
+#define IP_NET_WHITELIST				0
+#define IP_NET_BLACKLIST				1
 
 #define POLL_EVENTS						(POLLIN|POLLPRI|POLLRDNORM|POLLRDBAND|POLLHUP)
 
@@ -36,6 +38,23 @@
 #define DEFAULT_TARGET_PORT				2003	// graphite
 
 
+
+struct ip_network
+{
+	IPNET				*	next;
+	uint32_t				net;
+	uint16_t				bits;
+	uint16_t				type;
+};
+
+
+struct ip_check
+{
+	IPNET				*	list;
+	int						deflt;
+	int						verbose;
+	int						enabled;
+};
 
 
 
@@ -134,6 +153,8 @@ struct network_control
 
 	TARGET				*	targets;
 
+	IPCHK				*	ipcheck;
+
 	time_t					dead_time;
 	unsigned int			rcv_tmout;
 	int						reconn;
@@ -141,8 +162,6 @@ struct network_control
 	int						max_bufs;
 	int						tcount;
 };
-
-
 
 
 

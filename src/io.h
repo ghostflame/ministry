@@ -19,6 +19,7 @@
 struct io_buffer
 {
 	IOBUF		*	next;
+	char		*	ptr;		// holds memory even if not requested
 	char		*	buf;
 	char		*	hwmk;
 	int				len;
