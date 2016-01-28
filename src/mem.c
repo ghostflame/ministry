@@ -17,21 +17,25 @@
 void __mtype_alloc_free( MTYPE *mt, int count )
 {
 	MTBLANK *p, *list;
-	int i, max;
 	void *vp;
+	int i;
 
-	if( !count )
+	if( count <= 0 )
 		count = mt->alloc_ct;
 
 	list = (MTBLANK *) allocz( mt->alloc_sz * count );
 
-	// the last one needs a null next
-	max = count - 1;
+	mt->fcount += count;
+	mt->total  += count;
 
-	vp = p = list;
+	// the last one needs next -> flist so decrement count
+	count--;
+
+	vp = list;
+	p  = list;
 
 	// link them up
-	for( i = 0; i < max; i++ )
+	for( i = 0; i < count; i++ )
 	{
 		vp     += mt->alloc_sz;
 		p->next = (MTBLANK *) vp;
@@ -42,9 +46,7 @@ void __mtype_alloc_free( MTYPE *mt, int count )
 	p->next = mt->flist;
 
 	// and update our type
-	mt->flist   = list;
-	mt->fcount += count;
-	mt->total  += count;
+	mt->flist = list;
 }
 
 
@@ -57,8 +59,9 @@ inline void *__mtype_new( MTYPE *mt )
 	if( !mt->fcount )
 		__mtype_alloc_free( mt, 0 );
 
-	b         = mt->flist;
+	b = mt->flist;
 	mt->flist = b->next;
+
 	--(mt->fcount);
 
 	pthread_mutex_unlock( &(mt->lock) );
@@ -67,6 +70,7 @@ inline void *__mtype_new( MTYPE *mt )
 
 	return (void *) b;
 }
+
 
 inline void *__mtype_new_list( MTYPE *mt, int count )
 {
@@ -384,11 +388,6 @@ IOBUF *mem_new_buf( int sz )
 {
 	IOBUF *b;
 
-	// dangerous returning one with memory attached
-	// if not asked for it
-	if( sz == 0 )
-		return (IOBUF *) allocz( sizeof( IOBUF ) );
-
 	b = (IOBUF *) __mtype_new( ctl->mem->iobufs );
 
 	if( sz < 0 )
@@ -396,14 +395,23 @@ IOBUF *mem_new_buf( int sz )
 
 	if( b->sz < sz )
 	{
-		if( b->buf )
-			free( b->buf );
+		if( b->ptr )
+			free( b->ptr );
 
-		b->buf = (char *) allocz( sz );
+		b->ptr = (char *) allocz( sz );
 		b->sz  = sz;
 	}
 
-	b->hwmk = b->buf + ( ( 5 * b->sz ) / 6 );
+	if( b->sz == 0 )
+	{
+		b->buf  = NULL;
+		b->hwmk = NULL;
+	}
+	else
+	{
+		b->buf  = b->ptr;
+		b->hwmk = b->buf + ( ( 5 * b->sz ) / 6 );
+	}
 
 	return b;
 }
@@ -421,13 +429,11 @@ void mem_free_buf( IOBUF **b )
 	*b = NULL;
 
 	if( sb->sz )
-		sb->buf[0] = '\0';
-	else
-	{
-		sb->buf = sb->hwmk = NULL;
-	}
+		sb->ptr[0] = '\0';
 
-	sb->len = 0;
+	sb->buf  = NULL;
+	sb->hwmk = NULL;
+	sb->len  = 0;
 
 	__mtype_free( ctl->mem->iobufs, sb );
 }
@@ -446,12 +452,10 @@ void mem_free_buf_list( IOBUF *list )
 		list = b->next;
 
 		if( b->sz )
-			b->buf[0] = '\0';
-		else
-		{
-			b->buf = b->hwmk = NULL;
-		}
+			b->ptr[0] = '\0';
 
+		b->buf  = NULL;
+		b->hwmk = NULL;
 		b->len  = 0;
 		b->next = freed;
 		freed   = b;

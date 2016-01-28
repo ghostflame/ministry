@@ -317,6 +317,11 @@ inline int io_decr_buf( IOBUF *buf )
 // this is called from multiple threads
 // they should never fight over a buffer
 // but WILL fight over targets
+//
+// After a call to this function, the buffer
+// is 'owned' by the targets and should not be
+// written to.  It will get recycled after
+// sending
 void io_buf_send( IOBUF *buf )
 {
 	TARGET *t;

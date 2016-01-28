@@ -23,21 +23,22 @@ inline int cmp_floats( const void *p1, const void *p2 )
 }
 
 // this macro is some serious va args abuse
-#define bprintf( bf, fmt, ... )		bf->len += snprintf( bf->buf + bf->len, bf->sz - bf->len, "%s" fmt " %ld\n", prfx, ## __VA_ARGS__, ts )
+#define bprintf( fmt, ... )			if( b->len > IO_BUF_HWMK ) \
+									{ io_buf_send( b ); b = mem_new_buf( IO_BUF_SZ ); } \
+									b->len += snprintf( b->buf + b->len, b->sz - b->len, "%s" fmt " %ld\n", prfx, ## __VA_ARGS__, ts )
 
 
-void stats_report_one( DHASH *d, ST_THR *cfg, time_t ts, IOBUF **buf )
+
+IOBUF *stats_report_one( DHASH *d, ST_THR *cfg, time_t ts, IOBUF *b )
 {
 	int i, j, tind, thr, med;
 	float sum, *vals = NULL;
 	PTLIST *list, *p;
 	char *prfx, *ul;
-	IOBUF *b;
 
 	list = d->proc.points;
 	d->proc.points = NULL;
 
-	b    = *buf;
 	prfx = ctl->stats->stats->prefix;
 
 	for( j = 0, p = list; p; p = p->next )
@@ -59,11 +60,11 @@ void stats_report_one( DHASH *d, ST_THR *cfg, time_t ts, IOBUF **buf )
 
 		qsort( vals, j, sizeof( float ), cmp_floats );
 
-		bprintf( b, "%s.count %d",    d->path, j );
-		bprintf( b, "%s.mean %f",     d->path, sum / (float) j );
-		bprintf( b, "%s.upper %f",    d->path, vals[j-1] );
-		bprintf( b, "%s.lower %f",    d->path, vals[0] );
-		bprintf( b, "%s.median %f",   d->path, vals[med] );
+		bprintf( "%s.count %d",    d->path, j );
+		bprintf( "%s.mean %f",     d->path, sum / (float) j );
+		bprintf( "%s.upper %f",    d->path, vals[j-1] );
+		bprintf( "%s.lower %f",    d->path, vals[0] );
+		bprintf( "%s.median %f",   d->path, vals[med] );
 
 		// variable thresholds
 		for( i = 0; i < ctl->stats->thr_count; i++ )
@@ -78,27 +79,18 @@ void stats_report_one( DHASH *d, ST_THR *cfg, time_t ts, IOBUF **buf )
 			// find the right index into our values
 			tind = ( j * thr ) / 100;
 
-			bprintf( b, "%s.%s_%d %f", d->path, ul, thr, vals[tind] );
-		}
-
-		if( b->len > IO_BUF_HWMK )
-		{
-#ifdef DEBUG
-			// reuse the same buffer
-			b->buf[b->len] = '\0';
-			printf( "%s", b->buf );
-			b->len = 0;
-#else
-			io_buf_send( b );
-#endif
-			b = mem_new_buf( IO_BUF_SZ );
-			*buf = b;
+			bprintf( "%s.%s_%d %f", d->path, ul, thr, vals[tind] );
 		}
 
 		free( vals );
 	}
 
 	mem_free_point_list( list );
+
+	// keep track
+	cfg->points += j;
+
+	return b;
 }
 
 
@@ -106,15 +98,17 @@ void stats_report_one( DHASH *d, ST_THR *cfg, time_t ts, IOBUF **buf )
 
 void stats_stats_pass( uint64_t tval, void *arg )
 {
+	struct timeval tv;
+	uint64_t usec;
+	char *prfx;
+	time_t ts;
 	ST_THR *c;
 	DHASH *d;
-	time_t t;
 	IOBUF *b;
 	int i;
 
-	t = (time_t) ( tval / 1000000 );
-	c = (ST_THR *) arg;
-	b = mem_new_buf( IO_BUF_SZ );
+	c  = (ST_THR *) arg;
+	ts = (time_t) ( tval / 1000000 );
 
 #ifdef DEBUG
 	debug( "[%02d] Stats claim", c->id );
@@ -140,6 +134,11 @@ void stats_stats_pass( uint64_t tval, void *arg )
 	debug( "[%02d] Stats report", c->id );
 #endif
 
+	c->points = 0;
+	c->active = 0;
+
+	b = mem_new_buf( IO_BUF_SZ );
+
 	// and report it
 	for( i = 0; i < ctl->mem->hashsize; i++ )
 		if( ( i % c->max ) == c->id )
@@ -149,22 +148,28 @@ void stats_stats_pass( uint64_t tval, void *arg )
 					if( d->empty > 0 )
 						d->empty = 0;
 
-					stats_report_one( d, c, t, &b );
+					c->active++;
+
+					// the buffer can get changed during
+					// this function
+					b = stats_report_one( d, c, ts, b );
 				}
 				else if( d->empty >= 0 )
 					d->empty++;
 
+	// and work out how long that took
+	gettimeofday( &tv, NULL );
+	usec = tvll( tv ) - tval;
+
+	// report some self stats
+	prfx = ctl->stats->self->prefix;
+	bprintf( "workers.%s.%d.points %d", c->conf->type, c->id, c->points );
+	bprintf( "workers.%s.%d.active %d", c->conf->type, c->id, c->active );
+	bprintf( "workers.%s.%d.usec %lu",  c->conf->type, c->id, usec );
+
 	// anything left?
 	if( b->len )
-	{
-#ifdef DEBUG
-		b->buf[b->len] = '\0';
-		printf( "%s", b->buf );
-		mem_free_buf( &b );
-#else
 		io_buf_send( b );
-#endif
-	}
 	else
 		mem_free_buf( &b );
 }
@@ -173,6 +178,8 @@ void stats_stats_pass( uint64_t tval, void *arg )
 
 void stats_adder_pass( uint64_t tval, void *arg )
 {
+	struct timeval tv;
+	uint64_t usec;
 	char *prfx;
 	ST_THR *c;
 	time_t ts;
@@ -180,9 +187,7 @@ void stats_adder_pass( uint64_t tval, void *arg )
 	IOBUF *b;
 	int i;
 
-	c = (ST_THR *) arg;
-	b = mem_new_buf( IO_BUF_SZ );
-
+	c    = (ST_THR *) arg;
 	ts   = (time_t) ( tval / 1000000 );
 	prfx = ctl->stats->adder->prefix;
 
@@ -233,6 +238,12 @@ void stats_adder_pass( uint64_t tval, void *arg )
 	debug( "[%02d] Adder report", c->id );
 #endif
 
+	// zero the counters
+	c->points = 0;
+	c->active = 0;
+
+	b = mem_new_buf( IO_BUF_SZ );
+
 	// and report it
 	for( i = 0; i < ctl->mem->hashsize; i++ )
 		if( ( i % c->max ) == c->id )
@@ -242,35 +253,29 @@ void stats_adder_pass( uint64_t tval, void *arg )
 					if( d->empty > 0 )
 						d->empty = 0;
 
-					bprintf( b, "%s %f", d->path, d->proc.sum.total );
+					bprintf( "%s %f", d->path, d->proc.sum.total );
 
-					if( b->len > IO_BUF_HWMK )
-					{
-#ifdef DEBUG
-						// reuse the same buffer
-						b->buf[b->len] = '\0';
-						printf( "%s", b->buf );
-						b->len = 0;
-#else
-						io_buf_send( b );
-						b = mem_new_buf( IO_BUF_SZ );
-#endif
-					}
+					// keep count
+					c->points += d->proc.sum.count;
+					c->active++;
 				}
 				else if( d->empty >= 0 )
 					d->empty++;
 
+
+	// and work out how long that took
+	gettimeofday( &tv, NULL );
+	usec = tvll( tv ) - tval;
+
+	// report some self stats
+	prfx = ctl->stats->self->prefix;
+	bprintf( "workers.%s.%d.points %d", c->conf->type, c->id, c->points );
+	bprintf( "workers.%s.%d.active %d", c->conf->type, c->id, c->active );
+	bprintf( "workers.%s.%d.usec %lu",  c->conf->type, c->id, usec );
+
 	// any left?
 	if( b->len )
-	{
-#ifndef DEBUG
 		io_buf_send( b );
-#else
-		b->buf[b->len] = '\0';
-		printf( "%s", b->buf );
-		mem_free_buf( &b );
-#endif
-	}
 	else
 		mem_free_buf( &b );
 }
@@ -278,9 +283,9 @@ void stats_adder_pass( uint64_t tval, void *arg )
 
 
 #define stats_report_mtype( nm, mt )		bytes = ((uint64_t) mt->alloc_sz) * ((uint64_t) mt->total); \
-											bprintf( b, "mem.%s.free %u",  nm, mt->fcount ); \
-											bprintf( b, "mem.%s.alloc %u", nm, mt->total ); \
-											bprintf( b, "mem.%s.kb %lu",   nm, bytes >> 10 )
+											bprintf( "mem.%s.free %u",  nm, mt->fcount ); \
+											bprintf( "mem.%s.alloc %u", nm, mt->total ); \
+											bprintf( "mem.%s.kb %lu",   nm, bytes >> 10 )
 
 // report our own pass
 void stats_self_pass( uint64_t tval, void *arg )
@@ -292,7 +297,7 @@ void stats_self_pass( uint64_t tval, void *arg )
 	time_t ts;
 	IOBUF *b;
 
-	ts   = (time_t) ( tval / 1000000 );
+	ts = (time_t) ( tval / 1000000 );
 
 	now.tv_sec  = ts;
 	now.tv_usec = tval % 1000000;
@@ -303,12 +308,12 @@ void stats_self_pass( uint64_t tval, void *arg )
 	b = mem_new_buf( IO_BUF_SZ );
 
 	// TODO - more stats
-	bprintf( b, "uptime %.3f", upt );
-	bprintf( b, "paths.stats.curr %d", ctl->stats->stats->dcurr );
-	bprintf( b, "paths.stats.gc %d",   ctl->stats->stats->gc_count );
-	bprintf( b, "paths.adder.curr %d", ctl->stats->adder->dcurr );
-	bprintf( b, "paths.adder.gc %d",   ctl->stats->adder->gc_count );
-	bprintf( b, "mem.total.kb %d", ctl->mem->curr_kb );
+	bprintf( "uptime %.3f", upt );
+	bprintf( "paths.stats.curr %d", ctl->stats->stats->dcurr );
+	bprintf( "paths.stats.gc %d",   ctl->stats->stats->gc_count );
+	bprintf( "paths.adder.curr %d", ctl->stats->adder->dcurr );
+	bprintf( "paths.adder.gc %d",   ctl->stats->adder->gc_count );
+	bprintf( "mem.total.kb %d", ctl->mem->curr_kb );
 
 	// memory
 	stats_report_mtype( "hosts",  ctl->mem->hosts );
@@ -317,14 +322,11 @@ void stats_self_pass( uint64_t tval, void *arg )
 	stats_report_mtype( "bufs",   ctl->mem->iobufs );
 	stats_report_mtype( "iolist", ctl->mem->iolist );
 
-
-#ifndef DEBUG
-	io_buf_send( b );
-#else
-	b->buf[b->len] = '\0';
-	printf( "%s", b->buf );
-	mem_free_buf( &b );
-#endif
+	// any left?
+	if( b->len )
+		io_buf_send( b );
+	else
+		mem_free_buf( &b );
 }
 
 
