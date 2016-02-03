@@ -413,6 +413,8 @@ IOBUF *mem_new_buf( int sz )
 		b->hwmk = b->buf + ( ( 5 * b->sz ) / 6 );
 	}
 
+	b->refs = 0;
+
 	return b;
 }
 
@@ -434,6 +436,7 @@ void mem_free_buf( IOBUF **b )
 	sb->buf  = NULL;
 	sb->hwmk = NULL;
 	sb->len  = 0;
+	sb->refs = 0;
 
 	__mtype_free( ctl->mem->iobufs, sb );
 }
@@ -457,6 +460,7 @@ void mem_free_buf_list( IOBUF *list )
 		b->buf  = NULL;
 		b->hwmk = NULL;
 		b->len  = 0;
+		b->refs = 0;
 		b->next = freed;
 		freed   = b;
 
@@ -538,6 +542,11 @@ int mem_config_line( AVP *av )
 			t = atoi( av->val );
 			if( !t )
 				t = DEFAULT_GC_THRESH;
+			if( t > 32766 )
+			{
+				warn( "Garbage collection threshold %d too high, being clipped to max 32766.", t );
+				t = 32766;
+			}
 			info( "Garbage collection threshold set to %d stats intervals.", t );
 			ctl->mem->gc_thresh = t;
 		}

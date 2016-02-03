@@ -64,14 +64,16 @@ struct data_hash_entry
 {
 	DHASH			*	next;
 	char			*	path;
+
+	DVAL				in;
+	DVAL				proc;
+
 	uint16_t			len;
 	uint16_t			sz;
 	uint32_t			id;
 	uint32_t			sum;
 	uint16_t			type;
 	int16_t				empty;
-	DVAL				in;
-	DVAL				proc;
 };
 
 

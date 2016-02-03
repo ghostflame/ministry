@@ -296,19 +296,18 @@ int io_connect( NSOCK *s )
 
 
 
-inline int io_decr_buf( IOBUF *buf )
+inline void io_decr_buf( IOBUF *buf )
 {
+	int free_it = 0;
+
 	pthread_mutex_lock(   &(ctl->locks->bufref) );
-	--(buf->refs);
+	if( ! --(buf->refs) )
+		free_it = 1;
 	pthread_mutex_unlock( &(ctl->locks->bufref) );
 
-	if( buf->refs <= 0 )
-	{
+	// only one of them should do this
+	if( free_it )
 		mem_free_buf( &buf );
-		return 0;
-	}
-
-	return 1;
 }
 
 
@@ -354,10 +353,7 @@ void io_buf_send( IOBUF *buf )
 		// decrement and maybe free
 		if( t->bufs > ctl->net->max_bufs )
 		{
-			// might free that buf now
-			if( !io_decr_buf( buf ) )
-				break;
-
+			io_decr_buf( buf );
 			continue;
 		}
 		
@@ -396,6 +392,7 @@ void io_grab_buffer( TARGET *t )
 	lock_target( t );
 
 	t->curr_off  = 0;
+	t->curr_len  = 0;
 	t->sock->out = NULL;
 
 	if( !t->qend )

@@ -21,7 +21,7 @@
 #define MEM_ALLOCSZ_IOBUF			128
 #define MEM_ALLOCSZ_IOLIST			512
 
-#define DEFAULT_GC_THRESH			360
+#define DEFAULT_GC_THRESH			8640		// 1 day @ 10s
 
 
 // universal type for memory management
@@ -57,9 +57,10 @@ struct mem_control
 
 	int					curr_kb;
 	int					max_kb;
-	int					gc_thresh;
 	int					hashsize;
 	int					interval;	// msec
+
+	int16_t				gc_thresh;
 };
 
 

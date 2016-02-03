@@ -29,16 +29,17 @@ inline int cmp_floats( const void *p1, const void *p2 )
 
 
 
-IOBUF *stats_report_one( DHASH *d, ST_THR *cfg, time_t ts, IOBUF *b )
+int stats_report_one( DHASH *d, ST_THR *cfg, time_t ts, IOBUF **buf )
 {
 	int i, j, tind, thr, med;
 	float sum, *vals = NULL;
 	PTLIST *list, *p;
 	char *prfx, *ul;
+	IOBUF *b;
 
 	list = d->proc.points;
 	d->proc.points = NULL;
-
+    b = *buf;
 	prfx = ctl->stats->stats->prefix;
 
 	for( j = 0, p = list; p; p = p->next )
@@ -60,11 +61,11 @@ IOBUF *stats_report_one( DHASH *d, ST_THR *cfg, time_t ts, IOBUF *b )
 
 		qsort( vals, j, sizeof( float ), cmp_floats );
 
-		bprintf( "%s.count %d",    d->path, j );
-		bprintf( "%s.mean %f",     d->path, sum / (float) j );
-		bprintf( "%s.upper %f",    d->path, vals[j-1] );
-		bprintf( "%s.lower %f",    d->path, vals[0] );
-		bprintf( "%s.median %f",   d->path, vals[med] );
+		bprintf( "%s.count %d",  d->path, j );
+		bprintf( "%s.mean %f",   d->path, sum / (float) j );
+		bprintf( "%s.upper %f",  d->path, vals[j-1] );
+		bprintf( "%s.lower %f",  d->path, vals[0] );
+		bprintf( "%s.median %f", d->path, vals[med] );
 
 		// variable thresholds
 		for( i = 0; i < ctl->stats->thr_count; i++ )
@@ -86,11 +87,9 @@ IOBUF *stats_report_one( DHASH *d, ST_THR *cfg, time_t ts, IOBUF *b )
 	}
 
 	mem_free_point_list( list );
+	*buf = b;
 
-	// keep track
-	cfg->points += j;
-
-	return b;
+	return j;
 }
 
 
@@ -148,11 +147,10 @@ void stats_stats_pass( uint64_t tval, void *arg )
 					if( d->empty > 0 )
 						d->empty = 0;
 
-					c->active++;
-
 					// the buffer can get changed during
 					// this function
-					b = stats_report_one( d, c, ts, b );
+					c->points += stats_report_one( d, c, ts, &b );
+					c->active++;
 				}
 				else if( d->empty >= 0 )
 					d->empty++;
@@ -168,7 +166,7 @@ void stats_stats_pass( uint64_t tval, void *arg )
 	bprintf( "workers.%s.%d.usec %lu",  c->conf->type, c->id, usec );
 
 	// anything left?
-	if( b->len )
+	if( b->len > 0 )
 		io_buf_send( b );
 	else
 		mem_free_buf( &b );
@@ -274,7 +272,7 @@ void stats_adder_pass( uint64_t tval, void *arg )
 	bprintf( "workers.%s.%d.usec %lu",  c->conf->type, c->id, usec );
 
 	// any left?
-	if( b->len )
+	if( b->len > 0 )
 		io_buf_send( b );
 	else
 		mem_free_buf( &b );
@@ -323,7 +321,7 @@ void stats_self_pass( uint64_t tval, void *arg )
 	stats_report_mtype( "iolist", ctl->mem->iolist );
 
 	// any left?
-	if( b->len )
+	if( b->len > 0 )
 		io_buf_send( b );
 	else
 		mem_free_buf( &b );
