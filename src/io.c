@@ -369,6 +369,7 @@ void io_buf_send( IOBUF *buf )
 		if( !t->qend )
 		{
 			t->qend = t->qhead = i;
+			t->bufs = 1;
 		}
 		else
 		{
@@ -376,7 +377,6 @@ void io_buf_send( IOBUF *buf )
 			i->next        = t->qhead;
 			t->qhead->prev = i;
 			t->qhead       = i;
-
 			t->bufs++;
 		}
 
