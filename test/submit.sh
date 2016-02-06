@@ -33,5 +33,5 @@ while usleep 1000; do
 	b=$((1000 + ( $RANDOM / 100)))
 	c=$((1000 - ( $RANDOM / 32)))
 
-	statsd $a $b $c
+	plain $a $b $c
 done

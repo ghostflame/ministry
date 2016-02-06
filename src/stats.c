@@ -11,6 +11,13 @@
 
 
 
+const char *stats_type_names[STATS_TYPE_MAX] =
+{
+	"stats", "adder", "self"
+};
+
+
+
 inline int cmp_floats( const void *p1, const void *p2 )
 {
 	float *f1, *f2;
@@ -29,67 +36,102 @@ inline int cmp_floats( const void *p1, const void *p2 )
 
 
 
-int stats_report_one( DHASH *d, ST_THR *cfg, time_t ts, IOBUF **buf )
+int stats_report_one( DHASH *d, ST_THR *t, time_t ts, IOBUF **buf )
 {
-	int i, j, tind, thr, med;
-	float sum, *vals = NULL;
+	int i, ct, tind, thr, med;
 	PTLIST *list, *p;
 	char *prfx, *ul;
+	float sum;
 	IOBUF *b;
 
+	// grab the points list
 	list = d->proc.points;
 	d->proc.points = NULL;
-    b = *buf;
+
+	// count the points
+	for( ct = 0, p = list; p; p = p->next )
+		ct += p->count;
+
+	// anything to do?
+	if( ct == 0 )
+	{
+		mem_free_point_list( list );
+		return 0;
+	}
+
+    b    = *buf;
 	prfx = ctl->stats->stats->prefix;
 
-	for( j = 0, p = list; p; p = p->next )
-		j += p->count;
 
-	if( j > 0 )
+	// if we have just one points structure, we just use
+	// it's own vals array as our workspace.  We need to
+	// sort in place, but only this fn holds that space
+	// now, so that's ok.  If we have more than one, we
+	// need a flat array, so make sure the workbuf is big
+	// enough and copy each vals array into it
+
+	if( list->next == NULL )
+		t->wkspc = list->vals;
+	else
 	{
-		vals = (float *) allocz( j * sizeof( float ) );
-
-		for( j = 0, p = list; p; p = p->next )
-			for( i = 0; i < p->count; i++, j++ )
-				vals[j] = p->vals[i];
-
-		sum = 0;
-		kahan_summation( vals, j, &sum );
-
-		// median offset
-		med = j / 2;
-
-		qsort( vals, j, sizeof( float ), cmp_floats );
-
-		bprintf( "%s.count %d",  d->path, j );
-		bprintf( "%s.mean %f",   d->path, sum / (float) j );
-		bprintf( "%s.upper %f",  d->path, vals[j-1] );
-		bprintf( "%s.lower %f",  d->path, vals[0] );
-		bprintf( "%s.median %f", d->path, vals[med] );
-
-		// variable thresholds
-		for( i = 0; i < ctl->stats->thr_count; i++ )
+		// do we have enough workspace?
+		if( ct > t->wkspcsz )
 		{
-			// exclude lunacy
-			if( !( thr = ctl->stats->thresholds[i] ) )
-				continue;
+			// double it until we have enough
+			while( ct > t->wkspcsz )
+				t->wkspcsz *= 2;
 
-			// decide on a string
-			ul = ( thr < 50 ) ? "lower" : "upper";
-
-			// find the right index into our values
-			tind = ( j * thr ) / 100;
-
-			bprintf( "%s.%s_%d %f", d->path, ul, thr, vals[tind] );
+			// free the existing and grab a new chunk
+			free( t->wkbuf );
+			t->wkbuf = (float *) allocz( t->wkspcsz * sizeof( float ) );
 		}
 
-		free( vals );
+		// and the workspace is the buffer
+		t->wkspc = t->wkbuf;
+
+		// now copy the data in
+		for( i = 0, p = list; p; p = p->next )
+		{
+			memcpy( t->wkspc + i, p->vals, p->count * sizeof( float ) );
+			i += p->count;
+		}
+	}
+
+	sum = 0;
+	kahan_summation( t->wkspc, ct, &sum );
+
+	// median offset
+	med = ct / 2;
+
+	// and sort them
+	qsort( t->wkspc, ct, sizeof( float ), cmp_floats );
+
+	bprintf( "%s.count %d",  d->path, ct );
+	bprintf( "%s.mean %f",   d->path, sum / (float) ct );
+	bprintf( "%s.upper %f",  d->path, t->wkspc[ct-1] );
+	bprintf( "%s.lower %f",  d->path, t->wkspc[0] );
+	bprintf( "%s.median %f", d->path, t->wkspc[med] );
+
+	// variable thresholds
+	for( i = 0; i < ctl->stats->thr_count; i++ )
+	{
+		// exclude lunacy
+		if( !( thr = ctl->stats->thresholds[i] ) )
+			continue;
+
+		// decide on a string
+		ul = ( thr < 50 ) ? "lower" : "upper";
+
+		// find the right index into our values
+		tind = ( ct * thr ) / 100;
+
+   		bprintf( "%s.%s_%d %f", d->path, ul, thr, t->wkspc[tind] );
 	}
 
 	mem_free_point_list( list );
 	*buf = b;
 
-	return j;
+	return ct;
 }
 
 
@@ -167,11 +209,13 @@ void stats_stats_pass( uint64_t tval, void *arg )
 
 	// report some self stats
 	prfx = ctl->stats->self->prefix;
-	bprintf( "workers.%s.%d.points %d", c->conf->type, c->id, c->points );
-	bprintf( "workers.%s.%d.active %d", c->conf->type, c->id, c->active );
-	bprintf( "workers.%s.%d.steal %lu", c->conf->type, c->id, steal );
-	bprintf( "workers.%s.%d.stats %lu", c->conf->type, c->id, stats );
-	bprintf( "workers.%s.%d.usec %lu",  c->conf->type, c->id, usec );
+
+	bprintf( "workers.%s.%d.points %d",    c->conf->name, c->id, c->points );
+	bprintf( "workers.%s.%d.active %d",    c->conf->name, c->id, c->active );
+	bprintf( "workers.%s.%d.workspace %d", c->conf->name, c->id, c->wkspcsz );
+	bprintf( "workers.%s.%d.steal %lu",    c->conf->name, c->id, steal );
+	bprintf( "workers.%s.%d.stats %lu",    c->conf->name, c->id, stats );
+	bprintf( "workers.%s.%d.usec %lu",     c->conf->name, c->id, usec );
 
 	io_buf_send( b );
 }
@@ -277,11 +321,12 @@ void stats_adder_pass( uint64_t tval, void *arg )
 
 	// report some self stats
 	prfx = ctl->stats->self->prefix;
-	bprintf( "workers.%s.%d.points %d", c->conf->type, c->id, c->points );
-	bprintf( "workers.%s.%d.active %d", c->conf->type, c->id, c->active );
-	bprintf( "workers.%s.%d.steal %lu", c->conf->type, c->id, steal );
-	bprintf( "workers.%s.%d.stats %lu", c->conf->type, c->id, stats );
-	bprintf( "workers.%s.%d.usec %lu",  c->conf->type, c->id, usec );
+
+	bprintf( "workers.%s.%d.points %d", c->conf->name, c->id, c->points );
+	bprintf( "workers.%s.%d.active %d", c->conf->name, c->id, c->active );
+	bprintf( "workers.%s.%d.steal %lu", c->conf->name, c->id, steal );
+	bprintf( "workers.%s.%d.stats %lu", c->conf->name, c->id, stats );
+	bprintf( "workers.%s.%d.usec %lu",  c->conf->name, c->id, usec );
 
 	io_buf_send( b );
 }
@@ -319,7 +364,7 @@ void stats_self_pass( uint64_t tval, void *arg )
 	bprintf( "paths.stats.gc %d",   ctl->stats->stats->gc_count );
 	bprintf( "paths.adder.curr %d", ctl->stats->adder->dcurr );
 	bprintf( "paths.adder.gc %d",   ctl->stats->adder->gc_count );
-	bprintf( "mem.total.kb %d", ctl->mem->curr_kb );
+	bprintf( "mem.total.kb %d",     ctl->mem->curr_kb );
 
 	// memory
 	stats_report_mtype( "hosts",  ctl->mem->hosts );
@@ -328,11 +373,7 @@ void stats_self_pass( uint64_t tval, void *arg )
 	stats_report_mtype( "bufs",   ctl->mem->iobufs );
 	stats_report_mtype( "iolist", ctl->mem->iolist );
 
-	// any left?
-	if( b->len > 0 )
-		io_buf_send( b );
-	else
-		mem_free_buf( &b );
+	io_buf_send( b );
 }
 
 
@@ -351,7 +392,7 @@ void *stats_loop( void *arg )
 	cf = c->conf;
 
 	// and then loop round
-	loop_control( cf->type, cf->loopfn, c, cf->period, 1, cf->offset );
+	loop_control( cf->name, cf->loopfn, c, cf->period, 1, cf->offset );
 
 	// and unlock ourself
 	unlock_stthr( c );
@@ -368,7 +409,7 @@ void stats_start( ST_CFG *cf )
 
 	if( !cf->enable )
 	{
-		notice( "Data submission for %s is disabled.", cf->type );
+		notice( "Data submission for %s is disabled.", cf->name );
 		return;
 	}
 
@@ -376,7 +417,7 @@ void stats_start( ST_CFG *cf )
 	for( i = 0; i < cf->threads; i++ )
 		thread_throw( &stats_loop, &(cf->ctls[i]) );
 
-	info( "Started %s data processing loops.", cf->type );
+	info( "Started %s data processing loops.", cf->name );
 }
 
 
@@ -423,6 +464,9 @@ void stats_init_control( ST_CFG *c, int alloc_data )
 	// offset can't be bigger than period
 	c->offset  = c->offset % c->period;
 
+	// grab our name
+	c->name = stats_type_names[c->type];
+
 	// make the control structures
 	c->ctls = (ST_THR *) allocz( c->threads * sizeof( ST_THR ) );
 
@@ -433,6 +477,13 @@ void stats_init_control( ST_CFG *c, int alloc_data )
 		t->conf   = c;
 		t->id     = i;
 		t->max    = c->threads;
+
+		// make some floats workspace - we realloc this if needed
+		if( c->type == STATS_TYPE_STATS )
+		{
+			t->wkspcsz = 1024;
+			t->wkbuf   = (float *) allocz( t->wkspcsz * sizeof( float ) );
+		}
 
 		pthread_mutex_init( &(t->lock), NULL );
 
@@ -471,7 +522,7 @@ STAT_CTL *stats_config_defaults( void )
 	s->stats->loopfn  = &stats_stats_pass;
 	s->stats->period  = DEFAULT_STATS_MSEC;
 	s->stats->prefix  = stats_prefix( DEFAULT_STATS_PREFIX );
-	s->stats->type    = "stats";
+	s->stats->type    = STATS_TYPE_STATS;
 	s->stats->enable  = 1;
 
 	s->adder          = (ST_CFG *) allocz( sizeof( ST_CFG ) );
@@ -479,7 +530,7 @@ STAT_CTL *stats_config_defaults( void )
 	s->adder->loopfn  = &stats_adder_pass;
 	s->adder->period  = DEFAULT_STATS_MSEC;
 	s->adder->prefix  = stats_prefix( DEFAULT_ADDER_PREFIX );
-	s->adder->type    = "adder";
+	s->adder->type    = STATS_TYPE_ADDER;
 	s->adder->enable  = 1;
 
 	s->self           = (ST_CFG *) allocz( sizeof( ST_CFG ) );
@@ -487,7 +538,7 @@ STAT_CTL *stats_config_defaults( void )
 	s->self->loopfn   = &stats_self_pass;
 	s->self->period   = DEFAULT_STATS_MSEC;
 	s->self->prefix   = stats_prefix( DEFAULT_SELF_PREFIX );
-	s->self->type     = "self";
+	s->self->type     = STATS_TYPE_SELF;
 	s->self->enable   = 1;
 
 	return s;

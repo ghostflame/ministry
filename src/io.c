@@ -353,6 +353,9 @@ void io_buf_send( IOBUF *buf )
 		// decrement and maybe free
 		if( t->bufs > ctl->net->max_bufs )
 		{
+#ifdef DEBUG
+			debug( "Dropping buffer to target %s:%hu", t->host, t->port );
+#endif
 			io_decr_buf( buf );
 			continue;
 		}

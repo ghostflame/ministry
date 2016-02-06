@@ -19,6 +19,16 @@ loop_call_fn stats_self_pass;
 throw_fn stats_loop;
 
 
+enum stats_types
+{
+	STATS_TYPE_STATS = 0,
+	STATS_TYPE_ADDER,
+	STATS_TYPE_SELF,
+	STATS_TYPE_MAX
+};
+
+
+
 #define DEFAULT_ADDER_THREADS		2
 #define DEFAULT_STATS_THREADS		6
 
@@ -39,6 +49,11 @@ struct stat_thread_ctl
 	int					points;
 	int					active;
 	pthread_mutex_t		lock;
+
+	// workspace
+	float			*	wkbuf;
+	float			*	wkspc;
+	int					wkspcsz;
 };
 
 
@@ -46,7 +61,8 @@ struct stat_config
 {
 	ST_THR			*	ctls;
 	char			*	prefix;
-	char			*	type;
+	const char		*	name;
+	int					type;
 	int					threads;
 	int					enable;
 	int					period;		// msec

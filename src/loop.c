@@ -15,7 +15,7 @@ void loop_kill( int sig )
 }
 
 
-void loop_mark_start( char *tag )
+void loop_mark_start( const char *tag )
 {
 	pthread_mutex_lock( &(ctl->locks->loop) );
 	ctl->loop_count++;
@@ -23,7 +23,7 @@ void loop_mark_start( char *tag )
 	pthread_mutex_unlock( &(ctl->locks->loop) );
 }
 
-void loop_mark_done( char *tag )
+void loop_mark_done( const char *tag )
 {
 	pthread_mutex_lock( &(ctl->locks->loop) );
 	ctl->loop_count--;
@@ -44,7 +44,7 @@ void loop_set_time( uint64_t tval, void *arg )
 
 // we do integer maths here to avoid creeping
 // double-precision addition inaccuracies
-void loop_control( char *name, loop_call_fn *fp, void *arg, int usec, int doSync, int offset )
+void loop_control( const char *name, loop_call_fn *fp, void *arg, int usec, int doSync, int offset )
 {
 	uint64_t timer, next;
 	struct timeval now;
