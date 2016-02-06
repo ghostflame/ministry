@@ -97,8 +97,8 @@ int stats_report_one( DHASH *d, ST_THR *cfg, time_t ts, IOBUF **buf )
 
 void stats_stats_pass( uint64_t tval, void *arg )
 {
-	struct timeval tv;
-	uint64_t usec;
+	struct timeval tva, tvb, tvc;
+	uint64_t usec, steal, stats;
 	char *prfx;
 	time_t ts;
 	ST_THR *c;
@@ -126,12 +126,16 @@ void stats_stats_pass( uint64_t tval, void *arg )
 				unlock_stats( d );
 			}
 
+	gettimeofday( &tva, NULL );
+
 	// sleep a bit to avoid contention
 	usleep( 1000 + ( random( ) % 30011 ) );
 
 #ifdef DEBUG
 	debug( "[%02d] Stats report", c->id );
 #endif
+
+	gettimeofday( &tvb, NULL );
 
 	c->points = 0;
 	c->active = 0;
@@ -156,28 +160,28 @@ void stats_stats_pass( uint64_t tval, void *arg )
 					d->empty++;
 
 	// and work out how long that took
-	gettimeofday( &tv, NULL );
-	usec = tvll( tv ) - tval;
+	gettimeofday( &tvc, NULL );
+	steal = tvll( tva ) - tval;
+	stats = tvll( tvc ) - tvll( tvb );
+	usec  = tvll( tvc ) - tval;
 
 	// report some self stats
 	prfx = ctl->stats->self->prefix;
 	bprintf( "workers.%s.%d.points %d", c->conf->type, c->id, c->points );
 	bprintf( "workers.%s.%d.active %d", c->conf->type, c->id, c->active );
+	bprintf( "workers.%s.%d.steal %lu", c->conf->type, c->id, steal );
+	bprintf( "workers.%s.%d.stats %lu", c->conf->type, c->id, stats );
 	bprintf( "workers.%s.%d.usec %lu",  c->conf->type, c->id, usec );
 
-	// anything left?
-	if( b->len > 0 )
-		io_buf_send( b );
-	else
-		mem_free_buf( &b );
+	io_buf_send( b );
 }
 
 
 
 void stats_adder_pass( uint64_t tval, void *arg )
 {
-	struct timeval tv;
-	uint64_t usec;
+	struct timeval tva, tvb, tvc;
+	uint64_t usec, steal, stats;
 	char *prfx;
 	ST_THR *c;
 	time_t ts;
@@ -206,6 +210,8 @@ void stats_adder_pass( uint64_t tval, void *arg )
 
 				unlock_adder( d );
 			}
+
+	gettimeofday( &tva, NULL );
 
 	//debug( "[%02d] Unlocking adder lock.", c->id );
 
@@ -236,6 +242,8 @@ void stats_adder_pass( uint64_t tval, void *arg )
 	debug( "[%02d] Adder report", c->id );
 #endif
 
+	gettimeofday( &tvb, NULL );
+
 	// zero the counters
 	c->points = 0;
 	c->active = 0;
@@ -262,20 +270,20 @@ void stats_adder_pass( uint64_t tval, void *arg )
 
 
 	// and work out how long that took
-	gettimeofday( &tv, NULL );
-	usec = tvll( tv ) - tval;
+	gettimeofday( &tvc, NULL );
+	steal = tvll( tva ) - tval;
+	stats = tvll( tvc ) - tvll( tvb );
+	usec  = tvll( tvc ) - tval;
 
 	// report some self stats
 	prfx = ctl->stats->self->prefix;
 	bprintf( "workers.%s.%d.points %d", c->conf->type, c->id, c->points );
 	bprintf( "workers.%s.%d.active %d", c->conf->type, c->id, c->active );
+	bprintf( "workers.%s.%d.steal %lu", c->conf->type, c->id, steal );
+	bprintf( "workers.%s.%d.stats %lu", c->conf->type, c->id, stats );
 	bprintf( "workers.%s.%d.usec %lu",  c->conf->type, c->id, usec );
 
-	// any left?
-	if( b->len > 0 )
-		io_buf_send( b );
-	else
-		mem_free_buf( &b );
+	io_buf_send( b );
 }
 
 
