@@ -169,6 +169,8 @@ void log_reopen( int sig )
 {
 	if( ctl && ctl->log )
 		__log_open( );
+
+	info( "Log file re-opened." );
 }
 
 

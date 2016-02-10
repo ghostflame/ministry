@@ -55,7 +55,8 @@ int stats_report_one( DHASH *d, ST_THR *t, time_t ts, IOBUF **buf )
 	// anything to do?
 	if( ct == 0 )
 	{
-		mem_free_point_list( list );
+		if( list )
+			mem_free_point_list( list );
 		return 0;
 	}
 

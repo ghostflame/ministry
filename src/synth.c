@@ -143,41 +143,55 @@ void synth_pass( uint64_t tval, void *arg )
 	ST_THR *t;
 	SYNTH *s;
 
-	//debug( "Attempting to get adder thread locks." );
+#ifdef DEBUG_SYNTH
+	debug( "Attempting to get adder thread locks." );
+#endif
 
 	// try to get the adder locks
 	// this should block until they are ready
 	for( t = ctl->stats->adder->ctls; t; t = t->next )
 		lock_stthr( t );
 
-	//debug( "Generating synthetics." );
+#ifdef DEBUG_SYNTH
+	debug( "Generating synthetics." );
+#endif
 
 	// run the list
 	for( s = ctl->synth->list; s; s = s->next )
 		synth_generate( s );
 
-	//debug( "Unlocking synth." );
+#ifdef DEBUG_SYNTH
+	debug( "Unlocking synth." );
+#endif
 
 	// unlock ourself
 	unlock_synth( );
 
-	//debug( "Unlocking adder thread locks." );
+#ifdef DEBUG_SYNTH
+	debug( "Unlocking adder thread locks." );
+#endif
 
 	// release those locks so the adder threads can carry on
 	for( t = ctl->stats->adder->ctls; t; t = t->next )
 		unlock_stthr( t );
 
-	//debug( "Sleeping %d usec.", ctl->synth->wait_usec );
+#ifdef DEBUG_SYNTH
+	debug( "Sleeping %d usec.", ctl->synth->wait_usec );
+#endif
 
 	// we have to make sure the adder threads have all called lock_synth before
 	// this does - so we deliberately yield a little while
 	// TODO device a more robust mechanism - another lock?
 	usleep( ctl->synth->wait_usec );
 
-	//debug( "Relocking synth." );
+#ifdef DEBUG_SYNTH
+	debug( "Relocking synth." );
+#endif
 
 	// and relock ourself for next time
 	lock_synth( );
+
+	debug( "Synth relocked after pass." );
 }
 
 
@@ -192,7 +206,7 @@ void *synth_loop( void *arg )
 	lock_synth( );
 
 	// and loop
-	loop_control( "synthetics", synth_pass, NULL, ctl->stats->adder->period , 1, ctl->stats->adder->offset );
+	loop_control( "synthetics", synth_pass, NULL, ctl->stats->adder->period, 1, ctl->stats->adder->offset );
 
 	// and lock ourself
 	unlock_synth( );

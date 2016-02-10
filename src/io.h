@@ -42,11 +42,10 @@ int io_read_lines( HOST *h );
 int io_write_data( NSOCK *s, int off );
 
 int io_connected( NSOCK *s );
-int io_connect( NSOCK *s );
+int io_connect( TARGET *t );
 
 void io_buf_send( IOBUF *buf );
 
-loop_call_fn io_send;
 throw_fn io_loop;
 
 void io_start( void );
