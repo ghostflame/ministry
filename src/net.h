@@ -22,7 +22,7 @@
 #define MIN_NETBUF_SZ					0x10000	// 64k
 
 #define HOST_CLOSE						0x01
-#define HOST_NEW						0x02
+#define HOST_CLOSE_EMPTY				0x02
 
 #define DEFAULT_NET_BACKLOG				32
 #define NET_DEAD_CONN_TIMER				600		// 10 mins

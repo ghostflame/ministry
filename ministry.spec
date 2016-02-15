@@ -1,5 +1,5 @@
 Name:		ministry
-Version:	0.2.4
+Version:	0.2.5
 Release:	1%{?dist}
 Summary:	A statsd implementation in threaded C.
 
@@ -46,13 +46,12 @@ make rpminstall
 
 
 %files
-%doc
-/etc/ministry/
-/etc/logrotate.d/ministry
+%doc %{_docdir}/ministry/
+%config /etc/ministry/ministry.conf
+%config /etc/logrotate.d/ministry
 %{_bindir}/ministry
 %{_mandir}/man1/ministry.1.gz
 %{_mandir}/man5/ministry.conf.5.gz
-%{_docdir}/ministry/
 %{_unitdir}/ministry.service
 
 %changelog

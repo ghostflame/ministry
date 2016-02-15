@@ -44,9 +44,12 @@ int io_read_data( NSOCK *s )
 
 	if( !( i = recv( s->sock, s->in->buf + s->in->len, s->in->sz - ( s->in->len + 2 ), MSG_DONTWAIT ) ) )
 	{
-		// that would be the fin, then
-		debug( "Received a FIN, perhaps, from %s", s->name );
-		s->flags |= HOST_CLOSE;
+		if( s->flags & HOST_CLOSE_EMPTY )
+		{
+			// that would be the fin, then
+			debug( "Received a FIN, perhaps, from %s", s->name );
+			s->flags |= HOST_CLOSE;
+		}
 		return 0;
 	}
 	else if( i < 0 )
@@ -71,81 +74,6 @@ int io_read_data( NSOCK *s )
 }
 
 
-int io_read_lines( HOST *h )
-{
-	int i, keeplast = 0, l;
-	NSOCK *n = h->net;
-	char *w;
-
-	// try to read some data
-	if( ( i = io_read_data( n ) ) <= 0 )
-		return i;
-
-	// do we have anything at all?
-	if( !n->in->len )
-	{
-		debug( "No incoming data from %s", n->name );
-		return 0;
-	}
-
-	// mark the socket as active
-	h->last = ctl->curr_time.tv_sec;
-
-	if( n->in->buf[n->in->len - 1] == LINE_SEPARATOR )
-		// remove any trailing separator
-		n->in->buf[--(n->in->len)] = '\0';
-	else
-	 	// make a note to keep the last line back
-		keeplast = 1;
-
-	if( strwords( h->all, n->in->buf, n->in->len, LINE_SEPARATOR ) < 0 )
-	{
-		debug( "Invalid buffer from data host %s.", n->name );
-		return -1;
-	}
-
-	// clean \r's
-	for( i = 0; i < h->all->wc; i++ )
-	{
-		w = h->all->wd[i];
-		l = h->all->len[i];
-
-		// might be at the start
-		if( *w == '\r' )
-		{
-			++(h->all->wd[i]);
-			--(h->all->len[i]);
-			--l;
-		}
-
-		// remove trailing carriage returns
-		if( *(w + l - 1) == '\r' )
-			h->all->wd[--(h->all->len[i])] = '\0';
-	}
-
-
-
-	// claw back the last line - it was incomplete
-	if( h->all->wc && keeplast )
-	{
-		// if we have several lines we can't move the last line
-		if( --(h->all->wc) )
-		{
-			// move it next time
-			n->keep->buf = h->all->wd[h->all->wc];
-			n->keep->len = h->all->len[h->all->wc];
-		}
-		else
-		{
-			// it's the only line
-			n->in->len   = h->all->len[0];
-			n->keep->buf = NULL;
-			n->keep->len = 0;
-		}
-	}
-
-	return h->all->wc;
-}
 
 
 // we have to pass an offset in because

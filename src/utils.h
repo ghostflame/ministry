@@ -18,8 +18,7 @@
 #define PERM_SPACE_BLOCK	0x1000000	// 1M
 
 // for breaking up strings on a delimiter
-#define STRWORDS_MAX		255
-#define STRWORDS_HWM		254
+#define STRWORDS_MAX		339			// makes for a 4k struct
 
 // var_val status
 #define VV_LINE_UNKNOWN		0
@@ -47,10 +46,13 @@
 #define tvdupe( a, b )		b.tv_sec = a.tv_sec; b.tv_usec = a.tv_usec
 
 
+
 struct words_data
 {
 	char				*	wd[STRWORDS_MAX];
+	char				*	end;
 	int						len[STRWORDS_MAX];
+	int						end_len;
 	int						in_len;
 	int						wc;
 };

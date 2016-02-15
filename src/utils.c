@@ -122,21 +122,15 @@ int strwords( WORDS *w, char *src, int len, char sep )
 	register int   l;
 	int i = 0;
 
-	if( !w || !src || !sep )
+	if( !w || !p || !sep )
 		return -1;
 
-	if( !len )
-		len = strlen( src );
-
-	memset( w, 0, sizeof( WORDS ) );
-
-	w->wc = 0;
-
-	if( !len )
+	if( !len && !( len = strlen( p ) ) )
 		return 0;
 
 	l = len;
-	p = src;
+
+	memset( w, 0, sizeof( WORDS ) );
 
 	w->in_len = l;
 
@@ -151,21 +145,32 @@ int strwords( WORDS *w, char *src, int len, char sep )
 	if( !*p )
 		return 0;
 
+	// and break it up
 	while( l )
 	{
 		w->wd[i] = p;
 
-		if( i == STRWORDS_HWM
-		 || !( q = memchr( p, sep, l ) ) )
+		if( ( q = memchr( p, sep, l ) ) )
+		{
+			w->len[i++] = q - p;
+			*q++ = '\0';
+			l -= q - p;
+			p = q;
+		}
+		else
 		{
 			w->len[i++] = l;
 			break;
 		}
 
-		w->len[i++] = q - p;
-		*q++ = '\0';
-		l -= q - p;
-		p = q;
+		// note any remaining we didn't capture
+		// due to size constraints
+		if( i == STRWORDS_MAX )
+		{
+			w->end = p;
+			w->end_len = l;
+			break;
+		}
 	}
 
 	// done

@@ -286,11 +286,140 @@ void data_line_adder( HOST *h, char *line, int len )
 
 
 
+//  This function is an annoying mix of io code and processing code,
+//  but it is like that to address the following concerns:
+//
+//  1.  Data may spill across multiple receives, and not on line breaks
+//  2.  We may receive more data than fits in one strwords struct in one go
+//
+//  So we have to keep looping around read, looking for more data until we
+//  don't get any.  Then we need to loop around processing until there's no
+//  data left.  We need to only barf on no data the first time around, thus
+//  the empty flag.  We need to keep any partial lines for the next read call
+//  to push back to the start of the buffer.
+//
+int data_recv_lines( HOST *h )
+{
+	int i, l, keeplast = 0, len;
+	NSOCK *n = h->net;
+	char *src, *w;
 
-void data_handle_connection( HOST *h )
+	n->flags |= HOST_CLOSE_EMPTY;
+
+	// we need to loop until there's nothing left to read
+	for( ; ; )
+	{
+		// try to read some data
+		if( ( i = io_read_data( h->net ) ) <= 0 )
+			break;
+
+		// do we have anything
+		if( !n->in->len )
+		{
+			debug( "No incoming data from %s", n->name );
+			break;
+		}
+
+		// remove the close-empty flag
+		// we only want to close if our first
+		// read finds nothing
+		n->flags &= ~HOST_CLOSE_EMPTY;
+
+		// is the last line complete?
+		if( n->in->buf[n->in->len - 1] == LINE_SEPARATOR )
+			// remove any trailing separator
+			n->in->buf[--(n->in->len)] = '\0';
+		else
+			// make a note to keep the last line back
+			keeplast = 1;
+
+
+		// we may have to go around the breakup/handle
+		// loop multiple times if we get more lines than
+		// strwords can handle
+
+		src = n->in->buf;
+		len = n->in->len;
+
+		while( src && len > 0 )
+		{
+			if( strwords( h->all, src, len, LINE_SEPARATOR ) < 0 )
+			{
+				debug( "Invalid buffer from data host %s.", n->name );
+				return 0;
+			}
+
+			// clean \r's
+			for( i = 0; i < h->all->wc; i++ )
+			{
+				w = h->all->wd[i];
+				l = h->all->len[i];
+
+				// might be at the start
+				if( *w == '\r' )
+				{
+					++(h->all->wd[i]);
+					--(h->all->len[i]);
+					--l;
+				}
+
+				// remove trailing carriage returns
+				if( *(w + l - 1) == '\r' )
+					h->all->wd[--(h->all->len[i])] = '\0';
+			}
+
+			// note any remainder
+			src = h->all->end;
+			len = h->all->end_len;
+
+			// let's process those lines
+			for( i = 0; i < h->all->wc; i++ )
+				if( h->all->len[i] > 0 )
+					(*(h->type->handler))( h, h->all->wd[i], h->all->len[i] );
+
+			// if the last line was incomplete, don't process it
+			// but mark up the keep buffer
+			if( !len && h->all->wc && keeplast )
+			{
+				h->all->wc--;
+				n->keep->buf = h->all->wd[h->all->wc];
+				n->keep->len = h->all->len[h->all->wc];
+			}
+		}
+	}
+
+	// did we get something?  or are we done?
+	if( n->flags & HOST_CLOSE )
+	{
+		debug( "Host %s flagged as closed.", n->name );
+		return -1;
+	}
+	else
+		h->last = ctl->curr_time.tv_sec;
+
+	return 0;
+}
+
+
+
+
+
+void *data_connection( void *arg )
 {
 	struct pollfd p;
-	int rv, i;
+	int rv;
+
+	THRD *t;
+	HOST *h;
+
+	t = (THRD *) arg;
+	h = (HOST *) t->arg;
+
+	info( "Accepted data connection from host %s", h->net->name );
+
+	// make sure we can be cancelled
+	pthread_setcancelstate( PTHREAD_CANCEL_ENABLE, NULL );
+	pthread_setcanceltype( PTHREAD_CANCEL_ASYNCHRONOUS, NULL );
 
 	p.fd     = h->net->sock;
 	p.events = POLL_EVENTS;
@@ -320,48 +449,11 @@ void data_handle_connection( HOST *h )
 			break;
 		}
 
-		// 0 means gone away
-		if( ( rv = io_read_lines( h ) ) <= 0 )
-		{
-			debug( "Received 0 lines from %s -- gone away?", h->net->name );
-			h->net->flags |= HOST_CLOSE;
+		// and process the lines
+		if( data_recv_lines( h ) < 0 )
 			break;
-		}
-
-		// mark them active
-		h->last = ctl->curr_time.tv_sec;
-
-		// and handle them
-		for( i = 0; i < h->all->wc; i++ )
-			if( h->all->len[i] > 0 )
-				(*(h->type->handler))( h, h->all->wd[i], h->all->len[i] );
-
-		// allow data fetch to tell us to close this host down
-		if( h->net->flags & HOST_CLOSE )
-		{
-			debug( "Host %s flagged as closed.", h->net->name );
-			break;
-		}
 	}
-}
 
-
-
-void *data_connection( void *arg )
-{
-	THRD *t;
-	HOST *h;
-
-	t = (THRD *) arg;
-	h = (HOST *) t->arg;
-
-	info( "Accepted data connection from host %s", h->net->name );
-
-	// make sure we can be cancelled
-	pthread_setcancelstate( PTHREAD_CANCEL_ENABLE, NULL );
-	pthread_setcanceltype( PTHREAD_CANCEL_ASYNCHRONOUS, NULL );
-
-	data_handle_connection( h );
 
 	info( "Closing connection to host %s after %lu data points.",
 			h->net->name, h->points );
@@ -413,6 +505,17 @@ void *data_loop_udp( void *arg )
 			b->buf[b->len] = '\0';
 
 		// break that up
+		//
+		// we don't have a way to handle partial lines received over
+		// UDP without keeping a cache of keep buffers for every IP address
+		// seen.  nc will certainly break lines across packets and if your
+		// app does the same, we will likely screw up your data.  But that's
+		// UDP for you.
+		//
+		// An IP based cache is a DoS vulnerability - we could be supplied
+		// with partial lines from a huge variety of source addresses and
+		// balloon our memory trying to keep up.  So for now, a simpler
+		// view is necessary
 		if( !strwords( h->all, (char *) b->buf, b->len, LINE_SEPARATOR ) )
 			continue;
 
