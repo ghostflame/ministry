@@ -147,12 +147,6 @@ new-style stats ports, statsd-compatible ports or new-style adder ports.
 \fBTYPE.enable\fR
 Enable or disable this type of collection (defaults to 1 for all)
 .TP
-\fBTYPE.enable_tcp\fR
-Enable or disable TCP ports for this type of collection (defaults to 1 for all)
-.TP
-\fBTYPE.enable_udp\fR
-Enable or disable UDP ports for this type of collection (defaults to 1 for all)
-.TP
 \fBTYPE.label\fR
 Label these ports have within logging.
 .PP
@@ -161,6 +155,9 @@ or TCP ports respectively.  Obviously, the TCP options have no meaning for UDP.
 .TP
 \fBTYPE.PROTO.bind\fR
 Bind address for this type and protocol - must be a local IP address (default IPADDR_ANY)
+.TP
+\fBTYPE.PROTO.enable\fR
+Enable or disable his protocol for this type of collection (defaults to 1)
 .TP
 \fBTYPE.PROTO.backlog\fR
 Backlog for incoming tcp connections (default 32)

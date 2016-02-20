@@ -644,14 +644,6 @@ int net_config_line( AVP *av )
 			ntflag( ENABLED );
 			debug( "Networking %s for %s", ( nt->flags & NTYPE_ENABLED ) ? "enabled" : "disabled", nt->label );
 		}
-		else if( !strcasecmp( p, "enable_tcp" ) )
-		{
-			ntflag( TCP_ENABLED );
-		}
-		else if( !strcasecmp( p, "enable_udp" ) )
-		{
-			ntflag( UDP_ENABLED );
-		}
 		else if( !strcasecmp( p, "label" ) )
 		{
 			free( nt->label );
@@ -672,8 +664,19 @@ int net_config_line( AVP *av )
 		tcp = 1;
 	else
 		return -1;
-	
-	if( !strcasecmp( d, "bind" ) )
+
+	if( !strcasecmp( d, "enable" ) )
+	{
+		if( tcp )
+		{
+			ntflag( TCP_ENABLED );
+		}
+		else
+		{
+			ntflag( UDP_ENABLED );
+		}
+	}
+	else if( !strcasecmp( d, "bind" ) )
 	{
 		inet_aton( av->val, &ina );
 		if( tcp )

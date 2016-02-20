@@ -85,14 +85,14 @@ must all be prefixed with one of those three.  The type as a whole, with
 both TCP and UDP reception, are enabled by default.
 
 - type.enable      = (integer) 0 or !0, to disable or enable respectively
-- type.enable_tcp  = (integer) 0 or !0, to disable or enable TCP respectively
-- type.enable_udp  = (integer) 0 or !0, to disable or enable UDP respectively
 - type.label       = (string) How this socket is described in logs
 
 After this, everything is by protocol, udp or tcp.
 
 - type.udp.bind    = (string) IP address to bind this socket to
 - type.udp.port    = (integer-list) Comma-separated ports to listen on
+- type.udp.enable  = (integer) 0 or !0, to disable or enable UDP
+- type.tcp.enable  = (integer) 0 or !0, to disable or enable TCP
 
 - type.tcp.bind    = (string) IP address to bind this socket to
 - type.udp.port    = (integer) Port to listen for connections on
