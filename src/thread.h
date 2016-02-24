@@ -10,21 +10,21 @@
 #ifndef MINISTRY_THREAD_H
 #define MINISTRY_THREAD_H
 
-#define HASHT_MUTEX_COUNT		0x10	// 16
-#define HASHT_MUTEX_MASK		0x0f
+#define HASHT_MUTEX_COUNT		0x20	// 32
+#define HASHT_MUTEX_MASK		0x1f
 
-#define DSTATS_MUTEX_COUNT		0x40	// 64
-#define DSTATS_MUTEX_MASK		0x3f
+#define DSTATS_MUTEX_COUNT		0x80	// 128
+#define DSTATS_MUTEX_MASK		0x7f
 
-#define DADDER_MUTEX_COUNT		0x40	// 64
-#define DADDER_MUTEX_MASK		0x3f
+#define DADDER_MUTEX_COUNT		0x80	// 128
+#define DADDER_MUTEX_MASK		0x7f
 
 
-#define lock_adder( d )			pthread_mutex_lock(   &(ctl->locks->dadder[d->id & DADDER_MUTEX_MASK]) )
-#define unlock_adder( d )		pthread_mutex_unlock( &(ctl->locks->dadder[d->id & DADDER_MUTEX_MASK]) )
+#define lock_adder( d )			pthread_spin_lock(   &(ctl->locks->dadder[d->id & DADDER_MUTEX_MASK]) )
+#define unlock_adder( d )		pthread_spin_unlock( &(ctl->locks->dadder[d->id & DADDER_MUTEX_MASK]) )
 
-#define lock_stats( d )			pthread_mutex_lock(   &(ctl->locks->dstats[d->id & DSTATS_MUTEX_MASK]) )
-#define unlock_stats( d )		pthread_mutex_unlock( &(ctl->locks->dstats[d->id & DSTATS_MUTEX_MASK]) )
+#define lock_stats( d )			pthread_spin_lock(   &(ctl->locks->dstats[d->id & DSTATS_MUTEX_MASK]) )
+#define unlock_stats( d )		pthread_spin_unlock( &(ctl->locks->dstats[d->id & DSTATS_MUTEX_MASK]) )
 
 #define lock_table( idx )		pthread_mutex_lock(   &(ctl->locks->table[idx & HASHT_MUTEX_MASK]) )
 #define unlock_table( idx )		pthread_mutex_unlock( &(ctl->locks->table[idx & HASHT_MUTEX_MASK]) )
@@ -53,8 +53,8 @@ struct lock_control
 	pthread_mutex_t			bufref;						// controlled buffer refcount
 
 	pthread_mutex_t			table[HASHT_MUTEX_COUNT];	// hash table locks
-	pthread_mutex_t			dstats[DSTATS_MUTEX_COUNT];	// path stat data
-	pthread_mutex_t			dadder[DADDER_MUTEX_COUNT];	// path add data
+	pthread_spinlock_t		dstats[DSTATS_MUTEX_COUNT];	// path stat data
+	pthread_spinlock_t		dadder[DADDER_MUTEX_COUNT];	// path add data
 
 	int						init_done;
 };
