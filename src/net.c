@@ -198,15 +198,10 @@ NSOCK *net_make_sock( int insz, int outsz, char *name, struct sockaddr_in *peer 
 	}
 
 	ns->peer = peer;
-	ns->keep = mem_new_buf( 0 );
 
 	if( insz )
-	{
 		ns->in = mem_new_buf( insz );
-		ns->keep->buf  = ns->in->buf;
-		ns->keep->sz   = insz;
-		ns->keep->hwmk = ns->in->hwmk;
-	}
+
 	if( outsz )
 		ns->out = mem_new_buf( outsz );
 
@@ -465,9 +460,9 @@ NET_CTL *net_config_defaults( void )
 	net->io_usec   = 1000 * NET_IO_MSEC;
 	net->max_bufs  = IO_MAX_WAITING;
 
-	net->data      = net_type_defaults( DEFAULT_DATA_PORT,   &data_line_data,   "ministry data socket" );
-	net->statsd    = net_type_defaults( DEFAULT_STATSD_PORT, &data_line_statsd, "stats compat socket" );
-	net->adder     = net_type_defaults( DEFAULT_ADDER_PORT,  &data_line_adder,  "combiner socket" );
+	net->data      = net_type_defaults( DEFAULT_DATA_PORT,   &data_line_stats,  "ministry stats socket" );
+	net->statsd    = net_type_defaults( DEFAULT_STATSD_PORT, &data_line_compat, "statsd compat socket" );
+	net->adder     = net_type_defaults( DEFAULT_ADDER_PORT,  &data_line_adder,  "ministry adder socket" );
 
 	// ip checking
 	net->ipcheck   = (IPCHK *) allocz( sizeof( IPCHK ) );
