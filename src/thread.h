@@ -20,11 +20,11 @@
 #define DADDER_MUTEX_MASK		0x3f
 
 
-#define lock_adder( d )			pthread_mutex_lock(   &(ctl->locks->dadder[d->id & DADDER_MUTEX_MASK]) )
-#define unlock_adder( d )		pthread_mutex_unlock( &(ctl->locks->dadder[d->id & DADDER_MUTEX_MASK]) )
+#define lock_adder( d )			pthread_spin_lock(   &(ctl->locks->dadder[d->id & DADDER_MUTEX_MASK]) )
+#define unlock_adder( d )		pthread_spin_unlock( &(ctl->locks->dadder[d->id & DADDER_MUTEX_MASK]) )
 
-#define lock_stats( d )			pthread_mutex_lock(   &(ctl->locks->dstats[d->id & DSTATS_MUTEX_MASK]) )
-#define unlock_stats( d )		pthread_mutex_unlock( &(ctl->locks->dstats[d->id & DSTATS_MUTEX_MASK]) )
+#define lock_stats( d )			pthread_spin_lock(   &(ctl->locks->dstats[d->id & DSTATS_MUTEX_MASK]) )
+#define unlock_stats( d )		pthread_spin_unlock( &(ctl->locks->dstats[d->id & DSTATS_MUTEX_MASK]) )
 
 #define lock_table( idx )		pthread_mutex_lock(   &(ctl->locks->table[idx & HASHT_MUTEX_MASK]) )
 #define unlock_table( idx )		pthread_mutex_unlock( &(ctl->locks->table[idx & HASHT_MUTEX_MASK]) )
@@ -53,8 +53,8 @@ struct lock_control
 	pthread_mutex_t			bufref;						// controlled buffer refcount
 
 	pthread_mutex_t			table[HASHT_MUTEX_COUNT];	// hash table locks
-	pthread_mutex_t			dstats[DSTATS_MUTEX_COUNT];	// path stat data
-	pthread_mutex_t			dadder[DADDER_MUTEX_COUNT];	// path add data
+	pthread_spinlock_t		dstats[DSTATS_MUTEX_COUNT];	// path stat data
+	pthread_spinlock_t		dadder[DADDER_MUTEX_COUNT];	// path add data
 
 	int						init_done;
 };
