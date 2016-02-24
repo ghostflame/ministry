@@ -17,31 +17,6 @@ int io_read_data( NSOCK *s )
 {
 	int i;
 
-	if( s->keep->len )
-	{
-	  	// can we shift the kept string
-		if( ( s->keep->buf - s->in->buf ) >= s->keep->len )
-			memcpy( s->in->buf, s->keep->buf, s->keep->len );
-		else
-		{
-			// no, we can't
-			char *p, *q;
-
-			i = s->keep->len;
-			p = s->in->buf;
-			q = s->keep->buf;
-
-			while( i-- > 0 )
-				*p++ = *q++;
-		}
-
-		s->keep->buf = NULL;
-		s->in->len   = s->keep->len;
-		s->keep->len = 0;
-	}
-	else
-		s->in->len = 0;
-
 	if( !( i = recv( s->sock, s->in->buf + s->in->len, s->in->sz - ( s->in->len + 2 ), MSG_DONTWAIT ) ) )
 	{
 		if( s->flags & HOST_CLOSE_EMPTY )

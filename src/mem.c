@@ -147,7 +147,6 @@ HOST *mem_new_host( void )
 	{
 		h->net = net_make_sock( MIN_NETBUF_SZ, MIN_NETBUF_SZ,
 		                        NULL, &(h->peer) );
-		h->all = (WORDS *) allocz( sizeof( WORDS ) );
 		h->val = (WORDS *) allocz( sizeof( WORDS ) );
 	}
 
@@ -164,16 +163,14 @@ void mem_free_host( HOST **h )
 	sh = *h;
 	*h = NULL;
 
-	sh->points         = 0;
-	sh->type           = NULL;
-	sh->last           = 0;
-	sh->started        = 0;
-	sh->net->sock      = -1;
-	sh->net->flags     = 0;
-	sh->net->out->len  = 0;
-	sh->net->in->len   = 0;
-	sh->net->keep->len = 0;
-	sh->net->keep->buf = NULL;
+	sh->points        = 0;
+	sh->type          = NULL;
+	sh->last          = 0;
+	sh->started       = 0;
+	sh->net->sock     = -1;
+	sh->net->flags    = 0;
+	sh->net->out->len = 0;
+	sh->net->in->len  = 0;
 
 	if( sh->net->name )
 	{

@@ -63,8 +63,6 @@ struct net_socket
 {
 	IOBUF				*	out;
 	IOBUF				*	in;
-	// this one has no buffer allocation
-	IOBUF				*	keep;
 
 	int						sock;
 	int						flags;
@@ -81,7 +79,6 @@ struct host_data
 	HOST				*	next;
 	NSOCK				*	net;
 
-	WORDS				*	all;		// each line
 	WORDS				*	val;		// per line
 
 	NET_TYPE			*	type;

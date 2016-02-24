@@ -80,8 +80,8 @@ struct data_hash_entry
 DHASH *data_locate( char *path, int len, int adder );
 void data_point_adder( char *path, int len, double val );
 
-line_fn data_line_data;
-line_fn data_line_statsd;
+line_fn data_line_stats;
+line_fn data_line_compat;
 line_fn data_line_adder;
 
 void data_start( NET_TYPE *nt );

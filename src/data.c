@@ -116,10 +116,6 @@ void data_point_adder( char *path, int len, double val )
 			d = mem_new_dhash( path, len, DATA_HTYPE_ADDER );
 			d->sum = hval;
 
-#ifdef DEBUG
-			debug( "Added new adder path (%u: %u) %s", indx, hval, path );
-#endif
-
 			d->next = ctl->stats->adder->data[indx];
 			ctl->stats->adder->data[indx] = d;
 		}
@@ -175,13 +171,8 @@ void data_point_stats( char *path, int len, float val )
 	// lock that path
 	lock_stats( d );
 
-	// find where to store the points
-	for( p = d->in.points; p; p = p->next )
-		if( p->count < PTLIST_SIZE )
-			break;
-
 	// make a new one if need be
-	if( !p )
+	if( !( p = d->in.points ) || p->count == PTLIST_SIZE )
 	{
 		p = mem_new_point( );
 		p->next = d->in.points;
@@ -198,7 +189,7 @@ void data_point_stats( char *path, int len, float val )
 
 // support the statsd format
 // path:<val>|<c or ms>
-void data_line_statsd( HOST *h, char *line, int len )
+void data_line_compat( HOST *h, char *line, int len )
 {
 	char *cl, *vb;
 	int plen;
@@ -244,13 +235,21 @@ void data_line_statsd( HOST *h, char *line, int len )
 }
 
 
-void data_line_data( HOST *h, char *line, int len )
+void data_line_stats( HOST *h, char *line, int len )
 {
-	// break that up
-	strwords( h->val, line, len, FIELD_SEPARATOR );
+	char *sp;
+	int plen;
 
-	// broken?
-	if( h->val->wc < STAT_FIELD_MIN )
+	if( !( sp = memchr( line, FIELD_SEPARATOR, len ) ) )
+	{
+		h->invalid++;
+		return;
+	}
+
+	plen  = sp - line;
+	*sp++ = '\0';
+
+	if( !plen || !*sp )
 	{
 		h->invalid++;
 		return;
@@ -259,38 +258,124 @@ void data_line_data( HOST *h, char *line, int len )
 	// looks OK
 	h->points++;
 
-	data_point_stats( h->val->wd[0], h->val->len[0],
-	                 strtod( h->val->wd[1], NULL ) );
+	// and put that in
+	data_point_stats( line, plen, strtod( sp, NULL ) );
 }
+
 
 
 void data_line_adder( HOST *h, char *line, int len )
 {
-	// break it up
-	strwords( h->val, line, len, FIELD_SEPARATOR );
+	char *sp;
+	int plen;
 
-	// broken?
-	if( h->val->wc < STAT_FIELD_MIN )
+	if( !( sp = memchr( line, FIELD_SEPARATOR, len ) ) )
 	{
 		h->invalid++;
 		return;
 	}
 
-	// looks ok
+	plen  = sp - line;
+	*sp++ = '\0';
+
+	if( !plen || !*sp )
+	{
+		h->invalid++;
+		return;
+	}
+
+	// looks OK
 	h->points++;
 
 	// and put that in
-	data_point_adder( h->val->wd[0], h->val->len[0],
-				strtod( h->val->wd[1], NULL ) );
+	data_point_adder( line, plen, strtod( sp, NULL ) );
 }
 
 
 
+
+
+// parse the lines
+// put any partial lines back at the start of the buffer
+// and return the length, if any
+int data_parse_buf( HOST *h, char *buf, int len )
+{
+	register char *s = buf;
+	register char *q;
+	char *r;
+	int l;
+
+	while( len > 0 )
+	{
+		// look for newlines
+		if( !( q = memchr( s, LINE_SEPARATOR, len ) ) )
+		{
+			// partial last line
+			l = s - buf;
+
+			if( len < l )
+			{
+				memcpy( buf, s, len );
+				*(buf + len) = '\0';
+			}
+			else
+			{
+				q = buf;
+				l = len;
+
+				while( l-- > 0 )
+					*q++ = *s++;
+				*q = '\0';
+			}
+
+			// and we're done, with len > 0
+			break;
+		}
+
+		l = q - s;
+		r = q - 1;
+
+		// stomp on that newline
+		*q++ = '\0';
+
+		// and decrement the remaining length
+		len -= q - s;
+
+		// clean leading \r's
+		if( *s == '\r' )
+		{
+			s++;
+			l--;
+		}
+
+		// get the length
+		// and trailing \r's
+		if( l > 0 && *r == '\r' )
+		{
+			*r-- = '\0';
+			l--;
+		}
+
+		// still got anything?
+		if( l > 0 )
+		{
+			// process that line
+			(*(h->type->handler))( h, s, l );
+		}
+
+		// and move on
+		s = q;
+	}
+
+	return len;
+}
+
+
+
+
 //  This function is an annoying mix of io code and processing code,
-//  but it is like that to address the following concerns:
-//
-//  1.  Data may spill across multiple receives, and not on line breaks
-//  2.  We may receive more data than fits in one strwords struct in one go
+//  but it is like that to address data splitting across multiple sends,
+//  and not on line breaks
 //
 //  So we have to keep looping around read, looking for more data until we
 //  don't get any.  Then we need to loop around processing until there's no
@@ -300,19 +385,13 @@ void data_line_adder( HOST *h, char *line, int len )
 //
 int data_recv_lines( HOST *h )
 {
-	int i, l, keeplast = 0, len;
 	NSOCK *n = h->net;
-	char *src, *w;
 
 	n->flags |= HOST_CLOSE_EMPTY;
 
 	// we need to loop until there's nothing left to read
-	for( ; ; )
+	while( io_read_data( h->net ) > 0 )
 	{
-		// try to read some data
-		if( ( i = io_read_data( h->net ) ) <= 0 )
-			break;
-
 		// do we have anything
 		if( !n->in->len )
 		{
@@ -325,67 +404,8 @@ int data_recv_lines( HOST *h )
 		// read finds nothing
 		n->flags &= ~HOST_CLOSE_EMPTY;
 
-		// is the last line complete?
-		if( n->in->buf[n->in->len - 1] == LINE_SEPARATOR )
-			// remove any trailing separator
-			n->in->buf[--(n->in->len)] = '\0';
-		else
-			// make a note to keep the last line back
-			keeplast = 1;
-
-
-		// we may have to go around the breakup/handle
-		// loop multiple times if we get more lines than
-		// strwords can handle
-
-		src = n->in->buf;
-		len = n->in->len;
-
-		while( src && len > 0 )
-		{
-			if( strwords( h->all, src, len, LINE_SEPARATOR ) < 0 )
-			{
-				debug( "Invalid buffer from data host %s.", n->name );
-				return 0;
-			}
-
-			// clean \r's
-			for( i = 0; i < h->all->wc; i++ )
-			{
-				w = h->all->wd[i];
-				l = h->all->len[i];
-
-				// might be at the start
-				if( *w == '\r' )
-				{
-					++(h->all->wd[i]);
-					--(h->all->len[i]);
-					--l;
-				}
-
-				// remove trailing carriage returns
-				if( *(w + l - 1) == '\r' )
-					h->all->wd[--(h->all->len[i])] = '\0';
-			}
-
-			// note any remainder
-			src = h->all->end;
-			len = h->all->end_len;
-
-			// let's process those lines
-			for( i = 0; i < h->all->wc; i++ )
-				if( h->all->len[i] > 0 )
-					(*(h->type->handler))( h, h->all->wd[i], h->all->len[i] );
-
-			// if the last line was incomplete, don't process it
-			// but mark up the keep buffer
-			if( !len && h->all->wc && keeplast )
-			{
-				h->all->wc--;
-				n->keep->buf = h->all->wd[h->all->wc];
-				n->keep->len = h->all->len[h->all->wc];
-			}
-		}
+		// and parse that buffer
+		n->in->len = data_parse_buf( h, n->in->buf, n->in->len );
 	}
 
 	// did we get something?  or are we done?
@@ -473,7 +493,6 @@ void *data_loop_udp( void *arg )
 	IOBUF *b;
 	THRD *t;
 	HOST *h;
-	int i;
 
 	t = (THRD *) arg;
 	n = (NET_PORT *) t->arg;
@@ -516,13 +535,7 @@ void *data_loop_udp( void *arg )
 		// with partial lines from a huge variety of source addresses and
 		// balloon our memory trying to keep up.  So for now, a simpler
 		// view is necessary
-		if( !strwords( h->all, (char *) b->buf, b->len, LINE_SEPARATOR ) )
-			continue;
-
-		// and handle them
-		for( i = 0; i < h->all->wc; i++ )
-			if( h->all->len[i] > 0 )
-				(*(h->type->handler))( h, h->all->wd[i], h->all->len[i] );
+		data_parse_buf( h, (char *) b->buf, b->len );
 	}
 
 	loop_mark_done( "udp" );
