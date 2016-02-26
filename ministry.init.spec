@@ -40,7 +40,7 @@ CFGDIR=%{buildroot}/etc/ministry \
 LOGDIR=%{buildroot}/var/log/ministry \
 DOCDIR=%{buildroot}%{_docdir}/ministry \
 MANDIR=%{buildroot}%{_mandir} \
-INIDIR=${buildroot}/etc/init.d \
+INIDIR=%{buildroot}/etc/init.d \
 USER=ministry GROUP=ministry \
 make initinstall
 
