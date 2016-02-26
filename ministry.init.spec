@@ -9,7 +9,7 @@ URL:		https://github.com/ghostflame/ministry
 Source:		https://github.com/ghostflame/ministry/archive/%{version}.tar.gz
 
 BuildRequires: gcc
-Requires(pre): shadow-utils systemd
+Requires(pre): shadow-utils
 
 %description
 A drop-in replacement for Etsy's statsd, written in threaded C.  Designed to
@@ -40,9 +40,9 @@ CFGDIR=%{buildroot}/etc/ministry \
 LOGDIR=%{buildroot}/var/log/ministry \
 DOCDIR=%{buildroot}%{_docdir}/ministry \
 MANDIR=%{buildroot}%{_mandir} \
-UNIDIR=%{buildroot}%{_unitdir} \
+INIDIR=${buildroot}/etc/init.d \
 USER=ministry GROUP=ministry \
-make unitinstall
+make initinstall
 
 
 %files
