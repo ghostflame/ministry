@@ -52,7 +52,7 @@ make initinstall
 %{_bindir}/ministry
 %{_mandir}/man1/ministry.1.gz
 %{_mandir}/man5/ministry.conf.5.gz
-%{_unitdir}/ministry.service
+%{_sysconfdir}/init.d/ministry
 
 %changelog
 
