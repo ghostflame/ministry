@@ -39,7 +39,6 @@
 
 
 
-#define tvdiff( a, b, d )	d = (double) ( (int) a.tv_sec - (int) b.tv_sec ) + ( (double) ( (int) a.tv_usec - (int) b.tv_usec ) ) / 1000000.0
 #define tvll( a )			( ( 1000000 * (uint64_t) a.tv_sec ) + (uint64_t) a.tv_usec )
 #define tvinfo( a )			info( "%ld.%06.ld", (long) a.tv_sec, (long) a.tv_usec )
 #define tvadd( a, usec )	a.tv_usec += usec; while( a.tv_usec >= 1000000 ) { a.tv_sec++; a.tv_usec -= 1000000; }
@@ -99,5 +98,8 @@ void pidfile_remove( void );
 
 // proper float summation
 void kahan_summation( float *list, int len, float *sum );
+
+// timeval difference as a double
+double tv_diff( struct timeval to, struct timeval from, double *store );
 
 #endif

@@ -360,3 +360,19 @@ void kahan_summation( float *list, int len, float *sum )
 }
 
 
+double tv_diff( struct timeval to, struct timeval from, double *store )
+{
+	double diff;
+
+	diff  = (double) ( (int) to.tv_usec - (int) from.tv_usec );
+	diff /= 1000000.0;
+	diff += (double) ( (int) to.tv_sec - (int) from.tv_sec );
+
+	if( store )
+		*store = diff;
+
+	return diff;
+}
+
+
+

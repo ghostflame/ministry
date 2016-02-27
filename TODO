@@ -4,6 +4,9 @@ Refactor
 Network
 	none
 
+Data types
+	Support for more statsd data types?
+
 Stats generation
 	none
 

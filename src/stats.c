@@ -355,7 +355,7 @@ void stats_self_pass( uint64_t tval, void *arg )
 	now.tv_usec = tval % 1000000;
 
 	prfx = ctl->stats->self->prefix;
-	tvdiff( now, ctl->init_time, upt );
+	tv_diff( now, ctl->init_time, &upt );
 
 	b = mem_new_buf( IO_BUF_SZ );
 
