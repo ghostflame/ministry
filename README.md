@@ -5,12 +5,27 @@ Etsy's statsd can be found here:  https://github.com/etsy/statsd
 
 It supports statsd's input format:
 ```
-	<metric path>:<value>|<type - c or ms>\n
+	<metric path>:<value>|<type - g, c or ms>\n
 ```
 As well as a simpler input format:
 ```
 	<metric path> <value>\n
 ```
+
+Ministry supports counters, timers and gauges, though does not support statsd's
+sample rate concept (here and SkyBet we have found that in the few cases where we
+do not fully sample a metric, the sample rate is fixed per metric and easily
+corrected with a scale() function in graphite).
+
+In order not to balloon in memory over time, Ministry has a basic garbage collection
+function, which keeps an eye out for metrics that have stopped reporting.  They are
+evicted from memory after a configurable time.
+
+Furthermore, Ministry uses the notion that no data points is different from data of
+zero.  Ministry tracks points sent to a metric and does not report a metric with no
+points against it.  It will report zero for a metric whose value is zero but which
+has received data.
+
 
 ## Ministry Config
 
