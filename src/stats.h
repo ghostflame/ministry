@@ -13,6 +13,7 @@
 
 loop_call_fn stats_stats_pass;
 loop_call_fn stats_adder_pass;
+loop_call_fn stats_gauge_pass;
 loop_call_fn stats_self_pass;
 
 
@@ -23,19 +24,22 @@ enum stats_types
 {
 	STATS_TYPE_STATS = 0,
 	STATS_TYPE_ADDER,
+	STATS_TYPE_GAUGE,
 	STATS_TYPE_SELF,
 	STATS_TYPE_MAX
 };
 
 
 
-#define DEFAULT_ADDER_THREADS		2
 #define DEFAULT_STATS_THREADS		6
+#define DEFAULT_ADDER_THREADS		2
+#define DEFAULT_GAUGE_THREADS		2
 
 #define DEFAULT_STATS_MSEC			10000
 
 #define DEFAULT_STATS_PREFIX		"stats.timers"
 #define DEFAULT_ADDER_PREFIX		""
+#define DEFAULT_GAUGE_PREFIX		""
 #define DEFAULT_SELF_PREFIX			"stats.ministry"
 
 
@@ -82,6 +86,7 @@ struct stats_control
 {
 	ST_CFG			*	stats;
 	ST_CFG			*	adder;
+	ST_CFG			*	gauge;
 	ST_CFG			*	self;
 
 	int				*	thresholds;

@@ -17,27 +17,20 @@
 
 #define	DATA_HTYPE_STATS		1
 #define	DATA_HTYPE_ADDER		2
+#define DATA_HTYPE_GAUGE		3
 
 #define LINE_SEPARATOR			'\n'
 #define FIELD_SEPARATOR			' '
 
 enum data_conn_type
 {
-	DATA_TYPE_DATA = 0,
-	DATA_TYPE_STATSD,
+	DATA_TYPE_STATS = 0,
 	DATA_TYPE_ADDER,
+	DATA_TYPE_GAUGE,
+	DATA_TYPE_COMPAT,
 	DATA_TYPE_MAX
 };
 
-enum stats_fields
-{
-	STAT_FIELD_PATH = 0,
-	STAT_FIELD_VALUE,
-	STAT_FIELD_OP,
-	STAT_FIELD_MAX,
-};
-
-#define STAT_FIELD_MIN			2
 
 struct points_list
 {
@@ -78,11 +71,15 @@ struct data_hash_entry
 
 
 DHASH *data_locate( char *path, int len, int adder );
-void data_point_adder( char *path, int len, double val );
 
-line_fn data_line_stats;
+add_fn data_point_stats;
+add_fn data_point_adder;
+add_fn data_point_gauge;
+
+void data_point_adder( char *path, int len, char *dat );
+
+line_fn data_line_ministry;
 line_fn data_line_compat;
-line_fn data_line_adder;
 
 void data_start( NET_TYPE *nt );
 

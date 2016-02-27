@@ -22,6 +22,7 @@
 #define MEM_ALLOCSZ_IOLIST			512
 
 #define DEFAULT_GC_THRESH			8640		// 1 day @ 10s
+#define DEFAULT_GC_GG_THRESH		25920		// 3 days @ 10s
 
 
 // universal type for memory management
@@ -60,7 +61,8 @@ struct mem_control
 	int					hashsize;
 	int					interval;	// msec
 
-	int16_t				gc_thresh;
+	int					gc_thresh;
+	int					gc_gg_thresh;
 };
 
 

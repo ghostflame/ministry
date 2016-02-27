@@ -372,9 +372,10 @@ int net_start( void )
 
 	notice( "Starting networking." );
 
-	ret += net_startup( ctl->net->data );
-	ret += net_startup( ctl->net->statsd );
+	ret += net_startup( ctl->net->stats );
 	ret += net_startup( ctl->net->adder );
+	ret += net_startup( ctl->net->gauge );
+	ret += net_startup( ctl->net->compat );
 
 	// reverse the ip check list
 	list = NULL;
@@ -422,13 +423,14 @@ void net_stop( void )
 {
 	notice( "Stopping networking." );
 
-	net_shutdown( ctl->net->data );
-	net_shutdown( ctl->net->statsd );
+	net_shutdown( ctl->net->stats );
 	net_shutdown( ctl->net->adder );
+	net_shutdown( ctl->net->gauge );
+	net_shutdown( ctl->net->compat );
 }
 
 
-NET_TYPE *net_type_defaults( unsigned short port, line_fn *lfn, char *label )
+NET_TYPE *net_type_defaults( unsigned short port, line_fn *lfn, add_fn *afn, char *label )
 {
 	NET_TYPE *nt;
 
@@ -438,7 +440,8 @@ NET_TYPE *net_type_defaults( unsigned short port, line_fn *lfn, char *label )
 	nt->tcp->back = DEFAULT_NET_BACKLOG;
 	nt->tcp->port = port;
 	nt->tcp->type = nt;
-	nt->handler   = lfn;
+	nt->parser    = lfn;
+	nt->handler   = afn;
 	nt->udp_bind  = INADDR_ANY;
 	nt->label     = strdup( label );
 	nt->flags     = NTYPE_ENABLED|NTYPE_TCP_ENABLED|NTYPE_UDP_ENABLED;
@@ -460,9 +463,10 @@ NET_CTL *net_config_defaults( void )
 	net->io_usec   = 1000 * NET_IO_MSEC;
 	net->max_bufs  = IO_MAX_WAITING;
 
-	net->data      = net_type_defaults( DEFAULT_DATA_PORT,   &data_line_stats,  "ministry stats socket" );
-	net->statsd    = net_type_defaults( DEFAULT_STATSD_PORT, &data_line_compat, "statsd compat socket" );
-	net->adder     = net_type_defaults( DEFAULT_ADDER_PORT,  &data_line_adder,  "ministry adder socket" );
+	net->stats     = net_type_defaults( DEFAULT_STATS_PORT,  &data_line_ministry, &data_point_stats,  "ministry stats socket" );
+	net->adder     = net_type_defaults( DEFAULT_ADDER_PORT,  &data_line_ministry, &data_point_adder,  "ministry adder socket" );
+	net->gauge     = net_type_defaults( DEFAULT_GAUGE_PORT,  &data_line_ministry, &data_point_gauge,  "ministry gauge socket" );
+	net->compat    = net_type_defaults( DEFAULT_COMPAT_PORT, &data_line_compat,   NULL,               "statsd compat socket"  );
 
 	// ip checking
 	net->ipcheck   = (IPCHK *) allocz( sizeof( IPCHK ) );
@@ -608,11 +612,13 @@ int net_config_line( AVP *av )
 	p = d + 1;
 
 	if( !strncasecmp( av->att, "data.", 5 ) )
-		nt = ctl->net->data;
-	else if( !strncasecmp( av->att, "statsd.", 7 ) )
-		nt = ctl->net->statsd;
+		nt = ctl->net->stats;
 	else if( !strncasecmp( av->att, "adder.", 6 ) )
 		nt = ctl->net->adder;
+	else if( !strncasecmp( av->att, "gauge.", 6 ) || !strncasecmp( av->att, "guage.", 6 ) )
+		nt = ctl->net->gauge;
+	else if( !strncasecmp( av->att, "statsd.", 7 ) )
+		nt = ctl->net->compat;
 	else if( !strncasecmp( av->att, "ipcheck.", 9 ) )
 	{
 		if( !strcasecmp( p, "enable" ) )

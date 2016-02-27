@@ -85,10 +85,12 @@ LOCK_CTL *lock_config_defaults( void )
 		pthread_mutex_init( l->table + i, NULL );
 
 	// used to lock paths
-	for( i = 0; i < DSTATS_MUTEX_COUNT; i++ )
+	for( i = 0; i < DSTATS_SLOCK_COUNT; i++ )
 		pthread_spin_init( l->dstats + i, PTHREAD_PROCESS_PRIVATE );
-	for( i = 0; i < DADDER_MUTEX_COUNT; i++ )
+	for( i = 0; i < DADDER_SLOCK_COUNT; i++ )
 		pthread_spin_init( l->dadder + i, PTHREAD_PROCESS_PRIVATE );
+	for( i = 0; i < DGAUGE_SLOCK_COUNT; i++ )
+		pthread_spin_init( l->dgauge + i, PTHREAD_PROCESS_PRIVATE );
 
 	l->init_done = 1;
 	return l;
@@ -127,10 +129,12 @@ void lock_shutdown( void )
 		pthread_mutex_destroy( l->table + i );
 
 	// used to lock paths
-	for( i = 0; i < DSTATS_MUTEX_COUNT; i++ )
+	for( i = 0; i < DSTATS_SLOCK_COUNT; i++ )
 		pthread_spin_destroy( l->dstats + i );
-	for( i = 0; i < DADDER_MUTEX_COUNT; i++ )
+	for( i = 0; i < DADDER_SLOCK_COUNT; i++ )
 		pthread_spin_destroy( l->dadder + i );
+	for( i = 0; i < DGAUGE_SLOCK_COUNT; i++ )
+		pthread_spin_destroy( l->dgauge + i );
 
 	// used in stats thread control
 	for( t = ctl->stats->adder->ctls; t; t = t->next )

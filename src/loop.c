@@ -101,6 +101,7 @@ void loop_start( void )
 	// throw the data submission loops
 	stats_start( ctl->stats->stats );
 	stats_start( ctl->stats->adder );
+	stats_start( ctl->stats->gauge );
 	stats_start( ctl->stats->self );
 
 	// and a synthetics loop
@@ -116,9 +117,10 @@ void loop_start( void )
 	io_start( );
 
 	// throw the data listener loop
-	data_start( ctl->net->data );
-	data_start( ctl->net->statsd );
+	data_start( ctl->net->stats );
 	data_start( ctl->net->adder );
+	data_start( ctl->net->gauge );
+	data_start( ctl->net->compat );
 
 	// this just gather sets the time and doesn't exit
 	loop_control( "time set", &loop_set_time, NULL, ctl->tick_usec, 1, 0 );

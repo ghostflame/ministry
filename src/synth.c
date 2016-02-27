@@ -244,7 +244,7 @@ void synth_init( void )
 		l = strlen( s->target_path );
 
 		// create the data point with 0 value
-		data_point_adder( s->target_path, l, 0 );
+		data_point_adder( s->target_path, l, "0" );
 
 		// find that dhash
 		s->target = data_locate( s->target_path, l, DATA_HTYPE_ADDER );

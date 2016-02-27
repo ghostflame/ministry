@@ -13,7 +13,7 @@
 
 const char *stats_type_names[STATS_TYPE_MAX] =
 {
-	"stats", "adder", "self"
+	"stats", "adder", "gauge", "self"
 };
 
 
@@ -333,6 +333,101 @@ void stats_adder_pass( uint64_t tval, void *arg )
 }
 
 
+void stats_gauge_pass( uint64_t tval, void *arg )
+{
+	struct timeval tva, tvb, tvc;
+	uint64_t usec, steal, stats;
+	char *prfx;
+	ST_THR *c;
+	time_t ts;
+	DHASH *d;
+	IOBUF *b;
+	int i;
+
+	c    = (ST_THR *) arg;
+	ts   = (time_t) ( tval / 1000000 );
+	prfx = ctl->stats->gauge->prefix;
+
+#ifdef DEBUG
+	debug( "[%02d] Gauge claim", c->id );
+#endif
+
+	// take the data
+	for( i = 0; i < ctl->mem->hashsize; i++ )
+		if( ( i % c->max ) == c->id )
+			for( d = c->conf->data[i]; d; d = d->next )
+			{
+				lock_adder( d );
+
+				d->proc.sum     = d->in.sum;
+				// don't reset the gauge, just the count
+				d->in.sum.count = 0;
+
+				unlock_adder( d );
+			}
+
+
+	gettimeofday( &tva, NULL );
+
+	// sleep a bit to avoid contention
+	usleep( 1000 + ( random( ) % 30011 ) );
+
+#ifdef DEBUG
+	debug( "[%02d] Gauge report", c->id );
+#endif
+
+	gettimeofday( &tvb, NULL );
+
+	c->active = 0;
+	c->points = 0;
+
+	b = mem_new_buf( IO_BUF_SZ );
+
+	// and report it
+	for( i = 0; i < ctl->mem->hashsize; i++ )
+		if( ( i % c->max ) == c->id )
+			for( d = c->conf->data[i]; d; d = d->next )
+				if( d->proc.sum.count )
+				{
+					if( d->empty > 0 )
+						d->empty = 0;
+
+					bprintf( "%s %f", d->path, d->proc.sum.total );
+
+					// keep count
+					c->points += d->proc.sum.count;
+					c->active++;
+				}
+				else if( d->empty >= 0 )
+					d->empty++;
+
+
+	// and work out how long that took
+	gettimeofday( &tvc, NULL );
+	steal = tvll( tva ) - tval;
+
+	// and work out how long that took
+	gettimeofday( &tvc, NULL );
+	steal = tvll( tva ) - tval;
+	stats = tvll( tvc ) - tvll( tvb );
+	usec  = tvll( tvc ) - tval;
+
+	// report some self stats
+	prfx = ctl->stats->self->prefix;
+
+	bprintf( "workers.%s.%d.points %d", c->conf->name, c->id, c->points );
+	bprintf( "workers.%s.%d.active %d", c->conf->name, c->id, c->active );
+	bprintf( "workers.%s.%d.steal %lu", c->conf->name, c->id, steal );
+	bprintf( "workers.%s.%d.stats %lu", c->conf->name, c->id, stats );
+	bprintf( "workers.%s.%d.usec %lu",  c->conf->name, c->id, usec );
+
+	io_buf_send( b );
+}
+
+
+
+
+
 
 #define stats_report_mtype( nm, mt )		bytes = ((uint64_t) mt->alloc_sz) * ((uint64_t) mt->total); \
 											bprintf( "mem.%s.free %u",  nm, mt->fcount ); \
@@ -501,6 +596,7 @@ void stats_init( void )
 
 	stats_init_control( ctl->stats->stats, 1 );
 	stats_init_control( ctl->stats->adder, 1 );
+	stats_init_control( ctl->stats->gauge, 1 );
 
 	// let's not always seed from 1, eh?
 	gettimeofday( &tv, NULL );
@@ -533,6 +629,14 @@ STAT_CTL *stats_config_defaults( void )
 	s->adder->prefix  = stats_prefix( DEFAULT_ADDER_PREFIX );
 	s->adder->type    = STATS_TYPE_ADDER;
 	s->adder->enable  = 1;
+
+	s->gauge          = (ST_CFG *) allocz( sizeof( ST_CFG ) );
+	s->gauge->threads = DEFAULT_GAUGE_THREADS;
+	s->gauge->loopfn  = &stats_gauge_pass;
+	s->gauge->period  = DEFAULT_STATS_MSEC;
+	s->gauge->prefix  = stats_prefix( DEFAULT_GAUGE_PREFIX );
+	s->gauge->type    = STATS_TYPE_GAUGE;
+	s->gauge->enable  = 1;
 
 	s->self           = (ST_CFG *) allocz( sizeof( ST_CFG ) );
 	s->self->threads  = 1;
@@ -594,6 +698,9 @@ int stats_config_line( AVP *av )
 		sc = s->stats;
 	else if( !strncasecmp( av->att, "adder.", 6 ) )
 		sc = s->adder;
+	// because I'm nice that way (plus, I keep mis-typing it...)
+	else if( !strncasecmp( av->att, "gauge.", 6 ) || !strncasecmp( av->att, "guage.", 6 ) )
+		sc = s->gauge;
 	else if( !strncasecmp( av->att, "self.", 5 ) )
 		sc = s->self;
 	else

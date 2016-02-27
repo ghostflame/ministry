@@ -44,6 +44,7 @@ typedef struct av_pair				AVP;
 // function types
 typedef void loop_call_fn ( uint64_t, void * );
 typedef void * throw_fn ( void * );
+typedef void add_fn ( char *, int, char * );
 typedef void line_fn ( HOST *, char *, int );
 typedef void synth_fn( SYNTH * );
 
