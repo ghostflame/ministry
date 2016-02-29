@@ -67,6 +67,7 @@ struct stat_config
 	char			*	prefix;
 	const char		*	name;
 	int					type;
+	int					dtype;
 	int					threads;
 	int					enable;
 	int					period;		// msec
@@ -75,6 +76,7 @@ struct stat_config
 
 	// and the data
 	DHASH			**	data;
+	int					hsize;
 	int					dcurr;
 	int					gc_count;
 	uint32_t			did;

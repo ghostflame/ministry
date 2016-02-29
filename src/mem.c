@@ -54,7 +54,7 @@ inline void *__mtype_new( MTYPE *mt )
 {
 	MTBLANK *b;
 
-	pthread_mutex_lock( &(mt->lock) );
+	lock_mem( mt );
 
 	if( !mt->fcount )
 		__mtype_alloc_free( mt, 0 );
@@ -64,7 +64,7 @@ inline void *__mtype_new( MTYPE *mt )
 
 	--(mt->fcount);
 
-	pthread_mutex_unlock( &(mt->lock) );
+	unlock_mem( mt );
 
 	b->next = NULL;
 
@@ -80,7 +80,7 @@ inline void *__mtype_new_list( MTYPE *mt, int count )
 	if( count <= 0 )
 		return NULL;
 
-	pthread_mutex_lock( &(mt->lock) );
+	lock_mem( mt );
 
 	// get enough
 	while( mt->fcount < count )
@@ -96,7 +96,7 @@ inline void *__mtype_new_list( MTYPE *mt, int count )
 	mt->flist   = end->next;
 	mt->fcount -= count;
 
-	pthread_mutex_unlock( &(mt->lock) );
+	unlock_mem( mt );
 
 	end->next = NULL;
 
@@ -109,13 +109,13 @@ inline void __mtype_free( MTYPE *mt, void *p )
 {
 	MTBLANK *b = (MTBLANK *) p;
 
-	pthread_mutex_lock( &(mt->lock) );
+	lock_mem( mt );
 
 	b->next   = mt->flist;
 	mt->flist = p;
 	++(mt->fcount);
 
-	pthread_mutex_unlock( &(mt->lock) );
+	unlock_mem( mt );
 }
 
 
@@ -123,13 +123,13 @@ inline void __mtype_free_list( MTYPE *mt, int count, void *first, void *last )
 {
 	MTBLANK *l = (MTBLANK *) last;
 
-	pthread_mutex_lock( &(mt->lock) );
+	lock_mem( mt );
 
 	l->next     = mt->flist;
 	mt->flist   = first;
 	mt->fcount += count;
 
-	pthread_mutex_unlock( &(mt->lock) );
+	unlock_mem( mt );
 }
 
 
@@ -265,7 +265,7 @@ void mem_free_dhash( DHASH **d )
 	*(sd->path) = '\0';
 	sd->len     = 0;
 
-	if( sd->type == DATA_HTYPE_STATS && sd->in.points )
+	if( sd->type == DATA_TYPE_STATS && sd->in.points )
 	{
 		mem_free_point_list( sd->in.points );
 		sd->in.points = NULL;
@@ -298,7 +298,7 @@ void mem_free_dhash_list( DHASH *list )
 		*(d->path) = '\0';
 		d->len     = 0;
 
-		if( d->type == DATA_HTYPE_STATS && d->in.points )
+		if( d->type == DATA_TYPE_STATS && d->in.points )
 		{
 			for( p = d->in.points; p->next; p = p->next );
 

@@ -114,7 +114,7 @@ void synth_generate( SYNTH *s )
 				continue;
 
 			// did we fetch a thing?
-			if( ( s->dhash[i] = data_locate( s->paths[i], s->plens[i], DATA_HTYPE_ADDER ) ) != NULL )
+			if( ( s->dhash[i] = data_locate( s->paths[i], s->plens[i], DATA_TYPE_ADDER ) ) != NULL )
 			{
 				// exempt that from gc
 				s->dhash[i]->empty = -1;
@@ -247,7 +247,7 @@ void synth_init( void )
 		data_point_adder( s->target_path, l, "0" );
 
 		// find that dhash
-		s->target = data_locate( s->target_path, l, DATA_HTYPE_ADDER );
+		s->target = data_locate( s->target_path, l, DATA_TYPE_ADDER );
 
 		// exempt it from gc
 		s->target->empty = -1;

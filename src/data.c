@@ -11,6 +11,16 @@
 #include "ministry.h"
 
 
+const struct data_type_params data_type_defns[DATA_TYPE_MAX] =
+{
+	{ .type = DATA_TYPE_STATS,  .name = "stats",  .lf = &data_line_ministry, .af = &data_point_stats },
+	{ .type = DATA_TYPE_ADDER,  .name = "adder",  .lf = &data_line_ministry, .af = &data_point_adder },
+	{ .type = DATA_TYPE_GAUGE,  .name = "gauge",  .lf = &data_line_ministry, .af = &data_point_gauge },
+	{ .type = DATA_TYPE_COMPAT, .name = "compat", .lf = &data_line_compat,   .af = &data_point_stats }, // af not user
+};
+
+
+
 static uint32_t data_cksum_primes[8] =
 {
 	2909, 3001, 3083, 3187, 3259, 3343, 3517, 3581
@@ -81,42 +91,81 @@ inline DHASH *data_find_path( DHASH *list, uint32_t hval, char *path, int len )
 	return h;
 }
 
-#define data_find_stats( idx, h, p, l )		data_find_path( ctl->stats->stats->data[idx], h, p, l )
-#define data_find_adder( idx, h, p, l )		data_find_path( ctl->stats->adder->data[idx], h, p, l )
-#define data_find_gauge( idx, h, p, l )		data_find_path( ctl->stats->gauge->data[idx], h, p, l )
 
 
 DHASH *data_locate( char *path, int len, int type )
 {
-	uint32_t hval, indx;
+	uint32_t hval;
+	ST_CFG *c;
+	DHASH *d;
 
 	hval = data_path_cksum( path, len );
-	indx = hval % ctl->mem->hashsize;
 
 	switch( type )
 	{
-		case DATA_HTYPE_ADDER:
-			return data_find_adder( indx, hval, path, len );
-		case DATA_HTYPE_STATS:
-			return data_find_stats( indx, hval, path, len );
-		case DATA_HTYPE_GAUGE:
-			return data_find_gauge( indx, hval, path, len );
+		case DATA_TYPE_STATS:
+			c = ctl->stats->stats;
+			break;
+		case DATA_TYPE_ADDER:
+			c = ctl->stats->adder;
+			break;
+		case DATA_TYPE_GAUGE:
+			c = ctl->stats->gauge;
+			break;
+		default:
+			// try each in turn
+			if( ( d = data_locate( path, len, DATA_TYPE_STATS ) ) )
+				return d;
+			if( ( d = data_locate( path, len, DATA_TYPE_ADDER ) ) )
+				return d;
+			if( ( d = data_locate( path, len, DATA_TYPE_GAUGE ) ) )
+				return d;
+			return NULL;
 	}
 
-	return NULL;
+	return data_find_path( c->data[hval % c->hsize], hval, path, len );
 }
+
+
+
+inline DHASH *data_get_dhash( char *path, int len, ST_CFG *c )
+{
+	uint32_t hval, idx;
+	DHASH *d;
+
+	hval = data_path_cksum( path, len );
+	idx  = hval % c->hsize;
+
+	if( !( d = data_find_path( c->data[idx], hval, path, len ) ) )
+	{
+		lock_table( idx );
+
+		if( !( d = data_find_path( c->data[idx], hval, path, len ) ) )
+		{
+			d = mem_new_dhash( path, len, c->dtype );
+			d->sum = hval;
+
+			d->next = c->data[idx];
+			c->data[idx] = d;
+		}
+
+		unlock_table( idx );
+
+		d->id = data_get_id( c );
+	}
+
+	return d;
+}
+
+
 
 
 
 void data_point_gauge( char *path, int len, char *dat )
 {
-	uint32_t hval, indx;
 	double val;
-	char op;
 	DHASH *d;
-
-	hval = data_path_cksum( path, len );
-	indx = hval % ctl->mem->hashsize;
+	char op;
 
 	// gauges can have relative changes
 	if( *dat == '+' || *dat == '-' )
@@ -130,24 +179,7 @@ void data_point_gauge( char *path, int len, char *dat )
 	// https://github.com/etsy/statsd/blob/master/docs/metric_types.md
 	val = strtod( dat, NULL );
 
-	if( !( d = data_find_gauge( indx, hval, path, len ) ) )
-	{
-		lock_table( indx );
-
-		if( !( d = data_find_gauge( indx, hval, path, len ) ) )
-		{
-			d = mem_new_dhash( path, len, DATA_HTYPE_GAUGE );
-			d->sum = hval;
-
-			d->next = ctl->stats->adder->data[indx];
-			ctl->stats->adder->data[indx] = d;
-		}
-
-		unlock_table( indx );
-
-		// and grab an ID for it
-		d->id = data_get_id( ctl->stats->adder );
-	}
+	d = data_get_dhash( path, len, ctl->stats->gauge );
 
 	// lock that path
 	lock_gauge( d );
@@ -176,32 +208,12 @@ void data_point_gauge( char *path, int len, char *dat )
 
 void data_point_adder( char *path, int len, char *dat )
 {
-	uint32_t hval, indx;
 	double val;
 	DHASH *d;
 
-	hval = data_path_cksum( path, len );
-	indx = hval % ctl->mem->hashsize;
 	val  = strtod( dat, NULL );
 
-	if( !( d = data_find_adder( indx, hval, path, len ) ) )
-	{
-		lock_table( indx );
-
-		if( !( d = data_find_adder( indx, hval, path, len ) ) )
-		{
-			d = mem_new_dhash( path, len, DATA_HTYPE_ADDER );
-			d->sum = hval;
-
-			d->next = ctl->stats->adder->data[indx];
-			ctl->stats->adder->data[indx] = d;
-		}
-
-		unlock_table( indx );
-
-		// and grab an ID for it
-		d->id = data_get_id( ctl->stats->adder );
-	}
+	d = data_get_dhash( path, len, ctl->stats->adder );
 
 	// lock that path
 	lock_adder( d );
@@ -217,36 +229,13 @@ void data_point_adder( char *path, int len, char *dat )
 
 void data_point_stats( char *path, int len, char *dat )
 {
-	uint32_t hval, indx;
 	float val;
 	PTLIST *p;
 	DHASH *d;
 
-	hval = data_path_cksum( path, len );
-	indx = hval % ctl->mem->hashsize;
+	val = strtod( dat, NULL );
 
-	val  = strtod( dat, NULL );
-
-	// there is a theoretical race condition here
-	// so we check again in a moment under lock
-	if( !( d = data_find_stats( indx, hval, path, len ) ) )
-	{
-		lock_table( indx );
-
-		if( !( d = data_find_stats( indx, hval, path, len ) ) )
-		{
-			d = mem_new_dhash( path, len, DATA_HTYPE_STATS );
-			d->sum = hval;
-
-			d->next = ctl->stats->stats->data[indx];
-			ctl->stats->stats->data[indx] = d;
-		}
-
-		unlock_table( indx );
-
-		// and grab an ID for it
-		d->id = data_get_id( ctl->stats->stats );
-	}
+	d = data_get_dhash( path, len, ctl->stats->stats );
 
 	// lock that path
 	lock_stats( d );

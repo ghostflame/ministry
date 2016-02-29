@@ -15,10 +15,6 @@
 // rounds the structure to 4k
 #define PTLIST_SIZE				1021
 
-#define	DATA_HTYPE_STATS		1
-#define	DATA_HTYPE_ADDER		2
-#define DATA_HTYPE_GAUGE		3
-
 #define LINE_SEPARATOR			'\n'
 #define FIELD_SEPARATOR			' '
 
@@ -30,6 +26,16 @@ enum data_conn_type
 	DATA_TYPE_COMPAT,
 	DATA_TYPE_MAX
 };
+
+struct data_type_params
+{
+	int					type;
+	char			*	name;
+	line_fn			*	lf;
+	add_fn			*	af;
+};
+
+extern const struct data_type_params data_type_defns[];
 
 
 struct points_list
@@ -70,7 +76,7 @@ struct data_hash_entry
 };
 
 
-DHASH *data_locate( char *path, int len, int adder );
+DHASH *data_locate( char *path, int len, int type );
 
 add_fn data_point_stats;
 add_fn data_point_adder;

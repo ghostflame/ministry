@@ -157,7 +157,7 @@ void stats_stats_pass( uint64_t tval, void *arg )
 #endif
 
 	// take the data
-	for( i = 0; i < ctl->mem->hashsize; i++ )
+	for( i = 0; i < c->conf->hsize; i++ )
 		if( ( i % c->max ) == c->id )
 			for( d = c->conf->data[i]; d; d = d->next )
 			{
@@ -186,7 +186,7 @@ void stats_stats_pass( uint64_t tval, void *arg )
 	b = mem_new_buf( IO_BUF_SZ );
 
 	// and report it
-	for( i = 0; i < ctl->mem->hashsize; i++ )
+	for( i = 0; i < c->conf->hsize; i++ )
 		if( ( i % c->max ) == c->id )
 			for( d = c->conf->data[i]; d; d = d->next )
 				if( d->proc.points )
@@ -243,7 +243,7 @@ void stats_adder_pass( uint64_t tval, void *arg )
 #endif
 
 	// take the data
-	for( i = 0; i < ctl->mem->hashsize; i++ )
+	for( i = 0; i < c->conf->hsize; i++ )
 		if( ( i % c->max ) == c->id )
 			for( d = c->conf->data[i]; d; d = d->next )
 			{
@@ -296,7 +296,7 @@ void stats_adder_pass( uint64_t tval, void *arg )
 	b = mem_new_buf( IO_BUF_SZ );
 
 	// and report it
-	for( i = 0; i < ctl->mem->hashsize; i++ )
+	for( i = 0; i < c->conf->hsize; i++ )
 		if( ( i % c->max ) == c->id )
 			for( d = c->conf->data[i]; d; d = d->next )
 				if( d->proc.sum.count > 0 )
@@ -353,7 +353,7 @@ void stats_gauge_pass( uint64_t tval, void *arg )
 #endif
 
 	// take the data
-	for( i = 0; i < ctl->mem->hashsize; i++ )
+	for( i = 0; i < c->conf->hsize; i++ )
 		if( ( i % c->max ) == c->id )
 			for( d = c->conf->data[i]; d; d = d->next )
 			{
@@ -384,7 +384,7 @@ void stats_gauge_pass( uint64_t tval, void *arg )
 	b = mem_new_buf( IO_BUF_SZ );
 
 	// and report it
-	for( i = 0; i < ctl->mem->hashsize; i++ )
+	for( i = 0; i < c->conf->hsize; i++ )
 		if( ( i % c->max ) == c->id )
 			for( d = c->conf->data[i]; d; d = d->next )
 				if( d->proc.sum.count )
@@ -427,53 +427,82 @@ void stats_gauge_pass( uint64_t tval, void *arg )
 
 
 
+IOBUF *stats_report_mtype( char *name, MTYPE *mt, time_t ts, IOBUF *b )
+{
+	char *prfx = ctl->stats->self->prefix;
+	uint32_t freec, alloc;
+	uint64_t bytes;
+
+	// grab some stats under lock
+	// we CANNOT bprintf under lock because
+	// one of the reported types is buffers
+	lock_mem( mt );
+
+	bytes = (uint64_t) mt->alloc_sz * (uint64_t) mt->total;
+	alloc = mt->total;
+	freec = mt->fcount;
+
+	unlock_mem( mt );
+
+	// and report them
+	bprintf( "mem.%s.free.%u",  name, freec );
+	bprintf( "mem.%s.alloc.%u", name, alloc );
+	bprintf( "mem.%s.kb %lu",   name, bytes / 1024 );
+
+	return b;
+}
 
 
-#define stats_report_mtype( nm, mt )		bytes = ((uint64_t) mt->alloc_sz) * ((uint64_t) mt->total); \
-											bprintf( "mem.%s.free %u",  nm, mt->fcount ); \
-											bprintf( "mem.%s.alloc %u", nm, mt->total ); \
-											bprintf( "mem.%s.kb %lu",   nm, bytes >> 10 )
+IOBUF *stats_report_types( ST_CFG *c, time_t ts, IOBUF *b )
+{
+	char *prfx = ctl->stats->self->prefix;
+	float hr;
+
+	hr = (float) c->dcurr / (float) c->hsize;
+
+	bprintf( "paths.%s.curr %d",         c->name, c->dcurr );
+	bprintf( "paths.%s.gc %d",           c->name, c->gc_count );
+	bprintf( "paths.%s.hash_ratio %.6f", c->name, hr );
+
+	return b;
+}
+
 
 // report our own pass
 void stats_self_pass( uint64_t tval, void *arg )
 {
+	char *prfx = ctl->stats->self->prefix;
 	struct timeval now;
-	uint64_t bytes;
-	double upt;
-	char *prfx;
 	time_t ts;
 	IOBUF *b;
 
 	ts = (time_t) ( tval / 1000000 );
-
 	now.tv_sec  = ts;
 	now.tv_usec = tval % 1000000;
 
-	prfx = ctl->stats->self->prefix;
-	tv_diff( now, ctl->init_time, &upt );
 
 	b = mem_new_buf( IO_BUF_SZ );
 
 	// TODO - more stats
-	bprintf( "uptime %.3f", upt );
-	bprintf( "paths.stats.curr %d", ctl->stats->stats->dcurr );
-	bprintf( "paths.stats.gc %d",   ctl->stats->stats->gc_count );
-	bprintf( "paths.adder.curr %d", ctl->stats->adder->dcurr );
-	bprintf( "paths.adder.gc %d",   ctl->stats->adder->gc_count );
-	bprintf( "mem.total.kb %d",     ctl->mem->curr_kb );
+
+	// stats types
+	b = stats_report_types( ctl->stats->stats, ts, b );
+	b = stats_report_types( ctl->stats->adder, ts, b );
+	b = stats_report_types( ctl->stats->gauge, ts, b );
 
 	// memory
-	stats_report_mtype( "hosts",  ctl->mem->hosts );
-	stats_report_mtype( "points", ctl->mem->points );
-	stats_report_mtype( "dhash",  ctl->mem->dhash );
-	stats_report_mtype( "bufs",   ctl->mem->iobufs );
-	stats_report_mtype( "iolist", ctl->mem->iolist );
+	b = stats_report_mtype( "hosts",  ctl->mem->hosts,  ts, b );
+	b = stats_report_mtype( "points", ctl->mem->points, ts, b );
+	b = stats_report_mtype( "dhash",  ctl->mem->dhash,  ts, b );
+	b = stats_report_mtype( "bufs",   ctl->mem->iobufs, ts, b );
+	b = stats_report_mtype( "iolist", ctl->mem->iolist, ts, b );
+
+	bprintf( "mem.total.kb %d", ctl->mem->curr_kb );
+	bprintf( "uptime %.3f", tv_diff( now, ctl->init_time, NULL ) );
 
 	io_buf_send( b );
 }
 
-
-#undef stats_report_mtype
 
 
 
@@ -550,18 +579,24 @@ void stats_init_control( ST_CFG *c, int alloc_data )
 	ST_THR *t;
 	int i;
 
+	// grab our name
+	c->name = stats_type_names[c->type];
+
+	// maybe fall back to default hash size
+	if( c->hsize < 0 )
+		c->hsize = ctl->mem->hashsize;
+
+	debug( "Hash size set to %d for %s", c->hsize, c->name );
+
 	// create the hash structure
 	if( alloc_data )
-		c->data = (DHASH **) allocz( ctl->mem->hashsize * sizeof( DHASH * ) );
+		c->data = (DHASH **) allocz( c->hsize * sizeof( DHASH * ) );
 
 	// convert msec to usec
 	c->period *= 1000;
 	c->offset *= 1000;
 	// offset can't be bigger than period
 	c->offset  = c->offset % c->period;
-
-	// grab our name
-	c->name = stats_type_names[c->type];
 
 	// make the control structures
 	c->ctls = (ST_THR *) allocz( c->threads * sizeof( ST_THR ) );
@@ -608,6 +643,8 @@ void stats_init( void )
 }
 
 
+
+
 STAT_CTL *stats_config_defaults( void )
 {
 	STAT_CTL *s;
@@ -620,6 +657,8 @@ STAT_CTL *stats_config_defaults( void )
 	s->stats->period  = DEFAULT_STATS_MSEC;
 	s->stats->prefix  = stats_prefix( DEFAULT_STATS_PREFIX );
 	s->stats->type    = STATS_TYPE_STATS;
+	s->stats->dtype   = DATA_TYPE_STATS;
+	s->stats->hsize   = -1;
 	s->stats->enable  = 1;
 
 	s->adder          = (ST_CFG *) allocz( sizeof( ST_CFG ) );
@@ -628,6 +667,8 @@ STAT_CTL *stats_config_defaults( void )
 	s->adder->period  = DEFAULT_STATS_MSEC;
 	s->adder->prefix  = stats_prefix( DEFAULT_ADDER_PREFIX );
 	s->adder->type    = STATS_TYPE_ADDER;
+	s->stats->dtype   = DATA_TYPE_ADDER;
+	s->adder->hsize   = -1;
 	s->adder->enable  = 1;
 
 	s->gauge          = (ST_CFG *) allocz( sizeof( ST_CFG ) );
@@ -636,6 +677,8 @@ STAT_CTL *stats_config_defaults( void )
 	s->gauge->period  = DEFAULT_STATS_MSEC;
 	s->gauge->prefix  = stats_prefix( DEFAULT_GAUGE_PREFIX );
 	s->gauge->type    = STATS_TYPE_GAUGE;
+	s->stats->dtype   = DATA_TYPE_GAUGE;
+	s->gauge->hsize   = -1;
 	s->gauge->enable  = 1;
 
 	s->self           = (ST_CFG *) allocz( sizeof( ST_CFG ) );
@@ -644,6 +687,7 @@ STAT_CTL *stats_config_defaults( void )
 	s->self->period   = DEFAULT_STATS_MSEC;
 	s->self->prefix   = stats_prefix( DEFAULT_SELF_PREFIX );
 	s->self->type     = STATS_TYPE_SELF;
+	s->stats->dtype   = -1;
 	s->self->enable   = 1;
 
 	return s;
@@ -742,6 +786,37 @@ int stats_config_line( AVP *av )
 			sc->offset = t;
 		else
 			warn( "Stats offset must be > 0, value %d given.", t );
+	}
+	else if( !strcasecmp( d, "size" ) || !strcasecmp( d, "hashsize" ) )
+	{
+		if( valIs( "tiny" ) )
+			sc->hsize = 1009;
+		else if( valIs( "small" ) )
+			sc->hsize = 5003;
+		else if( valIs( "medium" ) )
+			sc->hsize = 20011;
+		else if( valIs( "large" ) )
+			sc->hsize = 100003;
+		else if( valIs( "xlarge" ) )
+			sc->hsize = 425071;
+		else if( valIs( "x2large" ) )
+			sc->hsize = 1300021;
+		else
+		{
+			if( !isdigit( av->val[0] ) )
+			{
+				warn( "Unrecognised hash table size '%s'", av->val );
+				return -1;
+			}
+			t = atoi( av->val );
+			if( t == 0 )
+			{
+				warn( "Cannot set zero size hash table." );
+				return -1;
+			}
+			// < 0 means default
+			sc->hsize = t;
+		}
 	}
 	else
 		return -1;

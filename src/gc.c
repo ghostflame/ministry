@@ -66,60 +66,45 @@ int gc_hash_list( DHASH **list, DHASH **flist, unsigned int idx, int thresh )
 }
 
 
+void gc_one_set( ST_CFG *c, DHASH **flist, int thresh )
+{
+	unsigned int i;
+	int hits = 0;
+
+	for( i = 0; i < c->hsize; i++ )
+		hits += gc_hash_list( &(c->data[i]), flist, i, thresh );
+
+	if( hits > 0 )
+	{
+		pthread_mutex_lock( &(ctl->locks->hashstats) );
+
+		c->dcurr    -= hits;
+		c->gc_count += hits;
+
+		if( c->dcurr < 0 )
+		{
+			hits = -1;	// just a signal - prefer not to log inside the lock
+			c->dcurr = 0;
+		}
+
+		pthread_mutex_unlock( &(ctl->locks->hashstats) );
+
+		if( hits < 0 )
+			warn( "Dcurr went negative for %s", c->name );
+	}
+}
+
 
 void gc_pass( uint64_t tval, void *arg )
 {
 	DHASH *flist = NULL;
-	unsigned int i;
-	int fs, fa, fg;
 
-	fs = 0;
-	fa = 0;
-	fg = 0;
-
-	for( i = 0; i < ctl->mem->hashsize; i++ )
-	{
-		fs += gc_hash_list( &(ctl->stats->stats->data[i]), &flist, i, ctl->mem->gc_thresh );
-		fa += gc_hash_list( &(ctl->stats->adder->data[i]), &flist, i, ctl->mem->gc_thresh );
-		fg += gc_hash_list( &(ctl->stats->gauge->data[i]), &flist, i, ctl->mem->gc_gg_thresh );
-	}
+	gc_one_set( ctl->stats->stats, &flist, ctl->mem->gc_thresh );
+	gc_one_set( ctl->stats->adder, &flist, ctl->mem->gc_thresh );
+	gc_one_set( ctl->stats->gauge, &flist, ctl->mem->gc_gg_thresh );
 
 	if( flist )
 		mem_free_dhash_list( flist );
-
-	if( fs || fa )
-	{
-		pthread_mutex_lock( &(ctl->locks->hashstats) );
-
-		ctl->stats->stats->dcurr -= fs;
-		ctl->stats->stats->gc_count += fs;
-
-		if( ctl->stats->stats->dcurr < 0 )
-		{
-			warn( "Stats dcurr went < 0." );
-			ctl->stats->stats->dcurr = 0;
-		}
-
-		ctl->stats->adder->dcurr -= fa;
-		ctl->stats->adder->gc_count += fa;
-
-		if( ctl->stats->adder->dcurr < 0 )
-		{
-			warn( "Adder dcurr went < 0." );
-			ctl->stats->adder->dcurr = 0;
-		}
-
-		ctl->stats->gauge->dcurr -= fg;
-		ctl->stats->gauge->gc_count += fg;
-
-		if( ctl->stats->gauge->dcurr < 0 )
-		{
-			warn( "Gauge dcurr went < 0." );
-			ctl->stats->gauge->dcurr = 0;
-		}
-
-		pthread_mutex_unlock( &(ctl->locks->hashstats) );
-	}
 }
 
 
