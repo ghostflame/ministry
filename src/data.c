@@ -11,6 +11,16 @@
 #include "ministry.h"
 
 
+const struct data_type_params data_type_defns[DATA_TYPE_MAX] =
+{
+	{ .type = DATA_TYPE_STATS,  .name = "stats",  .lf = &data_line_ministry, .af = &data_point_stats },
+	{ .type = DATA_TYPE_ADDER,  .name = "adder",  .lf = &data_line_ministry, .af = &data_point_adder },
+	{ .type = DATA_TYPE_GAUGE,  .name = "gauge",  .lf = &data_line_ministry, .af = &data_point_gauge },
+	{ .type = DATA_TYPE_COMPAT, .name = "compat", .lf = &data_line_compat,   .af = &data_point_stats }, // af not user
+};
+
+
+
 static uint32_t data_cksum_primes[8] =
 {
 	2909, 3001, 3083, 3187, 3259, 3343, 3517, 3581
@@ -81,50 +91,129 @@ inline DHASH *data_find_path( DHASH *list, uint32_t hval, char *path, int len )
 	return h;
 }
 
-#define data_find_stats( idx, h, p, l )		data_find_path( ctl->stats->stats->data[idx], h, p, l )
-#define data_find_adder( idx, h, p, l )		data_find_path( ctl->stats->adder->data[idx], h, p, l )
 
 
-DHASH *data_locate( char *path, int len, int adder )
+DHASH *data_locate( char *path, int len, int type )
 {
-	uint32_t hval, indx;
+	uint32_t hval;
+	ST_CFG *c;
+	DHASH *d;
 
 	hval = data_path_cksum( path, len );
-	indx = hval % ctl->mem->hashsize;
 
-	return ( adder == DATA_HTYPE_ADDER ) ?
-	       data_find_adder( indx, hval, path, len ) :
-	       data_find_stats( indx, hval, path, len );
+	switch( type )
+	{
+		case DATA_TYPE_STATS:
+			c = ctl->stats->stats;
+			break;
+		case DATA_TYPE_ADDER:
+			c = ctl->stats->adder;
+			break;
+		case DATA_TYPE_GAUGE:
+			c = ctl->stats->gauge;
+			break;
+		default:
+			// try each in turn
+			if( ( d = data_locate( path, len, DATA_TYPE_STATS ) ) )
+				return d;
+			if( ( d = data_locate( path, len, DATA_TYPE_ADDER ) ) )
+				return d;
+			if( ( d = data_locate( path, len, DATA_TYPE_GAUGE ) ) )
+				return d;
+			return NULL;
+	}
+
+	return data_find_path( c->data[hval % c->hsize], hval, path, len );
 }
 
 
 
-void data_point_adder( char *path, int len, double val )
+inline DHASH *data_get_dhash( char *path, int len, ST_CFG *c )
 {
-	uint32_t hval, indx;
+	uint32_t hval, idx;
 	DHASH *d;
 
 	hval = data_path_cksum( path, len );
-	indx = hval % ctl->mem->hashsize;
+	idx  = hval % c->hsize;
 
-	if( !( d = data_find_adder( indx, hval, path, len ) ) )
+	if( !( d = data_find_path( c->data[idx], hval, path, len ) ) )
 	{
-		lock_table( indx );
+		lock_table( idx );
 
-		if( !( d = data_find_adder( indx, hval, path, len ) ) )
+		if( !( d = data_find_path( c->data[idx], hval, path, len ) ) )
 		{
-			d = mem_new_dhash( path, len, DATA_HTYPE_ADDER );
+			d = mem_new_dhash( path, len, c->dtype );
 			d->sum = hval;
 
-			d->next = ctl->stats->adder->data[indx];
-			ctl->stats->adder->data[indx] = d;
+			d->next = c->data[idx];
+			c->data[idx] = d;
 		}
 
-		unlock_table( indx );
+		unlock_table( idx );
 
-		// and grab an ID for it
-		d->id = data_get_id( ctl->stats->adder );
+		d->id = data_get_id( c );
 	}
+
+	return d;
+}
+
+
+
+
+
+void data_point_gauge( char *path, int len, char *dat )
+{
+	double val;
+	DHASH *d;
+	char op;
+
+	// gauges can have relative changes
+	if( *dat == '+' || *dat == '-' )
+		op = *dat++;
+	else
+		op = '\0';
+
+	// which means to explicitly set a gauge to a negative
+	// number, you must first set it to zero.  Don't blame me,
+	// this follows the statsd guide
+	// https://github.com/etsy/statsd/blob/master/docs/metric_types.md
+	val = strtod( dat, NULL );
+
+	d = data_get_dhash( path, len, ctl->stats->gauge );
+
+	// lock that path
+	lock_gauge( d );
+
+	// add in the data, based on the op
+	// add, subtract or set
+	switch( op )
+	{
+		case '+':
+			d->in.sum.total += val;
+			break;
+		case '-':
+			d->in.sum.total -= val;
+			break;
+		default:
+			d->in.sum.total = val;
+			break;
+	}
+	d->in.sum.count++;
+
+	// and unlock
+	unlock_gauge( d );
+}
+
+
+
+void data_point_adder( char *path, int len, char *dat )
+{
+	double val;
+	DHASH *d;
+
+	val  = strtod( dat, NULL );
+
+	d = data_get_dhash( path, len, ctl->stats->adder );
 
 	// lock that path
 	lock_adder( d );
@@ -138,35 +227,15 @@ void data_point_adder( char *path, int len, double val )
 }
 
 
-void data_point_stats( char *path, int len, float val )
+void data_point_stats( char *path, int len, char *dat )
 {
-	uint32_t hval, indx;
+	float val;
 	PTLIST *p;
 	DHASH *d;
 
-	hval = data_path_cksum( path, len );
-	indx = hval % ctl->mem->hashsize;
+	val = strtod( dat, NULL );
 
-	// there is a theoretical race condition here
-	// so we check again in a moment under lock
-	if( !( d = data_find_stats( indx, hval, path, len ) ) )
-	{
-		lock_table( indx );
-
-		if( !( d = data_find_stats( indx, hval, path, len ) ) )
-		{
-			d = mem_new_dhash( path, len, DATA_HTYPE_STATS );
-			d->sum = hval;
-
-			d->next = ctl->stats->stats->data[indx];
-			ctl->stats->stats->data[indx] = d;
-		}
-
-		unlock_table( indx );
-
-		// and grab an ID for it
-		d->id = data_get_id( ctl->stats->stats );
-	}
+	d = data_get_dhash( path, len, ctl->stats->stats );
 
 	// lock that path
 	lock_stats( d );
@@ -219,23 +288,25 @@ void data_line_compat( HOST *h, char *line, int len )
 	switch( *vb )
 	{
 		case 'c':
-			// counter - integer
-			data_point_adder( line, plen, strtoull( cl, NULL, 10 ) );
-			h->points++;
+			data_point_adder( line, plen, cl );
 			break;
 		case 'm':
-			// msec - double
-			data_point_stats( line, plen, strtod( cl, NULL ) );
-			h->points++;
+			data_point_stats( line, plen, cl );
 			break;
+		case 'g':
+			data_point_gauge( line, plen, cl );
 		default:
 			h->invalid++;
-			break;
+			return;
 	}
+
+	// got a point
+	h->points++;
 }
 
 
-void data_line_stats( HOST *h, char *line, int len )
+
+void data_line_ministry( HOST *h, char *line, int len )
 {
 	char *sp;
 	int plen;
@@ -259,38 +330,8 @@ void data_line_stats( HOST *h, char *line, int len )
 	h->points++;
 
 	// and put that in
-	data_point_stats( line, plen, strtod( sp, NULL ) );
+	(*(h->type->handler))( line, plen, sp );
 }
-
-
-
-void data_line_adder( HOST *h, char *line, int len )
-{
-	char *sp;
-	int plen;
-
-	if( !( sp = memchr( line, FIELD_SEPARATOR, len ) ) )
-	{
-		h->invalid++;
-		return;
-	}
-
-	plen  = sp - line;
-	*sp++ = '\0';
-
-	if( !plen || !*sp )
-	{
-		h->invalid++;
-		return;
-	}
-
-	// looks OK
-	h->points++;
-
-	// and put that in
-	data_point_adder( line, plen, strtod( sp, NULL ) );
-}
-
 
 
 
@@ -360,7 +401,7 @@ int data_parse_buf( HOST *h, char *buf, int len )
 		if( l > 0 )
 		{
 			// process that line
-			(*(h->type->handler))( h, s, l );
+			(*(h->type->parser))( h, s, l );
 		}
 
 		// and move on

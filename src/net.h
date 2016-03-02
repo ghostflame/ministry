@@ -10,9 +10,10 @@
 #ifndef MINISTRY_NETWORK_H
 #define MINISTRY_NETWORK_H
 
-#define DEFAULT_DATA_PORT				9125
-#define DEFAULT_STATSD_PORT				8125
+#define DEFAULT_STATS_PORT				9125
 #define DEFAULT_ADDER_PORT				9225
+#define DEFAULT_GAUGE_PORT				9325
+#define DEFAULT_COMPAT_PORT				8125
 
 #define IP_NET_WHITELIST				0
 #define IP_NET_BLACKLIST				1
@@ -111,7 +112,8 @@ struct net_type
 {
 	NET_PORT			*	tcp;
 	NET_PORT			**	udp;
-	line_fn				*	handler;
+	line_fn				*	parser;
+	add_fn				*	handler;
 	char				*	label;
 
 	uint16_t				flags;
@@ -144,9 +146,10 @@ struct network_target
 
 struct network_control
 {
-	NET_TYPE			*	data;
-	NET_TYPE			*	statsd;
+	NET_TYPE			*	stats;
 	NET_TYPE			*	adder;
+	NET_TYPE			*	gauge;
+	NET_TYPE			*	compat;
 
 	TARGET				*	targets;
 

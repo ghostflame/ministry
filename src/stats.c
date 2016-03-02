@@ -13,7 +13,7 @@
 
 const char *stats_type_names[STATS_TYPE_MAX] =
 {
-	"stats", "adder", "self"
+	"stats", "adder", "gauge", "self"
 };
 
 
@@ -157,7 +157,7 @@ void stats_stats_pass( uint64_t tval, void *arg )
 #endif
 
 	// take the data
-	for( i = 0; i < ctl->mem->hashsize; i++ )
+	for( i = 0; i < c->conf->hsize; i++ )
 		if( ( i % c->max ) == c->id )
 			for( d = c->conf->data[i]; d; d = d->next )
 			{
@@ -186,7 +186,7 @@ void stats_stats_pass( uint64_t tval, void *arg )
 	b = mem_new_buf( IO_BUF_SZ );
 
 	// and report it
-	for( i = 0; i < ctl->mem->hashsize; i++ )
+	for( i = 0; i < c->conf->hsize; i++ )
 		if( ( i % c->max ) == c->id )
 			for( d = c->conf->data[i]; d; d = d->next )
 				if( d->proc.points )
@@ -243,7 +243,7 @@ void stats_adder_pass( uint64_t tval, void *arg )
 #endif
 
 	// take the data
-	for( i = 0; i < ctl->mem->hashsize; i++ )
+	for( i = 0; i < c->conf->hsize; i++ )
 		if( ( i % c->max ) == c->id )
 			for( d = c->conf->data[i]; d; d = d->next )
 			{
@@ -296,7 +296,7 @@ void stats_adder_pass( uint64_t tval, void *arg )
 	b = mem_new_buf( IO_BUF_SZ );
 
 	// and report it
-	for( i = 0; i < ctl->mem->hashsize; i++ )
+	for( i = 0; i < c->conf->hsize; i++ )
 		if( ( i % c->max ) == c->id )
 			for( d = c->conf->data[i]; d; d = d->next )
 				if( d->proc.sum.count > 0 )
@@ -333,52 +333,179 @@ void stats_adder_pass( uint64_t tval, void *arg )
 }
 
 
-
-#define stats_report_mtype( nm, mt )		bytes = ((uint64_t) mt->alloc_sz) * ((uint64_t) mt->total); \
-											bprintf( "mem.%s.free %u",  nm, mt->fcount ); \
-											bprintf( "mem.%s.alloc %u", nm, mt->total ); \
-											bprintf( "mem.%s.kb %lu",   nm, bytes >> 10 )
-
-// report our own pass
-void stats_self_pass( uint64_t tval, void *arg )
+void stats_gauge_pass( uint64_t tval, void *arg )
 {
-	struct timeval now;
-	uint64_t bytes;
-	double upt;
+	struct timeval tva, tvb, tvc;
+	uint64_t usec, steal, stats;
 	char *prfx;
+	ST_THR *c;
 	time_t ts;
+	DHASH *d;
 	IOBUF *b;
+	int i;
 
-	ts = (time_t) ( tval / 1000000 );
+	c    = (ST_THR *) arg;
+	ts   = (time_t) ( tval / 1000000 );
+	prfx = ctl->stats->gauge->prefix;
 
-	now.tv_sec  = ts;
-	now.tv_usec = tval % 1000000;
+#ifdef DEBUG
+	debug( "[%02d] Gauge claim", c->id );
+#endif
 
-	prfx = ctl->stats->self->prefix;
-	tv_diff( now, ctl->init_time, &upt );
+	// take the data
+	for( i = 0; i < c->conf->hsize; i++ )
+		if( ( i % c->max ) == c->id )
+			for( d = c->conf->data[i]; d; d = d->next )
+			{
+				lock_adder( d );
+
+				d->proc.sum     = d->in.sum;
+				// don't reset the gauge, just the count
+				d->in.sum.count = 0;
+
+				unlock_adder( d );
+			}
+
+
+	gettimeofday( &tva, NULL );
+
+	// sleep a bit to avoid contention
+	usleep( 1000 + ( random( ) % 30011 ) );
+
+#ifdef DEBUG
+	debug( "[%02d] Gauge report", c->id );
+#endif
+
+	gettimeofday( &tvb, NULL );
+
+	c->active = 0;
+	c->points = 0;
 
 	b = mem_new_buf( IO_BUF_SZ );
 
-	// TODO - more stats
-	bprintf( "uptime %.3f", upt );
-	bprintf( "paths.stats.curr %d", ctl->stats->stats->dcurr );
-	bprintf( "paths.stats.gc %d",   ctl->stats->stats->gc_count );
-	bprintf( "paths.adder.curr %d", ctl->stats->adder->dcurr );
-	bprintf( "paths.adder.gc %d",   ctl->stats->adder->gc_count );
-	bprintf( "mem.total.kb %d",     ctl->mem->curr_kb );
+	// and report it
+	for( i = 0; i < c->conf->hsize; i++ )
+		if( ( i % c->max ) == c->id )
+			for( d = c->conf->data[i]; d; d = d->next )
+			{
+				// we report gauges anyway, updated or not
+				bprintf( "%s %f", d->path, d->proc.sum.total );
 
-	// memory
-	stats_report_mtype( "hosts",  ctl->mem->hosts );
-	stats_report_mtype( "points", ctl->mem->points );
-	stats_report_mtype( "dhash",  ctl->mem->dhash );
-	stats_report_mtype( "bufs",   ctl->mem->iobufs );
-	stats_report_mtype( "iolist", ctl->mem->iolist );
+				if( d->proc.sum.count )
+				{
+					if( d->empty > 0 )
+						d->empty = 0;
+
+					// keep count
+					c->points += d->proc.sum.count;
+					c->active++;
+				}
+				else if( d->empty >= 0 )
+					d->empty++;
+			}
+
+
+	// and work out how long that took
+	gettimeofday( &tvc, NULL );
+	steal = tvll( tva ) - tval;
+
+	// and work out how long that took
+	gettimeofday( &tvc, NULL );
+	steal = tvll( tva ) - tval;
+	stats = tvll( tvc ) - tvll( tvb );
+	usec  = tvll( tvc ) - tval;
+
+	// report some self stats
+	prfx = ctl->stats->self->prefix;
+
+	bprintf( "workers.%s.%d.points %d", c->conf->name, c->id, c->points );
+	bprintf( "workers.%s.%d.active %d", c->conf->name, c->id, c->active );
+	bprintf( "workers.%s.%d.steal %lu", c->conf->name, c->id, steal );
+	bprintf( "workers.%s.%d.stats %lu", c->conf->name, c->id, stats );
+	bprintf( "workers.%s.%d.usec %lu",  c->conf->name, c->id, usec );
 
 	io_buf_send( b );
 }
 
 
-#undef stats_report_mtype
+
+
+IOBUF *stats_report_mtype( char *name, MTYPE *mt, time_t ts, IOBUF *b )
+{
+	char *prfx = ctl->stats->self->prefix;
+	uint32_t freec, alloc;
+	uint64_t bytes;
+
+	// grab some stats under lock
+	// we CANNOT bprintf under lock because
+	// one of the reported types is buffers
+	lock_mem( mt );
+
+	bytes = (uint64_t) mt->alloc_sz * (uint64_t) mt->total;
+	alloc = mt->total;
+	freec = mt->fcount;
+
+	unlock_mem( mt );
+
+	// and report them
+	bprintf( "mem.%s.free.%u",  name, freec );
+	bprintf( "mem.%s.alloc.%u", name, alloc );
+	bprintf( "mem.%s.kb %lu",   name, bytes / 1024 );
+
+	return b;
+}
+
+
+IOBUF *stats_report_types( ST_CFG *c, time_t ts, IOBUF *b )
+{
+	char *prfx = ctl->stats->self->prefix;
+	float hr;
+
+	hr = (float) c->dcurr / (float) c->hsize;
+
+	bprintf( "paths.%s.curr %d",         c->name, c->dcurr );
+	bprintf( "paths.%s.gc %d",           c->name, c->gc_count );
+	bprintf( "paths.%s.hash_ratio %.6f", c->name, hr );
+
+	return b;
+}
+
+
+// report our own pass
+void stats_self_pass( uint64_t tval, void *arg )
+{
+	char *prfx = ctl->stats->self->prefix;
+	struct timeval now;
+	time_t ts;
+	IOBUF *b;
+
+	ts = (time_t) ( tval / 1000000 );
+	now.tv_sec  = ts;
+	now.tv_usec = tval % 1000000;
+
+
+	b = mem_new_buf( IO_BUF_SZ );
+
+	// TODO - more stats
+
+	// stats types
+	b = stats_report_types( ctl->stats->stats, ts, b );
+	b = stats_report_types( ctl->stats->adder, ts, b );
+	b = stats_report_types( ctl->stats->gauge, ts, b );
+
+	// memory
+	b = stats_report_mtype( "hosts",  ctl->mem->hosts,  ts, b );
+	b = stats_report_mtype( "points", ctl->mem->points, ts, b );
+	b = stats_report_mtype( "dhash",  ctl->mem->dhash,  ts, b );
+	b = stats_report_mtype( "bufs",   ctl->mem->iobufs, ts, b );
+	b = stats_report_mtype( "iolist", ctl->mem->iolist, ts, b );
+
+	bprintf( "mem.total.kb %d", ctl->mem->curr_kb );
+	bprintf( "uptime %.3f", tv_diff( now, ctl->init_time, NULL ) );
+
+	io_buf_send( b );
+}
+
 
 
 
@@ -455,18 +582,21 @@ void stats_init_control( ST_CFG *c, int alloc_data )
 	ST_THR *t;
 	int i;
 
+	// maybe fall back to default hash size
+	if( c->hsize < 0 )
+		c->hsize = ctl->mem->hashsize;
+
+	debug( "Hash size set to %d for %s", c->hsize, c->name );
+
 	// create the hash structure
 	if( alloc_data )
-		c->data = (DHASH **) allocz( ctl->mem->hashsize * sizeof( DHASH * ) );
+		c->data = (DHASH **) allocz( c->hsize * sizeof( DHASH * ) );
 
 	// convert msec to usec
 	c->period *= 1000;
 	c->offset *= 1000;
 	// offset can't be bigger than period
 	c->offset  = c->offset % c->period;
-
-	// grab our name
-	c->name = stats_type_names[c->type];
 
 	// make the control structures
 	c->ctls = (ST_THR *) allocz( c->threads * sizeof( ST_THR ) );
@@ -501,6 +631,7 @@ void stats_init( void )
 
 	stats_init_control( ctl->stats->stats, 1 );
 	stats_init_control( ctl->stats->adder, 1 );
+	stats_init_control( ctl->stats->gauge, 1 );
 
 	// let's not always seed from 1, eh?
 	gettimeofday( &tv, NULL );
@@ -510,6 +641,8 @@ void stats_init( void )
 	ctl->stats->self->threads = 1;
 	stats_init_control( ctl->stats->self, 0 );
 }
+
+
 
 
 STAT_CTL *stats_config_defaults( void )
@@ -524,6 +657,9 @@ STAT_CTL *stats_config_defaults( void )
 	s->stats->period  = DEFAULT_STATS_MSEC;
 	s->stats->prefix  = stats_prefix( DEFAULT_STATS_PREFIX );
 	s->stats->type    = STATS_TYPE_STATS;
+	s->stats->dtype   = DATA_TYPE_STATS;
+	s->stats->name    = stats_type_names[STATS_TYPE_STATS];
+	s->stats->hsize   = -1;
 	s->stats->enable  = 1;
 
 	s->adder          = (ST_CFG *) allocz( sizeof( ST_CFG ) );
@@ -532,7 +668,21 @@ STAT_CTL *stats_config_defaults( void )
 	s->adder->period  = DEFAULT_STATS_MSEC;
 	s->adder->prefix  = stats_prefix( DEFAULT_ADDER_PREFIX );
 	s->adder->type    = STATS_TYPE_ADDER;
+	s->adder->dtype   = DATA_TYPE_ADDER;
+	s->adder->name    = stats_type_names[STATS_TYPE_ADDER];
+	s->adder->hsize   = -1;
 	s->adder->enable  = 1;
+
+	s->gauge          = (ST_CFG *) allocz( sizeof( ST_CFG ) );
+	s->gauge->threads = DEFAULT_GAUGE_THREADS;
+	s->gauge->loopfn  = &stats_gauge_pass;
+	s->gauge->period  = DEFAULT_STATS_MSEC;
+	s->gauge->prefix  = stats_prefix( DEFAULT_GAUGE_PREFIX );
+	s->gauge->type    = STATS_TYPE_GAUGE;
+	s->gauge->dtype   = DATA_TYPE_GAUGE;
+	s->gauge->name    = stats_type_names[STATS_TYPE_GAUGE];
+	s->gauge->hsize   = -1;
+	s->gauge->enable  = 1;
 
 	s->self           = (ST_CFG *) allocz( sizeof( ST_CFG ) );
 	s->self->threads  = 1;
@@ -540,6 +690,8 @@ STAT_CTL *stats_config_defaults( void )
 	s->self->period   = DEFAULT_STATS_MSEC;
 	s->self->prefix   = stats_prefix( DEFAULT_SELF_PREFIX );
 	s->self->type     = STATS_TYPE_SELF;
+	s->self->dtype    = -1;
+	s->self->name     = stats_type_names[STATS_TYPE_SELF];
 	s->self->enable   = 1;
 
 	return s;
@@ -594,6 +746,9 @@ int stats_config_line( AVP *av )
 		sc = s->stats;
 	else if( !strncasecmp( av->att, "adder.", 6 ) )
 		sc = s->adder;
+	// because I'm nice that way (plus, I keep mis-typing it...)
+	else if( !strncasecmp( av->att, "gauge.", 6 ) || !strncasecmp( av->att, "guage.", 6 ) )
+		sc = s->gauge;
 	else if( !strncasecmp( av->att, "self.", 5 ) )
 		sc = s->self;
 	else
@@ -612,13 +767,16 @@ int stats_config_line( AVP *av )
 		if( valIs( "y" ) || valIs( "yes" ) || atoi( av->val ) )
 			sc->enable = 1;
 		else
+		{
+			debug( "Stats type %s disabled.", sc->name );
 			sc->enable = 0;
+		}
 	}
 	else if( !strcasecmp( d, "prefix" ) )
 	{
 		free( sc->prefix );
 		sc->prefix = stats_prefix( av->val );
-		debug( "%s set to '%s'", av->att, sc->prefix );
+		debug( "%s prefix set to '%s'", sc->name, sc->prefix );
 	}
 	else if( !strcasecmp( d, "period" ) )
 	{
@@ -635,6 +793,37 @@ int stats_config_line( AVP *av )
 			sc->offset = t;
 		else
 			warn( "Stats offset must be > 0, value %d given.", t );
+	}
+	else if( !strcasecmp( d, "size" ) || !strcasecmp( d, "hashsize" ) )
+	{
+		if( valIs( "tiny" ) )
+			sc->hsize = 1009;
+		else if( valIs( "small" ) )
+			sc->hsize = 5003;
+		else if( valIs( "medium" ) )
+			sc->hsize = 20011;
+		else if( valIs( "large" ) )
+			sc->hsize = 100003;
+		else if( valIs( "xlarge" ) )
+			sc->hsize = 425071;
+		else if( valIs( "x2large" ) )
+			sc->hsize = 1300021;
+		else
+		{
+			if( !isdigit( av->val[0] ) )
+			{
+				warn( "Unrecognised hash table size '%s'", av->val );
+				return -1;
+			}
+			t = atoi( av->val );
+			if( t == 0 )
+			{
+				warn( "Cannot set zero size hash table." );
+				return -1;
+			}
+			// < 0 means default
+			sc->hsize = t;
+		}
 	}
 	else
 		return -1;

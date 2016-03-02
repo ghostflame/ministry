@@ -85,20 +85,23 @@ As above, but expressed in KB
 Memory size check interval, in milliseconds (default 5000)
 .TP
 \fBhashsize\fR
-Size of the data hash structure table - should be of the same order of magnitude as the expected
-number of data paths expected.  Having this value too small results in many hash collsions and list
-traversals, slowing down \fBministy\fR.  Larger values use slightly more memory.  Prime number are
-recommended to reduce hash collisions, but this is not vital (default 100003)
+This is the size that types will default to for their hash table size.  This is a quick way of setting
+all three types.  It should be of the same order of magnitude as the expected number of paths.  Prime
+numbers are recommended to prevent large numbers of hash collisions (default 100003)
 .TP
 \fBgc_thresh\fR
 How many submission cycles a path must lie empty for before it is deleted.  This is stored in a
 signed 16-bit int, so the max is 32766 (the comparison is if empty > threshold) (default 8640)
+.TP
+\fBgc_gauge_thresh\fR
+How many submission cycles a gauge must not be updated for before it is deleted.  This is stored in
+a signed 16-bit in, so the max is 32766 (default 25960)
 .SS [Stats]
 \fBthresholds\fR
 A list of integer percentage values to generate thresholds at.  Must be 0 < x < 100.
 .PP
-The rest of these are of the form stats.XXX, adder.XXX or self.XXX, affecting the behaviour of either
-stats reporting, adder reporting or self reporting.
+The rest of these are of the form stats.XXX, adder.XXX, gauge.XXX or self.XXX, affecting the behaviour of
+stats reporting, adder reporting, gauge reporting or self reporting.
 .TP
 \fBTYPE.threads\fR
 How many reporting threads to run (not used for self) (default 2)
@@ -106,8 +109,18 @@ How many reporting threads to run (not used for self) (default 2)
 \fBTYPE.enable\fR
 Enable or disable this reporting (defaults to 1 for all)
 .TP
+\fBTYPE.size\fR
+Hashsize information for this type.  Not used for self.  Tells \fBministry\fR how to size the hash table
+for metrics.  The number of metrics can exceed this size, but it can result in performance deteriorating.
+There are five set values: \fBtiny\fR, \fBsmall\fR, \fBmedium\fR, \fBlarge\fR, and \fBxlarge\fR.  It can
+also accept a number, which is taken as the hash table size.  Prime numbers are recommended here, despite
+the apparent memory-friendly attraction of powers of two (that results in poor hashing behaviour, as the
+hash function does limited bit-mixing).  Each type's hash size defaults to the global value.  If all three
+are set, then the global value is not used anywhere.
+.TP
 \fBTYPE.prefix\fR
-Prefix string for all metrics of this type.  (defaults:  stats.timers., (blank) and stats.ministry.)
+Prefix string for all metrics of this type.  (defaults:  stats.timers., (blank), stats.gauges. and
+stats.ministry.)
 .TP
 \fBTYPE.period\fR
 Reporting interval, in msec.  (default 10000 for all)
@@ -141,8 +154,8 @@ Maximum number of IO buffers to permit to be waiting for flush to one target.  E
 \fBtarget\fR
 List of onward target hosts (with optional :port).  Names are looked up using standard resolution.
 .PP
-All remaining network variables are of the form data.XXX, statsd.XXX or adder.XXX, pertaining to
-new-style stats ports, statsd-compatible ports or new-style adder ports.
+All remaining network variables are of the form data.XXX, statsd.XXX, gauge.XXX or adder.XXX, pertaining
+to new-style stats ports, statsd-compatible ports, new-style gauge ports or new-style adder ports.
 .TP
 \fBTYPE.enable\fR
 Enable or disable this type of collection (defaults to 1 for all)
