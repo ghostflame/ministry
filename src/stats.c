@@ -387,12 +387,14 @@ void stats_gauge_pass( uint64_t tval, void *arg )
 	for( i = 0; i < c->conf->hsize; i++ )
 		if( ( i % c->max ) == c->id )
 			for( d = c->conf->data[i]; d; d = d->next )
+			{
+				// we report gauges anyway, updated or not
+				bprintf( "%s %f", d->path, d->proc.sum.total );
+
 				if( d->proc.sum.count )
 				{
 					if( d->empty > 0 )
 						d->empty = 0;
-
-					bprintf( "%s %f", d->path, d->proc.sum.total );
 
 					// keep count
 					c->points += d->proc.sum.count;
@@ -400,6 +402,7 @@ void stats_gauge_pass( uint64_t tval, void *arg )
 				}
 				else if( d->empty >= 0 )
 					d->empty++;
+			}
 
 
 	// and work out how long that took
@@ -579,9 +582,6 @@ void stats_init_control( ST_CFG *c, int alloc_data )
 	ST_THR *t;
 	int i;
 
-	// grab our name
-	c->name = stats_type_names[c->type];
-
 	// maybe fall back to default hash size
 	if( c->hsize < 0 )
 		c->hsize = ctl->mem->hashsize;
@@ -658,6 +658,7 @@ STAT_CTL *stats_config_defaults( void )
 	s->stats->prefix  = stats_prefix( DEFAULT_STATS_PREFIX );
 	s->stats->type    = STATS_TYPE_STATS;
 	s->stats->dtype   = DATA_TYPE_STATS;
+	s->stats->name    = stats_type_names[STATS_TYPE_STATS];
 	s->stats->hsize   = -1;
 	s->stats->enable  = 1;
 
@@ -667,7 +668,8 @@ STAT_CTL *stats_config_defaults( void )
 	s->adder->period  = DEFAULT_STATS_MSEC;
 	s->adder->prefix  = stats_prefix( DEFAULT_ADDER_PREFIX );
 	s->adder->type    = STATS_TYPE_ADDER;
-	s->stats->dtype   = DATA_TYPE_ADDER;
+	s->adder->dtype   = DATA_TYPE_ADDER;
+	s->adder->name    = stats_type_names[STATS_TYPE_ADDER];
 	s->adder->hsize   = -1;
 	s->adder->enable  = 1;
 
@@ -677,7 +679,8 @@ STAT_CTL *stats_config_defaults( void )
 	s->gauge->period  = DEFAULT_STATS_MSEC;
 	s->gauge->prefix  = stats_prefix( DEFAULT_GAUGE_PREFIX );
 	s->gauge->type    = STATS_TYPE_GAUGE;
-	s->stats->dtype   = DATA_TYPE_GAUGE;
+	s->gauge->dtype   = DATA_TYPE_GAUGE;
+	s->gauge->name    = stats_type_names[STATS_TYPE_GAUGE];
 	s->gauge->hsize   = -1;
 	s->gauge->enable  = 1;
 
@@ -687,7 +690,8 @@ STAT_CTL *stats_config_defaults( void )
 	s->self->period   = DEFAULT_STATS_MSEC;
 	s->self->prefix   = stats_prefix( DEFAULT_SELF_PREFIX );
 	s->self->type     = STATS_TYPE_SELF;
-	s->stats->dtype   = -1;
+	s->self->dtype    = -1;
+	s->self->name     = stats_type_names[STATS_TYPE_SELF];
 	s->self->enable   = 1;
 
 	return s;
@@ -763,13 +767,16 @@ int stats_config_line( AVP *av )
 		if( valIs( "y" ) || valIs( "yes" ) || atoi( av->val ) )
 			sc->enable = 1;
 		else
+		{
+			debug( "Stats type %s disabled.", sc->name );
 			sc->enable = 0;
+		}
 	}
 	else if( !strcasecmp( d, "prefix" ) )
 	{
 		free( sc->prefix );
 		sc->prefix = stats_prefix( av->val );
-		debug( "%s set to '%s'", av->att, sc->prefix );
+		debug( "%s prefix set to '%s'", sc->name, sc->prefix );
 	}
 	else if( !strcasecmp( d, "period" ) )
 	{
