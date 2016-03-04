@@ -448,8 +448,8 @@ IOBUF *stats_report_mtype( char *name, MTYPE *mt, time_t ts, IOBUF *b )
 	unlock_mem( mt );
 
 	// and report them
-	bprintf( "mem.%s.free.%u",  name, freec );
-	bprintf( "mem.%s.alloc.%u", name, alloc );
+	bprintf( "mem.%s.free %u",  name, freec );
+	bprintf( "mem.%s.alloc %u", name, alloc );
 	bprintf( "mem.%s.kb %lu",   name, bytes / 1024 );
 
 	return b;
