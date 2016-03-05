@@ -239,8 +239,6 @@ void stats_adder_pass( int64_t tval, void *arg )
 	IOBUF *b;
 	int i;
 
-	debug( "%ld", tval );
-
 	c    = (ST_THR *) arg;
 	ts   = (time_t) ( tval / 1000000 );
 	prfx = ctl->stats->adder->prefix;

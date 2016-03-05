@@ -11,25 +11,6 @@
 
 
 
-double timedbl( double *dp )
-{
-	struct timeval tv;
-	double d;
-
-	gettimeofday( &tv, NULL );
-
-	d  = (double) tv.tv_usec;
-	d /= 1000000.0;
-	d += (double) tv.tv_sec;
-
-	if( dp )
-		*dp = d;
-
-	return d;
-}
-
-
-
 void get_time( void )
 {
 	if( ctl )

@@ -70,8 +70,6 @@ struct av_pair
 // zero'd memory
 void *allocz( size_t size );
 
-// report time to nearest usec
-double timedbl( double *dp );
 void get_time( void );
 
 // allocation of strings that can't be freed

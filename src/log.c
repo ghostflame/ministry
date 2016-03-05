@@ -55,24 +55,24 @@ int log_write_ts( char *to, int len )
 {
 	char tbuf[64];
 	struct tm t;
-	int usec;
+	long usec;
 	time_t sec;
 #ifdef LOG_CURR_TIME
 
-	sec  = (time_t) ctl->curr_time.tv_sec;
-	usec = (int)    ctl->curr_time.tv_usec;
+	sec  = ctl->curr_time.tv_sec;
+	usec = ctl->curr_time.tv_nsec / 1000;
 #else
 	struct timeval tv;
 
 	gettimeofday( &tv, NULL );
 	sec  = tv.tv_sec;
-	usec = tv.tv_usec;
+	usec = (long) tv.tv_usec;
 #endif
 
 	gmtime_r( &sec, &t );
 	strftime( tbuf, 64, "%F %T", &t );
 
-	return snprintf( to, len, "[%s.%06d]", tbuf, usec );
+	return snprintf( to, len, "[%s.%06ld]", tbuf, usec );
 }
 
 
