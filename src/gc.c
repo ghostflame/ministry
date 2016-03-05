@@ -95,7 +95,7 @@ void gc_one_set( ST_CFG *c, DHASH **flist, int thresh )
 }
 
 
-void gc_pass( uint64_t tval, void *arg )
+void gc_pass( int64_t tval, void *arg )
 {
 	DHASH *flist = NULL;
 

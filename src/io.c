@@ -235,7 +235,7 @@ void io_buf_send( IOBUF *buf )
 	// it does contain something, right?
 	if( !buf->len )
 	{
-		warn( "Empty buffer passed to io_buf_send." );
+		debug( "Empty buffer passed to io_buf_send." );
 		mem_free_buf( &buf );
 		return;
 	}

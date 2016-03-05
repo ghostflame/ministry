@@ -39,11 +39,9 @@
 
 
 
-#define tvll( a )			( ( 1000000 * (uint64_t) a.tv_sec ) + (uint64_t) a.tv_usec )
-#define tvinfo( a )			info( "%ld.%06.ld", (long) a.tv_sec, (long) a.tv_usec )
-#define tvadd( a, usec )	a.tv_usec += usec; while( a.tv_usec >= 1000000 ) { a.tv_sec++; a.tv_usec -= 1000000; }
-#define tvdupe( a, b )		b.tv_sec = a.tv_sec; b.tv_usec = a.tv_usec
-
+#define tsll( a )			( ( 1000000000 * (int64_t) a.tv_sec ) + (int64_t) a.tv_nsec )
+#define llts( a, _s )		_s.tv_sec = (time_t) ( a / 1000000000 ); _s.tv_nsec = (long) ( a % 1000000000 )
+#define tsdupe( a, b )		b.tv_sec = a.tv_sec; b.tv_nsec = a.tv_nsec
 
 
 struct words_data
@@ -99,7 +97,7 @@ void pidfile_remove( void );
 // proper float summation
 void kahan_summation( float *list, int len, float *sum );
 
-// timeval difference as a double
-double tv_diff( struct timeval to, struct timeval from, double *store );
+// timespec difference as a double
+double ts_diff( struct timespec to, struct timespec from, double *store );
 
 #endif

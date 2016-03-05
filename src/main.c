@@ -38,7 +38,7 @@ void shut_down( int exval )
 
 	get_time( );
 
-	tv_diff( ctl->curr_time, ctl->init_time, &diff );
+	ts_diff( ctl->curr_time, ctl->init_time, &diff );
 
 	info( "Ministry shutting down after %.3fs", diff );
 
@@ -206,7 +206,7 @@ int main( int ac, char **av )
 		fatal( "Failed to start networking." );
 
 	get_time( );
-	tv_diff( ctl->curr_time, ctl->init_time, &diff );
+	ts_diff( ctl->curr_time, ctl->init_time, &diff );
 	info( "Ministry started up in %.3fs.", diff );
 
 	// only exits on a signal that removes RUN_LOOP

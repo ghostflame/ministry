@@ -138,7 +138,7 @@ void synth_generate( SYNTH *s )
 
 
 
-void synth_pass( uint64_t tval, void *arg )
+void synth_pass( int64_t tval, void *arg )
 {
 	ST_THR *t;
 	SYNTH *s;
@@ -191,7 +191,9 @@ void synth_pass( uint64_t tval, void *arg )
 	// and relock ourself for next time
 	lock_synth( );
 
+#ifdef DEBUG_SYNTH
 	debug( "Synth relocked after pass." );
+#endif
 }
 
 

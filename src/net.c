@@ -611,13 +611,14 @@ int net_config_line( AVP *av )
 	/* then it's data., statsd. or adder. (or ipcheck) */
 	p = d + 1;
 
-	if( !strncasecmp( av->att, "data.", 5 ) )
+	// the names changed, so support both
+	if( !strncasecmp( av->att, "stats.", 6 ) || !strncasecmp( av->att, "data.", 5 ) )
 		nt = ctl->net->stats;
 	else if( !strncasecmp( av->att, "adder.", 6 ) )
 		nt = ctl->net->adder;
 	else if( !strncasecmp( av->att, "gauge.", 6 ) || !strncasecmp( av->att, "guage.", 6 ) )
 		nt = ctl->net->gauge;
-	else if( !strncasecmp( av->att, "statsd.", 7 ) )
+	else if( !strncasecmp( av->att, "compat.", 7 ) || !strncasecmp( av->att, "statsd.", 7 ) )
 		nt = ctl->net->compat;
 	else if( !strncasecmp( av->att, "ipcheck.", 9 ) )
 	{

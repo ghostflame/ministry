@@ -33,12 +33,10 @@ void loop_mark_done( const char *tag )
 
 
 
-
 // every tick, set the time
-void loop_set_time( uint64_t tval, void *arg )
+void loop_set_time( int64_t tval, void *arg )
 {
-	ctl->curr_time.tv_sec  = tval / 1000000;
-	ctl->curr_time.tv_usec = tval % 1000000;
+	llts( tval, ctl->curr_time );
 }
 
 
@@ -46,22 +44,28 @@ void loop_set_time( uint64_t tval, void *arg )
 // double-precision addition inaccuracies
 void loop_control( const char *name, loop_call_fn *fp, void *arg, int usec, int doSync, int offset )
 {
-	uint64_t timer, next;
-	struct timeval now;
-	int sleepfor;
+	int64_t timer, nsec, noff, diff, t;
+	struct timespec spec, now;
 
-	gettimeofday( &now, NULL );
-	timer = tvll( now );
+	// convert to nanoseconds to support nanosleep
+	nsec = 1000 * (int64_t) usec;
+	noff = 1000 * (int64_t) offset;
+
+	clock_gettime( CLOCK_REALTIME, &now );
+	timer = tsll( now );
 
 	// do we synchronise to a clock?
 	if( doSync )
 	{
-		next     = timer + offset + usec - ( timer % usec );
-		sleepfor = (int) ( next - timer );
-		timer    = next;
+		t     = timer + noff + nsec - ( timer % nsec );
+		diff  = t - timer;
+		timer = t;
 
-		usleep( sleepfor );
-		debug( "Pushed paper for %d usec to synchronize %s loop.", sleepfor, name );
+		llts( diff, spec );
+
+		nanosleep( &spec, NULL );
+
+		debug( "Pushed paper for %d usec to synchronize %s loop.", diff / 1000, name );
 	}
 
 	// say a loop has started
@@ -73,16 +77,21 @@ void loop_control( const char *name, loop_call_fn *fp, void *arg, int usec, int 
 		(*fp)( timer, arg );
 
 		// advance the clock
-		timer += usec;
+		timer += nsec;
 
 		// get the current time
-		gettimeofday( &now, NULL );
+		clock_gettime( CLOCK_REALTIME, &now );
 
 		// calculate how long to sleep for
-		sleepfor = timer - tvll( now );
+		diff = timer - tsll( now );
 
-		// and sleep a bit
-		usleep( sleepfor );
+		if( diff > 0 )
+		{
+			llts( diff, spec );
+
+			// and sleep a bit
+			nanosleep( &spec, NULL );
+		}
 	}
 
 	// and say it's finished

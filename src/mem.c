@@ -475,7 +475,7 @@ void mem_free_buf_list( IOBUF *list )
 static int mem_check_counter = 0;
 static int mem_check_max     = 1;
 
-void mem_check( uint64_t tval, void *arg )
+void mem_check( int64_t tval, void *arg )
 {
 	struct rusage ru;
 

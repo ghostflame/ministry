@@ -33,7 +33,7 @@ double timedbl( double *dp )
 void get_time( void )
 {
 	if( ctl )
-		gettimeofday( &(ctl->curr_time), NULL );
+		clock_gettime( CLOCK_REALTIME, &(ctl->curr_time) );
 }
 
 
@@ -360,19 +360,19 @@ void kahan_summation( float *list, int len, float *sum )
 }
 
 
-double tv_diff( struct timeval to, struct timeval from, double *store )
+
+double ts_diff( struct timespec to, struct timespec from, double *store )
 {
 	double diff;
 
-	diff  = (double) ( (int) to.tv_usec - (int) from.tv_usec );
-	diff /= 1000000.0;
-	diff += (double) ( (int) to.tv_sec - (int) from.tv_sec );
+	diff  = (double) ( to.tv_nsec - from.tv_nsec );
+	diff /= 1000000000.0;
+	diff += (double) ( to.tv_sec  - from.tv_sec  );
 
 	if( store )
 		*store = diff;
 
 	return diff;
 }
-
 
 
