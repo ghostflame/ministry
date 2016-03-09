@@ -102,6 +102,7 @@ void synth_count( SYNTH *s )
 
 void synth_generate( SYNTH *s )
 {
+	uint64_t pt;
 	int i;
 
 	// check everything it needs exists...
@@ -119,6 +120,9 @@ void synth_generate( SYNTH *s )
 				// exempt that from gc
 				s->dhash[i]->empty = -1;
 				s->missing--;
+#ifdef DEBUG_SYNTH
+				debug( "Found source %s for synth %s", s->dhash[i]->path, s->target_path );
+#endif
 			}
 		}
 
@@ -132,13 +136,29 @@ void synth_generate( SYNTH *s )
 
 	// are we a go?
 	if( s->missing == 0 )
-		(s->fn)( s );
+	{
+		// check to see if there's any data
+		for( pt = 0, i = 0; i < s->parts; i++ )
+			pt += s->dhash[i]->proc.sum.count;
+
+		// make the point appropriately
+		s->target->proc.sum.count = pt;
+
+		// only generate if there's anything to do
+		if( pt > 0 )
+		{
+#ifdef DEBUG_SYNTH
+			debug( "Generating synthetic %s", s->target_path );
+#endif
+			(s->fn)( s );
+		}
+	}
 }
 
 
 
 
-void synth_pass( uint64_t tval, void *arg )
+void synth_pass( int64_t tval, void *arg )
 {
 	ST_THR *t;
 	SYNTH *s;
@@ -191,7 +211,9 @@ void synth_pass( uint64_t tval, void *arg )
 	// and relock ourself for next time
 	lock_synth( );
 
+#ifdef DEBUG_SYNTH
 	debug( "Synth relocked after pass." );
+#endif
 }
 
 
@@ -255,7 +277,7 @@ void synth_init( void )
 		// mark us as not having everything yet
 		s->missing = s->parts;
 
-		info( "Synthetic '%s' has hash id %u", s->target_path, s->target->id );
+		info( "Synthetic '%s' has hash id %u.", s->target_path, s->target->id );
 	}
 }
 

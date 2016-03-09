@@ -235,7 +235,7 @@ void io_buf_send( IOBUF *buf )
 	// it does contain something, right?
 	if( !buf->len )
 	{
-		warn( "Empty buffer passed to io_buf_send." );
+		debug( "Empty buffer passed to io_buf_send." );
 		mem_free_buf( &buf );
 		return;
 	}
@@ -462,7 +462,7 @@ void *io_loop( void *arg )
 	freeaddrinfo( ai );
 
 	// make a socket
-	d->sock = net_make_sock( 0, 0, NULL, &sa );
+	d->sock = net_make_sock( 0, 0, &sa );
 
 	// how long do we count down after 
 	d->reconn_ct = ctl->net->reconn / ctl->net->io_usec;

@@ -48,6 +48,7 @@ struct stat_thread_ctl
 {
 	ST_THR			*	next;
 	ST_CFG			*	conf;
+	char			*	wkrstr;
 	int					id;
 	int					max;
 	int					points;
@@ -83,6 +84,14 @@ struct stat_config
 };
 
 
+struct stat_threshold
+{
+	ST_THOLD		*	next;
+	int					val;
+	int					max;
+	char			*	label;
+};
+
 
 struct stats_control
 {
@@ -91,8 +100,7 @@ struct stats_control
 	ST_CFG			*	gauge;
 	ST_CFG			*	self;
 
-	int				*	thresholds;
-	int					thr_count;
+	ST_THOLD		*	thresholds;
 };
 
 

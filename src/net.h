@@ -172,7 +172,7 @@ throw_fn net_watched_socket;
 HOST *net_get_host( int sock, NET_TYPE *type );
 void net_close_host( HOST *h );
 
-NSOCK *net_make_sock( int insz, int outsz, char *name, struct sockaddr_in *peer );
+NSOCK *net_make_sock( int insz, int outsz, struct sockaddr_in *peer );
 //int net_port_sock( PORT_CTL *pc, uint32_t ip, int backlog );
 void net_disconnect( int *sock, char *name );
 

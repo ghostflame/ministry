@@ -13,7 +13,6 @@
 
 #define DEFAULT_MEM_MAX_KB			( 10 * 1024 * 1024 )
 #define DEFAULT_MEM_CHECK_INTV		5000		// msec
-#define DEFAULT_MEM_HASHSIZE		100003
 
 #define MEM_ALLOCSZ_HOSTS			128
 #define MEM_ALLOCSZ_POINTS			512
@@ -23,6 +22,15 @@
 
 #define DEFAULT_GC_THRESH			8640		// 1 day @ 10s
 #define DEFAULT_GC_GG_THRESH		25920		// 3 days @ 10s
+
+
+// pre-defined hash sizes
+#define MEM_HSZ_TINY				1009
+#define MEM_HSZ_SMALL				5003
+#define MEM_HSZ_MEDIUM				25013
+#define MEM_HSZ_LARGE				100003
+#define MEM_HSZ_XLARGE				425071
+#define MEM_HSZ_X2LARGE				1300021
 
 
 // universal type for memory management
@@ -66,7 +74,7 @@ struct mem_control
 };
 
 
-HOST *mem_new_host( void );
+HOST *mem_new_host( struct sockaddr_in *peer );
 void mem_free_host( HOST **h );
 
 PTLIST *mem_new_point( void );

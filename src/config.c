@@ -303,8 +303,8 @@ MIN_CTL *config_create( void )
 
 	c->tick_usec  = 1000 * DEFAULT_TICK_MSEC;
 
-	gettimeofday( &(c->init_time), NULL );
-	tvdupe( c->init_time, c->curr_time );
+	clock_gettime( CLOCK_REALTIME, &(c->init_time) );
+	tsdupe( c->init_time, c->curr_time );
 
 	return c;
 }

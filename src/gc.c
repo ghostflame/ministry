@@ -95,9 +95,21 @@ void gc_one_set( ST_CFG *c, DHASH **flist, int thresh )
 }
 
 
-void gc_pass( uint64_t tval, void *arg )
+static int gc_check_counter = 0;
+static int gc_check_max     = 10;
+
+
+void gc_pass( int64_t tval, void *arg )
 {
 	DHASH *flist = NULL;
+
+	// we only do this every so often, but we need the faster
+	// loop for responsiveness to shutdown
+
+	if( ++gc_check_counter < gc_check_max )
+		return;
+
+	gc_check_counter = 0;
 
 	gc_one_set( ctl->stats->stats, &flist, ctl->mem->gc_thresh );
 	gc_one_set( ctl->stats->adder, &flist, ctl->mem->gc_thresh );
@@ -113,7 +125,7 @@ void *gc_loop( void *arg )
 {
 	THRD *t = (THRD *) arg;
 
-	loop_control( "gc", &gc_pass, NULL, 10000000, 0, 2000000 );
+	loop_control( "gc", &gc_pass, NULL, 2987653, 0, 0 );
 
 	free( t );
 	return NULL;

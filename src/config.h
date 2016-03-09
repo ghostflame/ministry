@@ -43,8 +43,8 @@ struct ministry_control
 	STAT_CTL			*	stats;
 	SYN_CTL				*	synth;
 
-	struct timeval			init_time;
-	struct timeval			curr_time;
+	struct timespec			init_time;
+	struct timespec			curr_time;
 
 	unsigned int			run_flags;
 
