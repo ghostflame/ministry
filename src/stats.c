@@ -130,7 +130,6 @@ int stats_report_one( DHASH *d, ST_THR *t, time_t ts, IOBUF **buf )
 
 
 
-
 void stats_stats_pass( int64_t tval, void *arg )
 {
 	struct timespec tv[4];
@@ -143,7 +142,7 @@ void stats_stats_pass( int64_t tval, void *arg )
 	int i;
 
 	c  = (ST_THR *) arg;
-	ts = (time_t) ( tval / 1000000000 );
+	ts = (time_t) tvalts( tval );
 
 #ifdef DEBUG
 	debug( "[%02d] Stats claim", c->id );
@@ -167,10 +166,12 @@ void stats_stats_pass( int64_t tval, void *arg )
 				else if( d->empty >= 0 )
 					d->empty++;
 
+#ifdef CALC_JITTER
 	clock_gettime( CLOCK_REALTIME, &(tv[1]) );
 
 	// sleep a bit to avoid contention
 	usleep( 1000 + ( random( ) % 30011 ) );
+#endif
 
 #ifdef DEBUG
 	debug( "[%02d] Stats report", c->id );
@@ -206,21 +207,25 @@ void stats_stats_pass( int64_t tval, void *arg )
 		// report some self stats
 		prfx = ctl->stats->self->prefix;
 
-		bprintf( "workers.%s.%d.points %d",    c->conf->name, c->id, c->points );
-		bprintf( "workers.%s.%d.active %d",    c->conf->name, c->id, c->active );
-		bprintf( "workers.%s.%d.workspace %d", c->conf->name, c->id, c->wkspcsz );
+		bprintf( "%s.points %d",    c->wkrstr, c->points );
+		bprintf( "%s.active %d",    c->wkrstr, c->active );
+		bprintf( "%s.workspace %d", c->wkrstr, c->wkspcsz );
 
 		nsec = tsll( tv[0] ) - tval;
-		bprintf( "workers.%s.%d.delay %lu",    c->conf->name, c->id, nsec / 1000 );
+		bprintf( "%s.delay %lu",    c->wkrstr, nsec / 1000 );
 
+#ifdef CALC_JITTER
 		nsec = tsll( tv[1] ) - tsll( tv[0] );
-		bprintf( "workers.%s.%d.steal %lu",    c->conf->name, c->id, nsec / 1000 );
+#else
+		nsec = tsll( tv[2] ) - tsll( tv[0] );
+#endif
+		bprintf( "%s.steal %lu",    c->wkrstr, nsec / 1000 );
 
 		nsec = tsll( tv[3] ) - tsll( tv[2] );
-		bprintf( "workers.%s.%d.stats %lu",    c->conf->name, c->id, nsec / 1000 );
+		bprintf( "%s.stats %lu",    c->wkrstr, nsec / 1000 );
 
 		nsec = tsll( tv[3] ) - tval;
-		bprintf( "workers.%s.%d.usec %lu",     c->conf->name, c->id, nsec / 1000 );
+		bprintf( "%s.usec %lu",     c->wkrstr, nsec / 1000 );
 	}
 
 	io_buf_send( b );
@@ -240,7 +245,7 @@ void stats_adder_pass( int64_t tval, void *arg )
 	int i;
 
 	c    = (ST_THR *) arg;
-	ts   = (time_t) ( tval / 1000000 );
+	ts   = (time_t) tvalts( tval );
 	prfx = ctl->stats->adder->prefix;
 
 #ifdef DEBUG
@@ -253,7 +258,7 @@ void stats_adder_pass( int64_t tval, void *arg )
 	for( i = 0; i < c->conf->hsize; i++ )
 		if( ( i % c->max ) == c->id )
 			for( d = c->conf->data[i]; d; d = d->next )
-				if( d->in.sum.count )
+				if( d->in.sum.count > 0 )
 				{
 					lock_adder( d );
 
@@ -290,8 +295,10 @@ void stats_adder_pass( int64_t tval, void *arg )
 
 	//debug( "[%02d] Sleeping a little before processing.", c->id );
 
+#ifdef CALC_JITTER
 	// sleep a short time to avoid contention
 	usleep( 1000 + ( random( ) % 30011 ) );
+#endif
 
 #ifdef DEBUG
 	debug( "[%02d] Adder report", c->id );
@@ -319,6 +326,9 @@ void stats_adder_pass( int64_t tval, void *arg )
 					// keep count
 					c->points += d->proc.sum.count;
 					c->active++;
+
+					// and zero that
+					d->proc.sum.count = 0;
 				}
 
 
@@ -330,20 +340,20 @@ void stats_adder_pass( int64_t tval, void *arg )
 		// report some self stats
 		prfx = ctl->stats->self->prefix;
 
-		bprintf( "workers.%s.%d.points %d", c->conf->name, c->id, c->points );
-		bprintf( "workers.%s.%d.active %d", c->conf->name, c->id, c->active );
+		bprintf( "%s.points %d", c->wkrstr, c->points );
+		bprintf( "%s.active %d", c->wkrstr, c->active );
 
 		nsec = tsll( tv[0] ) - tval;
-		bprintf( "workers.%s.%d.delay %lu", c->conf->name, c->id, nsec / 1000 );
+		bprintf( "%s.delay %lu", c->wkrstr, nsec / 1000 );
 
 		nsec = tsll( tv[1] ) - tsll( tv[0] );
-		bprintf( "workers.%s.%d.steal %lu", c->conf->name, c->id, nsec / 1000 );
+		bprintf( "%s.steal %lu", c->wkrstr, nsec / 1000 );
 
 		nsec = tsll( tv[3] ) - tsll( tv[2] );
-		bprintf( "workers.%s.%d.stats %lu", c->conf->name, c->id, nsec / 1000 );
+		bprintf( "%s.stats %lu", c->wkrstr, nsec / 1000 );
 
 		nsec = tsll( tv[3] ) - tval;
-		bprintf( "workers.%s.%d.usec %lu",  c->conf->name, c->id, nsec / 1000 );
+		bprintf( "%s.usec %lu",  c->wkrstr, nsec / 1000 );
 	}
 
 	io_buf_send( b );
@@ -362,7 +372,7 @@ void stats_gauge_pass( int64_t tval, void *arg )
 	int i;
 
 	c    = (ST_THR *) arg;
-	ts   = (time_t) ( tval / 1000000 );
+	ts   = (time_t) tvalts( tval );
 	prfx = ctl->stats->gauge->prefix;
 
 #ifdef DEBUG
@@ -389,10 +399,12 @@ void stats_gauge_pass( int64_t tval, void *arg )
 					d->empty++;
 
 
+#ifdef CALC_JITTER
 	clock_gettime( CLOCK_REALTIME, &(tv[1]) );
 
 	// sleep a bit to avoid contention
 	usleep( 1000 + ( random( ) % 30011 ) );
+#endif
 
 #ifdef DEBUG
 	debug( "[%02d] Gauge report", c->id );
@@ -421,6 +433,9 @@ void stats_gauge_pass( int64_t tval, void *arg )
 					// keep count
 					c->points += d->proc.sum.count;
 					c->active++;
+
+					// and zero that
+					d->proc.sum.count = 0;
 				}
 			}
 
@@ -431,20 +446,24 @@ void stats_gauge_pass( int64_t tval, void *arg )
 		// report some self stats
 		prfx = ctl->stats->self->prefix;
 
-		bprintf( "workers.%s.%d.points %d", c->conf->name, c->id, c->points );
-		bprintf( "workers.%s.%d.active %d", c->conf->name, c->id, c->active );
+		bprintf( "%s.points %d", c->wkrstr, c->points );
+		bprintf( "%s.active %d", c->wkrstr, c->active );
 
 		nsec = tsll( tv[0] ) - tval;
-		bprintf( "workers.%s.%d.delay %lu", c->conf->name, c->id, nsec / 1000 );
+		bprintf( "%s.delay %lu", c->wkrstr, nsec / 1000 );
 
+#ifdef CALC_JITTER
 		nsec = tsll( tv[1] ) - tsll( tv[0] );
-		bprintf( "workers.%s.%d.steal %lu", c->conf->name, c->id, nsec / 1000 );
+#else
+		nsec = tsll( tv[2] ) - tsll( tv[0] );
+#endif
+		bprintf( "%s.steal %lu", c->wkrstr, nsec / 1000 );
 
 		nsec = tsll( tv[3] ) - tsll( tv[2] );
-		bprintf( "workers.%s.%d.stats %lu", c->conf->name, c->id, nsec / 1000 );
+		bprintf( "%s.stats %lu", c->wkrstr, nsec / 1000 );
 
 		nsec = tsll( tv[3] ) - tval;
-		bprintf( "workers.%s.%d.usec %lu",  c->conf->name, c->id, nsec / 1000 );
+		bprintf( "%s.usec %lu",  c->wkrstr, nsec / 1000 );
 	}
 
 	io_buf_send( b );
@@ -502,9 +521,8 @@ void stats_self_pass( int64_t tval, void *arg )
 	time_t ts;
 	IOBUF *b;
 
-	ts = (time_t) ( tval / 1000000 );
-	now.tv_sec  = ts;
-	now.tv_nsec = 1000 * ( tval % 1000000 );
+	llts( tval, now );
+	ts = now.tv_sec;
 
 	b = mem_new_buf( IO_BUF_SZ );
 
@@ -601,8 +619,9 @@ char *stats_prefix( char *s )
 
 void stats_init_control( ST_CFG *c, int alloc_data )
 {
+	char wkrstrbuf[128];
 	ST_THR *t;
-	int i;
+	int i, l;
 
 	// maybe fall back to default hash size
 	if( c->hsize < 0 )
@@ -630,6 +649,10 @@ void stats_init_control( ST_CFG *c, int alloc_data )
 		t->conf   = c;
 		t->id     = i;
 		t->max    = c->threads;
+
+		// worker path
+		l = snprintf( wkrstrbuf, 128, "workers.%s.%d", c->name, t->id );
+		t->wkrstr = str_dup( wkrstrbuf, l );
 
 		// make some floats workspace - we realloc this if needed
 		if( c->type == STATS_TYPE_STATS )
@@ -850,17 +873,17 @@ int stats_config_line( AVP *av )
 	else if( !strcasecmp( d, "size" ) || !strcasecmp( d, "hashsize" ) )
 	{
 		if( valIs( "tiny" ) )
-			sc->hsize = 1009;
+			sc->hsize = MEM_HSZ_TINY;
 		else if( valIs( "small" ) )
-			sc->hsize = 5003;
+			sc->hsize = MEM_HSZ_SMALL;
 		else if( valIs( "medium" ) )
-			sc->hsize = 20011;
+			sc->hsize = MEM_HSZ_MEDIUM;
 		else if( valIs( "large" ) )
-			sc->hsize = 100003;
+			sc->hsize = MEM_HSZ_LARGE;
 		else if( valIs( "xlarge" ) )
-			sc->hsize = 425071;
+			sc->hsize = MEM_HSZ_XLARGE;
 		else if( valIs( "x2large" ) )
-			sc->hsize = 1300021;
+			sc->hsize = MEM_HSZ_X2LARGE;
 		else
 		{
 			if( !isdigit( av->val[0] ) )

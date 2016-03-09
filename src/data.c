@@ -537,10 +537,12 @@ void *data_loop_udp( void *arg )
 
 	t = (THRD *) arg;
 	n = (NET_PORT *) t->arg;
-	h = mem_new_host( );
+	h = mem_new_host( NULL );
 	b = h->net->in;
 
 	h->type = n->type;
+
+	snprintf( h->net->name, 32, "udp socket" );
 
 	loop_mark_start( "udp" );
 

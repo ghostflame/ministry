@@ -5,10 +5,10 @@ Network
 	none
 
 Data types
-	Support for more statsd data types?
+	none
 
 Stats generation
-	none
+	Allow for usec timestamps - multiple buffers
 
 Monitoring
 	none

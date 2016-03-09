@@ -43,6 +43,9 @@
 #define llts( a, _s )		_s.tv_sec = (time_t) ( a / 1000000000 ); _s.tv_nsec = (long) ( a % 1000000000 )
 #define tsdupe( a, b )		b.tv_sec = a.tv_sec; b.tv_nsec = a.tv_nsec
 
+#define tvalts( _t )		( _t / 1000000000 )
+#define tvalns( _t )		( _t % 1000000000 )
+
 
 struct words_data
 {

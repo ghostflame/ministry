@@ -48,6 +48,7 @@ struct stat_thread_ctl
 {
 	ST_THR			*	next;
 	ST_CFG			*	conf;
+	char			*	wkrstr;
 	int					id;
 	int					max;
 	int					points;

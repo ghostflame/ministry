@@ -135,8 +135,8 @@ HOST *net_get_host( int sock, NET_TYPE *type )
 	struct sockaddr_in from;
 	socklen_t sz;
 	char buf[32];
-	int d, l;
 	HOST *h;
+	int d;
 
 	sz = sizeof( from );
 
@@ -148,7 +148,7 @@ HOST *net_get_host( int sock, NET_TYPE *type )
 	}
 
 	// get a name
-	l = snprintf( buf, 32, "%s:%hu", inet_ntoa( from.sin_addr ),
+	snprintf( buf, 32, "%s:%hu", inet_ntoa( from.sin_addr ),
 		ntohs( from.sin_port ) );
 
 	// are we doing blacklisting/whitelisting?
@@ -164,9 +164,7 @@ HOST *net_get_host( int sock, NET_TYPE *type )
 	}
 
 
-	h            = mem_new_host( );
-	h->peer      = from;
-	h->net->name = str_copy( buf, l );
+	h            = mem_new_host( &from );
 	h->net->sock = d;
 	h->type      = type;
 	// should be a unique timestamp
@@ -181,21 +179,18 @@ HOST *net_get_host( int sock, NET_TYPE *type )
 
 
 
-NSOCK *net_make_sock( int insz, int outsz, char *name, struct sockaddr_in *peer )
+NSOCK *net_make_sock( int insz, int outsz, struct sockaddr_in *peer )
 {
-	char namebuf[32];
 	NSOCK *ns;
 
 	ns = (NSOCK *) allocz( sizeof( NSOCK ) );
 
-	if( name )
-		ns->name = strdup( name );
-	else
-	{
-		snprintf( namebuf, 32, "%s:%hu", inet_ntoa( peer->sin_addr ),
+	if( !ns->name )
+		ns->name = perm_str( 32 );
+
+	if( peer )
+		snprintf( ns->name, 32, "%s:%hu", inet_ntoa( peer->sin_addr ),
 			ntohs( peer->sin_port ) );
-		ns->name = strdup( namebuf );
-	}
 
 	ns->peer = peer;
 

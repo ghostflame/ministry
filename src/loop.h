@@ -2,7 +2,7 @@
 #define MINISTRY_LOOP_H
 
 #define DEFAULT_TICK_MSEC		20
-
+#define MAX_LOOP_USEC			3000000
 
 
 void loop_mark_start( const char *tag );

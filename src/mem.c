@@ -136,7 +136,7 @@ inline void __mtype_free_list( MTYPE *mt, int count, void *first, void *last )
 
 
 
-HOST *mem_new_host( void )
+HOST *mem_new_host( struct sockaddr_in *peer )
 {
 	HOST *h;
 
@@ -145,10 +145,12 @@ HOST *mem_new_host( void )
 	// is this one set up?
 	if( ! h->net )
 	{
-		h->net = net_make_sock( MIN_NETBUF_SZ, MIN_NETBUF_SZ,
-		                        NULL, &(h->peer) );
+		h->net = net_make_sock( MIN_NETBUF_SZ, MIN_NETBUF_SZ, peer );
 		h->val = (WORDS *) allocz( sizeof( WORDS ) );
 	}
+
+	if( peer )
+		memcpy( &(h->peer), peer, sizeof( struct sockaddr_in ) );
 
 	return h;
 }
@@ -173,10 +175,7 @@ void mem_free_host( HOST **h )
 	sh->net->in->len  = 0;
 
 	if( sh->net->name )
-	{
-		free( sh->net->name );
-		sh->net->name = NULL;
-	}
+		sh->net->name[0] = '\0';
 
 	__mtype_free( ctl->mem->hosts, sh );
 }
@@ -503,9 +502,9 @@ void *mem_loop( void *arg )
 	usec = 1000 * ctl->mem->interval;
 
 	// don't make us wait too long
-	if( usec > 3000000 )
+	while( usec > MAX_LOOP_USEC )
 	{
-		mem_check_max = 10;
+		mem_check_max *= 10;
 		usec /= 10;
 	}
 
@@ -645,7 +644,7 @@ MEM_CTL *mem_config_defaults( void )
 	m->interval     = DEFAULT_MEM_CHECK_INTV;
 	m->gc_thresh    = DEFAULT_GC_THRESH;
 	m->gc_gg_thresh = DEFAULT_GC_GG_THRESH;
-	m->hashsize     = DEFAULT_MEM_HASHSIZE;
+	m->hashsize     = MEM_HSZ_LARGE;
 
 	return m;
 }

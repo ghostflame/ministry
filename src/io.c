@@ -462,7 +462,7 @@ void *io_loop( void *arg )
 	freeaddrinfo( ai );
 
 	// make a socket
-	d->sock = net_make_sock( 0, 0, NULL, &sa );
+	d->sock = net_make_sock( 0, 0, &sa );
 
 	// how long do we count down after 
 	d->reconn_ct = ctl->net->reconn / ctl->net->io_usec;
