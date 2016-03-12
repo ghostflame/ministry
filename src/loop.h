@@ -1,3 +1,14 @@
+/**************************************************************************
+* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
+* Copyright 2015 John Denholm                                             *
+*                                                                         *
+* loop.h - defines run control / loop control fns                         *
+*                                                                         *
+* Updates:                                                                *
+**************************************************************************/
+
+
+
 #ifndef MINISTRY_LOOP_H
 #define MINISTRY_LOOP_H
 

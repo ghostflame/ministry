@@ -1,3 +1,13 @@
+/**************************************************************************
+* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
+* Copyright 2015 John Denholm                                             *
+*                                                                         *
+* loop.c - run control / loop control functions                           *
+*                                                                         *
+* Updates:                                                                *
+**************************************************************************/
+
+
 #include "ministry.h"
 
 void loop_end( char *reason )
