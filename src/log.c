@@ -84,11 +84,11 @@ int log_line( int level, const char *file, const int line, const char *fn, char 
 	int l = 0;
 
 	// check level
-	if( level > ctl->log->level )
+	if( level > lc->level )
 		return 0;
 
 	// can we write?
-	if( ctl->log->fd < 0 )
+	if( lc->fd < 0 )
 		return -1;
 
 	// write the predictable parts
@@ -120,7 +120,7 @@ int log_line( int level, const char *file, const int line, const char *fn, char 
 
 
 	// maybe always log to stdout?
-  	if( lc->force_stdout )
+	if( lc->force_stdout )
 		printf( "%s", buf );
 
 	l = write( lc->fd, buf, l );
@@ -167,10 +167,16 @@ int log_close( void )
 // in response to a signal
 void log_reopen( int sig )
 {
-	if( ctl && ctl->log )
-		__log_open( );
+	int nre = 0;
 
-	info( "Log file re-opened." );
+	if( ctl && ctl->log )
+	{
+		__log_open( );
+		nre = ctl->log->notify_re;
+	}
+
+	if( nre )
+		info( "Log file re-opened." );
 }
 
 
@@ -193,8 +199,9 @@ LOG_CTL *log_config_defaults( void )
 
 	l->filename       = strdup( DEFAULT_LOG_FILE );
 	l->level          = LOG_LEVEL_INFO;
-	l->fd             = 2;
+	l->fd             = fileno( stderr );
 	l->force_stdout   = 0;
+	l->notify_re      = 1;
 
 	return l;
 }
@@ -220,6 +227,8 @@ int log_config_line( AVP *av )
 		// and set it
 		lc->level = lvl;
 	}
+	else if( attIs( "notify" ) )
+		lc->notify_re = atoi( av->val );
 	else
 		return -1;
 

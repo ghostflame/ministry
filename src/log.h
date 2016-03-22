@@ -36,6 +36,7 @@ struct log_control
 	int					level;
 	int					fd;
 	int					force_stdout;
+	int					notify_re;
 };
 
 

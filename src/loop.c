@@ -29,16 +29,16 @@ void loop_mark_start( const char *tag )
 {
 	pthread_mutex_lock( &(ctl->locks->loop) );
 	ctl->loop_count++;
-	debug( "Some %s loop thread has started.", tag );
 	pthread_mutex_unlock( &(ctl->locks->loop) );
+	debug( "Some %s loop thread has started.", tag );
 }
 
 void loop_mark_done( const char *tag )
 {
 	pthread_mutex_lock( &(ctl->locks->loop) );
 	ctl->loop_count--;
-	debug( "Some %s loop thread has ended.", tag );
 	pthread_mutex_unlock( &(ctl->locks->loop) );
+	debug( "Some %s loop thread has ended.", tag );
 }
 
 

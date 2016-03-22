@@ -327,7 +327,6 @@ int net_startup( NET_TYPE *nt )
 	}
 
 	if( nt->flags & NTYPE_UDP_ENABLED )
-	{
 		for( i = 0; i < nt->udp_count; i++ )
 		{
 			// grab the udp ip variable
@@ -351,7 +350,6 @@ int net_startup( NET_TYPE *nt )
 			debug( "Bound udp port %hu with socket %d",
 					nt->udp[i]->port, nt->udp[i]->sock );
 		}
-	}
 
 	notice( "Started up %s", nt->label );
 	return 0;
@@ -615,7 +613,7 @@ int net_config_line( AVP *av )
 		nt = ctl->net->gauge;
 	else if( !strncasecmp( av->att, "compat.", 7 ) || !strncasecmp( av->att, "statsd.", 7 ) )
 		nt = ctl->net->compat;
-	else if( !strncasecmp( av->att, "ipcheck.", 9 ) )
+	else if( !strncasecmp( av->att, "ipcheck.", 8 ) )
 	{
 		if( !strcasecmp( p, "enable" ) )
 			ctl->net->ipcheck->enabled = atoi( av->val );

@@ -209,7 +209,7 @@ int config_read( char *inpath )
 	}
 
 	// set up our new context
-  	context = config_make_context( path, context );
+	context = config_make_context( path, context );
 
 	debug( "Opening config file %s, section %s",
 		path, context->section );
@@ -222,7 +222,7 @@ int config_read( char *inpath )
 	if( !( fh = fopen( path, "r" ) ) )
 	{
 		err("Could not open config file '%s' -- %s", path, Err );
-	  	ret = -1;
+		ret = -1;
 		goto END_FILE;
 	}
 
@@ -261,8 +261,7 @@ int config_read( char *inpath )
 
 		if( lrv )
 		{
-		  	err( "Bad config in file '%s', line %d",
-				context->file, context->lineno );
+			err( "Bad config in file '%s', line %d", context->file, context->lineno );
 			goto END_FILE;
 		}
 	}
