@@ -26,6 +26,9 @@ debug: $(BIN)
 fast:  CFLAGS += -O2
 fast:  $(BIN)
 
+lrt:   LFLAGS += -lrt
+lrt:  $(BIN)
+
 
 $(BIN): $(HDRS) $(OBJS)
 	$(CC) -o $(BIN) $(LFLAGS) $(OBJS)

@@ -16,6 +16,9 @@ INIDIR ?= $(DESTDIR)/etc/init.d
 all:  subdirs
 all:  code
 
+lrt:  TARGET = lrt
+ltr:  all
+
 debug: TARGET = debug
 debug: all
 
