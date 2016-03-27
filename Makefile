@@ -17,7 +17,7 @@ all:  subdirs
 all:  code
 
 lrt:  TARGET = lrt
-ltr:  all
+lrt:  all
 
 debug: TARGET = debug
 debug: all
