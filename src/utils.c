@@ -318,7 +318,7 @@ void pidfile_remove( void )
 // an implementation of Kaham Summation
 // https://en.wikipedia.org/wiki/Kahan_summation_algorithm
 // useful to avoid floating point errors
-inline void kahan_sum( float val, float *sum, float *low )
+static inline void kahan_sum( float val, float *sum, float *low )
 {
 	float y, t;
 

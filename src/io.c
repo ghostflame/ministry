@@ -199,7 +199,7 @@ int io_connect( TARGET *t )
 
 
 
-inline void io_decr_buf( IOBUF *buf )
+static inline void io_decr_buf( IOBUF *buf )
 {
 	int free_it = 0;
 

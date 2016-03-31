@@ -78,7 +78,7 @@ uint32_t data_get_id( ST_CFG *st )
 
 
 
-inline DHASH *data_find_path( DHASH *list, uint32_t hval, char *path, int len )
+static inline DHASH *data_find_path( DHASH *list, uint32_t hval, char *path, int len )
 {
 	DHASH *h;
 
@@ -128,7 +128,7 @@ DHASH *data_locate( char *path, int len, int type )
 
 
 
-inline DHASH *data_get_dhash( char *path, int len, ST_CFG *c )
+static inline DHASH *data_get_dhash( char *path, int len, ST_CFG *c )
 {
 	uint32_t hval, idx;
 	DHASH *d;
