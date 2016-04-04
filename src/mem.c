@@ -50,7 +50,7 @@ void __mtype_alloc_free( MTYPE *mt, int count )
 }
 
 
-inline void *__mtype_new( MTYPE *mt )
+static inline void *__mtype_new( MTYPE *mt )
 {
 	MTBLANK *b;
 
@@ -72,7 +72,7 @@ inline void *__mtype_new( MTYPE *mt )
 }
 
 
-inline void *__mtype_new_list( MTYPE *mt, int count )
+static inline void *__mtype_new_list( MTYPE *mt, int count )
 {
 	MTBLANK *top, *end;
 	int i;
@@ -105,7 +105,7 @@ inline void *__mtype_new_list( MTYPE *mt, int count )
 
 
 
-inline void __mtype_free( MTYPE *mt, void *p )
+static inline void __mtype_free( MTYPE *mt, void *p )
 {
 	MTBLANK *b = (MTBLANK *) p;
 
@@ -119,7 +119,7 @@ inline void __mtype_free( MTYPE *mt, void *p )
 }
 
 
-inline void __mtype_free_list( MTYPE *mt, int count, void *first, void *last )
+static inline void __mtype_free_list( MTYPE *mt, int count, void *first, void *last )
 {
 	MTBLANK *l = (MTBLANK *) last;
 
