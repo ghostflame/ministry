@@ -18,7 +18,7 @@ const char *stats_type_names[STATS_TYPE_MAX] =
 
 
 
-inline int cmp_floats( const void *p1, const void *p2 )
+static inline int cmp_floats( const void *p1, const void *p2 )
 {
 	float *f1, *f2;
 
