@@ -166,9 +166,8 @@ void mem_free_host( HOST **h )
 	*h = NULL;
 
 	sh->points        = 0;
+	sh->invalid       = 0;
 	sh->type          = NULL;
-	sh->last          = 0;
-	sh->started       = 0;
 	sh->net->sock     = -1;
 	sh->net->flags    = 0;
 	sh->net->out->len = 0;

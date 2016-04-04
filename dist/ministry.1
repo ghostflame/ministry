@@ -26,6 +26,9 @@ just test config and exit
 \fB\-D\fR
 run in debug mode
 .TP
+\fB\-d\fR
+run in daemon mode (background)
+.TP
 \fB\-v\fR
 run in verbose mode, with more output to stdout
 .TP
@@ -63,10 +66,19 @@ The subset of statsd formats supported is:
 .TP
 \fBpath\fR(dot-delimited string):\fIvalue\fR(float)|ms\\n
 .TP
-\fBpath\fR(dot-delimited string):\fIvalue\fR(int)|c\\n
+\fBpath\fR(dot-delimited string):\fIvalue\fR(float)|c\\n
+.TP
+\fBpath\fR(dot-delimited string):\fI[+/-]value\fR(float)|g\\n
 .PP
 The first format is used to create stats, the second to aggregate values submitted - they are just
-added up.
+added up - and the third for gauges - keeping track of differences in a value.
+.PP
+Ministry accepts on either type of port a plain line consisting entirely of:
+.TP
+\fBkeepalive\fR\\n
+.PP
+This will prevent connections from being reaped by ministry if no actual metrics are sent over them.
+This line is otherwise ignored.
 .SH Threading
 .PP
 \fBMinistry\fR can open up a number of ports, listening on both TCP and UDP for data.  The threading

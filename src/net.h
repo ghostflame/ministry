@@ -86,11 +86,8 @@ struct host_data
 
 	struct sockaddr_in		peer;
 
-	time_t					started;	// accept time
-	time_t					last;		// last communication
-
-	unsigned long			points;		// counter
-	unsigned long			invalid;	// counter
+	uint64_t				points;
+	uint64_t				invalid;
 };
 
 

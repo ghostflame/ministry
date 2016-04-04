@@ -69,7 +69,7 @@ int log_write_ts( char *to, int len )
 	usec = (long) tv.tv_usec;
 #endif
 
-	gmtime_r( &sec, &t );
+	localtime_r( &sec, &t );
 	strftime( tbuf, 64, "%F %T", &t );
 
 	return snprintf( to, len, "[%s.%06ld]", tbuf, usec );

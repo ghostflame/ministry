@@ -265,7 +265,8 @@ void data_line_compat( HOST *h, char *line, int len )
 
 	if( !( cl = memchr( line, ':', len ) ) )
 	{
-		h->invalid++;
+		if( memcmp( line, "keepalive", len ) )
+			h->invalid++;
 		return;
 	}
 
@@ -313,7 +314,9 @@ void data_line_ministry( HOST *h, char *line, int len )
 
 	if( !( sp = memchr( line, FIELD_SEPARATOR, len ) ) )
 	{
-		h->invalid++;
+		// allow keepalive lines
+		if( memcmp( line, "keepalive", len ) )
+			h->invalid++;
 		return;
 	}
 
@@ -455,8 +458,6 @@ int data_recv_lines( HOST *h )
 		debug( "Host %s flagged as closed.", n->name );
 		return -1;
 	}
-	else
-		h->last = ctl->curr_time.tv_sec;
 
 	return 0;
 }
@@ -467,8 +468,8 @@ int data_recv_lines( HOST *h )
 
 void *data_connection( void *arg )
 {
+	int rv, quiet, quietmax;
 	struct pollfd p;
-	int rv;
 
 	THRD *t;
 	HOST *h;
@@ -476,7 +477,7 @@ void *data_connection( void *arg )
 	t = (THRD *) arg;
 	h = (HOST *) t->arg;
 
-	info( "Accepted data connection from host %s", h->net->name );
+	info( "Accepted data connection from host %s.", h->net->name );
 
 	// make sure we can be cancelled
 	pthread_setcancelstate( PTHREAD_CANCEL_ENABLE, NULL );
@@ -484,10 +485,12 @@ void *data_connection( void *arg )
 
 	p.fd     = h->net->sock;
 	p.events = POLL_EVENTS;
+	quiet    = 0;
+	quietmax = ctl->net->dead_time;
 
 	while( ctl->run_flags & RUN_LOOP )
 	{
-		if( ( rv = poll( &p, 1, 500 ) ) < 0 )
+		if( ( rv = poll( &p, 1, 1000 ) ) < 0 )
 		{
 			// don't sweat interruptions
 			if( errno == EINTR )
@@ -501,7 +504,16 @@ void *data_connection( void *arg )
 			break;
 		}
 		if( !rv )
+		{
+			// timeout?
+			if( ++quiet > quietmax )
+			{
+				notice( "Connection from host %s timed out.",
+					h->net->name );
+				break;
+			}
 			continue;
+		}
 
 		// they went away?
 		if( p.revents & POLLHUP )
@@ -509,6 +521,9 @@ void *data_connection( void *arg )
 			debug( "Received pollhup event from %s", h->net->name );
 			break;
 		}
+
+		// mark us as having data
+		quiet = 0;
 
 		// and process the lines
 		if( data_recv_lines( h ) < 0 )
@@ -626,7 +641,7 @@ void *data_loop_tcp( void *arg )
 		if( p.revents & POLL_EVENTS )
 		{
 			if( ( h = net_get_host( p.fd, n->type ) ) )
-				thread_throw_watched( data_connection, h );
+				thread_throw( data_connection, h );
 		}
 	}
 

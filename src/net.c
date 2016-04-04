@@ -45,71 +45,6 @@ int net_ip_check( struct sockaddr_in *sin )
 
 
 
-
-
-/*
- * Watched sockets
- *
- * This works by thread_throw_network creating a watcher
- * thread.  As there are various lock-up issues with
- * networking, we have a watcher thread that keeps a check
- * on the networking thread.  It watches for the thread to
- * still exist and the network start time to match what it
- * captured early on.
- *
- * If it sees the time since last activity get too high, we
- * assume that the connection has died.  So we kill the
- * thread and close the connection.
- */
-
-void *net_watched_socket( void *arg )
-{
-	double starttime;
-	//pthread_t nt;
-	THRD *t;
-	HOST *h;
-
-	t = (THRD *) arg;
-	h = (HOST *) t->arg;
-
-	// capture the start time - it's sort of a thread id
-	starttime = h->started;
-	debug( "Connection from %s starts at %.6f", h->net->name, starttime );
-
-	// capture the thread ID of the watched thread
-	// when throwing the handler function
-	//nt = thread_throw( t->fp, t->arg );
-	thread_throw( t->fp, t->arg );
-
-	while( ctl->run_flags & RUN_LOOP )
-	{
-		// safe because we never destroy host structures
-		if( h->started != starttime )
-		{
-            debug( "Socket has been freed or re-used." );
-			break;
-		}
-
-		// just use our maintained clock
-		if( ( ctl->curr_time.tv_sec - h->last ) > ctl->net->dead_time )
-		{
-			// cancel that thread
-			//pthread_cancel( nt );
-			notice( "Connection from host %s timed out.", h->net->name );
-            h->net->flags |= HOST_CLOSE;
-			break;
-		}
-
-		// we are not busy threads around these parts
-		usleep( 1000000 );
-	}
-
-	debug( "Watcher of thread %lu, exiting." );
-	free( t );
-	return NULL;
-}
-
-
 void net_disconnect( int *sock, char *name )
 {
 	if( shutdown( *sock, SHUT_RDWR ) )
@@ -126,6 +61,8 @@ void net_close_host( HOST *h )
 	net_disconnect( &(h->net->sock), h->net->name );
 	debug( "Closed connection from host %s.", h->net->name );
 
+	// give us a moment
+	usleep( 10000 );
 	mem_free_host( &h );
 }
 
@@ -167,11 +104,6 @@ HOST *net_get_host( int sock, NET_TYPE *type )
 	h            = mem_new_host( &from );
 	h->net->sock = d;
 	h->type      = type;
-	// should be a unique timestamp
-	h->started   = ctl->curr_time.tv_sec;
-	h->last      = h->started;
-
-	debug( "Host start time is %ld", h->started );
 
 	return h;
 }
