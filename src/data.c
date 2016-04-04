@@ -477,7 +477,7 @@ void *data_connection( void *arg )
 	t = (THRD *) arg;
 	h = (HOST *) t->arg;
 
-	info( "Accepted data connection from host %s.", h->net->name );
+	info( "Accepted %s connection from host %s.", h->type->label, h->net->name );
 
 	// make sure we can be cancelled
 	pthread_setcancelstate( PTHREAD_CANCEL_ENABLE, NULL );

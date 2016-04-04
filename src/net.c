@@ -71,7 +71,6 @@ HOST *net_get_host( int sock, NET_TYPE *type )
 {
 	struct sockaddr_in from;
 	socklen_t sz;
-	char buf[32];
 	HOST *h;
 	int d;
 
@@ -84,16 +83,13 @@ HOST *net_get_host( int sock, NET_TYPE *type )
 		return NULL;
 	}
 
-	// get a name
-	snprintf( buf, 32, "%s:%hu", inet_ntoa( from.sin_addr ),
-		ntohs( from.sin_port ) );
-
 	// are we doing blacklisting/whitelisting?
 	if( ctl->net->ipcheck->enabled
 	 && net_ip_check( &from ) != 0 )
 	{
 		if( ctl->net->ipcheck->verbose )
-			warn( "Denying connection from %s based on ip check.", buf );
+			warn( "Denying connection from %s:%hu based on ip check.",
+				inet_ntoa( from.sin_addr ), ntohs( from.sin_port ) );
 
 		shutdown( d, SHUT_RDWR );
 		close( d );

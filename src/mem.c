@@ -148,6 +148,9 @@ HOST *mem_new_host( struct sockaddr_in *peer )
 		h->net = net_make_sock( MIN_NETBUF_SZ, MIN_NETBUF_SZ, peer );
 		h->val = (WORDS *) allocz( sizeof( WORDS ) );
 	}
+	else
+		snprintf( h->net->name, 32, "%s:%hu", inet_ntoa( peer->sin_addr ),
+			ntohs( peer->sin_port ) );
 
 	if( peer )
 		memcpy( &(h->peer), peer, sizeof( struct sockaddr_in ) );
