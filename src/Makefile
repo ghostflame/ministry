@@ -1,4 +1,4 @@
-CC     = /usr/bin/gcc -Wall -Wshadow
+CC     = /usr/bin/gcc -Wall -Wshadow -pedantic
 
 FILES  = utils log loop thread mem gc net io data synth stats config main
 HEADS  = config data gc io log loop mem ministry net run stats synth thread typedefs utils
