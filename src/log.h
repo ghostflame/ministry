@@ -51,15 +51,15 @@ LOG_CTL *log_config_defaults( void );
 int log_config_line( AVP *av );
 
 
-#define LLFLF( l, f, ... )		log_line( LOG_LEVEL_##l, __FILE__, __LINE__, __FUNCTION__, f, ## __VA_ARGS__ )
-#define LLNZN( l, f, ... )		log_line( LOG_LEVEL_##l,     NULL,        0,         NULL, f, ## __VA_ARGS__ )
+#define LLFLF( l, ... )			log_line( LOG_LEVEL_##l, __FILE__, __LINE__, __func__, ## __VA_ARGS__ )
+#define LLNZN( l, ... )			log_line( LOG_LEVEL_##l,     NULL,        0,     NULL, ## __VA_ARGS__ )
 
-#define fatal( fmt, ... )		LLFLF( FATAL,  fmt, ## __VA_ARGS__ )
-#define err( fmt, ... )			LLNZN( ERR,    fmt, ## __VA_ARGS__ )
-#define warn( fmt, ... )		LLNZN( WARN,   fmt, ## __VA_ARGS__ )
-#define notice( fmt, ... )		LLNZN( NOTICE, fmt, ## __VA_ARGS__ )
-#define info( fmt, ... )		LLNZN( INFO,   fmt, ## __VA_ARGS__ )
-#define debug( fmt, ... )		LLFLF( DEBUG,  fmt, ## __VA_ARGS__ )
+#define fatal( ... )			LLFLF( FATAL,  ## __VA_ARGS__ )
+#define err( ... )			LLNZN( ERR,    ## __VA_ARGS__ )
+#define warn( ... )			LLNZN( WARN,   ## __VA_ARGS__ )
+#define notice( ... )			LLNZN( NOTICE, ## __VA_ARGS__ )
+#define info( ... )			LLNZN( INFO,   ## __VA_ARGS__ )
+#define debug( ... )			LLFLF( DEBUG,  ## __VA_ARGS__ )
 
 
 #endif
