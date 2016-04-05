@@ -1,8 +1,10 @@
 #!/bin/bash
 
-function submit_adder( )
+PORT=9125
+
+function submit_plain( )
 {
-	echo "Sending paths to 9225"
+	echo "Sending plain to $PORT"
 	( while true; do
 
 		a=$(($RANDOM / 20))
@@ -17,7 +19,7 @@ this.that.theother $c
 tx.bets $d
 basic.counter 1
 foo.bar $RANDOM" 
-	done ) | nc 127.0.0.1 9225
+	done ) | nc 127.0.0.1 $PORT
 }
 
 function submit_stats( )
@@ -36,12 +38,15 @@ lamp.timings.bet.total.mean:$b|ms
 this.that.theother:$c|ms
 tx.bets:$d|ms
 foo.bar:$RANDOM|ms"
-	done ) | nc 127.0.0.1 9125
+	done ) | nc -u 127.0.0.1 8125
 }
 
 if [ "$1" == "stats" ]; then
 	submit_stats
 else
-	submit_adder
+	if [ "$1" == "paths" ]; then
+		PORT=9225
+	fi
+	submit_plain
 fi
 
