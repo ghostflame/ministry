@@ -145,7 +145,7 @@ HOST *mem_new_host( struct sockaddr_in *peer )
 	// is this one set up?
 	if( ! h->net )
 	{
-		h->net = net_make_sock( MIN_NETBUF_SZ, MIN_NETBUF_SZ, peer );
+		h->net = net_make_sock( MIN_NETBUF_SZ, 0, peer );
 		h->val = (WORDS *) allocz( sizeof( WORDS ) );
 	}
 	else
@@ -168,13 +168,17 @@ void mem_free_host( HOST **h )
 	sh = *h;
 	*h = NULL;
 
-	sh->points        = 0;
-	sh->invalid       = 0;
-	sh->type          = NULL;
-	sh->net->sock     = -1;
-	sh->net->flags    = 0;
-	sh->net->out->len = 0;
-	sh->net->in->len  = 0;
+	sh->points     = 0;
+	sh->invalid    = 0;
+	sh->type       = NULL;
+	sh->net->sock  = -1;
+	sh->net->flags = 0;
+
+	if( sh->net->in )
+		sh->net->in->len = 0;
+
+	if( sh->net->out )
+		sh->net->out->len = 0;
 
 	if( sh->net->name )
 		sh->net->name[0] = '\0';
