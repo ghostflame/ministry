@@ -1,4 +1,4 @@
-CC     = /usr/bin/gcc -Wall -Wshadow -pedantic
+CC     = /usr/bin/gcc -std=gnu99 -Wall -Wshadow -Wpedantic -Wno-pointer-arith
 
 FILES  = utils log loop thread mem gc net io data synth stats config main
 HEADS  = config data gc io log loop mem ministry net run stats synth thread typedefs utils
@@ -27,6 +27,7 @@ fast:  CFLAGS += -O2
 fast:  $(BIN)
 
 lrt:   LFLAGS += -lrt
+lrt:   CFLAGS += -O2
 lrt:  $(BIN)
 
 

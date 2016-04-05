@@ -19,7 +19,7 @@ be high-performance and reasonable to work with.
 %setup -q
 
 %build
-make %{?_smp_mflags}
+make %{?_smp_mflags} fast
 
 %pre
 # make the user we want
