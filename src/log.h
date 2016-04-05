@@ -51,7 +51,7 @@ LOG_CTL *log_config_defaults( void );
 int log_config_line( AVP *av );
 
 
-#define LLFLF( l, f, ... )		log_line( LOG_LEVEL_##l, __FILE__, __LINE__, __FUNCTION__, f, ## __VA_ARGS__ )
+#define LLFLF( l, f, ... )		log_line( LOG_LEVEL_##l, __FILE__, __LINE__, __func__, f, ## __VA_ARGS__ )
 #define LLNZN( l, f, ... )		log_line( LOG_LEVEL_##l,     NULL,        0,         NULL, f, ## __VA_ARGS__ )
 
 #define fatal( fmt, ... )		LLFLF( FATAL,  fmt, ## __VA_ARGS__ )

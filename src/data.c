@@ -640,8 +640,13 @@ void *data_loop_tcp( void *arg )
 		// go get that then
 		if( p.revents & POLL_EVENTS )
 		{
-			if( ( h = net_get_host( p.fd, n->type ) ) )
-				thread_throw( data_connection, h );
+			if( !( h = net_get_host( p.fd, n->type ) ) )
+			{
+                            // Accept failure, ip check failure, or unable to allocate new host
+                            debug( "net_get_host failure, breaking out of run loop: %s", Err );
+                            break;
+			}
+			thread_throw( data_connection, h );
 		}
 	}
 
