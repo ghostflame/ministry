@@ -37,7 +37,10 @@ void __mtype_alloc_free( MTYPE *mt, int count )
 	// link them up
 	for( i = 0; i < count; i++ )
 	{
+#pragma GCC diagnostic ignored "-Wpointer-arith"
+		// yes GCC, I know what I'm doing, thanks
 		vp     += mt->alloc_sz;
+#pragma GCC diagnostic pop
 		p->next = (MTBLANK *) vp;
 		p       = p->next;
 	}
