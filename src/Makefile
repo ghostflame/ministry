@@ -1,4 +1,4 @@
-CC     = /usr/bin/gcc -std=gnu99 -Wall -Wshadow -Wpedantic
+CC     = /usr/bin/gcc -std=gnu99 $(WFLAGS)
 
 FILES  = utils log loop thread mem gc net io data synth stats config main
 HEADS  = config data gc io log loop mem ministry net run stats synth thread typedefs utils
@@ -6,6 +6,7 @@ HEADS  = config data gc io log loop mem ministry net run stats synth thread type
 OBJS   = $(FILES:%=%.o)
 HDRS   = $(HEADS:%=%.h)
 
+WFLAGS = -Wall -Wshadow
 IFLAGS = -I. 
 DFLAGS = -g -pg -ggdb3 -DDEBUG -DDEBUG_SYNTH
 TFLAGS = -pthread
@@ -15,20 +16,18 @@ LFLAGS = $(TFLAGS) $(IFLAGS) -lm
 BINDIR = $(DESTDIR)/usr/bin
 BIN    = ministry
 
-
-
+all:   WFLAGS += -Wpedantic
+all:   CFLAGS += -O2
 all:   $(BIN)
 
 debug: CFLAGS += $(DFLAGS)
 debug: LFLAGS += $(DFLAGS)
 debug: $(BIN)
 
-fast:  CFLAGS += -O2
-fast:  $(BIN)
-
-lrt:   LFLAGS += -lrt
-lrt:   CFLAGS += -O2
-lrt:  $(BIN)
+with_old_gcc:  CFLAGS += -O2
+with_old_gcc:  WFLAGS += -pedantic
+with_old_gcc:  LFLAGS += -lrt
+with_old_gcc:  $(BIN)
 
 
 $(BIN): $(HDRS) $(OBJS)

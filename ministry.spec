@@ -1,5 +1,5 @@
 Name:		ministry
-Version:	0.2.17
+Version:	0.2.18
 Release:	1%{?dist}
 Summary:	A statsd implementation in threaded C.
 
@@ -19,7 +19,7 @@ be high-performance and reasonable to work with.
 %setup -q
 
 %build
-make %{?_smp_mflags} fast
+make %{?_smp_mflags}
 
 %pre
 # make the user we want

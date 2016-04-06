@@ -16,14 +16,11 @@ INIDIR ?= $(DESTDIR)/etc/init.d
 all:  subdirs
 all:  code
 
-lrt:  TARGET = lrt
-lrt:  all
+with_old_gcc: TARGET = with_old_gcc
+with_old_gcc: all
 
 debug: TARGET = debug
 debug: all
-
-fast:  TARGET = fast
-fast:  all
 
 subdirs:
 	@mkdir -p logs
