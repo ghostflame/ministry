@@ -9,6 +9,16 @@
 
 #include "ministry.h"
 
+/*
+ * This is a chunk of memory we hand back if calloc failed.
+ *
+ * The idea is that we hand back this highly distinctive chunk
+ * of space.  Any pointer using it will fail.  Any attempt to
+ * write to it should fail.
+ *
+ * So it should give us a core dump at once, right at the
+ * problem.  Of course, threads will "help"...
+ */
 
 const static uint8_t mem_signal_array[128] = {
 	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0,
