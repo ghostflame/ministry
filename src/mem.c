@@ -37,10 +37,18 @@ void __mtype_alloc_free( MTYPE *mt, int count )
 	// link them up
 	for( i = 0; i < count; i++ )
 	{
+#ifdef __GNUC__
+#if __GNUC_PREREQ(4,8)
 #pragma GCC diagnostic ignored "-Wpointer-arith"
+#endif
+#endif
 		// yes GCC, I know what I'm doing, thanks
 		vp     += mt->alloc_sz;
+#ifdef __GNUC__
+#if __GNUC_PREREQ(4,8)
 #pragma GCC diagnostic pop
+#endif
+#endif
 		p->next = (MTBLANK *) vp;
 		p       = p->next;
 	}
