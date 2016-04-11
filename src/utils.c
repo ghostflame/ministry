@@ -46,8 +46,10 @@ void *allocz( size_t size )
 {
 	void *p = calloc( 1, size );
 
+#ifdef USE_MEM_SIGNAL_ARRAY
 	if( !p )
 		p = &mem_signal_array;
+#endif
 
 	return p;
 }

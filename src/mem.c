@@ -25,6 +25,9 @@ void __mtype_alloc_free( MTYPE *mt, int count )
 
 	list = (MTBLANK *) allocz( mt->alloc_sz * count );
 
+	if( !list )
+		fatal( "Failed to allocate %d * %d bytes.", mt->alloc_sz, count );
+
 	mt->fcount += count;
 	mt->total  += count;
 

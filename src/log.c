@@ -127,7 +127,13 @@ int log_line( int level, const char *file, const int line, const char *fn, char 
 
 	// FATAL never returns
 	if( level == LOG_LEVEL_FATAL )
+	{
+		// try to make sure we have that log line
+		fsync( lc->fd );
+
+		// and we're out
 		shut_down( 1 );
+	}
 
 	return l;
 }

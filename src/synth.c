@@ -33,7 +33,10 @@ void synth_div( SYNTH *s )
 	a = s->dhash[0];
 	b = s->dhash[1];
 
-	s->target->proc.sum.total = ( b->proc.sum.total > 0 ) ? ( s->factor * a->proc.sum.total ) / b->proc.sum.total : 0;
+	if( b->proc.sum.total == 0 )
+		s->target->proc.sum.total = 0;
+	else
+		s->target->proc.sum.total = ( a->proc.sum.total * s->factor ) / b->proc.sum.total;
 }
 
 void synth_max( SYNTH *s )
@@ -68,6 +71,7 @@ void synth_spread( SYNTH *s )
 	int i;
 
 	min = max = s->dhash[0]->proc.sum.total;
+
 	for( i = 1; i < s->parts; i++ )
 	{
 		if( max < s->dhash[i]->proc.sum.total )

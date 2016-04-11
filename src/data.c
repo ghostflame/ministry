@@ -142,7 +142,9 @@ static inline DHASH *data_get_dhash( char *path, int len, ST_CFG *c )
 
 		if( !( d = data_find_path( c->data[idx], hval, path, len ) ) )
 		{
-			d = mem_new_dhash( path, len, c->dtype );
+			if( !( d = mem_new_dhash( path, len, c->dtype ) ) )
+				fatal( "Could not allocate dhash for %s.", c->name );
+
 			d->sum = hval;
 
 			d->next = c->data[idx];
@@ -243,7 +245,9 @@ void data_point_stats( char *path, int len, char *dat )
 	// make a new one if need be
 	if( !( p = d->in.points ) || p->count == PTLIST_SIZE )
 	{
-		p = mem_new_point( );
+		if( !( p = mem_new_point( ) ) )
+			fatal( "Could not allocate new point struct." );
+
 		p->next = d->in.points;
 		d->in.points = p;
 	}
@@ -479,10 +483,6 @@ void *data_connection( void *arg )
 
 	info( "Accepted %s connection from host %s.", h->type->label, h->net->name );
 
-	// make sure we can be cancelled
-	pthread_setcancelstate( PTHREAD_CANCEL_ENABLE, NULL );
-	pthread_setcanceltype( PTHREAD_CANCEL_ASYNCHRONOUS, NULL );
-
 	p.fd     = h->net->sock;
 	p.events = POLL_EVENTS;
 	quiet    = 0;
@@ -503,6 +503,7 @@ void *data_connection( void *arg )
 				h->net->name, Err );
 			break;
 		}
+
 		if( !rv )
 		{
 			// timeout?
