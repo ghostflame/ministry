@@ -177,10 +177,10 @@ int io_connect( TARGET *t )
 		return -1;
 	}
 
-	if( connect( s->sock, (struct sockaddr *) s->peer, sizeof( struct sockaddr_in ) ) < 0 )
+	if( connect( s->sock, (struct sockaddr *) &(s->peer), sizeof( struct sockaddr_in ) ) < 0 )
 	{
 		err( "Unable to connect to %s:%hu -- %s",
-			inet_ntoa( s->peer->sin_addr ), ntohs( s->peer->sin_port ),
+			inet_ntoa( s->peer.sin_addr ), ntohs( s->peer.sin_port ),
 			Err );
 		close( s->sock );
 		s->sock = -1;
@@ -188,8 +188,8 @@ int io_connect( TARGET *t )
 	}
 
 	info( "Connected (%d) to remote host %s:%hu.",
-		s->sock, inet_ntoa( s->peer->sin_addr ),
-		ntohs( s->peer->sin_port ) );
+		s->sock, inet_ntoa( s->peer.sin_addr ),
+		ntohs( s->peer.sin_port ) );
 
 	s->flags = 0;
 

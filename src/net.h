@@ -69,7 +69,7 @@ struct net_socket
 	int						flags;
 	int						bufs;
 
-	struct sockaddr_in	*	peer;
+	struct sockaddr_in		peer;
 	char				*	name;
 };
 

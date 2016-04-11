@@ -545,6 +545,7 @@ void *data_connection( void *arg )
 
 void *data_loop_udp( void *arg )
 {
+	struct sockaddr_in sa;
 	socklen_t sl;
 	NET_PORT *n;
 	IOBUF *b;
@@ -553,7 +554,12 @@ void *data_loop_udp( void *arg )
 
 	t = (THRD *) arg;
 	n = (NET_PORT *) t->arg;
-	h = mem_new_host( NULL );
+
+	sa.sin_family = AF_INET;
+	sa.sin_addr.s_addr = n->ip;
+	sa.sin_port = htons( n->port );
+
+	h = mem_new_host( &sa );
 	b = h->net->in;
 
 	h->type = n->type;

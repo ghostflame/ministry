@@ -96,8 +96,9 @@ HOST *net_get_host( int sock, NET_TYPE *type )
 		return NULL;
 	}
 
+	if( !( h = mem_new_host( &from ) ) )
+		fatal( "Could not allocate new host." );
 
-	h            = mem_new_host( &from );
 	h->net->sock = d;
 	h->type      = type;
 
@@ -111,16 +112,18 @@ NSOCK *net_make_sock( int insz, int outsz, struct sockaddr_in *peer )
 {
 	NSOCK *ns;
 
-	ns = (NSOCK *) allocz( sizeof( NSOCK ) );
+	if( !( ns = (NSOCK *) allocz( sizeof( NSOCK ) ) ) )
+		fatal( "Could not allocate new nsock." );
 
 	if( !ns->name )
+	{
 		ns->name = perm_str( 32 );
 
-	if( peer )
 		snprintf( ns->name, 32, "%s:%hu", inet_ntoa( peer->sin_addr ),
 			ntohs( peer->sin_port ) );
+	}
 
-	ns->peer = peer;
+	ns->peer = *peer;
 
 	if( insz )
 		ns->in = mem_new_buf( insz );
