@@ -84,7 +84,7 @@ struct host_data
 
 	NET_TYPE			*	type;
 
-	struct sockaddr_in		peer;
+	struct sockaddr_in	*	peer;
 
 	uint64_t				points;
 	uint64_t				invalid;

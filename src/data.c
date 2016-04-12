@@ -564,8 +564,6 @@ void *data_loop_udp( void *arg )
 
 	h->type = n->type;
 
-	snprintf( h->net->name, 32, "udp socket" );
-
 	loop_mark_start( "udp" );
 
 	while( ctl->run_flags & RUN_LOOP )
@@ -573,7 +571,7 @@ void *data_loop_udp( void *arg )
 		// get a packet, set the from
 		sl = sizeof( struct sockaddr_in );
 		if( ( b->len = recvfrom( n->sock, b->buf, b->sz, 0,
-						(struct sockaddr *) &(h->peer), &sl ) ) < 0 )
+						(struct sockaddr *) h->peer, &sl ) ) < 0 )
 		{
 			if( errno == EINTR || errno == EAGAIN )
 				continue;

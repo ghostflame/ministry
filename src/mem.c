@@ -156,19 +156,20 @@ HOST *mem_new_host( struct sockaddr_in *peer )
 
 	h = (HOST *) __mtype_new( ctl->mem->hosts );
 
-	// copy the peer data into place
-	h->peer = *peer;
-
 	// is this one set up?
 	if( ! h->net )
 	{
-		h->net = net_make_sock( MIN_NETBUF_SZ, 0, &(h->peer) );
-		h->val = (WORDS *) allocz( sizeof( WORDS ) );
+		h->net  = net_make_sock( MIN_NETBUF_SZ, 0, peer );
+		h->val  = (WORDS *) allocz( sizeof( WORDS ) );
+		h->peer = &(h->net->peer);
 	}
 
+	// copy the peer details in
+	*(h->peer) = *peer;
+
 	// and make our name
-	snprintf( h->net->name, 32, "%s:%hu", inet_ntoa( h->peer.sin_addr ),
-		ntohs( h->peer.sin_port ) );
+	snprintf( h->net->name, 32, "%s:%hu", inet_ntoa( h->peer->sin_addr ),
+		ntohs( h->peer->sin_port ) );
 
 	return h;
 }
@@ -191,8 +192,8 @@ void mem_free_host( HOST **h )
 	sh->net->sock  = -1;
 	sh->net->flags = 0;
 
-	sh->peer.sin_addr.s_addr = INADDR_ANY;
-	sh->peer.sin_port = 0;
+	sh->peer->sin_addr.s_addr = INADDR_ANY;
+	sh->peer->sin_port = 0;
 
 	if( sh->net->in )
 		sh->net->in->len = 0;

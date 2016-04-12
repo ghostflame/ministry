@@ -123,6 +123,7 @@ NSOCK *net_make_sock( int insz, int outsz, struct sockaddr_in *peer )
 			ntohs( peer->sin_port ) );
 	}
 
+	// copy the peer contents
 	ns->peer = *peer;
 
 	if( insz )
