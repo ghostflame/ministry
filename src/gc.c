@@ -13,11 +13,11 @@
 // does not have it's own config - owned by mem.c
 
 
-
 int gc_hash_list( DHASH **list, DHASH **flist, unsigned int idx, int thresh )
 {
 	int lock = 0, freed = 0;
 	DHASH *h, *prev, *next;
+	PTLIST *pts;
 
 	for( prev = NULL, h = *list; h; h = next )
 	{
@@ -56,6 +56,19 @@ int gc_hash_list( DHASH **list, DHASH **flist, unsigned int idx, int thresh )
 #endif
 			h->sum = 0;
 			freed++;
+
+			// clear any points waiting on this dhash immediately
+			// should prevent clashes with stats_report_stats
+			if( h->type == DATA_TYPE_STATS )
+			{
+				lock_stats( h );
+				pts = h->in.points;
+				h->in.points = NULL;
+				unlock_stats( h );
+
+				if( pts )
+					mem_free_point_list( pts );
+			}
 		}
 	}
 

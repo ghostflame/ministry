@@ -86,6 +86,13 @@ int stats_report_one( DHASH *d, ST_THR *t, time_t ts, IOBUF **buf )
 			// free the existing and grab a new chunk
 			free( t->wkbuf );
 			t->wkbuf = (float *) allocz( t->wkspcsz * sizeof( float ) );
+
+			// make sure
+			if( !t->wkbuf )
+			{
+				fatal( "Could not allocate new workbuf of %d floats.", t->wkspcsz );
+				return 0;
+			}
 		}
 
 		// and the workspace is the buffer
