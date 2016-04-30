@@ -13,10 +13,42 @@
 
 const struct data_type_params data_type_defns[DATA_TYPE_MAX] =
 {
-	{ .type = DATA_TYPE_STATS,  .name = "stats",  .lf = &data_line_ministry, .af = &data_point_stats },
-	{ .type = DATA_TYPE_ADDER,  .name = "adder",  .lf = &data_line_ministry, .af = &data_point_adder },
-	{ .type = DATA_TYPE_GAUGE,  .name = "gauge",  .lf = &data_line_ministry, .af = &data_point_gauge },
-	{ .type = DATA_TYPE_COMPAT, .name = "compat", .lf = &data_line_compat,   .af = &data_point_stats }, // af not user
+	{
+		.type = DATA_TYPE_STATS,
+		.name = "stats",
+		.lf   = &data_line_ministry,
+		.pf   = &data_line_min_prefix,
+		.af   = &data_point_stats,
+		.port = DEFAULT_STATS_PORT,
+		.sock = "ministry stats socket"
+	},
+	{
+		.type = DATA_TYPE_ADDER,
+		.name = "adder",
+		.lf   = &data_line_ministry,
+		.pf   = &data_line_min_prefix,
+		.af   = &data_point_adder,
+		.port = DEFAULT_ADDER_PORT,
+		.sock = "ministry adder socket"
+	},
+	{
+		.type = DATA_TYPE_GAUGE,
+		.name = "gauge",
+		.lf   = &data_line_ministry,
+		.pf   = &data_line_min_prefix,
+		.af   = &data_point_gauge,
+		.port = DEFAULT_GAUGE_PORT,
+		.sock = "ministry gauge socket"
+	},
+	{
+		.type = DATA_TYPE_COMPAT,
+		.name = "compat",
+		.lf   = &data_line_compat,
+		.pf   = &data_line_com_prefix,
+		.af   = NULL,
+		.port = DEFAULT_COMPAT_PORT,
+		.sock = "statsd compat socket"
+	},
 };
 
 
@@ -260,84 +292,188 @@ void data_point_stats( char *path, int len, char *dat )
 }
 
 
-// support the statsd format
-// path:<val>|<c or ms>
-void data_line_compat( HOST *h, char *line, int len )
+// break up ministry type line
+static inline int __data_line_ministry_check( char *line, int len, char **end )
 {
-	char *cl, *vb;
-	int plen;
-
-	if( !( cl = memchr( line, ':', len ) ) )
-	{
-		if( memcmp( line, "keepalive", len ) )
-			h->invalid++;
-		return;
-	}
-
-	// stomp on that
-	*cl  = '\0';
-	plen = cl - line;
-
-	cl++;
-	len -= plen + 1;
-
-	if( !( vb = memchr( cl, '|', len ) ) )
-	{
-		h->invalid++;
-		return;
-	}
-
-	// and stomp on that
-	*vb++ = '\0';
-
-	switch( *vb )
-	{
-		case 'c':
-			data_point_adder( line, plen, cl );
-			break;
-		case 'm':
-			data_point_stats( line, plen, cl );
-			break;
-		case 'g':
-			data_point_gauge( line, plen, cl );
-		default:
-			h->invalid++;
-			return;
-	}
-
-	// got a point
-	h->points++;
-}
-
-
-
-void data_line_ministry( HOST *h, char *line, int len )
-{
-	char *sp;
+	register char *sp;
 	int plen;
 
 	if( !( sp = memchr( line, FIELD_SEPARATOR, len ) ) )
 	{
 		// allow keepalive lines
-		if( memcmp( line, "keepalive", len ) )
-			h->invalid++;
-		return;
+		if( len == 9 && !memcmp( line, "keepalive", 9 ) )
+			return 0;
+		return -1;
 	}
 
 	plen  = sp - line;
 	*sp++ = '\0';
 
 	if( !plen || !*sp )
+		return -1;
+
+	*end = sp;
+	return plen;
+}
+
+
+// break up a statsd type line
+static inline int __data_line_compat_check( char *line, int len, char **dat, char **tp )
+{
+	register char *cl;
+	char *vb;
+	int plen;
+
+	if( !( cl = memchr( line, ':', len ) ) )
+	{
+		// allow keepalive lines
+		if( len == 9 && !memcmp( line, "keepalive", 9 ) )
+			return 0;
+		return -1;
+	}
+
+	plen  = cl - line;
+	*cl++ = '\0';
+
+	if( !plen || !*cl )
+		return -1;
+
+	*dat = cl;
+	len -= plen + 1;
+
+	if( !( vb = memchr( cl, '|', len ) ) )
+		return -1;
+
+	*vb++ = '\0';
+	*tp   = vb;
+
+	return plen;
+}
+
+
+// dispatch a statsd line based on type
+static inline int __data_line_compat_dispatch( char *path, int len, char *data, char type )
+{
+	switch( type )
+	{
+		case 'c':
+			data_point_adder( path, len, data );
+			break;
+		case 'm':
+			data_point_stats( path, len, data );
+			break;
+		case 'g':
+			data_point_gauge( path, len, data );
+			break;
+		default:
+			return -1;
+	}
+
+	return 0;
+}
+
+
+
+// support the statsd format but adding a prefix
+// path:<val>|<c or ms>
+void data_line_com_prefix( HOST *h, char *line, int len )
+{
+	char *data = NULL, *type = NULL;
+	int plen;
+
+	if( ( plen = __data_line_compat_check( line, len, &data, &type ) ) < 0 || plen > h->lmax )
 	{
 		h->invalid++;
 		return;
 	}
 
+	if( !plen )
+		return;  // probably a keepalive
+
+	// copy the line next to the prefix
+	memcpy( h->ltarget, line, plen );
+	plen += h->plen;
+
+	if( __data_line_compat_dispatch( h->workbuf, plen, data, *type ) < 0 )
+		h->invalid++;
+	else
+		h->points++;
+}
+
+
+
+// support the statsd format
+// path:<val>|<c or ms>
+void data_line_compat( HOST *h, char *line, int len )
+{
+	char *data = NULL, *type = NULL;
+	int plen;
+
+	if( ( plen = __data_line_compat_check( line, len, &data, &type ) ) < 0 )
+	{
+		h->invalid++;
+		return;
+	}
+
+	if( !plen )
+		return;  // probably a keepalive
+
+	if( __data_line_compat_dispatch( line, plen, data, *type ) < 0 )
+		h->invalid++;
+	else
+		h->points++;
+}
+
+
+
+void data_line_min_prefix( HOST *h, char *line, int len )
+{
+	char *ep = NULL;
+	int plen;
+
+	if( ( plen = __data_line_ministry_check( line, len, &ep ) ) < 0 || plen > h->lmax )
+	{
+		h->invalid++;
+		return;
+	}
+
+	if( !plen )
+		return;  // probably a keepalive
+
+	// looks OK
+	h->points++;
+
+	// copy that into place
+	memcpy( h->workbuf + h->plen, line, plen );
+	plen += h->plen;
+	h->workbuf[plen] = '\0';
+
+	// and deal with it
+	(*(h->type->handler))( h->workbuf, plen, ep );
+}
+
+
+
+
+void data_line_ministry( HOST *h, char *line, int len )
+{
+	char *ep = NULL;
+	int plen;
+
+	if( ( plen = __data_line_ministry_check( line, len, &ep ) ) < 0 )
+	{
+		h->invalid++;
+		return;
+	}
+
+	if( !plen )
+		return;  // probably a keepalive
+
 	// looks OK
 	h->points++;
 
 	// and put that in
-	(*(h->type->handler))( line, plen, sp );
+	(*(h->type->handler))( line, plen, ep );
 }
 
 
@@ -408,7 +544,7 @@ int data_parse_buf( HOST *h, char *buf, int len )
 		if( l > 0 )
 		{
 			// process that line
-			(*(h->type->parser))( h, s, l );
+			(*(h->parser))( h, s, l );
 		}
 
 		// and move on

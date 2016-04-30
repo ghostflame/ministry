@@ -36,6 +36,8 @@ typedef struct io_buffer			IOBUF;
 typedef struct io_buffer_list		IOLIST;
 typedef struct net_socket			NSOCK;
 typedef struct network_target		TARGET;
+typedef struct host_prefix			HPRFX;
+typedef struct host_prefixes		HPRFXS;
 typedef struct host_data			HOST;
 typedef struct thread_data			THRD;
 typedef struct synth_data			SYNTH;
