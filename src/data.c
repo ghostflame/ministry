@@ -11,7 +11,7 @@
 #include "ministry.h"
 
 
-const struct data_type_params data_type_defns[DATA_TYPE_MAX] =
+const DTYPE data_type_defns[DATA_TYPE_MAX] =
 {
 	{
 		.type = DATA_TYPE_STATS,
@@ -20,6 +20,7 @@ const struct data_type_params data_type_defns[DATA_TYPE_MAX] =
 		.pf   = &data_line_min_prefix,
 		.af   = &data_point_stats,
 		.port = DEFAULT_STATS_PORT,
+		.lock = DSTATS_SLOCK_COUNT,
 		.sock = "ministry stats socket"
 	},
 	{
@@ -29,6 +30,7 @@ const struct data_type_params data_type_defns[DATA_TYPE_MAX] =
 		.pf   = &data_line_min_prefix,
 		.af   = &data_point_adder,
 		.port = DEFAULT_ADDER_PORT,
+		.lock = DADDER_SLOCK_COUNT,
 		.sock = "ministry adder socket"
 	},
 	{
@@ -38,6 +40,7 @@ const struct data_type_params data_type_defns[DATA_TYPE_MAX] =
 		.pf   = &data_line_min_prefix,
 		.af   = &data_point_gauge,
 		.port = DEFAULT_GAUGE_PORT,
+		.lock = DGAUGE_SLOCK_COUNT,
 		.sock = "ministry gauge socket"
 	},
 	{
@@ -53,12 +56,12 @@ const struct data_type_params data_type_defns[DATA_TYPE_MAX] =
 
 
 
-static uint32_t data_cksum_primes[8] =
+static const uint32_t data_cksum_primes[8] =
 {
 	2909, 3001, 3083, 3187, 3259, 3343, 3517, 3581
 };
 
-uint32_t data_path_cksum( char *str, int len )
+__attribute__((hot)) static inline uint32_t data_path_cksum( char *str, int len )
 {
 	register uint32_t *p, sum = 0xbeef;
 	int rem;
@@ -110,7 +113,7 @@ uint32_t data_get_id( ST_CFG *st )
 
 
 
-static inline DHASH *data_find_path( DHASH *list, uint32_t hval, char *path, int len )
+__attribute__((hot)) static inline DHASH *data_find_path( DHASH *list, uint32_t hval, char *path, int len )
 {
 	DHASH *h;
 
@@ -160,7 +163,7 @@ DHASH *data_locate( char *path, int len, int type )
 
 
 
-static inline DHASH *data_get_dhash( char *path, int len, ST_CFG *c )
+__attribute__((hot)) static inline DHASH *data_get_dhash( char *path, int len, ST_CFG *c )
 {
 	uint32_t hval, idx;
 	DHASH *d;
@@ -240,7 +243,7 @@ void data_point_gauge( char *path, int len, char *dat )
 
 
 
-void data_point_adder( char *path, int len, char *dat )
+__attribute__((hot)) void data_point_adder( char *path, int len, char *dat )
 {
 	double val;
 	DHASH *d;
@@ -261,7 +264,7 @@ void data_point_adder( char *path, int len, char *dat )
 }
 
 
-void data_point_stats( char *path, int len, char *dat )
+__attribute__((hot)) void data_point_stats( char *path, int len, char *dat )
 {
 	float val;
 	PTLIST *p;
@@ -293,7 +296,7 @@ void data_point_stats( char *path, int len, char *dat )
 
 
 // break up ministry type line
-static inline int __data_line_ministry_check( char *line, int len, char **end )
+__attribute__((hot)) static inline int __data_line_ministry_check( char *line, int len, char **end )
 {
 	register char *sp;
 	int plen;
@@ -317,8 +320,9 @@ static inline int __data_line_ministry_check( char *line, int len, char **end )
 }
 
 
+
 // break up a statsd type line
-static inline int __data_line_compat_check( char *line, int len, char **dat, char **tp )
+__attribute__((hot)) static inline int __data_line_compat_check( char *line, int len, char **dat, char **tp )
 {
 	register char *cl;
 	char *vb;
@@ -352,7 +356,7 @@ static inline int __data_line_compat_check( char *line, int len, char **dat, cha
 
 
 // dispatch a statsd line based on type
-static inline int __data_line_compat_dispatch( char *path, int len, char *data, char type )
+__attribute__((hot)) static inline int __data_line_compat_dispatch( char *path, int len, char *data, char type )
 {
 	switch( type )
 	{
@@ -376,7 +380,7 @@ static inline int __data_line_compat_dispatch( char *path, int len, char *data, 
 
 // support the statsd format but adding a prefix
 // path:<val>|<c or ms>
-void data_line_com_prefix( HOST *h, char *line, int len )
+__attribute__((hot)) void data_line_com_prefix( HOST *h, char *line, int len )
 {
 	char *data = NULL, *type = NULL;
 	int plen;
@@ -404,7 +408,7 @@ void data_line_com_prefix( HOST *h, char *line, int len )
 
 // support the statsd format
 // path:<val>|<c or ms>
-void data_line_compat( HOST *h, char *line, int len )
+__attribute__((hot)) void data_line_compat( HOST *h, char *line, int len )
 {
 	char *data = NULL, *type = NULL;
 	int plen;
@@ -426,7 +430,7 @@ void data_line_compat( HOST *h, char *line, int len )
 
 
 
-void data_line_min_prefix( HOST *h, char *line, int len )
+__attribute__((hot)) void data_line_min_prefix( HOST *h, char *line, int len )
 {
 	char *ep = NULL;
 	int plen;
@@ -455,7 +459,7 @@ void data_line_min_prefix( HOST *h, char *line, int len )
 
 
 
-void data_line_ministry( HOST *h, char *line, int len )
+__attribute__((hot)) void data_line_ministry( HOST *h, char *line, int len )
 {
 	char *ep = NULL;
 	int plen;
@@ -482,7 +486,7 @@ void data_line_ministry( HOST *h, char *line, int len )
 // parse the lines
 // put any partial lines back at the start of the buffer
 // and return the length, if any
-int data_parse_buf( HOST *h, char *buf, int len )
+__attribute__((hot)) int data_parse_buf( HOST *h, char *buf, int len )
 {
 	register char *s = buf;
 	register char *q;
@@ -567,7 +571,7 @@ int data_parse_buf( HOST *h, char *buf, int len )
 //  the empty flag.  We need to keep any partial lines for the next read call
 //  to push back to the start of the buffer.
 //
-int data_recv_lines( HOST *h )
+__attribute__((hot)) int data_recv_lines( HOST *h )
 {
 	NSOCK *n = h->net;
 

@@ -37,6 +37,35 @@ pthread_t thread_throw( void *(*fp) (void *), void *arg )
 }
 
 
+DLOCKS *dhash_locks_create( int type )
+{
+	const DTYPE *dt = data_type_defns + type;
+	DLOCKS *d;
+	int i;
+
+	d = (DLOCKS *) allocz( sizeof( DLOCKS ) );
+
+	d->len   = dt->lock;
+	d->mask  = d->len - 1;
+	d->name  = dt->name;
+	d->used  = (uint64_t *) allocz( d->len * sizeof( uint64_t ) );
+	d->prev  = (uint64_t *) allocz( d->len * sizeof( uint64_t ) );
+	d->locks = (pthread_spinlock_t *) allocz( d->len * sizeof( pthread_spinlock_t ) );
+
+	// and init the locks
+	for( i = 0; i < d->len; i++ )
+		pthread_spin_init( d->locks + i, PTHREAD_PROCESS_PRIVATE );
+
+	return d;
+}
+
+void dhash_locks_destroy( DLOCKS *d )
+{
+	int i;
+
+	for( i = 0; i < d->len; i++ )
+		pthread_spin_destroy( d->locks + i );
+}
 
 
 LOCK_CTL *lock_config_defaults( void )
@@ -45,6 +74,11 @@ LOCK_CTL *lock_config_defaults( void )
 	int i;
 
 	l = (LOCK_CTL *) allocz( sizeof( LOCK_CTL ) );
+
+	// make the stats structures
+	l->dadder = dhash_locks_create( DATA_TYPE_ADDER );
+	l->dstats = dhash_locks_create( DATA_TYPE_STATS );
+	l->dgauge = dhash_locks_create( DATA_TYPE_GAUGE );
 
 	// and init all the mutexes
 
@@ -70,14 +104,6 @@ LOCK_CTL *lock_config_defaults( void )
 	// used to lock table positions
 	for( i = 0; i < HASHT_MUTEX_COUNT; i++ )
 		pthread_mutex_init( l->table + i, NULL );
-
-	// used to lock paths
-	for( i = 0; i < DSTATS_SLOCK_COUNT; i++ )
-		pthread_spin_init( l->dstats + i, PTHREAD_PROCESS_PRIVATE );
-	for( i = 0; i < DADDER_SLOCK_COUNT; i++ )
-		pthread_spin_init( l->dadder + i, PTHREAD_PROCESS_PRIVATE );
-	for( i = 0; i < DGAUGE_SLOCK_COUNT; i++ )
-		pthread_spin_init( l->dgauge + i, PTHREAD_PROCESS_PRIVATE );
 
 	l->init_done = 1;
 	return l;
@@ -116,12 +142,9 @@ void lock_shutdown( void )
 		pthread_mutex_destroy( l->table + i );
 
 	// used to lock paths
-	for( i = 0; i < DSTATS_SLOCK_COUNT; i++ )
-		pthread_spin_destroy( l->dstats + i );
-	for( i = 0; i < DADDER_SLOCK_COUNT; i++ )
-		pthread_spin_destroy( l->dadder + i );
-	for( i = 0; i < DGAUGE_SLOCK_COUNT; i++ )
-		pthread_spin_destroy( l->dgauge + i );
+	dhash_locks_destroy( l->dstats );
+	dhash_locks_destroy( l->dadder );
+	dhash_locks_destroy( l->dgauge );
 
 	// used in stats thread control
 	for( t = ctl->stats->adder->ctls; t; t = t->next )

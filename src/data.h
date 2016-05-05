@@ -35,10 +35,11 @@ struct data_type_params
 	line_fn			*	pf;
 	add_fn			*	af;
 	uint16_t			port;
+	uint32_t			lock;
 	char			*	sock;
 };
 
-extern const struct data_type_params data_type_defns[];
+extern const DTYPE data_type_defns[];
 
 
 struct points_list

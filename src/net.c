@@ -443,7 +443,7 @@ void net_stop( void )
 
 NET_TYPE *net_type_defaults( int type )
 {
-	const struct data_type_params *d = data_type_defns + type;
+	const DTYPE *d = data_type_defns + type;
 	NET_TYPE *nt;
 
 	nt              = (NET_TYPE *) allocz( sizeof( NET_TYPE ) );

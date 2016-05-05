@@ -24,14 +24,28 @@
 
 
 
-#define lock_adder( d )			pthread_spin_lock(   &(ctl->locks->dadder[d->id & DADDER_SLOCK_MASK]) )
-#define unlock_adder( d )		pthread_spin_unlock( &(ctl->locks->dadder[d->id & DADDER_SLOCK_MASK]) )
+#ifdef KEEP_LOCK_STATS
 
-#define lock_stats( d )			pthread_spin_lock(   &(ctl->locks->dstats[d->id & DSTATS_SLOCK_MASK]) )
-#define unlock_stats( d )		pthread_spin_unlock( &(ctl->locks->dstats[d->id & DSTATS_SLOCK_MASK]) )
+#define lock_adder( d )			pthread_spin_lock( &(ctl->locks->dadder->locks[d->id & DADDER_SLOCK_MASK]) ); \
+								ctl->locks->dadder->used[d->id & DADDER_SLOCK_MASK]++
 
-#define lock_gauge( d )			pthread_spin_lock(   &(ctl->locks->dgauge[d->id & DGAUGE_SLOCK_MASK]) )
-#define unlock_gauge( d )		pthread_spin_unlock( &(ctl->locks->dgauge[d->id & DGAUGE_SLOCK_MASK]) )
+#define lock_stats( d )			pthread_spin_lock( &(ctl->locks->dstats->locks[d->id & DSTATS_SLOCK_MASK]) ); \
+								ctl->locks->dstats->used[d->id & DSTATS_SLOCK_MASK]++
+
+#define lock_gauge( d )			pthread_spin_lock( &(ctl->locks->dgauge->locks[d->id & DGAUGE_SLOCK_MASK]) ); \
+								ctl->locks->dgauge->used[d->id & DGAUGE_SLOCK_MASK]++
+
+#else
+
+#define lock_adder( d )			pthread_spin_lock( &(ctl->locks->dadder->locks[d->id & DADDER_SLOCK_MASK]) )
+#define lock_stats( d )			pthread_spin_lock( &(ctl->locks->dstats->locks[d->id & DSTATS_SLOCK_MASK]) )
+#define lock_gauge( d )			pthread_spin_lock( &(ctl->locks->dgauge->locks[d->id & DGAUGE_SLOCK_MASK]) )
+
+#endif
+
+#define unlock_stats( d )		pthread_spin_unlock( &(ctl->locks->dstats->locks[d->id & DSTATS_SLOCK_MASK]) )
+#define unlock_adder( d )		pthread_spin_unlock( &(ctl->locks->dadder->locks[d->id & DADDER_SLOCK_MASK]) )
+#define unlock_gauge( d )		pthread_spin_unlock( &(ctl->locks->dgauge->locks[d->id & DGAUGE_SLOCK_MASK]) )
 
 #define lock_table( idx )		pthread_mutex_lock(   &(ctl->locks->table[idx & HASHT_MUTEX_MASK]) )
 #define unlock_table( idx )		pthread_mutex_unlock( &(ctl->locks->table[idx & HASHT_MUTEX_MASK]) )
@@ -49,6 +63,17 @@
 #define unlock_mem( mt )		pthread_mutex_unlock( &(mt->lock) )
 
 
+struct dhash_locks
+{
+	pthread_spinlock_t	*	locks;
+	uint64_t			*	used;
+	uint64_t			*	prev;
+	char				*	name;
+	uint32_t				len;
+	uint32_t				mask;
+};
+
+
 struct lock_control
 {
 	pthread_mutex_t			hostalloc;					// mem hosts
@@ -63,9 +88,10 @@ struct lock_control
 	pthread_mutex_t			bufref;						// controlled buffer refcount
 
 	pthread_mutex_t			table[HASHT_MUTEX_COUNT];	// hash table locks
-	pthread_spinlock_t		dstats[DSTATS_SLOCK_COUNT];	// path stat data
-	pthread_spinlock_t		dadder[DADDER_SLOCK_COUNT];	// path add data
-	pthread_spinlock_t		dgauge[DGAUGE_SLOCK_COUNT];	// gauge add data
+
+	DLOCKS				*	dadder;
+	DLOCKS				*	dstats;
+	DLOCKS				*	dgauge;
 
 	int						init_done;
 };

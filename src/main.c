@@ -109,7 +109,6 @@ int main( int ac, char **av )
 
 	// make a control structure
 	ctl = config_create( );
-	fprintf( stderr, "I'm alive!\n" );
 
 	while( ( oc = getopt( ac, av, "hHDdvtc:p:" ) ) != -1 )
 		switch( oc )
