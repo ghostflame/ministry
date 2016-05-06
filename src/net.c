@@ -43,6 +43,43 @@ int net_ip_check( struct sockaddr_in *sin )
 }
 
 
+static inline HPRFX *net_prefix_ip_lookup( uint32_t ip )
+{
+	HPRFX *p;
+
+	for( p = ctl->net->prefix->ips[ip % HPRFX_HASHSZ]; p; p = p->next )
+	{
+		debug( "Checking incoming %08x vs rule %08x", ip, p->ip );
+		if( ip == p->ip )
+			return p;
+	}
+
+	return NULL;
+}
+
+
+
+HPRFX *net_prefix_check( struct sockaddr_in *sin )
+{
+	uint32_t ip;
+	HPRFX *p;
+
+	ip = sin->sin_addr.s_addr;
+	debug( "Calling IP is %08x", ip );
+
+	// direct hash check?
+	if( ( p = net_prefix_ip_lookup( ip ) ) )
+		return p;
+
+	// networks check
+	for( p = ctl->net->prefix->nets; p; p = p->next )
+		if( ( ip & net_masks[p->net->bits] ) == p->net->net )
+			return p;
+
+	return NULL;
+}
+
+
 
 
 void net_disconnect( int *sock, char *name )
@@ -101,6 +138,40 @@ HOST *net_get_host( int sock, NET_TYPE *type )
 
 	h->net->sock = d;
 	h->type      = type;
+
+	// assume type-based handler functions
+	h->parser    = type->flat_parser;
+
+	// do we need to override those?
+	if( ctl->net->prefix->total > 0
+	 && ( h->prefix = net_prefix_check( &from ) ) )
+	{
+		// change the parser function to one that does prefixing
+		h->parser = type->prfx_parser;
+
+		// and copy the prefix into the workbuf
+		if( !h->workbuf && !( h->workbuf = (char *) allocz( HPRFX_BUFSZ ) ) )
+		{
+			mem_free_host( &h );
+			fatal( "Could not allocate host work buffer" );
+			return NULL;
+		}
+
+		// and make a copy of the prefix for this host
+		memcpy( h->workbuf, h->prefix->pstr, h->prefix->plen );
+		h->plen = h->prefix->plen;
+
+		// set the max line we like and the target to copy to
+		h->lmax = HPRFX_BUFSZ - h->plen - 1;
+		h->ltarget = h->workbuf + h->plen;
+
+		info( "Connection from %s:%hu gets prefix %s",
+				inet_ntoa( from.sin_addr ), ntohs( from.sin_port ),
+				h->workbuf );
+	}
+	else
+		debug( "Connection from %s:%hu gets no prefix.",
+				inet_ntoa( from.sin_addr ), ntohs( from.sin_port ) );
 
 	return h;
 }
@@ -292,8 +363,35 @@ int net_startup( NET_TYPE *nt )
 int net_start( void )
 {
 	IPCHK *c = ctl->net->ipcheck;
-	IPNET *n, *list;
+	HPRFXS *p = ctl->net->prefix;
+	HPRFX *h, *hlist;
+	IPNET *n, *nlist;
 	int ret = 0;
+
+	// reverse the ip check list
+	nlist = NULL;
+	while( c->list )
+	{
+		n = c->list;
+		c->list = n->next;
+
+		n->next = nlist;
+		nlist = n;
+	}
+	c->list = nlist;
+
+	// reverse the network prefixes
+	hlist = NULL;
+	while( p->nets )
+	{
+		h = p->nets;
+		p->nets = h->next;
+
+		h->next = hlist;
+		hlist = h;
+	}
+	p->nets = hlist;
+
 
 	notice( "Starting networking." );
 
@@ -301,18 +399,6 @@ int net_start( void )
 	ret += net_startup( ctl->net->adder );
 	ret += net_startup( ctl->net->gauge );
 	ret += net_startup( ctl->net->compat );
-
-	// reverse the ip check list
-	list = NULL;
-	while( c->list )
-	{
-		n = c->list;
-		c->list = n->next;
-
-		n->next = list;
-		list = n;
-	}
-	c->list = list;
 
 	return ret;
 }
@@ -355,24 +441,27 @@ void net_stop( void )
 }
 
 
-NET_TYPE *net_type_defaults( unsigned short port, line_fn *lfn, add_fn *afn, char *label )
+NET_TYPE *net_type_defaults( int type )
 {
+	const DTYPE *d = data_type_defns + type;
 	NET_TYPE *nt;
 
-	nt            = (NET_TYPE *) allocz( sizeof( NET_TYPE ) );
-	nt->tcp       = (NET_PORT *) allocz( sizeof( NET_PORT ) );
-	nt->tcp->ip   = INADDR_ANY;
-	nt->tcp->back = DEFAULT_NET_BACKLOG;
-	nt->tcp->port = port;
-	nt->tcp->type = nt;
-	nt->parser    = lfn;
-	nt->handler   = afn;
-	nt->udp_bind  = INADDR_ANY;
-	nt->label     = strdup( label );
-	nt->flags     = NTYPE_ENABLED|NTYPE_TCP_ENABLED|NTYPE_UDP_ENABLED;
+	nt              = (NET_TYPE *) allocz( sizeof( NET_TYPE ) );
+	nt->tcp         = (NET_PORT *) allocz( sizeof( NET_PORT ) );
+	nt->tcp->ip     = INADDR_ANY;
+	nt->tcp->back   = DEFAULT_NET_BACKLOG;
+	nt->tcp->port   = d->port;
+	nt->tcp->type   = nt;
+	nt->flat_parser = d->lf;
+	nt->prfx_parser = d->pf;
+	nt->handler     = d->af;
+	nt->udp_bind    = INADDR_ANY;
+	nt->label       = strdup( d->sock );
+	nt->flags       = NTYPE_ENABLED|NTYPE_TCP_ENABLED|NTYPE_UDP_ENABLED;
 
 	return nt;
 }
+
 
 
 
@@ -381,20 +470,24 @@ NET_CTL *net_config_defaults( void )
 	NET_CTL *net;
 	int i;
 
-	net            = (NET_CTL *) allocz( sizeof( NET_CTL ) );
-	net->dead_time = NET_DEAD_CONN_TIMER;
-	net->rcv_tmout = NET_RCV_TMOUT;
-	net->reconn    = 1000 * NET_RECONN_MSEC;
-	net->io_usec   = 1000 * NET_IO_MSEC;
-	net->max_bufs  = IO_MAX_WAITING;
+	net              = (NET_CTL *) allocz( sizeof( NET_CTL ) );
+	net->dead_time   = NET_DEAD_CONN_TIMER;
+	net->rcv_tmout   = NET_RCV_TMOUT;
+	net->reconn      = 1000 * NET_RECONN_MSEC;
+	net->io_usec     = 1000 * NET_IO_MSEC;
+	net->max_bufs    = IO_MAX_WAITING;
 
-	net->stats     = net_type_defaults( DEFAULT_STATS_PORT,  &data_line_ministry, &data_point_stats,  "ministry stats socket" );
-	net->adder     = net_type_defaults( DEFAULT_ADDER_PORT,  &data_line_ministry, &data_point_adder,  "ministry adder socket" );
-	net->gauge     = net_type_defaults( DEFAULT_GAUGE_PORT,  &data_line_ministry, &data_point_gauge,  "ministry gauge socket" );
-	net->compat    = net_type_defaults( DEFAULT_COMPAT_PORT, &data_line_compat,   NULL,               "statsd compat socket"  );
+	net->stats       = net_type_defaults( DATA_TYPE_STATS );
+	net->adder       = net_type_defaults( DATA_TYPE_ADDER );
+	net->gauge       = net_type_defaults( DATA_TYPE_GAUGE );
+	net->compat      = net_type_defaults( DATA_TYPE_COMPAT );
 
 	// ip checking
-	net->ipcheck   = (IPCHK *) allocz( sizeof( IPCHK ) );
+	net->ipcheck     = (IPCHK *) allocz( sizeof( IPCHK ) );
+
+	// prefix checking
+	net->prefix      = (HPRFXS *) allocz( sizeof( HPRFXS ) );
+	net->prefix->ips = (HPRFX **) allocz( HPRFX_HASHSZ * sizeof( HPRFX * ) );
 
 	// can't add default target, it's a linked list
 
@@ -410,40 +503,86 @@ NET_CTL *net_config_defaults( void )
 #define ntflag( f )			if( atoi( av->val ) ) nt->flags |= NTYPE_##f; else nt->flags &= ~NTYPE_##f
 
 
-int net_add_list_member( char *str, int len, uint16_t type )
+static regex_t *__net_ip_regex = NULL;
+
+
+IPNET *__net_parse_network( char *str, int *saw_error )
 {
 	struct in_addr ina;
+	regmatch_t rm[7];
+	int bits, rv;
 	IPNET *ip;
-	int bits;
-	char *sl;
 
-	if( ( sl = memchr( str, '/', len ) ) )
+	*saw_error = 0;
+
+	if( !__net_ip_regex )
 	{
-		*sl++ = '\0';
-		bits = atoi( sl );
+		__net_ip_regex = (regex_t *) allocz( sizeof( regex_t ) );
+
+		if( ( rv = regcomp( __net_ip_regex, NET_IP_REGEX_STR, REG_EXTENDED|REG_ICASE ) ) )
+		{
+			char *errbuf = (char *) allocz( 2048 );
+
+			regerror( rv, __net_ip_regex, errbuf, 2048 );
+			fatal( "Cannot make IP address regex -- %s", errbuf );
+			free( errbuf );
+
+			*saw_error = 1;
+			return NULL;
+		}
 	}
+
+	// was it a match?
+	if( regexec( __net_ip_regex, str, 7, rm, 0 ) )
+		return NULL;
+
+	// cap the IP address - might stomp on the /
+	// or just be the end of the string (what was the newline once)
+	str[rm[1].rm_eo] = '\0';
+
+	// do we have some bits?
+	if( rm[6].rm_so > -1 )
+		bits = atoi( str + rm[6].rm_so );
 	else
 		bits = 32;
 
 	if( bits < 0 || bits > 32 )
 	{
 		err( "Invalid network bits %d", bits );
-		return -1;
+		*saw_error = 1;
+		return NULL;
 	}
 
 	// did that look OK?
 	if( !inet_aton( str, &ina ) )
 	{
 		err( "Invalid ip address %s", str );
-		return -1;
+		*saw_error = 1;
+		return NULL;
 	}
 
 	ip = (IPNET *) allocz( sizeof( IPNET ) );
 	ip->bits = bits;
-	ip->type = type;
+
 	// and grab the network from that
 	// doing this makes 172.16.10.10/16 work as a network
 	ip->net = ina.s_addr & net_masks[bits];
+
+	return ip;
+}
+
+
+
+
+int net_add_list_member( char *str, int len, uint16_t type )
+{
+	IPNET *ip;
+	int er;
+
+	if( !( ip = __net_parse_network( str, &er ) ) )
+		return -1;
+
+	ip->type = type;
 
 	// add it into the list
 	// this needs reversing at net start
@@ -451,6 +590,177 @@ int net_add_list_member( char *str, int len, uint16_t type )
 	ctl->net->ipcheck->list = ip;
 
 	return 0;
+}
+
+
+int net_lookup_host( char *host, struct sockaddr_in *res )
+{
+	struct addrinfo *ap, *ai = NULL;
+
+	// try the lookup
+	if( getaddrinfo( host, NULL, NULL, &ai ) || !ai )
+	{
+		err( "Could not look up host %s -- %s", host, Err );
+		return -1;
+	}
+
+	// find an AF_INET answer - we don't do ipv6 yet
+	for( ap = ai; ap; ap = ap->ai_next )
+		if( ap->ai_family == AF_INET )
+			break;
+
+	// none?
+	if( !ap )
+	{
+		err( "Could not find an IPv4 answer for address %s", host );
+		freeaddrinfo( ai );
+		return -1;
+	}
+
+	// copy the first result out
+	res->sin_family = ap->ai_family;
+	res->sin_addr   = ((struct sockaddr_in *) ap->ai_addr)->sin_addr;
+
+	freeaddrinfo( ai );
+	return 0;
+}
+
+
+
+int __net_hprfx_dedupe( HPRFX *h, HPRFX *prv )
+{
+	// do they match?
+	if( h->plen == prv->plen && !memcmp( h->pstr, prv->pstr, h->plen ) )
+	{
+		warn( "Duplicate prefix entries: %s vs %s, ignoring %s",
+			h->confstr, prv->confstr, h->confstr );
+
+		// tidy up
+		free( h->confstr );
+		free( h->pstr );
+		free( h->net );
+		free( h );
+
+		return 0;
+	}
+
+	err( "Previous prefix %s -> %s", prv->confstr, prv->pstr );
+	err( "New prefix %s -> %s", h->confstr, h->pstr );
+	err( "Duplicate prefix mismatch." );
+	return -1;
+}
+
+
+
+int __net_hprfx_insert( HPRFX *h )
+{
+	uint32_t hval;
+	HPRFX *p;
+
+	if( ( p = net_prefix_ip_lookup( h->ip ) ) )
+		return __net_hprfx_dedupe( h, p );
+
+	// OK, a new one
+	hval = h->ip % HPRFX_HASHSZ;
+
+	h->next = ctl->net->prefix->ips[hval];
+	ctl->net->prefix->ips[hval] = h;
+	ctl->net->prefix->total++;
+	debug( "Added ip prefix %s --> %s", h->confstr, h->pstr );
+
+	return 0;
+}
+
+
+
+
+
+// parse a prefix line:  <hostspec> <prefix>
+int net_config_prefix( char *line, int len )
+{
+	int plen, hlen, er, adddot = 0;
+	struct sockaddr_in sa;
+	HPRFX *h, *p;
+	char *prfx;
+
+	if( !( prfx = memchr( line, ' ', len ) ) )
+	{
+		err( "Invalid prefix statement: %s", line );
+		return -1;
+	}
+
+	hlen = prfx - line;
+
+	while( *prfx && isspace( *prfx ) )
+		*prfx++ = '\0';
+
+	if( !*prfx )
+	{
+		err( "Empty prefix string!" );
+		return -1;
+	}
+
+	plen = len - ( prfx - line );
+
+	if( plen > 1023 )
+	{
+		err( "Prefix string too line: max is 1023 bytes." );
+		return -1;
+	}
+
+	// did we end with a dot?
+	if( line[len - 1] != '.' )
+		adddot = 1;
+
+	h = (HPRFX *) allocz( sizeof( HPRFX ) );
+
+	// copy the string, add a dot if necessary
+	h->pstr = str_copy( prfx, plen + adddot );
+	if( adddot )
+		h->pstr[plen] = '.';
+	h->plen = plen + adddot;
+
+	// copy the host config
+	h->confstr = str_copy( line, hlen );
+
+	// see if it's an IP or net/bits network
+	if( ( h->net = __net_parse_network( line, &er ) ) )
+	{
+		if( h->net->bits == 32 )
+		{
+			// IP address - put it in the hash
+			h->ip = h->net->net;
+
+			return __net_hprfx_insert( h );
+		}
+
+		// dupe check - same net/bits
+		for( p = ctl->net->prefix->nets; p; p = p->next )
+			if( p->net->net == h->net->net && p->net->bits == h->net->bits )
+				return __net_hprfx_dedupe( h, p );
+
+		// these get reversed to restore the config order
+		h->next = ctl->net->prefix->nets;
+		ctl->net->prefix->nets = h;
+		ctl->net->prefix->total++;
+		debug( "Added net prefix %s --> %s", h->confstr, h->pstr );
+
+		return 0;
+	}
+
+	// was there a problem?
+	if( er )
+		return -1;
+
+	// OK, it's a hostname
+	if( net_lookup_host( line, &sa ) )
+		return -1;
+
+	// grab the IP
+	h->ip = sa.sin_addr.s_addr;
+
+	// and put it in the ips hash
+	return __net_hprfx_insert( h );
 }
 
 
@@ -497,6 +807,11 @@ int net_config_line( AVP *av )
 			if( ctl->net->max_bufs <= 0 )
 				ctl->net->max_bufs = IO_MAX_WAITING;
 			debug( "Max waiting buffers set to %d.", ctl->net->max_bufs );
+		}
+		else if( attIs( "prefix" ) )
+		{
+			// these are messy
+			return net_config_prefix( av->val, av->vlen );
 		}
 		else if( attIs( "target" ) || attIs( "targets" ) )
 		{

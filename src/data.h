@@ -32,10 +32,14 @@ struct data_type_params
 	int					type;
 	char			*	name;
 	line_fn			*	lf;
+	line_fn			*	pf;
 	add_fn			*	af;
+	uint16_t			port;
+	uint32_t			lock;
+	char			*	sock;
 };
 
-extern const struct data_type_params data_type_defns[];
+extern const DTYPE data_type_defns[];
 
 
 struct points_list
@@ -86,6 +90,8 @@ void data_point_adder( char *path, int len, char *dat );
 
 line_fn data_line_ministry;
 line_fn data_line_compat;
+line_fn data_line_min_prefix;
+line_fn data_line_com_prefix;
 
 void data_start( NET_TYPE *nt );
 

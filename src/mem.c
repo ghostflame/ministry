@@ -191,6 +191,7 @@ void mem_free_host( HOST **h )
 	sh->type       = NULL;
 	sh->net->sock  = -1;
 	sh->net->flags = 0;
+	sh->prefix     = NULL;
 
 	sh->peer->sin_addr.s_addr = INADDR_ANY;
 	sh->peer->sin_port = 0;
@@ -203,6 +204,14 @@ void mem_free_host( HOST **h )
 
 	if( sh->net->name )
 		sh->net->name[0] = '\0';
+
+	if( sh->workbuf )
+	{
+		sh->workbuf[0] = '\0';
+		sh->plen = 0;
+		sh->lmax = 0;
+		sh->ltarget = sh->workbuf;
+	}
 
 	__mtype_free( ctl->mem->hosts, sh );
 }

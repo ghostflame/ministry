@@ -523,6 +523,33 @@ IOBUF *stats_report_types( ST_CFG *c, time_t ts, IOBUF *b )
 }
 
 
+
+IOBUF *stats_report_dlocks( DLOCKS *d, time_t ts, IOBUF *b )
+{
+	char *prfx = ctl->stats->self->prefix;
+	uint64_t curr, total, diff;
+	int i;
+
+	for( total = 0, i = 0; i < d->len; i++ )
+	{
+		// important - only read used[i] *once*
+		// means we never drop one
+		curr = d->used[i];
+		diff = curr - d->prev[i];
+
+		d->prev[i] = curr;
+		total += diff;
+
+		bprintf( "locks.%s.%03d %lu", d->name, i, diff );
+	}
+
+	bprintf( "locks.%s.total %lu", d->name, total );
+
+	return b;
+}
+
+
+
 // report our own pass
 void stats_self_pass( int64_t tval, void *arg )
 {
@@ -537,6 +564,13 @@ void stats_self_pass( int64_t tval, void *arg )
 	b = mem_new_buf( IO_BUF_SZ );
 
 	// TODO - more stats
+
+#ifdef KEEP_LOCK_STATS
+	// report stats usage
+	b = stats_report_dlocks( ctl->locks->dstats, ts, b );
+	b = stats_report_dlocks( ctl->locks->dadder, ts, b );
+	b = stats_report_dlocks( ctl->locks->dgauge, ts, b );
+#endif
 
 	// stats types
 	b = stats_report_types( ctl->stats->stats, ts, b );

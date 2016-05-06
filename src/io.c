@@ -420,8 +420,7 @@ void io_send_loop( TARGET *t )
 
 void *io_loop( void *arg )
 {
-	struct sockaddr_in sa, *sp;
-	struct addrinfo *ai, *ap;
+	struct sockaddr_in sa;
 	TARGET *d;
 	THRD *t;
 
@@ -429,37 +428,15 @@ void *io_loop( void *arg )
 	d = (TARGET *) t->arg;
 
 	// find out where we are connecting to
-	if( getaddrinfo( d->host, NULL, NULL, &ai ) || !ai )
+	if( net_lookup_host( d->host, &sa ) )
 	{
-		err( "Could not look up target host %s -- %s", d->host, Err );
 		loop_end( "Unable to loop up network target." );
 		free( t );
 		return NULL;
 	}
 
-	// find an AF_INET answer - we don't do ipv6 yet
-	for( ap = ai; ap; ap = ap->ai_next )
-		if( ap->ai_family == AF_INET )
-			break;
-
-	// none?
-	if( !ap )
-	{
-		err( "Could not find an IPv4 answer for address %s", d->host );
-		freeaddrinfo( ai );
-		return NULL;
-	}
-
-	sp = (struct sockaddr_in *) ap->ai_addr;
-
-	// we'll take the first address thanks
-	sa.sin_family = ap->ai_family;
-	sa.sin_addr   = sp->sin_addr;
 	// and we already have a port
 	sa.sin_port   = htons( d->port );
-
-	// done with that
-	freeaddrinfo( ai );
 
 	// make a socket
 	d->sock = net_make_sock( 0, 0, &sa );

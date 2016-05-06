@@ -38,6 +38,12 @@
 #define DEFAULT_TARGET_HOST				"127.0.0.1"
 #define DEFAULT_TARGET_PORT				2003	// graphite
 
+#define HPRFX_HASHSZ					2003
+#define HPRFX_BUFSZ						0x2000	// 8k
+
+// ip address regex
+#define NET_IP_REGEX_OCT				"(25[0-5]|2[0-4][0-9]||1[0-9][0-9]|[1-9][0-9]|[0-9])"
+#define NET_IP_REGEX_STR				"^((" NET_IP_REGEX_OCT "\\.){3}" NET_IP_REGEX_OCT ")(/(3[0-2]|[12]?[0-9]))?$"
 
 
 struct ip_network
@@ -55,6 +61,26 @@ struct ip_check
 	int						deflt;
 	int						verbose;
 	int						enabled;
+};
+
+
+struct host_prefix
+{
+	HPRFX				*	next;
+	IPNET				*	net;
+	char				*	pstr;
+	char				*	confstr;
+	uint32_t				ip;
+	int32_t					plen;
+};
+
+
+struct host_prefixes
+{
+	HPRFX				**	ips;
+	HPRFX				*	nets;
+
+	int						total;
 };
 
 
@@ -83,11 +109,18 @@ struct host_data
 	WORDS				*	val;		// per line
 
 	NET_TYPE			*	type;
+	line_fn				*	parser;
 
 	struct sockaddr_in	*	peer;
 
 	uint64_t				points;
 	uint64_t				invalid;
+
+	HPRFX				*	prefix;		// may well be null
+	char				*	workbuf;	// gets set to fixed size
+	char				*	ltarget;
+	int						plen;
+	int						lmax;
 };
 
 
@@ -109,7 +142,8 @@ struct net_type
 {
 	NET_PORT			*	tcp;
 	NET_PORT			**	udp;
-	line_fn				*	parser;
+	line_fn				*	flat_parser;
+	line_fn				*	prfx_parser;
 	add_fn				*	handler;
 	char				*	label;
 
@@ -117,6 +151,8 @@ struct net_type
 	uint16_t				udp_count;
 	uint32_t				udp_bind;
 };
+
+
 
 
 struct network_target
@@ -151,6 +187,7 @@ struct network_control
 	TARGET				*	targets;
 
 	IPCHK				*	ipcheck;
+	HPRFXS				*	prefix;
 
 	time_t					dead_time;
 	unsigned int			rcv_tmout;
@@ -173,6 +210,8 @@ NSOCK *net_make_sock( int insz, int outsz, struct sockaddr_in *peer );
 //int net_port_sock( PORT_CTL *pc, uint32_t ip, int backlog );
 void net_disconnect( int *sock, char *name );
 
+// dns
+int net_lookup_host( char *host, struct sockaddr_in *res );
 
 // init/shutdown
 int net_start( void );
