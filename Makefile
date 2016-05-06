@@ -34,7 +34,7 @@ install:
 	@cd src && $(MAKE) $(MFLAGS) install
 	@echo "Creating config and scripts."
 	@install -m644 dist/ministry.logrotate $(LRTDIR)/ministry
-	@install -m755 conf/install.conf $(CFGDIR)/ministry.conf
+	@install -m644 conf/install.conf $(CFGDIR)/ministry.conf
 	@echo "Creating manual pages and docs."
 	@gzip -c dist/ministry.1 > $(MANDIR)/man1/ministry.1.gz
 	@chmod 644 $(MANDIR)/man1/ministry.1.gz
@@ -45,7 +45,7 @@ install:
 
 unitinstall: install
 	@mkdir -p $(UNIDIR)
-	@install -m755 dist/ministry.service $(UNIDIR)/ministry.service
+	@install -m644 dist/ministry.service $(UNIDIR)/ministry.service
 
 initinstall: install
 	@mkdir -p $(INIDIR)
