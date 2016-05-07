@@ -10,7 +10,7 @@ WFLAGS = -Wall -Wshadow
 IFLAGS = -I. 
 DFLAGS = -g -pg -ggdb3 -DDEBUG -DDEBUG_SYNTH
 TFLAGS = -pthread
-CFLAGS = $(TFLAGS) $(IFLAGS) -DKEEP_LOCK_STATS
+CFLAGS = $(TFLAGS) $(IFLAGS)
 LFLAGS = $(TFLAGS) $(IFLAGS) -lm
 
 BINDIR = $(DESTDIR)/usr/bin

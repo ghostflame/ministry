@@ -15,9 +15,6 @@
 #define DEFAULT_GAUGE_PORT				9325
 #define DEFAULT_COMPAT_PORT				8125
 
-#define IP_NET_WHITELIST				0
-#define IP_NET_BLACKLIST				1
-
 #define POLL_EVENTS						(POLLIN|POLLPRI|POLLRDNORM|POLLRDBAND|POLLHUP)
 
 #define MIN_NETBUF_SZ					0x10000	// 64k
@@ -38,50 +35,52 @@
 #define DEFAULT_TARGET_HOST				"127.0.0.1"
 #define DEFAULT_TARGET_PORT				2003	// graphite
 
-#define HPRFX_HASHSZ					2003
-#define HPRFX_BUFSZ						0x2000	// 8k
 
 // ip address regex
 #define NET_IP_REGEX_OCT				"(25[0-5]|2[0-4][0-9]||1[0-9][0-9]|[1-9][0-9]|[0-9])"
 #define NET_IP_REGEX_STR				"^((" NET_IP_REGEX_OCT "\\.){3}" NET_IP_REGEX_OCT ")(/(3[0-2]|[12]?[0-9]))?$"
 
+#define NET_IP_HASHSZ					2003
 
-struct ip_network
-{
-	IPNET				*	next;
-	uint32_t				net;
-	uint16_t				bits;
-	uint16_t				type;
-};
+#define NET_IP_WHITELIST				0
+#define NET_IP_BLACKLIST				1
 
-
-struct ip_check
-{
-	IPNET				*	list;
-	int						deflt;
-	int						verbose;
-	int						enabled;
-};
+#define HPRFX_BUFSZ						0x2000	// 8k
 
 
 struct host_prefix
 {
 	HPRFX				*	next;
-	IPNET				*	net;
 	char				*	pstr;
 	char				*	confstr;
-	uint32_t				ip;
 	int32_t					plen;
 };
 
 
-struct host_prefixes
+struct ip_network
 {
-	HPRFX				**	ips;
-	HPRFX				*	nets;
-
-	int						total;
+	IPNET				*	next;
+	HPRFX				*	prefix;
+	uint32_t				ipnet;
+	uint16_t				bits;
+	uint16_t				act;
 };
+
+
+
+struct ip_check
+{
+	IPNET				**	ips;
+	IPNET				*	nets;
+
+	int32_t					total;
+	int32_t					hashsz;
+
+	uint32_t				enable : 1;
+	uint32_t				verbose : 1;
+	uint32_t				drop : 1;
+};
+
 
 
 
@@ -186,8 +185,9 @@ struct network_control
 
 	TARGET				*	targets;
 
-	IPCHK				*	ipcheck;
-	HPRFXS				*	prefix;
+	IPCHK				*	iplist;
+	IPCHK				*	prefix;
+	regex_t					ipregex;
 
 	time_t					dead_time;
 	unsigned int			rcv_tmout;

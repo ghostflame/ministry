@@ -15,66 +15,51 @@ uint32_t net_masks[33];
 
 
 
-int net_ip_check( struct sockaddr_in *sin )
+// look up an IP in a list
+static inline IPNET *net_ip_lookup( uint32_t ip, IPCHK *in )
 {
-#ifdef DEBUG_IP_CHECK
-	struct in_addr ina;
-	char network[64];
-#endif
-	uint32_t ip;
-	IPNET *i;
+	IPNET *n;
 
-	ip = sin->sin_addr.s_addr;
+	// try the hash
+	for( n = in->ips[ip % in->hashsz]; n; n = n->next )
+		if( ip == n->ipnet )
+			return n;
 
-	for( i = ctl->net->ipcheck->list; i; i = i->next )
-		if( ( ip & net_masks[i->bits] ) == i->net )
-		{
-#ifdef DEBUG_IP_CHECK
-			ina.s_addr = i->net;
-			strcpy( network, inet_ntoa( ina ) );
-			debug( "%sing IP %s based on network %s/%hu",
-				( i->type == IP_NET_WHITELIST ) ? "Allow" : "Deny",
-				inet_ntoa( sin->sin_addr ), network, i->bits );
-#endif
-			return i->type;
-		}
-
-	return ctl->net->ipcheck->deflt;
-}
-
-
-static inline HPRFX *net_prefix_ip_lookup( uint32_t ip )
-{
-	HPRFX *p;
-
-	for( p = ctl->net->prefix->ips[ip % HPRFX_HASHSZ]; p; p = p->next )
-	{
-		debug( "Checking incoming %08x vs rule %08x", ip, p->ip );
-		if( ip == p->ip )
-			return p;
-	}
+	// try the networks
+	for( n = in->nets; n; n = n->next )
+		if( ( ip & net_masks[n->bits] ) == n->ipnet )
+			return n;
 
 	return NULL;
 }
 
 
+// 0 means OK, 1 means drop
+int net_ip_check( struct sockaddr_in *sin )
+{
+	IPNET *i;
+
+	if( !ctl->net->iplist->enable
+	 || !ctl->net->iplist->total )
+		return 0;
+
+	if( !( i = net_ip_lookup( sin->sin_addr.s_addr, ctl->net->iplist ) ) )
+		return ctl->net->iplist->drop;
+
+	if( i->act == NET_IP_BLACKLIST )
+		return 1;
+
+	return 0;
+}
+
 
 HPRFX *net_prefix_check( struct sockaddr_in *sin )
 {
-	uint32_t ip;
-	HPRFX *p;
+	IPNET *i;
 
-	ip = sin->sin_addr.s_addr;
-	debug( "Calling IP is %08x", ip );
-
-	// direct hash check?
-	if( ( p = net_prefix_ip_lookup( ip ) ) )
-		return p;
-
-	// networks check
-	for( p = ctl->net->prefix->nets; p; p = p->next )
-		if( ( ip & net_masks[p->net->bits] ) == p->net->net )
-			return p;
+	if( ctl->net->prefix->total
+     && ( i = net_ip_lookup( sin->sin_addr.s_addr, ctl->net->prefix ) ) )
+		return i->prefix;
 
 	return NULL;
 }
@@ -121,11 +106,10 @@ HOST *net_get_host( int sock, NET_TYPE *type )
 	}
 
 	// are we doing blacklisting/whitelisting?
-	if( ctl->net->ipcheck->enabled
-	 && net_ip_check( &from ) != 0 )
+	if( net_ip_check( &from ) != 0 )
 	{
-		if( ctl->net->ipcheck->verbose )
-			warn( "Denying connection from %s:%hu based on ip check.",
+		if( ctl->net->iplist->verbose )
+			notice( "Denying connection from %s:%hu based on ip check.",
 				inet_ntoa( from.sin_addr ), ntohs( from.sin_port ) );
 
 		shutdown( d, SHUT_RDWR );
@@ -143,8 +127,7 @@ HOST *net_get_host( int sock, NET_TYPE *type )
 	h->parser    = type->flat_parser;
 
 	// do we need to override those?
-	if( ctl->net->prefix->total > 0
-	 && ( h->prefix = net_prefix_check( &from ) ) )
+	if( ( h->prefix = net_prefix_check( &from ) ) )
 	{
 		// change the parser function to one that does prefixing
 		h->parser = type->prfx_parser;
@@ -169,9 +152,6 @@ HOST *net_get_host( int sock, NET_TYPE *type )
 				inet_ntoa( from.sin_addr ), ntohs( from.sin_port ),
 				h->workbuf );
 	}
-	else
-		debug( "Connection from %s:%hu gets no prefix.",
-				inet_ntoa( from.sin_addr ), ntohs( from.sin_port ) );
 
 	return h;
 }
@@ -359,39 +339,42 @@ int net_startup( NET_TYPE *nt )
 }
 
 
+void __net_rule_explain_list( IPNET *list )
+{
+	struct in_addr ina;
+	IPNET *ip;
+
+	for( ip = list; ip; ip = ip->next )
+	{
+		ina.s_addr = ip->ipnet;
+		info( "   %-6s    %s/%hu",
+			( ip->act == NET_IP_WHITELIST ) ? "Allow" : "Deny",
+			inet_ntoa( ina ), ip->bits );
+	}
+}
 
 int net_start( void )
 {
-	IPCHK *c = ctl->net->ipcheck;
-	HPRFXS *p = ctl->net->prefix;
-	HPRFX *h, *hlist;
-	IPNET *n, *nlist;
 	int ret = 0;
+	IPCHK *ipc;
+	int i;
 
-	// reverse the ip check list
-	nlist = NULL;
-	while( c->list )
+	// reverse the ip net lists
+	ctl->net->iplist->nets = (IPNET *) mtype_reverse_list( ctl->net->iplist->nets );
+	ctl->net->prefix->nets = (IPNET *) mtype_reverse_list( ctl->net->prefix->nets );
+
+	ipc = ctl->net->iplist;
+	if( ipc->enable && ipc->verbose )
 	{
-		n = c->list;
-		c->list = n->next;
+		info( "Network ipcheck config order:" );
 
-		n->next = nlist;
-		nlist = n;
+		for( i = 0; i < ipc->hashsz; i++ )
+			__net_rule_explain_list( ipc->ips[i] );
+
+		__net_rule_explain_list( ipc->nets );
+
+		info( "   %-6s    %s", ( ipc->drop ) ? "Deny" : "Allow", "Default" );
 	}
-	c->list = nlist;
-
-	// reverse the network prefixes
-	hlist = NULL;
-	while( p->nets )
-	{
-		h = p->nets;
-		p->nets = h->next;
-
-		h->next = hlist;
-		hlist = h;
-	}
-	p->nets = hlist;
-
 
 	notice( "Starting networking." );
 
@@ -464,11 +447,24 @@ NET_TYPE *net_type_defaults( int type )
 
 
 
+IPCHK *__net_get_ipcheck( int hashsz )
+{
+	IPCHK *ipc;
+
+	// ip checking
+	ipc              = (IPCHK *) allocz( sizeof( IPCHK ) );
+	ipc->ips         = (IPNET **) allocz( NET_IP_HASHSZ * sizeof( IPNET * ) );
+	ipc->hashsz      = NET_IP_HASHSZ;
+
+	return ipc;
+}
+
 
 NET_CTL *net_config_defaults( void )
 {
 	NET_CTL *net;
-	int i;
+	char *errbuf;
+	int i, rv;
 
 	net              = (NET_CTL *) allocz( sizeof( NET_CTL ) );
 	net->dead_time   = NET_DEAD_CONN_TIMER;
@@ -482,12 +478,21 @@ NET_CTL *net_config_defaults( void )
 	net->gauge       = net_type_defaults( DATA_TYPE_GAUGE );
 	net->compat      = net_type_defaults( DATA_TYPE_COMPAT );
 
-	// ip checking
-	net->ipcheck     = (IPCHK *) allocz( sizeof( IPCHK ) );
+	if( ( rv = regcomp( &(net->ipregex), NET_IP_REGEX_STR, REG_EXTENDED|REG_ICASE ) ) )
+	{
+		errbuf = (char *) allocz( 2048 );
 
-	// prefix checking
-	net->prefix      = (HPRFXS *) allocz( sizeof( HPRFXS ) );
-	net->prefix->ips = (HPRFX **) allocz( HPRFX_HASHSZ * sizeof( HPRFX * ) );
+		regerror( rv, &(net->ipregex), errbuf, 2048 );
+		fatal( "Cannot make IP address regex -- %s", errbuf );
+
+		free( errbuf );
+		return NULL;
+	}
+	if( !( net->iplist = __net_get_ipcheck( NET_IP_HASHSZ ) ) )
+		return NULL;
+
+	if( !( net->prefix = __net_get_ipcheck( NET_IP_HASHSZ ) ) )
+		return NULL;
 
 	// can't add default target, it's a linked list
 
@@ -501,96 +506,6 @@ NET_CTL *net_config_defaults( void )
 
 
 #define ntflag( f )			if( atoi( av->val ) ) nt->flags |= NTYPE_##f; else nt->flags &= ~NTYPE_##f
-
-
-static regex_t *__net_ip_regex = NULL;
-
-
-IPNET *__net_parse_network( char *str, int *saw_error )
-{
-	struct in_addr ina;
-	regmatch_t rm[7];
-	int bits, rv;
-	IPNET *ip;
-
-	*saw_error = 0;
-
-	if( !__net_ip_regex )
-	{
-		__net_ip_regex = (regex_t *) allocz( sizeof( regex_t ) );
-
-		if( ( rv = regcomp( __net_ip_regex, NET_IP_REGEX_STR, REG_EXTENDED|REG_ICASE ) ) )
-		{
-			char *errbuf = (char *) allocz( 2048 );
-
-			regerror( rv, __net_ip_regex, errbuf, 2048 );
-			fatal( "Cannot make IP address regex -- %s", errbuf );
-			free( errbuf );
-
-			*saw_error = 1;
-			return NULL;
-		}
-	}
-
-	// was it a match?
-	if( regexec( __net_ip_regex, str, 7, rm, 0 ) )
-		return NULL;
-
-	// cap the IP address - might stomp on the /
-	// or just be the end of the string (what was the newline once)
-	str[rm[1].rm_eo] = '\0';
-
-	// do we have some bits?
-	if( rm[6].rm_so > -1 )
-		bits = atoi( str + rm[6].rm_so );
-	else
-		bits = 32;
-
-	if( bits < 0 || bits > 32 )
-	{
-		err( "Invalid network bits %d", bits );
-		*saw_error = 1;
-		return NULL;
-	}
-
-	// did that look OK?
-	if( !inet_aton( str, &ina ) )
-	{
-		err( "Invalid ip address %s", str );
-		*saw_error = 1;
-		return NULL;
-	}
-
-	ip = (IPNET *) allocz( sizeof( IPNET ) );
-	ip->bits = bits;
-
-	// and grab the network from that
-	// doing this makes 172.16.10.10/16 work as a network
-	ip->net = ina.s_addr & net_masks[bits];
-
-	return ip;
-}
-
-
-
-
-int net_add_list_member( char *str, int len, uint16_t type )
-{
-	IPNET *ip;
-	int er;
-
-	if( !( ip = __net_parse_network( str, &er ) ) )
-		return -1;
-
-	ip->type = type;
-
-	// add it into the list
-	// this needs reversing at net start
-	ip->next = ctl->net->ipcheck->list;
-	ctl->net->ipcheck->list = ip;
-
-	return 0;
-}
 
 
 int net_lookup_host( char *host, struct sockaddr_in *res )
@@ -627,50 +542,160 @@ int net_lookup_host( char *host, struct sockaddr_in *res )
 
 
 
-int __net_hprfx_dedupe( HPRFX *h, HPRFX *prv )
+
+IPNET *__net_parse_hostspec( char *str )
 {
+	struct sockaddr_in sa;
+	regmatch_t rm[7];
+	IPNET *ip = NULL;
+	int bits = -1;
+
+	// does it match?
+	if( !regexec( &(ctl->net->ipregex), str, 7, rm, 0 ) )
+	{
+		// cap the IP address - might stomp on the /
+		// or just be the end of the string (what was the newline once)
+		str[rm[1].rm_eo] = '\0';
+
+		// do we have some bits?
+		if( rm[6].rm_so > -1 )
+			bits = atoi( str + rm[6].rm_so );
+		else
+			bits = 32;
+
+		if( bits < 0 || bits > 32 )
+		{
+			err( "Invalid network bits %d", bits );
+			return NULL;
+		}
+
+		// did that look OK?
+		if( !inet_aton( str, &(sa.sin_addr) ) )
+		{
+			err( "Invalid ip address %s", str );
+			return NULL;
+		}
+	}
+	// try it as a hostname
+	else if( !net_lookup_host( str, &sa ) )
+		bits = 32;
+
+	// did we get something?
+	if( bits > -1 )
+	{
+		ip = (IPNET *) allocz( sizeof( IPNET ) );
+		ip->bits = bits;
+
+		// and grab the network
+		// doing this makes 172.16.10.10/16 work as a network
+		ip->ipnet = sa.sin_addr.s_addr & net_masks[bits];
+	}
+
+	return ip;
+}
+
+
+
+
+
+
+
+
+int __net_hprfx_dedupe( IPNET *cur, IPNET *prv )
+{
+	HPRFX *h, *p;
+
+	h = cur->prefix;
+	p = prv->prefix;
+
 	// do they match?
-	if( h->plen == prv->plen && !memcmp( h->pstr, prv->pstr, h->plen ) )
+	if( h->plen == p->plen && !memcmp( h->pstr, p->pstr, p->plen ) )
 	{
 		warn( "Duplicate prefix entries: %s vs %s, ignoring %s",
-			h->confstr, prv->confstr, h->confstr );
+			h->confstr, p->confstr, h->confstr );
 
 		// tidy up
 		free( h->confstr );
 		free( h->pstr );
-		free( h->net );
 		free( h );
+		free( cur );
 
 		return 0;
 	}
 
-	err( "Previous prefix %s -> %s", prv->confstr, prv->pstr );
+	err( "Previous prefix %s -> %s", p->confstr, p->pstr );
 	err( "New prefix %s -> %s", h->confstr, h->pstr );
 	err( "Duplicate prefix mismatch." );
 	return -1;
 }
 
 
-
-int __net_hprfx_insert( HPRFX *h )
+int __net_ipcheck_insert( IPNET *ip, IPCHK *into )
 {
+	struct in_addr ina;
+	IPNET *i = NULL;
 	uint32_t hval;
-	HPRFX *p;
 
-	if( ( p = net_prefix_ip_lookup( h->ip ) ) )
-		return __net_hprfx_dedupe( h, p );
+	ina.s_addr = ip->ipnet;
 
-	// OK, a new one
-	hval = h->ip % HPRFX_HASHSZ;
+	// check for duplicates
+	if( ip->bits == 32 )
+	{
+		hval = ip->ipnet % into->hashsz;
 
-	h->next = ctl->net->prefix->ips[hval];
-	ctl->net->prefix->ips[hval] = h;
-	ctl->net->prefix->total++;
-	debug( "Added ip prefix %s --> %s", h->confstr, h->pstr );
+		for( i = into->ips[hval]; i; i = i->next )
+			if( ip->ipnet == i->ipnet )
+			 	break;
 
-	return 0;
+		if( !i )
+		{
+			ip->next = into->ips[hval];
+			into->ips[hval] = ip;
+			if( ip->prefix )
+				debug( "Added ip prefix %s --> %s", inet_ntoa( ina ), ip->prefix->pstr );
+			else
+			{
+				ina.s_addr = ip->ipnet;
+				debug( "Added ip rule %s --> %s", inet_ntoa( ina ),
+					( ip->act == NET_IP_WHITELIST ) ? "allow" : "drop" );
+			}
+			return 0;
+		}
+	}
+	else
+	{
+		for( i = into->nets; i; i = i->next )
+			if( ip->ipnet == i->ipnet && ip->bits == i->bits )
+				break;
+
+		if( !i )
+		{
+			ip->next = into->nets;
+			into->nets = ip;
+			if( ip->prefix )
+				debug( "Added net prefix %s/%hu --> %s", inet_ntoa( ina ), ip->bits,
+					ip->prefix->pstr );
+			else
+			{
+				ina.s_addr = ip->ipnet;
+				debug( "Added net rule %s/%hu --> %s", inet_ntoa( ina ), ip->bits,
+					( ip->act == NET_IP_WHITELIST ) ? "allow" : "drop" );
+			}
+			return 0;
+		}
+	}
+
+	// OK, we have a match
+
+	if( ip->prefix )
+		return __net_hprfx_dedupe( ip, i );
+
+	err( "Duplicate IP check rule: %s/%hu",
+		inet_ntoa( ina ), ip->bits );
+	free( ip );
+
+	return -1;
 }
-
 
 
 
@@ -678,10 +703,10 @@ int __net_hprfx_insert( HPRFX *h )
 // parse a prefix line:  <hostspec> <prefix>
 int net_config_prefix( char *line, int len )
 {
-	int plen, hlen, er, adddot = 0;
-	struct sockaddr_in sa;
-	HPRFX *h, *p;
+	int plen, hlen, adddot = 0;
 	char *prfx;
+	IPNET *ip;
+	HPRFX *h;
 
 	if( !( prfx = memchr( line, ' ', len ) ) )
 	{
@@ -712,7 +737,11 @@ int net_config_prefix( char *line, int len )
 	if( line[len - 1] != '.' )
 		adddot = 1;
 
-	h = (HPRFX *) allocz( sizeof( HPRFX ) );
+	// try parsing the string
+	if( !( ip = __net_parse_hostspec( line ) ) )
+		return -1;
+
+	h = ( ip->prefix = (HPRFX *) allocz( sizeof( HPRFX ) ) );
 
 	// copy the string, add a dot if necessary
 	h->pstr = str_copy( prfx, plen + adddot );
@@ -723,44 +752,25 @@ int net_config_prefix( char *line, int len )
 	// copy the host config
 	h->confstr = str_copy( line, hlen );
 
-	// see if it's an IP or net/bits network
-	if( ( h->net = __net_parse_network( line, &er ) ) )
-	{
-		if( h->net->bits == 32 )
-		{
-			// IP address - put it in the hash
-			h->ip = h->net->net;
+	// and insert it
+	return __net_ipcheck_insert( ip, ctl->net->prefix );
+}
 
-			return __net_hprfx_insert( h );
-		}
 
-		// dupe check - same net/bits
-		for( p = ctl->net->prefix->nets; p; p = p->next )
-			if( p->net->net == h->net->net && p->net->bits == h->net->bits )
-				return __net_hprfx_dedupe( h, p );
 
-		// these get reversed to restore the config order
-		h->next = ctl->net->prefix->nets;
-		ctl->net->prefix->nets = h;
-		ctl->net->prefix->total++;
-		debug( "Added net prefix %s --> %s", h->confstr, h->pstr );
+// add a whitelist/blacklist member
+int net_add_list_member( char *str, int len, uint16_t act )
+{
+	IPNET *ip;
 
-		return 0;
-	}
-
-	// was there a problem?
-	if( er )
+	// make the IP check structure
+	if( !( ip = __net_parse_hostspec( str ) ) )
 		return -1;
 
-	// OK, it's a hostname
-	if( net_lookup_host( line, &sa ) )
-		return -1;
+	ip->act = act;
 
-	// grab the IP
-	h->ip = sa.sin_addr.s_addr;
-
-	// and put it in the ips hash
-	return __net_hprfx_insert( h );
+	// and insert it
+	return __net_ipcheck_insert( ip, ctl->net->iplist );
 }
 
 
@@ -810,7 +820,7 @@ int net_config_line( AVP *av )
 		}
 		else if( attIs( "prefix" ) )
 		{
-			// these are messy
+			// this is messy
 			return net_config_prefix( av->val, av->vlen );
 		}
 		else if( attIs( "target" ) || attIs( "targets" ) )
@@ -863,15 +873,17 @@ int net_config_line( AVP *av )
 	else if( !strncasecmp( av->att, "ipcheck.", 8 ) )
 	{
 		if( !strcasecmp( p, "enable" ) )
-			ctl->net->ipcheck->enabled = atoi( av->val );
+			ctl->net->iplist->enable = ( atoi( av->val ) ) ? 1 : 0;
 		else if( !strcasecmp( p, "verbose" ) )
-			ctl->net->ipcheck->verbose = atoi( av->val );
+			ctl->net->iplist->verbose = ( atoi( av->val ) ) ? 1 : 0;
+		else if( !strcasecmp( p, "drop_unknown" ) || !strcasecmp( p, "drop" ) )
+			ctl->net->iplist->drop = ( atoi( av->val ) ) ? 1 : 0;
 		else if( !strcasecmp( p, "whitelist" ) )
-			return net_add_list_member( av->val, av->vlen, IP_NET_WHITELIST );
+			return net_add_list_member( av->val, av->vlen, NET_IP_WHITELIST );
 		else if( !strcasecmp( p, "blacklist" ) )
-			return net_add_list_member( av->val, av->vlen, IP_NET_BLACKLIST );
-		else if( !strcasecmp( p, "drop_unknown" ) )
-			ctl->net->ipcheck->deflt = 1;
+			return net_add_list_member( av->val, av->vlen, NET_IP_BLACKLIST );
+		else
+			return -1;
 
 		return 0;
 	}
