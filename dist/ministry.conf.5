@@ -160,10 +160,11 @@ Networks are expected as a.b.c.d/x (where the specified address is not the base 
 masking will select the network base, so 127.0.3.1/8 is the same as 127.0.0.0/8.  The argument should
 have a space separating the host specifier and the prefix.  The prefix should have a trailing . but
 will be given one if absent.  This prefix is prepended to incoming paths at time of network read and
-so any later behaviour will need to account for it.
+so any later behaviour will need to account for it.  This config key can be repeated.
 .TP
 \fBtarget\fR
-List of onward target hosts (with optional :port).  Names are looked up using standard resolution.
+List (comma-separated) of onward target hosts (with optional :port).  Names are looked up using normal
+DNS resolution.  This config key can repeat if you'd rather not do a list.
 .PP
 All remaining network variables are of the form stats.XXX, compat.XXX, gauge.XXX or adder.XXX, pertaining
 to new-style stats ports, statsd-compatible ports, new-style gauge ports or new-style adder ports.
