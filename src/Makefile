@@ -6,7 +6,7 @@ HEADS  = config data gc io log loop mem ministry net run stats synth thread type
 OBJS   = $(FILES:%=%.o)
 HDRS   = $(HEADS:%=%.h)
 
-WFLAGS = -Wall -Wshadow 
+WFLAGS = -Wall -Wshadow
 IFLAGS = -I. 
 DFLAGS = -g -pg -ggdb3 -DDEBUG -DDEBUG_SYNTH
 TFLAGS = -pthread

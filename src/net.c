@@ -18,17 +18,47 @@ uint32_t net_masks[33];
 // look up an IP in a list
 static inline IPNET *net_ip_lookup( uint32_t ip, IPCHK *in )
 {
+#ifdef DEBUG_IPCHK
+	struct in_addr ina;
+#endif
 	IPNET *n;
+
+#ifdef DEBUG_IPCHK
+	ina.s_addr = ip;
+	info( "Checking ip %s for %s", inet_ntoa( ina ), in->name );
+#endif
 
 	// try the hash
 	for( n = in->ips[ip % in->hashsz]; n; n = n->next )
+	{
+#ifdef DEBUG_IPCHK
+		ina.s_addr = n->ipnet;
+		info( "Trying %s", inet_ntoa( ina ) );
+#endif
 		if( ip == n->ipnet )
+		{
+#ifdef DEBUG_IPCHK
+			info( "Match on %s", inet_ntoa( ina ) );
+#endif
 			return n;
+		}
+	}
 
 	// try the networks
 	for( n = in->nets; n; n = n->next )
+	{
+#ifdef DEBUG_IPCHK
+		ina.s_addr = n->ipnet;
+		info( "Trying %s/%hu", inet_ntoa( ina ), n->bits );
+#endif
 		if( ( ip & net_masks[n->bits] ) == n->ipnet )
+		{
+#ifdef DEBUG_IPCHK
+			info( "Match on %s/%hu", inet_ntoa( ina ), n->bits );
+#endif
 			return n;
+		}
+	}
 
 	return NULL;
 }
@@ -447,7 +477,7 @@ NET_TYPE *net_type_defaults( int type )
 
 
 
-IPCHK *__net_get_ipcheck( int hashsz )
+IPCHK *__net_get_ipcheck( int hashsz, char *name )
 {
 	IPCHK *ipc;
 
@@ -455,6 +485,7 @@ IPCHK *__net_get_ipcheck( int hashsz )
 	ipc              = (IPCHK *) allocz( sizeof( IPCHK ) );
 	ipc->ips         = (IPNET **) allocz( NET_IP_HASHSZ * sizeof( IPNET * ) );
 	ipc->hashsz      = NET_IP_HASHSZ;
+	ipc->name        = str_dup( name, 0 );
 
 	return ipc;
 }
@@ -488,10 +519,10 @@ NET_CTL *net_config_defaults( void )
 		free( errbuf );
 		return NULL;
 	}
-	if( !( net->iplist = __net_get_ipcheck( NET_IP_HASHSZ ) ) )
+	if( !( net->iplist = __net_get_ipcheck( NET_IP_HASHSZ, "ipcheck" ) ) )
 		return NULL;
 
-	if( !( net->prefix = __net_get_ipcheck( NET_IP_HASHSZ ) ) )
+	if( !( net->prefix = __net_get_ipcheck( NET_IP_HASHSZ, "prefix" ) ) )
 		return NULL;
 
 	// can't add default target, it's a linked list
@@ -659,6 +690,7 @@ int __net_ipcheck_insert( IPNET *ip, IPCHK *into )
 				debug( "Added ip rule %s --> %s", inet_ntoa( ina ),
 					( ip->act == NET_IP_WHITELIST ) ? "allow" : "drop" );
 			}
+			into->total++;
 			return 0;
 		}
 	}
@@ -681,6 +713,7 @@ int __net_ipcheck_insert( IPNET *ip, IPCHK *into )
 				debug( "Added net rule %s/%hu --> %s", inet_ntoa( ina ), ip->bits,
 					( ip->act == NET_IP_WHITELIST ) ? "allow" : "drop" );
 			}
+			into->total++;
 			return 0;
 		}
 	}

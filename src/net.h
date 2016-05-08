@@ -73,6 +73,8 @@ struct ip_check
 	IPNET				**	ips;
 	IPNET				*	nets;
 
+	char				*	name;
+
 	int32_t					total;
 	int32_t					hashsz;
 
