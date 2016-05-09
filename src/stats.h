@@ -71,8 +71,8 @@ struct stat_config
 	int					dtype;
 	int					threads;
 	int					enable;
-	int					period;		// msec
-	int					offset;		// msec
+	int					period;		// msec config, converted to usec
+	int					offset;		// msec config, converted to usec
 	loop_call_fn	*	loopfn;
 
 	// and the data

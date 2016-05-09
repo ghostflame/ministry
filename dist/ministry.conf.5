@@ -166,6 +166,25 @@ so any later behaviour will need to account for it.  This config key can be repe
 List (comma-separated) of onward target hosts (with optional :port).  Names are looked up using normal
 DNS resolution.  This config key can repeat if you'd rather not do a list.
 .PP
+IP address blacklisting and whitelisting is done, as with prefixes, on IP, network or hostnames.  IP
+addresses (and resolved names) are checked first, and then networks \fBin the order they appear\fR.
+This allows for complex allow/deny decisions - provided the most specific networks come first.
+.TP
+\fBipcheck.enable\fR
+Enable the IP checking code.  Without this set, no checks are performed (default is 0)
+.TP
+\fBipcheck.drop\fR
+Default drop connections which do not match a rule (default is 0)
+.TP
+\fBipcheck.verbose\fR
+Report on the ruleset in the log, and log on denied connections (default is 0)
+.TP
+\fBipcheck.whitelist\fR
+Specifically allow the listed host, IP or network
+.TP
+\fBipcheck.blacklist\fR
+Specifically deny the listed host, IP or network
+.PP
 All remaining network variables are of the form stats.XXX, compat.XXX, gauge.XXX or adder.XXX, pertaining
 to new-style stats ports, statsd-compatible ports, new-style gauge ports or new-style adder ports.
 .TP

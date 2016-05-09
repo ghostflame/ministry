@@ -27,27 +27,57 @@ points against it.  It will report zero for a metric whose value is zero but whi
 has received data.
 
 
+## Performance
+
+Ministry was designed with quite high performance in mind, mainly as an exercise in
+threaded C but also to fill a need.  As such, it uses quite a few threads, but there
+are several design principles at work:
+
+* One thread has one job
+* Threads never re-attach
+* (Mostly) threads do not wait for other threads
+* Anything that might block is off in its own thread
+
+Shared resources (like the data on a path) are controlled with spinlocks or mutexes.
+
+In straight-line testing, ie:  cat file-full-of-lines | nc localhost 9225, ministry
+can achieve about 5.9M lines/sec into one path on a 2.7Ghz AMD chip.  Interestingly,
+running a second input sees only about 6.3M lines/sec - suggesting a limit in how
+fast the kernel can do pthread_spin_lock.  More work around GCC's atomic built-in's
+may improve that.
+
+Reporting on stats is the biggest CPU task, and this is done by separate threads to
+prevent it interfering with data reception.  The number of these is configurable
+and should be scaled to the host, as at metric generation time Ministry will go as
+fast as it can.
+
+In the midst of stats processing there is a sort - and it's unavoidable.  There is
+no easy way to get the n'th percentile without a sort.  So the stats threads will
+routinely do far more work that the path or gauge threads.
+
+To reduce the impact of generating stats, and to make them as coherent as possible
+in time, Ministry performs a two-phase pass.
+
+In the first pass, the current stats are 'stolen', from an incoming struct to a
+processing struct.  This freezes the state of the metric while allowing new data to
+accrue while processing happens.
+
+Then the second, slower, pass happens, where the data is crunched.  As long as this
+does not drift into the next interval, there's no problem.  Ministry does not have
+a specific protection against this, but it does report on the time taken to do its
+stats, and the percentage of the interval used.
+
+
+
 ## Ministry Config
 
-Ministry config matches that of Coal (https://github.com/ghostflame/coal), in
-that it follows a Section/Variable=Value format, eg:
+Ministry config is in sections, with each line of the form: var = val
 
-```
-[Main]
-basedir = /tmp
-tick_usec = 200000
+[Section]
+Variable = Value
 
-[Logging]
-level = info
-
-[Network]
-data.udp.port = 9125
-statsd.udp.port = 8125
-```
-
-It supports including files (though not drop-in directories).  When a file
-is included, the section context is carried over, so the included file need
-not specify a section.  For example:
+It can include a file, and the section context is carried over into that file.
+For example:
 
 conf/ministry.conf:
 
@@ -62,90 +92,5 @@ level = info
 ```
 
 Strings such as log level, yes/no, are case insensitive.
-
-
-The section values are:
-
-### Main
-Controls overall behaviour.
-
-- tick_usec = (integer) usec between main ticks (for clock maintenance).
-- daemon    = (integer/string) yes, y, >0 to daemonize
-- pidfile   = (path) path to pidfile
-- basedir   = (path) working dir to cd to.  Relative paths are from here.
-
-
-### Logging
-Controls the logging code.
-
-- filename  = (path) File to log to
-- level     = (string) Log level (debug,info,notice,warn,error,fatal)
-
-
-### Network
-Controls network ports, timeouts.
-
-- timeout     = (integer) Time to consider a TCP connection dead.
-- rcv_tmout   = (integer) Seconds for receive timeout - affects signals.
-- reconn_msec = (integer) Milliseconds between target reconnect attempts.
-- io_msec     = (integer) Milliseconds between io loop checks.
-
-Then there are target specifications, for where to submit data to.
-
-- target.host  = (string) IP address of the graphite target host.
-- target.port  = (integer) Graphite target port.
-
-The rest are for one of the 3 types of socket - data, adder or statsd, and
-must all be prefixed with one of those three.  The type as a whole, with
-both TCP and UDP reception, are enabled by default.
-
-- type.enable      = (integer) 0 or !0, to disable or enable respectively
-- type.label       = (string) How this socket is described in logs
-
-After this, everything is by protocol, udp or tcp.
-
-- type.udp.bind    = (string) IP address to bind this socket to
-- type.udp.port    = (integer-list) Comma-separated ports to listen on
-- type.udp.enable  = (integer) 0 or !0, to disable or enable UDP
-- type.tcp.enable  = (integer) 0 or !0, to disable or enable TCP
-
-- type.tcp.bind    = (string) IP address to bind this socket to
-- type.udp.port    = (integer) Port to listen for connections on
-- type.tcp.backlog = (integer) connection listen backlog.
-
-
-
-### Memory
-Controls memory management.
-
-- max_mb     = (integer) Max RSS in MB.  Process exits if this is exceeded.
-- gc_thresh  = (integer) Submit intervals without data before a path is GC'd.
-- hashsize   = (integer) Size of the hash table - affects performance
-
-
-### Stats
-Controls stats submission and prefixes.
-
-These are either for stats, self or adder control and should be prefixed with
-one of those types.
-
-- type.threads = (integer) Number of independent processing threads to run
-- type.prefix  = (string) Prefix to put before type paths
-- type.period  = (integer) Submit interval in milliseconds for this type
-- type.offset  = (integer) Submit delay in milliseconds for this type
-
-Self stats loop threads are overridden to 1.
-
-
-### Synth
-Creates synthetic metrics from submitted ones.  These come in blocks of
-config ending with a 'done' line.
-
-- target    = (string) metric to create
-- source    = (string) first source metric
-- source    = (string) second source metric
-- source    = (string) ...
-- operation = (string) what function to use (sum|diff|ratio|...)
-- factor    = (double) factor to multiply result be, defaults to 1
 
 

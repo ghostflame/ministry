@@ -143,6 +143,7 @@ int stats_report_one( DHASH *d, ST_THR *t, time_t ts, IOBUF **buf )
 void stats_stats_pass( int64_t tval, void *arg )
 {
 	struct timespec tv[4];
+	double intvpc;
 	int64_t nsec;
 	char *prfx;
 	time_t ts;
@@ -236,6 +237,11 @@ void stats_stats_pass( int64_t tval, void *arg )
 
 		nsec = tsll( tv[3] ) - tval;
 		bprintf( "%s.usec %lu",     c->wkrstr, nsec / 1000 );
+
+		// calculate percentage of interval
+		intvpc  = (double) ( nsec / 10 );
+		intvpc /= (double) c->conf->period;
+		bprintf( "%s.interval_usage %.3f", c->wkrstr, intvpc );
 	}
 
 	io_buf_send( b );
@@ -246,6 +252,7 @@ void stats_stats_pass( int64_t tval, void *arg )
 void stats_adder_pass( int64_t tval, void *arg )
 {
 	struct timespec tv[4];
+	double intvpc;
 	int64_t nsec;
 	char *prfx;
 	ST_THR *c;
@@ -364,6 +371,11 @@ void stats_adder_pass( int64_t tval, void *arg )
 
 		nsec = tsll( tv[3] ) - tval;
 		bprintf( "%s.usec %lu",  c->wkrstr, nsec / 1000 );
+
+		// calculate percentage of interval
+		intvpc  = (double) ( nsec / 10 );
+		intvpc /= (double) c->conf->period;
+		bprintf( "%s.interval_usage %.3f", c->wkrstr, intvpc );
 	}
 
 	io_buf_send( b );
@@ -373,6 +385,7 @@ void stats_adder_pass( int64_t tval, void *arg )
 void stats_gauge_pass( int64_t tval, void *arg )
 {
 	struct timespec tv[4];
+	double intvpc;
 	int64_t nsec;
 	char *prfx;
 	ST_THR *c;
@@ -474,6 +487,11 @@ void stats_gauge_pass( int64_t tval, void *arg )
 
 		nsec = tsll( tv[3] ) - tval;
 		bprintf( "%s.usec %lu",  c->wkrstr, nsec / 1000 );
+
+		// calculate percentage of interval
+		intvpc  = (double) ( nsec / 10 );
+		intvpc /= (double) c->conf->period;
+		bprintf( "%s.interval_usage %.3f", c->wkrstr, intvpc );
 	}
 
 	io_buf_send( b );
