@@ -74,6 +74,8 @@ struct mem_control
 };
 
 
+void *mtype_reverse_list( void *line_in );
+
 HOST *mem_new_host( struct sockaddr_in *peer );
 void mem_free_host( HOST **h );
 

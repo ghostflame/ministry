@@ -10,6 +10,24 @@
 #include "ministry.h"
 
 
+void *mtype_reverse_list( void *list_in )
+{
+	MTBLANK *one, *list, *ret = NULL;
+
+	list = (MTBLANK *) list_in;
+
+	while( list )
+	{
+		one  = (MTBLANK *) list;
+		list = (MTBLANK *) one->next;
+
+		one->next = (void *) ret;
+		ret = (MTBLANK *) one;
+	}
+
+	return (void *) ret;
+}
+
 
 
 // grab some more memory of the proper size
