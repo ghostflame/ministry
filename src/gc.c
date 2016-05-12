@@ -23,7 +23,7 @@ int gc_hash_list( DHASH **list, DHASH **flist, unsigned int idx, int thresh )
 	{
 		next = h->next;
 
-		if( h->sum == 0 )
+		if( h->len == 0 )
 		{
 			if( !lock )
 			{
@@ -47,14 +47,14 @@ int gc_hash_list( DHASH **list, DHASH **flist, unsigned int idx, int thresh )
 		}
 		else if( h->empty > thresh )
 		{
-			// flatten the checksum
+			// flatten the path length
 			// this means searches will pass
 			// over this node
 			// and we will clear it out next time
 #ifdef DEBUG
 			debug( "Marking path %s dead.", h->path );
 #endif
-			h->sum = 0;
+			h->len = 0;
 			freed++;
 
 			// clear any points waiting on this dhash immediately

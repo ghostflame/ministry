@@ -119,7 +119,7 @@ __attribute__((hot)) static inline DHASH *data_find_path( DHASH *list, uint32_t 
 
 	for( h = list; h; h = h->next )
 		if( h->sum == hval
-		 && h->len == len
+		 && h->len == len	// h->len is set to 0 by gc
 		 && !memcmp( h->path, path, len ) )
 			break;
 

@@ -316,7 +316,6 @@ void mem_free_dhash( DHASH **d )
 	*d = NULL;
 
 	*(sd->path) = '\0';
-	sd->len     = 0;
 
 	if( sd->type == DATA_TYPE_STATS && sd->in.points )
 	{
@@ -349,7 +348,6 @@ void mem_free_dhash_list( DHASH *list )
 		list = d->next;
 
 		*(d->path) = '\0';
-		d->len     = 0;
 
 		if( d->type == DATA_TYPE_STATS && d->in.points )
 		{
@@ -365,8 +363,6 @@ void mem_free_dhash_list( DHASH *list )
 			d->in.sum.total = 0;
 			d->in.sum.count = 0;
 		}
-
-
 
 		d->next  = freed;
 		freed    = d;
