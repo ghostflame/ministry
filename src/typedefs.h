@@ -47,6 +47,7 @@ typedef struct words_data			WORDS;
 typedef struct av_pair				AVP;
 
 // function types
+typedef void stats_fn ( ST_THR *, int64_t );
 typedef void loop_call_fn ( int64_t, void * );
 typedef void * throw_fn ( void * );
 typedef void add_fn ( char *, int, char * );
