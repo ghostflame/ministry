@@ -29,21 +29,73 @@ static inline int cmp_floats( const void *p1, const void *p2 )
 	       ( *f2 < *f1 ) ? -1 : 0;
 }
 
-// this macro is some serious va args abuse
-#define bprintf( fmt, ... )			if( b->len > IO_BUF_HWMK ) \
-									{ io_buf_send( b ); b = mem_new_buf( IO_BUF_SZ ); } \
-									b->len += snprintf( b->buf + b->len, b->sz - b->len, "%s" fmt " %ld\n", prfx, ## __VA_ARGS__, ts )
+
+// hopefully this will inline
+static inline void bprintf( ST_THR *t, char *fmt, ... )
+{
+	va_list args;
+
+	// are we ready for a new buffer?
+	if( t->bp->len > IO_BUF_HWMK )
+	{
+		io_buf_send( t->bp );
+
+		if( !( t->bp = mem_new_buf( IO_BUF_SZ ) ) )
+		{
+			fatal( "Could not allocate a new IOBUF." );
+			return;
+		}
+	}
+
+	// copy the prefix
+	memcpy( t->bp->buf + t->bp->len, t->prefix, t->prlen );
+	t->bp->len += t->prlen;
+
+	// write the variable part
+	va_start( args, fmt );
+	t->bp->len += vsnprintf( t->bp->buf + t->bp->len, t->bp->sz - t->bp->len, fmt, args );
+	va_end( args );
+
+	// add the timestamp and newline
+	memcpy( t->bp->buf + t->bp->len, t->tsbuf, t->tsbufsz );
+	t->bp->len += t->tsbufsz;
+}
 
 
+// configure the line buffer of a thread from a prefix config
+void stats_set_bufs( ST_THR *t, ST_CFG *c, int64_t tval )
+{
+	struct timespec now;
 
-int stats_report_one( DHASH *d, ST_THR *t, time_t ts, IOBUF **buf )
+	// only set the timestamp buffer if we need to
+	if( tval )
+	{
+		llts( tval, now );
+		t->tsbufsz = snprintf( t->tsbuf, TSBUF_SZ, " %ld\n", now.tv_sec );
+	}
+
+	// default to our own config
+	if( !c )
+		c = t->conf;
+
+	t->prefix = c->prefix;
+	t->prlen  = c->prlen;
+
+	// grab a new buffer
+	if( !t->bp && !( t->bp = mem_new_buf( IO_BUF_SZ ) ) )
+	{
+		fatal( "Could not allocate a new IOBUF." );
+		return;
+	}
+}
+
+
+void stats_report_one( ST_THR *t, DHASH *d )
 {
 	PTLIST *list, *p;
 	int i, ct, idx;
 	ST_THOLD *thr;
-	char *prfx;
 	float sum;
-	IOBUF *b;
 
 	// grab the points list
 	list = d->proc.points;
@@ -58,12 +110,8 @@ int stats_report_one( DHASH *d, ST_THR *t, time_t ts, IOBUF **buf )
 	{
 		if( list )
 			mem_free_point_list( list );
-		return 0;
+		return;
 	}
-
-    b    = *buf;
-	prfx = ctl->stats->stats->prefix;
-
 
 	// if we have just one points structure, we just use
 	// it's own vals array as our workspace.  We need to
@@ -89,7 +137,7 @@ int stats_report_one( DHASH *d, ST_THR *t, time_t ts, IOBUF **buf )
 			if( !( ws = (float *) allocz( sz * sizeof( float ) ) ) )
 			{
 				fatal( "Could not allocate new workbuf of %d floats.", sz );
-				return 0;
+				return;
 			}
 
 			// free the existing and grab a new chunk
@@ -118,53 +166,47 @@ int stats_report_one( DHASH *d, ST_THR *t, time_t ts, IOBUF **buf )
 	// and sort them
 	qsort( t->wkspc, ct, sizeof( float ), cmp_floats );
 
-	bprintf( "%s.count %d",  d->path, ct );
-	bprintf( "%s.mean %f",   d->path, sum / (float) ct );
-	bprintf( "%s.upper %f",  d->path, t->wkspc[ct-1] );
-	bprintf( "%s.lower %f",  d->path, t->wkspc[0] );
-	bprintf( "%s.median %f", d->path, t->wkspc[idx] );
+	bprintf( t, "%s.count %d",  d->path, ct );
+	bprintf( t, "%s.mean %f",   d->path, sum / (float) ct );
+	bprintf( t, "%s.upper %f",  d->path, t->wkspc[ct-1] );
+	bprintf( t, "%s.lower %f",  d->path, t->wkspc[0] );
+	bprintf( t, "%s.median %f", d->path, t->wkspc[idx] );
 
 	// variable thresholds
 	for( thr = ctl->stats->thresholds; thr; thr = thr->next )
 	{
 		// find the right index into our values
 		idx = ( thr->val * ct ) / thr->max;
-		bprintf( "%s.%s %f", d->path, thr->label, t->wkspc[idx] );
+		bprintf( t, "%s.%s %f", d->path, thr->label, t->wkspc[idx] );
 	}
 
 	mem_free_point_list( list );
-	*buf = b;
 
-	return ct;
+	// keep count
+	t->points += ct;
+	t->active++;
 }
 
 
 
-void stats_stats_pass( int64_t tval, void *arg )
+void stats_stats_pass( ST_THR *t, int64_t tval )
 {
 	struct timespec tv[4];
 	double intvpc;
 	int64_t nsec;
-	char *prfx;
-	time_t ts;
-	ST_THR *c;
 	DHASH *d;
-	IOBUF *b;
 	int i;
 
-	c  = (ST_THR *) arg;
-	ts = (time_t) tvalts( tval );
-
 #ifdef DEBUG
-	debug( "[%02d] Stats claim", c->id );
+	debug( "[%02d] Stats claim", t->id );
 #endif
 
 	clock_gettime( CLOCK_REALTIME, &(tv[0]) );
 
 	// take the data
-	for( i = 0; i < c->conf->hsize; i++ )
-		if( ( i % c->max ) == c->id )
-			for( d = c->conf->data[i]; d; d = d->next )
+	for( i = 0; i < t->conf->hsize; i++ )
+		if( ( i % t->max ) == t->id )
+			for( d = t->conf->data[i]; d; d = d->next )
 				if( d->in.points )
 				{
 					lock_stats( d );
@@ -185,96 +227,81 @@ void stats_stats_pass( int64_t tval, void *arg )
 #endif
 
 #ifdef DEBUG
-	debug( "[%02d] Stats report", c->id );
+	debug( "[%02d] Stats report", t->id );
 #endif
 
 	clock_gettime( CLOCK_REALTIME, &(tv[2]) );
 
-	c->points = 0;
-	c->active = 0;
-
-	b = mem_new_buf( IO_BUF_SZ );
+	t->points = 0;
+	t->active = 0;
 
 	// and report it
-	for( i = 0; i < c->conf->hsize; i++ )
-		if( ( i % c->max ) == c->id )
-			for( d = c->conf->data[i]; d; d = d->next )
+	for( i = 0; i < t->conf->hsize; i++ )
+		if( ( i % t->max ) == t->id )
+			for( d = t->conf->data[i]; d; d = d->next )
 				if( d->proc.points )
 				{
 					if( d->empty > 0 )
 						d->empty = 0;
 
-					// the buffer can get changed during
-					// this function
-					c->points += stats_report_one( d, c, ts, &b );
-					c->active++;
+					stats_report_one( t, d );
 				}
 
 	// and work out how long that took
 	clock_gettime( CLOCK_REALTIME, &(tv[3]) );
 
-	if( ctl->stats->self->enable )
-	{
-		// report some self stats
-		prfx = ctl->stats->self->prefix;
+	// report some self stats?
+	if( !ctl->stats->self->enable )
+		return;
 
-		bprintf( "%s.points %d",    c->wkrstr, c->points );
-		bprintf( "%s.active %d",    c->wkrstr, c->active );
-		bprintf( "%s.workspace %d", c->wkrstr, c->wkspcsz );
+	stats_set_bufs( t, ctl->stats->self, 0 );
 
-		nsec = tsll( tv[0] ) - tval;
-		bprintf( "%s.delay %lu",    c->wkrstr, nsec / 1000 );
+	bprintf( t, "%s.points %d",    t->wkrstr, t->points );
+	bprintf( t, "%s.active %d",    t->wkrstr, t->active );
+	bprintf( t, "%s.workspace %d", t->wkrstr, t->wkspcsz );
+
+	nsec = tsll( tv[0] ) - tval;
+	bprintf( t, "%s.delay %lu",    t->wkrstr, nsec / 1000 );
 
 #ifdef CALC_JITTER
-		nsec = tsll( tv[1] ) - tsll( tv[0] );
+	nsec = tsll( tv[1] ) - tsll( tv[0] );
 #else
-		nsec = tsll( tv[2] ) - tsll( tv[0] );
+	nsec = tsll( tv[2] ) - tsll( tv[0] );
 #endif
-		bprintf( "%s.steal %lu",    c->wkrstr, nsec / 1000 );
+	bprintf( t, "%s.steal %lu",    t->wkrstr, nsec / 1000 );
 
-		nsec = tsll( tv[3] ) - tsll( tv[2] );
-		bprintf( "%s.stats %lu",    c->wkrstr, nsec / 1000 );
+	nsec = tsll( tv[3] ) - tsll( tv[2] );
+	bprintf( t, "%s.stats %lu",    t->wkrstr, nsec / 1000 );
 
-		nsec = tsll( tv[3] ) - tval;
-		bprintf( "%s.usec %lu",     c->wkrstr, nsec / 1000 );
+	nsec = tsll( tv[3] ) - tval;
+	bprintf( t, "%s.usec %lu",     t->wkrstr, nsec / 1000 );
 
-		// calculate percentage of interval
-		intvpc  = (double) ( nsec / 10 );
-		intvpc /= (double) c->conf->period;
-		bprintf( "%s.interval_usage %.3f", c->wkrstr, intvpc );
-	}
-
-	io_buf_send( b );
+	// calculate percentage of interval
+	intvpc  = (double) ( nsec / 10 );
+	intvpc /= (double) t->conf->period;
+	bprintf( t, "%s.interval_usage %.3f", t->wkrstr, intvpc );
 }
 
 
 
-void stats_adder_pass( int64_t tval, void *arg )
+void stats_adder_pass( ST_THR *t, int64_t tval )
 {
 	struct timespec tv[4];
 	double intvpc;
 	int64_t nsec;
-	char *prfx;
-	ST_THR *c;
-	time_t ts;
 	DHASH *d;
-	IOBUF *b;
 	int i;
 
-	c    = (ST_THR *) arg;
-	ts   = (time_t) tvalts( tval );
-	prfx = ctl->stats->adder->prefix;
-
 #ifdef DEBUG
-	debug( "[%02d] Adder claim", c->id );
+	debug( "[%02d] Adder claim", t->id );
 #endif
 
 	clock_gettime( CLOCK_REALTIME, &(tv[0]) );
 
 	// take the data
-	for( i = 0; i < c->conf->hsize; i++ )
-		if( ( i % c->max ) == c->id )
-			for( d = c->conf->data[i]; d; d = d->next )
+	for( i = 0; i < t->conf->hsize; i++ )
+		if( ( i % t->max ) == t->id )
+			for( d = t->conf->data[i]; d; d = d->next )
 				if( d->in.sum.count > 0 )
 				{
 					lock_adder( d );
@@ -293,7 +320,7 @@ void stats_adder_pass( int64_t tval, void *arg )
 	//debug( "[%02d] Unlocking adder lock.", c->id );
 
 	// synth thread is waiting for this
-	unlock_stthr( c );
+	unlock_stthr( t );
 
 	//debug( "[%02d] Trying to lock synth.", c->id );
 
@@ -308,7 +335,7 @@ void stats_adder_pass( int64_t tval, void *arg )
 	//debug( "[%02d] Trying to get our own lock back.", c->id );
 
 	// and lock our own again
-	lock_stthr( c );
+	lock_stthr( t );
 
 	//debug( "[%02d] Sleeping a little before processing.", c->id );
 
@@ -318,31 +345,29 @@ void stats_adder_pass( int64_t tval, void *arg )
 #endif
 
 #ifdef DEBUG
-	debug( "[%02d] Adder report", c->id );
+	debug( "[%02d] Adder report", t->id );
 #endif
 
 	clock_gettime( CLOCK_REALTIME, &(tv[2]) );
 
 	// zero the counters
-	c->points = 0;
-	c->active = 0;
-
-	b = mem_new_buf( IO_BUF_SZ );
+	t->points = 0;
+	t->active = 0;
 
 	// and report it
-	for( i = 0; i < c->conf->hsize; i++ )
-		if( ( i % c->max ) == c->id )
-			for( d = c->conf->data[i]; d; d = d->next )
+	for( i = 0; i < t->conf->hsize; i++ )
+		if( ( i % t->max ) == t->id )
+			for( d = t->conf->data[i]; d; d = d->next )
 				if( d->proc.sum.count > 0 )
 				{
 					if( d->empty > 0 )
 						d->empty = 0;
 
-					bprintf( "%s %f", d->path, d->proc.sum.total );
+					bprintf( t, "%s %f", d->path, d->proc.sum.total );
 
 					// keep count
-					c->points += d->proc.sum.count;
-					c->active++;
+					t->points += d->proc.sum.count;
+					t->active++;
 
 					// and zero that
 					d->proc.sum.count = 0;
@@ -352,62 +377,52 @@ void stats_adder_pass( int64_t tval, void *arg )
 	// and work out how long that took
 	clock_gettime( CLOCK_REALTIME, &(tv[3]) );
 
-	if( ctl->stats->self->enable )
-	{
-		// report some self stats
-		prfx = ctl->stats->self->prefix;
+	// report some self stats?
+	if( !ctl->stats->self->enable )
+		return;
 
-		bprintf( "%s.points %d", c->wkrstr, c->points );
-		bprintf( "%s.active %d", c->wkrstr, c->active );
+	stats_set_bufs( t, ctl->stats->self, 0 );
 
-		nsec = tsll( tv[0] ) - tval;
-		bprintf( "%s.delay %lu", c->wkrstr, nsec / 1000 );
+	bprintf( t, "%s.points %d", t->wkrstr, t->points );
+	bprintf( t, "%s.active %d", t->wkrstr, t->active );
 
-		nsec = tsll( tv[1] ) - tsll( tv[0] );
-		bprintf( "%s.steal %lu", c->wkrstr, nsec / 1000 );
+	nsec = tsll( tv[0] ) - tval;
+	bprintf( t, "%s.delay %lu", t->wkrstr, nsec / 1000 );
 
-		nsec = tsll( tv[3] ) - tsll( tv[2] );
-		bprintf( "%s.stats %lu", c->wkrstr, nsec / 1000 );
+	nsec = tsll( tv[1] ) - tsll( tv[0] );
+	bprintf( t, "%s.steal %lu", t->wkrstr, nsec / 1000 );
 
-		nsec = tsll( tv[3] ) - tval;
-		bprintf( "%s.usec %lu",  c->wkrstr, nsec / 1000 );
+	nsec = tsll( tv[3] ) - tsll( tv[2] );
+	bprintf( t, "%s.stats %lu", t->wkrstr, nsec / 1000 );
 
-		// calculate percentage of interval
-		intvpc  = (double) ( nsec / 10 );
-		intvpc /= (double) c->conf->period;
-		bprintf( "%s.interval_usage %.3f", c->wkrstr, intvpc );
-	}
+	nsec = tsll( tv[3] ) - tval;
+	bprintf( t, "%s.usec %lu",  t->wkrstr, nsec / 1000 );
 
-	io_buf_send( b );
+	// calculate percentage of interval
+	intvpc  = (double) ( nsec / 10 );
+	intvpc /= (double) t->conf->period;
+	bprintf( t, "%s.interval_usage %.3f", t->wkrstr, intvpc );
 }
 
 
-void stats_gauge_pass( int64_t tval, void *arg )
+void stats_gauge_pass( ST_THR *t, int64_t tval )
 {
 	struct timespec tv[4];
 	double intvpc;
 	int64_t nsec;
-	char *prfx;
-	ST_THR *c;
-	time_t ts;
 	DHASH *d;
-	IOBUF *b;
 	int i;
 
-	c    = (ST_THR *) arg;
-	ts   = (time_t) tvalts( tval );
-	prfx = ctl->stats->gauge->prefix;
-
 #ifdef DEBUG
-	debug( "[%02d] Gauge claim", c->id );
+	debug( "[%02d] Gauge claim", t->id );
 #endif
 
 	clock_gettime( CLOCK_REALTIME, &(tv[0]) );
 
 	// take the data
-	for( i = 0; i < c->conf->hsize; i++ )
-		if( ( i % c->max ) == c->id )
-			for( d = c->conf->data[i]; d; d = d->next )
+	for( i = 0; i < t->conf->hsize; i++ )
+		if( ( i % t->max ) == t->id )
+			for( d = t->conf->data[i]; d; d = d->next )
 				if( d->in.sum.count ) 
 				{
 					lock_gauge( d );
@@ -435,18 +450,16 @@ void stats_gauge_pass( int64_t tval, void *arg )
 
 	clock_gettime( CLOCK_REALTIME, &(tv[2]) );
 
-	c->active = 0;
-	c->points = 0;
-
-	b = mem_new_buf( IO_BUF_SZ );
+	t->active = 0;
+	t->points = 0;
 
 	// and report it
-	for( i = 0; i < c->conf->hsize; i++ )
-		if( ( i % c->max ) == c->id )
-			for( d = c->conf->data[i]; d; d = d->next )
+	for( i = 0; i < t->conf->hsize; i++ )
+		if( ( i % t->max ) == t->id )
+			for( d = t->conf->data[i]; d; d = d->next )
 			{
 				// we report gauges anyway, updated or not
-				bprintf( "%s %f", d->path, d->proc.sum.total );
+				bprintf( t, "%s %f", d->path, d->proc.sum.total );
 
 				if( d->proc.sum.count )
 				{
@@ -454,8 +467,8 @@ void stats_gauge_pass( int64_t tval, void *arg )
 						d->empty = 0;
 
 					// keep count
-					c->points += d->proc.sum.count;
-					c->active++;
+					t->points += d->proc.sum.count;
+					t->active++;
 
 					// and zero that
 					d->proc.sum.count = 0;
@@ -464,45 +477,42 @@ void stats_gauge_pass( int64_t tval, void *arg )
 
 	clock_gettime( CLOCK_REALTIME, &(tv[3]) );
 
-	if( ctl->stats->self->enable )
-	{
-		// report some self stats
-		prfx = ctl->stats->self->prefix;
+	// report some self stats?
+	if( !ctl->stats->self->enable )
+		return;
 
-		bprintf( "%s.points %d", c->wkrstr, c->points );
-		bprintf( "%s.active %d", c->wkrstr, c->active );
+	stats_set_bufs( t, ctl->stats->self, 0 );
 
-		nsec = tsll( tv[0] ) - tval;
-		bprintf( "%s.delay %lu", c->wkrstr, nsec / 1000 );
+	bprintf( t, "%s.points %d", t->wkrstr, t->points );
+	bprintf( t, "%s.active %d", t->wkrstr, t->active );
+
+	nsec = tsll( tv[0] ) - tval;
+	bprintf( t, "%s.delay %lu", t->wkrstr, nsec / 1000 );
 
 #ifdef CALC_JITTER
-		nsec = tsll( tv[1] ) - tsll( tv[0] );
+	nsec = tsll( tv[1] ) - tsll( tv[0] );
 #else
-		nsec = tsll( tv[2] ) - tsll( tv[0] );
+	nsec = tsll( tv[2] ) - tsll( tv[0] );
 #endif
-		bprintf( "%s.steal %lu", c->wkrstr, nsec / 1000 );
+	bprintf( t, "%s.steal %lu", t->wkrstr, nsec / 1000 );
 
-		nsec = tsll( tv[3] ) - tsll( tv[2] );
-		bprintf( "%s.stats %lu", c->wkrstr, nsec / 1000 );
+	nsec = tsll( tv[3] ) - tsll( tv[2] );
+	bprintf( t, "%s.stats %lu", t->wkrstr, nsec / 1000 );
 
-		nsec = tsll( tv[3] ) - tval;
-		bprintf( "%s.usec %lu",  c->wkrstr, nsec / 1000 );
+	nsec = tsll( tv[3] ) - tval;
+	bprintf( t, "%s.usec %lu",  t->wkrstr, nsec / 1000 );
 
-		// calculate percentage of interval
-		intvpc  = (double) ( nsec / 10 );
-		intvpc /= (double) c->conf->period;
-		bprintf( "%s.interval_usage %.3f", c->wkrstr, intvpc );
-	}
-
-	io_buf_send( b );
+	// calculate percentage of interval
+	intvpc  = (double) ( nsec / 10 );
+	intvpc /= (double) t->conf->period;
+	bprintf( t, "%s.interval_usage %.3f", t->wkrstr, intvpc );
 }
 
 
 
 
-IOBUF *stats_report_mtype( char *name, MTYPE *mt, time_t ts, IOBUF *b )
+void stats_report_mtype( ST_THR *t, char *name, MTYPE *mt )
 {
-	char *prfx = ctl->stats->self->prefix;
 	uint32_t freec, alloc;
 	uint64_t bytes;
 
@@ -518,33 +528,27 @@ IOBUF *stats_report_mtype( char *name, MTYPE *mt, time_t ts, IOBUF *b )
 	unlock_mem( mt );
 
 	// and report them
-	bprintf( "mem.%s.free %u",  name, freec );
-	bprintf( "mem.%s.alloc %u", name, alloc );
-	bprintf( "mem.%s.kb %lu",   name, bytes / 1024 );
-
-	return b;
+	bprintf( t, "mem.%s.free %u",  name, freec );
+	bprintf( t, "mem.%s.alloc %u", name, alloc );
+	bprintf( t, "mem.%s.kb %lu",   name, bytes / 1024 );
 }
 
 
-IOBUF *stats_report_types( ST_CFG *c, time_t ts, IOBUF *b )
+void stats_report_types( ST_THR *t, ST_CFG *c )
 {
-	char *prfx = ctl->stats->self->prefix;
 	float hr;
 
 	hr = (float) c->dcurr / (float) c->hsize;
 
-	bprintf( "paths.%s.curr %d",         c->name, c->dcurr );
-	bprintf( "paths.%s.gc %d",           c->name, c->gc_count );
-	bprintf( "paths.%s.hash_ratio %.6f", c->name, hr );
-
-	return b;
+	bprintf( t, "paths.%s.curr %d",         c->name, c->dcurr );
+	bprintf( t, "paths.%s.gc %d",           c->name, c->gc_count );
+	bprintf( t, "paths.%s.hash_ratio %.6f", c->name, hr );
 }
 
 
 
-IOBUF *stats_report_dlocks( DLOCKS *d, time_t ts, IOBUF *b )
+void stats_report_dlocks( ST_THR *t, DLOCKS *d )
 {
-	char *prfx = ctl->stats->self->prefix;
 	uint64_t curr, total, diff;
 	int i;
 
@@ -558,56 +562,60 @@ IOBUF *stats_report_dlocks( DLOCKS *d, time_t ts, IOBUF *b )
 		d->prev[i] = curr;
 		total += diff;
 
-		bprintf( "locks.%s.%03d %lu", d->name, i, diff );
+		bprintf( t, "locks.%s.%03d %lu", d->name, i, diff );
 	}
 
-	bprintf( "locks.%s.total %lu", d->name, total );
-
-	return b;
+	bprintf( t, "locks.%s.total %lu", d->name, total );
 }
 
 
 
 // report our own pass
-void stats_self_pass( int64_t tval, void *arg )
+void stats_self_pass( ST_THR *t, int64_t tval )
 {
-	char *prfx = ctl->stats->self->prefix;
 	struct timespec now;
-	time_t ts;
-	IOBUF *b;
-
-	llts( tval, now );
-	ts = now.tv_sec;
-
-	b = mem_new_buf( IO_BUF_SZ );
 
 	// TODO - more stats
 
 #ifdef KEEP_LOCK_STATS
 	// report stats usage
-	b = stats_report_dlocks( ctl->locks->dstats, ts, b );
-	b = stats_report_dlocks( ctl->locks->dadder, ts, b );
-	b = stats_report_dlocks( ctl->locks->dgauge, ts, b );
+	stats_report_dlocks( t, ctl->locks->dstats );
+	stats_report_dlocks( t, ctl->locks->dadder );
+	stats_report_dlocks( t, ctl->locks->dgauge );
 #endif
 
 	// stats types
-	b = stats_report_types( ctl->stats->stats, ts, b );
-	b = stats_report_types( ctl->stats->adder, ts, b );
-	b = stats_report_types( ctl->stats->gauge, ts, b );
+	stats_report_types( t, ctl->stats->stats );
+	stats_report_types( t, ctl->stats->adder );
+	stats_report_types( t, ctl->stats->gauge );
 
 	// memory
-	b = stats_report_mtype( "hosts",  ctl->mem->hosts,  ts, b );
-	b = stats_report_mtype( "points", ctl->mem->points, ts, b );
-	b = stats_report_mtype( "dhash",  ctl->mem->dhash,  ts, b );
-	b = stats_report_mtype( "bufs",   ctl->mem->iobufs, ts, b );
-	b = stats_report_mtype( "iolist", ctl->mem->iolist, ts, b );
+	stats_report_mtype( t, "hosts",  ctl->mem->hosts  );
+	stats_report_mtype( t, "points", ctl->mem->points );
+	stats_report_mtype( t, "dhash",  ctl->mem->dhash  );
+	stats_report_mtype( t, "bufs",   ctl->mem->iobufs );
+	stats_report_mtype( t, "iolist", ctl->mem->iolist );
 
-	bprintf( "mem.total.kb %d", ctl->mem->curr_kb );
-	bprintf( "uptime %.3f", ts_diff( now, ctl->init_time, NULL ) );
-
-	io_buf_send( b );
+	bprintf( t, "mem.total.kb %d", ctl->mem->curr_kb );
+	llts( tval, now );
+	bprintf( t, "uptime %.3f", ts_diff( now, ctl->init_time, NULL ) );
 }
 
+
+void thread_pass( int64_t tval, void *arg )
+{
+	ST_THR *t = (ST_THR *) arg;
+
+	// set up bufs and such
+	stats_set_bufs( t, NULL, tval );
+
+	// do the work
+	(*(t->conf->statfn))( t, tval );
+
+	// send any outstanding data
+	io_buf_send( t->bp );
+	t->bp = NULL;
+}
 
 
 
@@ -622,7 +630,7 @@ void *stats_loop( void *arg )
 	cf = c->conf;
 
 	// and then loop round
-	loop_control( cf->name, cf->loopfn, c, cf->period, 1, cf->offset );
+	loop_control( cf->name, thread_pass, c, cf->period, 1, cf->offset );
 
 	// and unlock ourself
 	unlock_stthr( c );
@@ -653,27 +661,33 @@ void stats_start( ST_CFG *cf )
 
 
 
+// set a prefix, make sure of a trailing .
 // return a copy of a prefix with a trailing .
-char *stats_prefix( char *s )
+void stats_prefix( ST_CFG *c, char *s )
 {
 	int len, dot = 0;
-	char *p;
-	
-	if( !( len = strlen( s ) ) )
-		return strdup( "" );
 
-	// do we need a dot?
-	if( s[len - 1] != '.' )
-		dot = 1;
+	// free an existing
+	if( c->prefix )
+		free( c->prefix );
+
+	len = strlen( s );
+
+	if( len > 0 )
+	{
+		// do we need a dot?
+		if( s[len - 1] != '.' )
+			dot = 1;
+	}
+
+	c->prlen = len + dot;
 
 	// include space for a dot
-	p = (char *) allocz( len + dot + 1 );
-	memcpy( p, s, len );
+	c->prefix = (char *) allocz( c->prlen + 1 );
+	memcpy( c->prefix, s, len );
 
 	if( dot )
-		p[len] = '.';
-
-	return p;
+		c->prefix[len] = '.';
 }
 
 
@@ -715,6 +729,9 @@ void stats_init_control( ST_CFG *c, int alloc_data )
 		// worker path
 		l = snprintf( wkrstrbuf, 128, "workers.%s.%d", c->name, t->id );
 		t->wkrstr = str_dup( wkrstrbuf, l );
+
+		// timestamp buffer
+		t->tsbuf = perm_str( TSBUF_SZ );
 
 		// make some floats workspace - we realloc this if needed
 		if( c->type == STATS_TYPE_STATS )
@@ -760,46 +777,46 @@ STAT_CTL *stats_config_defaults( void )
 
 	s->stats          = (ST_CFG *) allocz( sizeof( ST_CFG ) );
 	s->stats->threads = DEFAULT_STATS_THREADS;
-	s->stats->loopfn  = &stats_stats_pass;
+	s->stats->statfn  = &stats_stats_pass;
 	s->stats->period  = DEFAULT_STATS_MSEC;
-	s->stats->prefix  = stats_prefix( DEFAULT_STATS_PREFIX );
 	s->stats->type    = STATS_TYPE_STATS;
 	s->stats->dtype   = DATA_TYPE_STATS;
 	s->stats->name    = stats_type_names[STATS_TYPE_STATS];
 	s->stats->hsize   = -1;
 	s->stats->enable  = 1;
+	stats_prefix( s->stats, DEFAULT_STATS_PREFIX );
 
 	s->adder          = (ST_CFG *) allocz( sizeof( ST_CFG ) );
 	s->adder->threads = DEFAULT_ADDER_THREADS;
-	s->adder->loopfn  = &stats_adder_pass;
+	s->adder->statfn  = &stats_adder_pass;
 	s->adder->period  = DEFAULT_STATS_MSEC;
-	s->adder->prefix  = stats_prefix( DEFAULT_ADDER_PREFIX );
 	s->adder->type    = STATS_TYPE_ADDER;
 	s->adder->dtype   = DATA_TYPE_ADDER;
 	s->adder->name    = stats_type_names[STATS_TYPE_ADDER];
 	s->adder->hsize   = -1;
 	s->adder->enable  = 1;
+	stats_prefix( s->stats, DEFAULT_ADDER_PREFIX );
 
 	s->gauge          = (ST_CFG *) allocz( sizeof( ST_CFG ) );
 	s->gauge->threads = DEFAULT_GAUGE_THREADS;
-	s->gauge->loopfn  = &stats_gauge_pass;
+	s->gauge->statfn  = &stats_gauge_pass;
 	s->gauge->period  = DEFAULT_STATS_MSEC;
-	s->gauge->prefix  = stats_prefix( DEFAULT_GAUGE_PREFIX );
 	s->gauge->type    = STATS_TYPE_GAUGE;
 	s->gauge->dtype   = DATA_TYPE_GAUGE;
 	s->gauge->name    = stats_type_names[STATS_TYPE_GAUGE];
 	s->gauge->hsize   = -1;
 	s->gauge->enable  = 1;
+	stats_prefix( s->stats, DEFAULT_GAUGE_PREFIX );
 
 	s->self           = (ST_CFG *) allocz( sizeof( ST_CFG ) );
 	s->self->threads  = 1;
-	s->self->loopfn   = &stats_self_pass;
+	s->self->statfn   = &stats_self_pass;
 	s->self->period   = DEFAULT_STATS_MSEC;
-	s->self->prefix   = stats_prefix( DEFAULT_SELF_PREFIX );
 	s->self->type     = STATS_TYPE_SELF;
 	s->self->dtype    = -1;
 	s->self->name     = stats_type_names[STATS_TYPE_SELF];
 	s->self->enable   = 1;
+	stats_prefix( s->stats, DEFAULT_SELF_PREFIX );
 
 	return s;
 }
@@ -912,8 +929,7 @@ int stats_config_line( AVP *av )
 	}
 	else if( !strcasecmp( d, "prefix" ) )
 	{
-		free( sc->prefix );
-		sc->prefix = stats_prefix( av->val );
+		stats_prefix( sc, av->val );
 		debug( "%s prefix set to '%s'", sc->name, sc->prefix );
 	}
 	else if( !strcasecmp( d, "period" ) )

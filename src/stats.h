@@ -11,10 +11,12 @@
 #define MINISTRY_STATS_H
 
 
-loop_call_fn stats_stats_pass;
-loop_call_fn stats_adder_pass;
-loop_call_fn stats_gauge_pass;
-loop_call_fn stats_self_pass;
+loop_call_fn thread_pass;
+
+stats_fn stats_stats_pass;
+stats_fn stats_adder_pass;
+stats_fn stats_gauge_pass;
+stats_fn stats_self_pass;
 
 
 throw_fn stats_loop;
@@ -43,6 +45,8 @@ enum stats_types
 #define DEFAULT_SELF_PREFIX			"stats.ministry"
 
 
+#define TSBUF_SZ					32
+
 
 struct stat_thread_ctl
 {
@@ -59,7 +63,15 @@ struct stat_thread_ctl
 	float			*	wkbuf;
 	float			*	wkspc;
 	int					wkspcsz;
+
+	// output
+	char			*	prefix;
+	char			*	tsbuf;
+	IOBUF			*	bp;
+	uint16_t			tsbufsz;
+	uint16_t			prlen;
 };
+
 
 
 struct stat_config
@@ -71,9 +83,10 @@ struct stat_config
 	int					dtype;
 	int					threads;
 	int					enable;
+	int					prlen;
 	int					period;		// msec config, converted to usec
 	int					offset;		// msec config, converted to usec
-	loop_call_fn	*	loopfn;
+	stats_fn		*	statfn;
 
 	// and the data
 	DHASH			**	data;
@@ -102,6 +115,8 @@ struct stats_control
 
 	ST_THOLD		*	thresholds;
 };
+
+
 
 
 void stats_start( ST_CFG *cf );
