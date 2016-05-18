@@ -686,11 +686,13 @@ void *data_connection( void *arg )
 void *data_loop_udp( void *arg )
 {
 	struct sockaddr_in sa;
+	struct sockaddr *sp;
 	socklen_t sl;
 	NET_PORT *n;
 	IOBUF *b;
 	THRD *t;
 	HOST *h;
+	int sz;
 
 	t = (THRD *) arg;
 	n = (NET_PORT *) t->arg;
@@ -702,16 +704,22 @@ void *data_loop_udp( void *arg )
 	h = mem_new_host( &sa );
 	b = h->net->in;
 
-	h->type = n->type;
+	h->type   = n->type;
+	// for now we don't do prefixing on UDP
+	h->parser = n->type->flat_parser;
 
 	loop_mark_start( "udp" );
+
+	// we need to make room for a newline and a null for safety
+	sz = b->sz - 2;
+	// and let's not do constant casting
+	sp = (struct sockaddr *) h->peer;
 
 	while( ctl->run_flags & RUN_LOOP )
 	{
 		// get a packet, set the from
 		sl = sizeof( struct sockaddr_in );
-		if( ( b->len = recvfrom( n->sock, b->buf, b->sz, 0,
-						(struct sockaddr *) h->peer, &sl ) ) < 0 )
+		if( ( b->len = recvfrom( n->sock, b->buf, sz, 0, sp, &sl ) ) < 0 )
 		{
 			if( errno == EINTR || errno == EAGAIN )
 				continue;
@@ -722,9 +730,6 @@ void *data_loop_udp( void *arg )
 		}
 		else if( !b->len )
 			continue;
-
-		if( b->len < b->sz )
-			b->buf[b->len] = '\0';
 
 		// break that up
 		//
@@ -738,7 +743,18 @@ void *data_loop_udp( void *arg )
 		// with partial lines from a huge variety of source addresses and
 		// balloon our memory trying to keep up.  So for now, a simpler
 		// view is necessary
-		data_parse_buf( h, (char *) b->buf, b->len );
+
+		// make sure we end in a newline or else we will trip over
+		// ourself on daft apps that just send one line without a \n
+		// or join on \n but don't append a trailing one
+		if( b->buf[b->len-1] != '\n' )
+			b->buf[b->len++]  = '\n';
+
+		// and make sure to cap it all
+		b->buf[b->len] = '\0';
+
+		// and try to parse that log
+		data_parse_buf( h, b->buf, b->len );
 	}
 
 	loop_mark_done( "udp" );

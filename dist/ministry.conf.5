@@ -160,7 +160,8 @@ Networks are expected as a.b.c.d/x (where the specified address is not the base 
 masking will select the network base, so 127.0.3.1/8 is the same as 127.0.0.0/8.  The argument should
 have a space separating the host specifier and the prefix.  The prefix should have a trailing . but
 will be given one if absent.  This prefix is prepended to incoming paths at time of network read and
-so any later behaviour will need to account for it.  This config key can be repeated.
+so any later behaviour will need to account for it.  This config key can be repeated.  \fBNote, this
+does not work for UDP packets - the mechanism would be very DoS'able.\fR
 .TP
 \fBtarget\fR
 List (comma-separated) of onward target hosts (with optional :port).  Names are looked up using normal
