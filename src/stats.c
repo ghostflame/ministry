@@ -317,27 +317,27 @@ void stats_adder_pass( ST_THR *t, int64_t tval )
 
 	clock_gettime( CLOCK_REALTIME, &(tv[1]) );
 
-	//debug( "[%02d] Unlocking adder lock.", c->id );
+	//debug( "[%02d] Unlocking adder lock.", t->id );
 
 	// synth thread is waiting for this
 	unlock_stthr( t );
 
-	//debug( "[%02d] Trying to lock synth.", c->id );
+	//debug( "[%02d] Trying to lock synth.", t->id );
 
 	// try to lock the synth thread
 	lock_synth( );
 
-	//debug( "[%02d] Unlocking synth.", c->id );
+	//debug( "[%02d] Unlocking synth.", t->id );
 
 	// and then unlock it
 	unlock_synth( );
 
-	//debug( "[%02d] Trying to get our own lock back.", c->id );
+	//debug( "[%02d] Trying to get our own lock back.", t->id );
 
 	// and lock our own again
 	lock_stthr( t );
 
-	//debug( "[%02d] Sleeping a little before processing.", c->id );
+	//debug( "[%02d] Sleeping a little before processing.", t->id );
 
 #ifdef CALC_JITTER
 	// sleep a short time to avoid contention
@@ -445,7 +445,7 @@ void stats_gauge_pass( ST_THR *t, int64_t tval )
 #endif
 
 #ifdef DEBUG
-	debug( "[%02d] Gauge report", c->id );
+	debug( "[%02d] Gauge report", t->id );
 #endif
 
 	clock_gettime( CLOCK_REALTIME, &(tv[2]) );
