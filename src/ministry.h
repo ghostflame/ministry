@@ -43,6 +43,10 @@
 #define Err strerror( errno )
 #endif
 
+#ifndef MINISTRY_VERSION
+#define MINISTRY_VERSION "unknown"
+#endif
+
 
 // crazy control
 #include "typedefs.h"

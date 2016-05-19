@@ -50,7 +50,7 @@ struct ministry_control
 
 	char				*	cfg_file;
 	char				*	pidfile;
-
+	char				*	version;
 	char				*	basedir;
 
 	int						tick_usec;

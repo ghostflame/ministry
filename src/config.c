@@ -298,6 +298,7 @@ MIN_CTL *config_create( void )
 
 	c->cfg_file   = strdup( DEFAULT_CONFIG_FILE );
 	c->pidfile    = strdup( DEFAULT_PID_FILE );
+	c->version    = strdup( MINISTRY_VERSION );
 	c->basedir    = strdup( DEFAULT_BASE_DIR );
 
 	c->tick_usec  = 1000 * DEFAULT_TICK_MSEC;

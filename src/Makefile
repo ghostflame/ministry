@@ -2,6 +2,7 @@ CC     = /usr/bin/gcc -std=gnu99 $(WFLAGS)
 
 FILES  = utils log loop thread mem gc net io data synth stats config main
 HEADS  = config data gc io log loop mem ministry net run stats synth thread typedefs utils
+VERS   = $(shell sed -rn 's/^Version:\t(.*)/\1/p' ../ministry.spec)
 
 OBJS   = $(FILES:%=%.o)
 HDRS   = $(HEADS:%=%.h)
@@ -10,7 +11,7 @@ WFLAGS = -Wall -Wshadow
 IFLAGS = -I. 
 DFLAGS = -g -pg -ggdb3 -DDEBUG -DDEBUG_SYNTH
 TFLAGS = -pthread
-CFLAGS = $(TFLAGS) $(IFLAGS)
+CFLAGS = $(TFLAGS) $(IFLAGS) -DMINISTRY_VERSION='"$(VERS)"'
 LFLAGS = $(TFLAGS) $(IFLAGS) -lm
 
 BINDIR = $(DESTDIR)/usr/bin

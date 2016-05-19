@@ -19,8 +19,9 @@ Options:\n\
  -c <file>    Select config file to use\n\
  -d           Daemonize in the background\n\
  -D           Switch on debug output (overrides config)\n\
- -v           Verbose logging to console\n\
+ -V           Verbose logging to console\n\
  -p <file>    Override configured pidfile\n\
+ -v           Print version number and exit\n\
  -t           Just test the config is valid and exit\n\n\
 Ministry is a statsd-alternative processing engine.  It runs on very\n\
 similiar lines, taking data paths and producing statistics on them.\n\
@@ -65,7 +66,7 @@ void shut_down( int exval )
 
 	pidfile_remove( );
 
-	notice( "Ministry exiting." );
+	notice( "Ministry v%s exiting.", ctl->version );
 	log_close( );
 	exit( exval );
 }
@@ -110,13 +111,16 @@ int main( int ac, char **av )
 	// make a control structure
 	ctl = config_create( );
 
-	while( ( oc = getopt( ac, av, "hHDdvtc:p:" ) ) != -1 )
+	while( ( oc = getopt( ac, av, "hHDVdvtc:p:" ) ) != -1 )
 		switch( oc )
 		{
 			case 'c':
 				free( ctl->cfg_file );
 				ctl->cfg_file = strdup( optarg );
 				break;
+			case 'v':
+				printf( "Ministry version: %s\n", ctl->version );
+				return 0;
 			case 'd':
 				ctl->run_flags |= RUN_DAEMON;
 				break;
@@ -128,7 +132,7 @@ int main( int ac, char **av )
 				ctl->log->level = LOG_LEVEL_DEBUG;
 				ctl->run_flags |= RUN_DEBUG;
 				break;
-			case 'v':
+			case 'V':
 				ctl->log->force_stdout = 1;
 				break;
 			case 't':
@@ -161,7 +165,7 @@ int main( int ac, char **av )
 
 	if( justTest )
 	{
-		notice( "Config is OK." );
+		printf( "Config is OK." );
 		return 0;
 	}
 
@@ -170,7 +174,7 @@ int main( int ac, char **av )
 		debug( "Starting logging - no more logs to stdout." );
 
 	log_start( );
-	notice( "Ministry starting up." );
+	notice( "Ministry v%s starting up.", ctl->version );
 
 	if( chdir( ctl->basedir ) )
 		fatal( "Could not chdir to base dir %s -- %s", ctl->basedir, Err );

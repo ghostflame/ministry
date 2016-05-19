@@ -182,7 +182,7 @@ void log_reopen( int sig )
 	}
 
 	if( nre )
-		info( "Log file re-opened." );
+		info( "Log file re-opened (version v%s).", ctl->version );
 }
 
 
