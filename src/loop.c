@@ -136,10 +136,10 @@ void loop_start( void )
 	io_start( );
 
 	// throw the data listener loop
-	data_start( ctl->net->stats );
-	data_start( ctl->net->adder );
-	data_start( ctl->net->gauge );
-	data_start( ctl->net->compat );
+	net_start_type( ctl->net->stats );
+	net_start_type( ctl->net->adder );
+	net_start_type( ctl->net->gauge );
+	net_start_type( ctl->net->compat );
 
 	// this just gather sets the time and doesn't exit
 	loop_control( "time set", &loop_set_time, NULL, ctl->tick_usec, 1, 0 );

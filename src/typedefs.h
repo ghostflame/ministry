@@ -45,6 +45,7 @@ typedef struct dhash_locks			DLOCKS;
 typedef struct synth_data			SYNTH;
 typedef struct words_data			WORDS;
 typedef struct av_pair				AVP;
+typedef struct lockless_counter		LLCT;
 
 // function types
 typedef void stats_fn ( ST_THR *, int64_t );

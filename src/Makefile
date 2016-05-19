@@ -1,7 +1,7 @@
 CC     = /usr/bin/gcc -std=gnu99 $(WFLAGS)
 
-FILES  = utils log loop thread mem gc net io data synth stats config main
-HEADS  = config data gc io log loop mem ministry net run stats synth thread typedefs utils
+FILES  = utils log loop thread mem gc net tcp udp io data synth stats selfstats config main
+HEADS  = config data gc io log loop mem ministry net tcp udp run stats selfstats synth thread typedefs utils
 VERS   = $(shell sed -rn 's/^Version:\t(.*)/\1/p' ../ministry.spec)
 
 OBJS   = $(FILES:%=%.o)

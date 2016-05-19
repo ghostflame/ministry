@@ -48,8 +48,7 @@ DLOCKS *dhash_locks_create( int type )
 	d->len   = dt->lock;
 	d->mask  = d->len - 1;
 	d->name  = dt->name;
-	d->used  = (uint64_t *) allocz( d->len * sizeof( uint64_t ) );
-	d->prev  = (uint64_t *) allocz( d->len * sizeof( uint64_t ) );
+	d->used  = (LLCT *) allocz( d->len * sizeof( LLCT ) );
 	d->locks = (pthread_spinlock_t *) allocz( d->len * sizeof( pthread_spinlock_t ) );
 
 	// and init the locks

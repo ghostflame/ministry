@@ -76,7 +76,7 @@ struct mem_control
 
 void *mtype_reverse_list( void *line_in );
 
-HOST *mem_new_host( struct sockaddr_in *peer );
+HOST *mem_new_host( struct sockaddr_in *peer, uint32_t bufsz );
 void mem_free_host( HOST **h );
 
 PTLIST *mem_new_point( void );

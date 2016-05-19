@@ -390,7 +390,7 @@ void io_send_loop( TARGET *t )
 				debug( "Disconnecting from target %s:%hu",
 					t->host, t->port );
 #endif
-				net_disconnect( &(s->sock), "send target" );
+				tcp_disconnect( &(s->sock), "send target" );
 				s->flags &= ~HOST_CLOSE;
 				// try again later
 				break;

@@ -96,94 +96,33 @@ HPRFX *net_prefix_check( struct sockaddr_in *sin )
 
 
 
-
-void net_disconnect( int *sock, char *name )
+// set prefix data on a host
+int net_set_host_prefix( HOST *h, NET_TYPE *type )
 {
-	if( shutdown( *sock, SHUT_RDWR ) )
-		err( "Shutdown error on connection with %s -- %s",
-			name, Err );
+	// change the parser function to one that does prefixing
+	h->parser = type->prfx_parser;
 
-	close( *sock );
-	*sock = -1;
-}
-
-
-void net_close_host( HOST *h )
-{
-	net_disconnect( &(h->net->sock), h->net->name );
-	debug( "Closed connection from host %s.", h->net->name );
-
-	// give us a moment
-	usleep( 10000 );
-	mem_free_host( &h );
-}
-
-
-HOST *net_get_host( int sock, NET_TYPE *type )
-{
-	struct sockaddr_in from;
-	socklen_t sz;
-	HOST *h;
-	int d;
-
-	sz = sizeof( from );
-
-	if( ( d = accept( sock, (struct sockaddr *) &from, &sz ) ) < 0 )
+	// and copy the prefix into the workbuf
+	if( !h->workbuf && !( h->workbuf = (char *) allocz( HPRFX_BUFSZ ) ) )
 	{
-		// broken
-		err( "Accept error -- %s", Err );
-		return NULL;
+		mem_free_host( &h );
+		fatal( "Could not allocate host work buffer" );
+		return -1;
 	}
 
-	// are we doing blacklisting/whitelisting?
-	if( net_ip_check( &from ) != 0 )
-	{
-		if( ctl->net->iplist->verbose )
-			notice( "Denying connection from %s:%hu based on ip check.",
-				inet_ntoa( from.sin_addr ), ntohs( from.sin_port ) );
+	// and make a copy of the prefix for this host
+	memcpy( h->workbuf, h->prefix->pstr, h->prefix->plen );
+	h->plen = h->prefix->plen;
 
-		shutdown( d, SHUT_RDWR );
-		close( d );
-		return NULL;
-	}
+	// set the max line we like and the target to copy to
+	h->lmax = HPRFX_BUFSZ - h->plen - 1;
+	h->ltarget = h->workbuf + h->plen;
 
-	if( !( h = mem_new_host( &from ) ) )
-		fatal( "Could not allocate new host." );
+	info( "Connection from %s:%hu gets prefix %s",
+			inet_ntoa( h->peer->sin_addr ), ntohs( h->peer->sin_port ),
+			h->workbuf );
 
-	h->net->sock = d;
-	h->type      = type;
-
-	// assume type-based handler functions
-	h->parser    = type->flat_parser;
-
-	// do we need to override those?
-	if( ( h->prefix = net_prefix_check( &from ) ) )
-	{
-		// change the parser function to one that does prefixing
-		h->parser = type->prfx_parser;
-
-		// and copy the prefix into the workbuf
-		if( !h->workbuf && !( h->workbuf = (char *) allocz( HPRFX_BUFSZ ) ) )
-		{
-			mem_free_host( &h );
-			fatal( "Could not allocate host work buffer" );
-			return NULL;
-		}
-
-		// and make a copy of the prefix for this host
-		memcpy( h->workbuf, h->prefix->pstr, h->prefix->plen );
-		h->plen = h->prefix->plen;
-
-		// set the max line we like and the target to copy to
-		h->lmax = HPRFX_BUFSZ - h->plen - 1;
-		h->ltarget = h->workbuf + h->plen;
-
-		info( "Connection from %s:%hu gets prefix %s",
-				inet_ntoa( from.sin_addr ), ntohs( from.sin_port ),
-				h->workbuf );
-	}
-
-	return h;
+	return 0;
 }
 
 
@@ -223,103 +162,30 @@ NSOCK *net_make_sock( int insz, int outsz, struct sockaddr_in *peer )
 
 
 
-int net_listen_tcp( unsigned short port, uint32_t ip, int backlog )
+void net_start_type( NET_TYPE *nt )
 {
-	struct sockaddr_in sa;
-	int s, so;
+	throw_fn *fp;
+	int i;
 
-	if( ( s = socket( AF_INET, SOCK_STREAM, 0 ) ) < 0 )
+	if( !( nt->flags & NTYPE_ENABLED ) )
+		return;
+
+	if( nt->flags & NTYPE_TCP_ENABLED )
+		thread_throw( tcp_loop, nt->tcp );
+
+	if( nt->flags & NTYPE_UDP_ENABLED )
 	{
-		err( "Unable to make tcp listen socket -- %s", Err );
-		return -1;
+		if( nt->flags & NTYPE_UDP_CHECKS )
+			fp = &udp_loop_checks;
+		else
+			fp = &udp_loop_flat;
+
+		for( i = 0; i < nt->udp_count; i++ )
+			thread_throw( fp, nt->udp[i] );
 	}
 
-	so = 1;
-	if( setsockopt( s, SOL_SOCKET, SO_REUSEADDR, &so, sizeof( int ) ) )
-	{
-		err( "Set socket options error for listen socket -- %s", Err );
-		close( s );
-		return -2;
-	}
-
-	memset( &sa, 0, sizeof( struct sockaddr_in ) );
-	sa.sin_family = AF_INET;
-	sa.sin_port   = htons( port );
-
-	// ip as well?
-	sa.sin_addr.s_addr = ( ip ) ? ip : INADDR_ANY;
-
-	// try to bind
-	if( bind( s, (struct sockaddr *) &sa, sizeof( struct sockaddr_in ) ) < 0 )
-	{
-		err( "Bind to %s:%hu failed -- %s",
-			inet_ntoa( sa.sin_addr ), port, Err );
-		close( s );
-		return -3;
-	}
-
-	if( !backlog )
-		backlog = 5;
-
-	if( listen( s, backlog ) < 0 )
-	{
-		err( "Listen error -- %s", Err );
-		close( s );
-		return -4;
-	}
-
-	info( "Listening on tcp port %s:%hu for connections.", inet_ntoa( sa.sin_addr ), port );
-
-	return s;
+	info( "Started listening for data on %s", nt->label );
 }
-
-
-int net_listen_udp( unsigned short port, uint32_t ip )
-{
-	struct sockaddr_in sa;
-	struct timeval tv;
-	int s;
-
-	if( ( s = socket( AF_INET, SOCK_DGRAM, IPPROTO_UDP ) ) < 0 )
-	{
-		err( "Unable to make udp listen socket -- %s", Err );
-		return -1;
-	}
-
-	tv.tv_sec  = ctl->net->rcv_tmout;
-	tv.tv_usec = 0;
-
-	debug( "Setting receive timeout to %ld.%06ld", tv.tv_sec, tv.tv_usec );
-
-	if( setsockopt( s, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof( struct timeval ) ) < 0 )
-	{
-		err( "Set socket options error for listen socket -- %s", Err );
-		close( s );
-		return -2;
-	}
-
-	memset( &sa, 0, sizeof( struct sockaddr_in ) );
-	sa.sin_family = AF_INET;
-	sa.sin_port   = htons( port );
-
-	// ip as well?
-	sa.sin_addr.s_addr = ( ip ) ? ip : INADDR_ANY;
-
-	// try to bind
-	if( bind( s, (struct sockaddr *) &sa, sizeof( struct sockaddr_in ) ) < 0 )
-	{
-		err( "Bind to %s:%hu failed -- %s",
-			inet_ntoa( sa.sin_addr ), port, Err );
-		close( s );
-		return -1;
-	}
-
-	info( "Bound to udp port %s:%hu for packets.", inet_ntoa( sa.sin_addr ), port );
-
-	return s;
-}
-
-
 
 
 
@@ -334,9 +200,12 @@ int net_startup( NET_TYPE *nt )
 
 	if( nt->flags & NTYPE_TCP_ENABLED )
 	{
-		nt->tcp->sock = net_listen_tcp( nt->tcp->port, nt->tcp->ip, nt->tcp->back );
+		nt->tcp->sock = tcp_listen( nt->tcp->port, nt->tcp->ip, nt->tcp->back );
 		if( nt->tcp->sock < 0 )
 			return -1;
+
+		// and the lock for keeping track of current connections
+		pthread_mutex_init( &(nt->lock), NULL );
 	}
 
 	if( nt->flags & NTYPE_UDP_ENABLED )
@@ -344,7 +213,7 @@ int net_startup( NET_TYPE *nt )
 		{
 			// grab the udp ip variable
 			nt->udp[i]->ip   = nt->udp_bind;
-			nt->udp[i]->sock = net_listen_udp( nt->udp[i]->port, nt->udp[i]->ip );
+			nt->udp[i]->sock = udp_listen( nt->udp[i]->port, nt->udp[i]->ip );
 			if( nt->udp[i]->sock < 0 )
 			{
 				if( nt->flags & NTYPE_TCP_ENABLED )
@@ -428,6 +297,7 @@ void net_shutdown( NET_TYPE *nt )
 	{
 		close( nt->tcp->sock );
 		nt->tcp->sock = -1;
+		pthread_mutex_destroy( &(nt->lock) );
 	}
 
 	if( nt->flags & NTYPE_UDP_ENABLED )
@@ -437,6 +307,7 @@ void net_shutdown( NET_TYPE *nt )
 				close( nt->udp[i]->sock );
 				nt->udp[i]->sock = -1;
 			}
+
 
 	notice( "Stopped %s", nt->label );
 }
@@ -470,6 +341,7 @@ NET_TYPE *net_type_defaults( int type )
 	nt->handler     = d->af;
 	nt->udp_bind    = INADDR_ANY;
 	nt->label       = strdup( d->sock );
+	nt->name        = strdup( d->name );
 	nt->flags       = NTYPE_ENABLED|NTYPE_TCP_ENABLED|NTYPE_UDP_ENABLED;
 
 	return nt;
@@ -962,6 +834,13 @@ int net_config_line( AVP *av )
 		{
 			ntflag( UDP_ENABLED );
 		}
+	}
+	else if( !strcasecmp( d, "checks" ) )
+	{
+		if( tcp )
+			warn( "To disable prefix checks on TCP, set enable 0 on prefixes." );
+		else
+			ntflag( UDP_CHECKS );
 	}
 	else if( !strcasecmp( d, "bind" ) )
 	{

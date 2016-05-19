@@ -30,8 +30,7 @@ static inline int cmp_floats( const void *p1, const void *p2 )
 }
 
 
-// hopefully this will inline
-static inline void bprintf( ST_THR *t, char *fmt, ... )
+void bprintf( ST_THR *t, char *fmt, ... )
 {
 	va_list args;
 
@@ -510,98 +509,6 @@ void stats_gauge_pass( ST_THR *t, int64_t tval )
 
 
 
-
-void stats_report_mtype( ST_THR *t, char *name, MTYPE *mt )
-{
-	uint32_t freec, alloc;
-	uint64_t bytes;
-
-	// grab some stats under lock
-	// we CANNOT bprintf under lock because
-	// one of the reported types is buffers
-	lock_mem( mt );
-
-	bytes = (uint64_t) mt->alloc_sz * (uint64_t) mt->total;
-	alloc = mt->total;
-	freec = mt->fcount;
-
-	unlock_mem( mt );
-
-	// and report them
-	bprintf( t, "mem.%s.free %u",  name, freec );
-	bprintf( t, "mem.%s.alloc %u", name, alloc );
-	bprintf( t, "mem.%s.kb %lu",   name, bytes / 1024 );
-}
-
-
-void stats_report_types( ST_THR *t, ST_CFG *c )
-{
-	float hr;
-
-	hr = (float) c->dcurr / (float) c->hsize;
-
-	bprintf( t, "paths.%s.curr %d",         c->name, c->dcurr );
-	bprintf( t, "paths.%s.gc %d",           c->name, c->gc_count );
-	bprintf( t, "paths.%s.hash_ratio %.6f", c->name, hr );
-}
-
-
-
-void stats_report_dlocks( ST_THR *t, DLOCKS *d )
-{
-	uint64_t curr, total, diff;
-	int i;
-
-	for( total = 0, i = 0; i < d->len; i++ )
-	{
-		// important - only read used[i] *once*
-		// means we never drop one
-		curr = d->used[i];
-		diff = curr - d->prev[i];
-
-		d->prev[i] = curr;
-		total += diff;
-
-		bprintf( t, "locks.%s.%03d %lu", d->name, i, diff );
-	}
-
-	bprintf( t, "locks.%s.total %lu", d->name, total );
-}
-
-
-
-// report our own pass
-void stats_self_pass( ST_THR *t, int64_t tval )
-{
-	struct timespec now;
-
-	// TODO - more stats
-
-#ifdef KEEP_LOCK_STATS
-	// report stats usage
-	stats_report_dlocks( t, ctl->locks->dstats );
-	stats_report_dlocks( t, ctl->locks->dadder );
-	stats_report_dlocks( t, ctl->locks->dgauge );
-#endif
-
-	// stats types
-	stats_report_types( t, ctl->stats->stats );
-	stats_report_types( t, ctl->stats->adder );
-	stats_report_types( t, ctl->stats->gauge );
-
-	// memory
-	stats_report_mtype( t, "hosts",  ctl->mem->hosts  );
-	stats_report_mtype( t, "points", ctl->mem->points );
-	stats_report_mtype( t, "dhash",  ctl->mem->dhash  );
-	stats_report_mtype( t, "bufs",   ctl->mem->iobufs );
-	stats_report_mtype( t, "iolist", ctl->mem->iolist );
-
-	bprintf( t, "mem.total.kb %d", ctl->mem->curr_kb );
-	llts( tval, now );
-	bprintf( t, "uptime %.3f", ts_diff( now, ctl->init_time, NULL ) );
-}
-
-
 void thread_pass( int64_t tval, void *arg )
 {
 	ST_THR *t = (ST_THR *) arg;
@@ -810,7 +717,7 @@ STAT_CTL *stats_config_defaults( void )
 
 	s->self           = (ST_CFG *) allocz( sizeof( ST_CFG ) );
 	s->self->threads  = 1;
-	s->self->statfn   = &stats_self_pass;
+	s->self->statfn   = &self_stats_pass;
 	s->self->period   = DEFAULT_STATS_MSEC;
 	s->self->type     = STATS_TYPE_SELF;
 	s->self->dtype    = -1;
