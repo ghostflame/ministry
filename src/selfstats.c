@@ -80,15 +80,18 @@ void self_report_dlocks( ST_THR *t, DLOCKS *d )
 }
 
 
-void self_report_netport( ST_THR *t, NET_PORT *p, char *name, char *proto )
+void self_report_netport( ST_THR *t, NET_PORT *p, char *name, char *proto, int do_drops )
 {
 	uint64_t diff;
 
 	diff = stats_lockless_fetch( &(p->errors)  );
 	bprintf( t, "network.%s.%s.%hu.errors %lu",  name, proto, p->port, diff );
 
-	diff = stats_lockless_fetch( &(p->drops)   );
-	bprintf( t, "network.%s.%s.%hu.drops %lu",   name, proto, p->port, diff );
+	if( do_drops )
+	{
+		diff = stats_lockless_fetch( &(p->drops)   );
+		bprintf( t, "network.%s.%s.%hu.drops %lu",   name, proto, p->port, diff );
+	}
 
 	diff = stats_lockless_fetch( &(p->accepts) );
 	bprintf( t, "network.%s.%s.%hu.accepts %lu", name, proto, p->port, diff );
@@ -97,17 +100,21 @@ void self_report_netport( ST_THR *t, NET_PORT *p, char *name, char *proto )
 
 void self_report_nettype( ST_THR *t, NET_TYPE *n )
 {
-	int i;
+	int i, drops = 0;
 
 	if( n->flags & NTYPE_TCP_ENABLED )
 	{
 		bprintf( t, "network.%s.tcp.%hu.connections %d", n->name, n->tcp->port, n->conns );
-		self_report_netport( t, n->tcp, n->name, "tcp" );
+		self_report_netport( t, n->tcp, n->name, "tcp", 1 );
 	}
+
+	// without checks we cannot drop UDP packets so no stats
+	if( n->flags & NTYPE_UDP_CHECKS )
+		drops = 1;
 
 	if( n->flags & NTYPE_UDP_ENABLED )
 		for( i = 0; i < n->udp_count; i++ )
-			self_report_netport( t, n->udp[i], n->name, "udp" );
+			self_report_netport( t, n->udp[i], n->name, "udp", drops );
 }
 
 
