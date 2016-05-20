@@ -216,7 +216,7 @@ HPRFX *net_prefix_check( struct sockaddr_in *sin );
 int net_ip_check( struct sockaddr_in *sin );
 
 // set up a host with a prefix
-int net_set_host_prefix( HOST *h, NET_TYPE *type );
+int net_set_host_prefix( HOST *h, HPRFX *pr );
 
 NSOCK *net_make_sock( int insz, int outsz, struct sockaddr_in *peer );
 //int net_port_sock( PORT_CTL *pc, uint32_t ip, int backlog );

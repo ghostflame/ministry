@@ -13,7 +13,7 @@
 // does not have it's own config, runs off mem.c config
 
 
-int io_read_data( NSOCK *s )
+__attribute__((hot)) int io_read_data( NSOCK *s )
 {
 	int i;
 

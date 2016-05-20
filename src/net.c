@@ -97,10 +97,17 @@ HPRFX *net_prefix_check( struct sockaddr_in *sin )
 
 
 // set prefix data on a host
-int net_set_host_prefix( HOST *h, NET_TYPE *type )
+int net_set_host_prefix( HOST *h, HPRFX *pr )
 {
+	// not a botch - simplifies other callers
+	if( !pr )
+		return 0;
+
+	// set that prefix
+	h->prefix = pr;
+
 	// change the parser function to one that does prefixing
-	h->parser = type->prfx_parser;
+	h->parser = h->type->prfx_parser;
 
 	// and copy the prefix into the workbuf
 	if( !h->workbuf && !( h->workbuf = (char *) allocz( HPRFX_BUFSZ ) ) )
@@ -111,8 +118,8 @@ int net_set_host_prefix( HOST *h, NET_TYPE *type )
 	}
 
 	// and make a copy of the prefix for this host
-	memcpy( h->workbuf, h->prefix->pstr, h->prefix->plen );
-	h->plen = h->prefix->plen;
+	memcpy( h->workbuf, pr->pstr, pr->plen );
+	h->plen = pr->plen;
 
 	// set the max line we like and the target to copy to
 	h->lmax = HPRFX_BUFSZ - h->plen - 1;

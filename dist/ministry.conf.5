@@ -194,18 +194,21 @@ Enable or disable this type of collection (defaults to 1 for all)
 .TP
 \fBTYPE.label\fR
 Label these ports have within logging.
+.TP
+\fBTYPE.tcp.backlog\fR
+Backlog for incoming TCP connections (default 32)
+.TP
+\fBTYPE.udp.checks\fR
+Perform blacklist/whitelist checks and prefixing on UDP for this type.
 .PP
 Everything after this is of the form TYPE.udp.XXX or TYPE.tcp.XXX, pertaining to either UDP ports
-or TCP ports respectively.  Obviously, the TCP options have no meaning for UDP.
+or TCP ports respectively.
 .TP
 \fBTYPE.PROTO.bind\fR
 Bind address for this type and protocol - must be a local IP address (default IPADDR_ANY)
 .TP
 \fBTYPE.PROTO.enable\fR
 Enable or disable his protocol for this type of collection (defaults to 1)
-.TP
-\fBTYPE.PROTO.backlog\fR
-Backlog for incoming tcp connections (default 32)
 .TP
 \fBTYPE.PROTO.port\fR
 A list of listen ports, comma separated.  By default, statsd-compatible listens on 8125, the default

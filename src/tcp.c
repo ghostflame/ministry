@@ -12,52 +12,6 @@
 
 
 
-//  This function is an annoying mix of io code and processing code,
-//  but it is like that to address data splitting across multiple sends,
-//  and not on line breaks
-//
-//  So we have to keep looping around read, looking for more data until we
-//  don't get any.  Then we need to loop around processing until there's no
-//  data left.  We need to only barf on no data the first time around, thus
-//  the empty flag.  We need to keep any partial lines for the next read call
-//  to push back to the start of the buffer.
-//
-__attribute__((hot)) int tcp_recv_lines( HOST *h )
-{
-	NSOCK *n = h->net;
-
-	n->flags |= HOST_CLOSE_EMPTY;
-
-	// we need to loop until there's nothing left to read
-	while( io_read_data( h->net ) > 0 )
-	{
-		// do we have anything
-		if( !n->in->len )
-		{
-			debug( "No incoming data from %s", n->name );
-			break;
-		}
-
-		// remove the close-empty flag
-		// we only want to close if our first
-		// read finds nothing
-		n->flags &= ~HOST_CLOSE_EMPTY;
-
-		// and parse that buffer
-		n->in->len = data_parse_buf( h, n->in->buf, n->in->len );
-	}
-
-	// did we get something?  or are we done?
-	if( n->flags & HOST_CLOSE )
-	{
-		debug( "Host %s flagged as closed.", n->name );
-		return -1;
-	}
-
-	return 0;
-}
-
-
 void tcp_disconnect( int *sock, char *name )
 {
 	if( shutdown( *sock, SHUT_RDWR ) )
@@ -123,15 +77,12 @@ HOST *tcp_get_host( int sock, NET_PORT *np )
 	// assume type-based handler functions
 	h->parser    = np->type->flat_parser;
 
-	// do we need to override those?
-	if( ( h->prefix = net_prefix_check( &from ) ) )
+	// maybe set a prefix
+	if( net_set_host_prefix( h, net_prefix_check( &from ) ) )
 	{
-		// set up the host
-		if( net_set_host_prefix( h, h->type ) )
-		{
-			np->errors.count++;
-			return NULL;
-		}
+		np->errors.count++;
+		mem_free_host( &h );
+		return NULL;
 	}
 
 	np->accepts.count++;
@@ -141,26 +92,37 @@ HOST *tcp_get_host( int sock, NET_PORT *np )
 
 
 
+//  This function is an annoying mix of io code and processing code,
+//  but it is like that to address data splitting across multiple sends,
+//  and not on line breaks
+//
+//  So we have to keep looping around read, looking for more data until we
+//  don't get any.  Then we need to loop around processing until there's no
+//  data left.  We need to only barf on no data the first time around, thus
+//  the empty flag.  We need to keep any partial lines for the next read call
+//  to push back to the start of the buffer.
+//
 
-void *tcp_connection( void *arg )
+__attribute__((hot)) void *tcp_connection( void *arg )
 {
 	int rv, quiet, quietmax;
 	struct pollfd p;
-
+	NSOCK *n;
 	THRD *t;
 	HOST *h;
 
 	t = (THRD *) arg;
 	h = (HOST *) t->arg;
+	n = h->net;
 
-	info( "Accepted %s connection from host %s.", h->type->label, h->net->name );
+	info( "Accepted %s connection from host %s.", h->type->label, n->name );
 
 	// mark having a connection
 	lock_ntype( h->type );
 	h->type->conns++;
 	unlock_ntype( h->type );
 
-	p.fd     = h->net->sock;
+	p.fd     = n->sock;
 	p.events = POLL_EVENTS;
 	quiet    = 0;
 	quietmax = ctl->net->dead_time;
@@ -177,7 +139,7 @@ void *tcp_connection( void *arg )
 			}
 
 			warn( "Poll error talk to host %s -- %s",
-				h->net->name, Err );
+				n->name, Err );
 			break;
 		}
 
@@ -187,7 +149,7 @@ void *tcp_connection( void *arg )
 			if( ++quiet > quietmax )
 			{
 				notice( "Connection from host %s timed out.",
-					h->net->name );
+					n->name );
 				break;
 			}
 			continue;
@@ -196,20 +158,45 @@ void *tcp_connection( void *arg )
 		// they went away?
 		if( p.revents & POLLHUP )
 		{
-			debug( "Received pollhup event from %s", h->net->name );
+			debug( "Received pollhup event from %s", n->name );
 			break;
 		}
 
 		// mark us as having data
 		quiet = 0;
 
-		// and process the lines
-		if( tcp_recv_lines( h ) < 0 )
+		// and start reading
+		n->flags |= HOST_CLOSE_EMPTY;
+
+		// we need to loop until there's nothing left to read
+		while( io_read_data( n ) > 0 )
+		{
+			// do we have anything
+			if( !n->in->len )
+			{
+				debug( "No incoming data from %s", n->name );
+				break;
+			}
+
+			// remove the close-empty flag
+			// we only want to close if our first
+			// read finds nothing
+			n->flags &= ~HOST_CLOSE_EMPTY;
+
+			// and parse that buffer
+			n->in->len = data_parse_buf( h, n->in->buf, n->in->len );
+		}
+
+		// did we get something?  or are we done?
+		if( n->flags & HOST_CLOSE )
+		{
+			debug( "Host %s flagged as closed.", n->name );
 			break;
+		}
 	}
 
 	info( "Closing connection to host %s after %lu data points.",
-			h->net->name, h->points );
+			n->name, h->points );
 
 	// mark closing a connection
 	lock_ntype( h->type );

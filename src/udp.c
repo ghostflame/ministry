@@ -43,29 +43,28 @@ static inline HOST *udp_get_phost( NET_PORT *n, HPRFX *pr )
 }
 
 
-void udp_add_phost( NET_PORT *n, HPRFX *pr )
+void udp_add_phost( NET_PORT *n, IPNET *ip )
 {
 	struct sockaddr_in sa;
 	uint64_t hval;
 	HOST *h;
 
-	hval = ((uint64_t) pr) % n->phsz;
+	hval = ((uint64_t) ip->prefix) % n->phsz;
 
-	memset( &sa, 0, sizeof( struct sockaddr_in ) );
+	sa.sin_addr.s_addr = ip->ipnet;
+	sa.sin_port        = htons( ip->bits );
+
 	h = mem_new_host( &sa, 0 );
-
-	// we already know the prefix
-	h->prefix  = pr;
-	h->type    = n->type;
+	h->type = n->type;
 
 	// and set it up
-	if( net_set_host_prefix( h, h->type ) != 0 )
+	if( net_set_host_prefix( h, ip->prefix ) != 0 )
 	{
-		err( "Could not set host prefix for %p : %s", pr, pr->confstr );
+		err( "Could not set host prefix for %p : %s", ip->prefix, ip->prefix->confstr );
 		return;
 	}
 
-	// add it in
+	// add it into the hash
 	h->next = n->phosts[hval];
 	n->phosts[hval] = h;
 }
@@ -75,14 +74,25 @@ void udp_prefix_prepop( NET_PORT *n )
 {
 	IPCHK *ck = ctl->net->prefix;
 	IPNET *ip;
-	int j;
+	int i, j;
+
+	i = 0;
 
 	for( j = 0; j < ck->hashsz; j++ )
 		for( ip = ck->ips[j]; ip; ip = ip->next )
-			udp_add_phost( n, ip->prefix );
+		{
+			udp_add_phost( n, ip );
+			i++;
+		}
 
 	for( ip = ck->nets; ip; ip = ip->next )
-		udp_add_phost( n, ip->prefix );
+	{
+		udp_add_phost( n, ip );
+		i++;
+	}
+
+	debug( "Net port %s:%hu prepopulated with %d prefix host%s.",
+		n->type->name, n->port, i, ( i == 1 ) ? "" : "s" );
 }
 
 
