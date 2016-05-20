@@ -25,11 +25,8 @@
 
 
 
-
-
-HOST *udp_get_phost( NET_PORT *n, HPRFX *pr )
+static inline HOST *udp_get_phost( NET_PORT *n, HPRFX *pr )
 {
-	struct sockaddr_in sa;
 	uint64_t hval;
 	HOST *h;
 
@@ -39,7 +36,21 @@ HOST *udp_get_phost( NET_PORT *n, HPRFX *pr )
 		if( h->prefix == pr )
 			return h;
 
-	// no data needed on this host, it's not real
+	// this should never happen!
+	warn( "Could not find prefix %p : %s", pr, pr->confstr );
+	// this blows us up
+	return NULL;
+}
+
+
+void udp_add_phost( NET_PORT *n, HPRFX *pr )
+{
+	struct sockaddr_in sa;
+	uint64_t hval;
+	HOST *h;
+
+	hval = ((uint64_t) pr) % n->phsz;
+
 	memset( &sa, 0, sizeof( struct sockaddr_in ) );
 	h = mem_new_host( &sa, 0 );
 
@@ -48,12 +59,32 @@ HOST *udp_get_phost( NET_PORT *n, HPRFX *pr )
 	h->type    = n->type;
 
 	// and set it up
-	if( net_set_host_prefix( h, n->type ) != 0 )
-		// this blows us up
-		return NULL;
+	if( net_set_host_prefix( h, h->type ) != 0 )
+	{
+		err( "Could not set host prefix for %p : %s", pr, pr->confstr );
+		return;
+	}
 
-	return h;
+	// add it in
+	h->next = n->phosts[hval];
+	n->phosts[hval] = h;
 }
+
+
+void udp_prefix_prepop( NET_PORT *n )
+{
+	IPCHK *ck = ctl->net->prefix;
+	IPNET *ip;
+	int j;
+
+	for( j = 0; j < ck->hashsz; j++ )
+		for( ip = ck->ips[j]; ip; ip = ip->next )
+			udp_add_phost( n, ip->prefix );
+
+	for( ip = ck->nets; ip; ip = ip->next )
+		udp_add_phost( n, ip->prefix );
+}
+
 
 
 void *udp_loop_checks( void *arg )
@@ -85,6 +116,9 @@ void *udp_loop_checks( void *arg )
 	h->type   = n->type;
 	// for now we don't do prefixing on UDP
 	h->parser = n->type->flat_parser;
+
+	// prepopulate the hash table with prefixes
+	udp_prefix_prepop( n );
 
 	loop_mark_start( "udp" );
 
