@@ -58,6 +58,13 @@ struct words_data
 };
 
 
+struct lockless_counter
+{
+	uint64_t				count;
+	uint64_t				prev;
+};
+
+
 struct av_pair
 {
 	char				*	att;

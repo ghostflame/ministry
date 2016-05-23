@@ -4,7 +4,8 @@
 ministry \- stats daemon
 .SH SYNOPSIS
 .nf
-.BI "ministry [" -Ddvp "|" -t "] -c <" config-file ">"
+.BI "ministry [-v|-h]"
+.BI "ministry [-DVt] -c <" config-file "> [-p <" pid-file ">]"
 .fi
 .SH DESCRIPTION
 .PP
@@ -17,11 +18,14 @@ The main options are:
 \fB\-h\fR
 print help
 .TP
-\fB\-c\fR \fI<FILE>\fR
-select config file
+\fB-v\fR
+print version and exit
 .TP
 \fB\-t\fR
 just test config and exit
+.TP
+\fB\-c\fR \fI<FILE>\fR
+select config file
 .TP
 \fB\-D\fR
 run in debug mode
@@ -29,7 +33,7 @@ run in debug mode
 \fB\-d\fR
 run in daemon mode (background)
 .TP
-\fB\-v\fR
+\fB\-V\fR
 run in verbose mode, with more output to stdout
 .TP
 \fB\-p\fR \fI<FILE>\fR

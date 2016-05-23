@@ -31,6 +31,7 @@
 #define NTYPE_ENABLED					0x0001
 #define NTYPE_TCP_ENABLED				0x0002
 #define NTYPE_UDP_ENABLED				0x0004
+#define NTYPE_UDP_CHECKS				0x0008
 
 #define DEFAULT_TARGET_HOST				"127.0.0.1"
 #define DEFAULT_TARGET_PORT				2003	// graphite
@@ -107,8 +108,6 @@ struct host_data
 	HOST				*	next;
 	NSOCK				*	net;
 
-	WORDS				*	val;		// per line
-
 	NET_TYPE			*	type;
 	line_fn				*	parser;
 
@@ -135,6 +134,13 @@ struct net_in_port
 	uint16_t				back;
 	uint32_t				ip;
 
+	LLCT					errors;
+	LLCT					drops;
+	LLCT					accepts;
+
+	HOST				**	phosts;
+	uint64_t				phsz;
+
 	NET_TYPE			*	type;
 };
 
@@ -147,6 +153,10 @@ struct net_type
 	line_fn				*	prfx_parser;
 	add_fn				*	handler;
 	char				*	label;
+	char				*	name;
+
+	pthread_mutex_t			lock;
+	int32_t					conns;
 
 	uint16_t				flags;
 	uint16_t				udp_count;
@@ -201,12 +211,12 @@ struct network_control
 
 
 
-// thread control
-throw_fn net_watched_socket;
+// do we have a prefix?
+HPRFX *net_prefix_check( struct sockaddr_in *sin );
+int net_ip_check( struct sockaddr_in *sin );
 
-// client connections
-HOST *net_get_host( int sock, NET_TYPE *type );
-void net_close_host( HOST *h );
+// set up a host with a prefix
+int net_set_host_prefix( HOST *h, HPRFX *pr );
 
 NSOCK *net_make_sock( int insz, int outsz, struct sockaddr_in *peer );
 //int net_port_sock( PORT_CTL *pc, uint32_t ip, int backlog );
@@ -216,6 +226,7 @@ void net_disconnect( int *sock, char *name );
 int net_lookup_host( char *host, struct sockaddr_in *res );
 
 // init/shutdown
+void net_start_type( NET_TYPE *nt );
 int net_start( void );
 void net_stop( void );
 

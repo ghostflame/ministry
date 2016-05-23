@@ -168,7 +168,7 @@ static inline void __mtype_free_list( MTYPE *mt, int count, void *first, void *l
 
 
 
-HOST *mem_new_host( struct sockaddr_in *peer )
+HOST *mem_new_host( struct sockaddr_in *peer, uint32_t bufsz )
 {
 	HOST *h;
 
@@ -177,8 +177,7 @@ HOST *mem_new_host( struct sockaddr_in *peer )
 	// is this one set up?
 	if( ! h->net )
 	{
-		h->net  = net_make_sock( MIN_NETBUF_SZ, 0, peer );
-		h->val  = (WORDS *) allocz( sizeof( WORDS ) );
+		h->net  = net_make_sock( bufsz, 0, peer );
 		h->peer = &(h->net->peer);
 	}
 

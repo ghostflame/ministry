@@ -59,6 +59,8 @@
 // in order
 #include "utils.h"
 #include "net.h"
+#include "udp.h"
+#include "tcp.h"
 #include "io.h"
 #include "log.h"
 #include "data.h"
@@ -66,6 +68,7 @@
 #include "mem.h"
 #include "synth.h"
 #include "stats.h"
+#include "selfstats.h"
 
 // last
 #include "config.h"

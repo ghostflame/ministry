@@ -27,13 +27,13 @@
 #ifdef KEEP_LOCK_STATS
 
 #define lock_adder( d )			pthread_spin_lock( &(ctl->locks->dadder->locks[d->id & DADDER_SLOCK_MASK]) ); \
-								ctl->locks->dadder->used[d->id & DADDER_SLOCK_MASK]++
+								ctl->locks->dadder->used[d->id & DADDER_SLOCK_MASK].count++
 
 #define lock_stats( d )			pthread_spin_lock( &(ctl->locks->dstats->locks[d->id & DSTATS_SLOCK_MASK]) ); \
-								ctl->locks->dstats->used[d->id & DSTATS_SLOCK_MASK]++
+								ctl->locks->dstats->used[d->id & DSTATS_SLOCK_MASK].count++
 
 #define lock_gauge( d )			pthread_spin_lock( &(ctl->locks->dgauge->locks[d->id & DGAUGE_SLOCK_MASK]) ); \
-								ctl->locks->dgauge->used[d->id & DGAUGE_SLOCK_MASK]++
+								ctl->locks->dgauge->used[d->id & DGAUGE_SLOCK_MASK].count++
 
 #else
 
@@ -62,12 +62,14 @@
 #define lock_mem( mt )			pthread_mutex_lock(   &(mt->lock) )
 #define unlock_mem( mt )		pthread_mutex_unlock( &(mt->lock) )
 
+#define lock_ntype( nt )		pthread_mutex_lock(   &(nt->lock) )
+#define unlock_ntype( nt )		pthread_mutex_unlock( &(nt->lock) )
+
 
 struct dhash_locks
 {
 	pthread_spinlock_t	*	locks;
-	uint64_t			*	used;
-	uint64_t			*	prev;
+	LLCT				*	used;
 	char				*	name;
 	uint32_t				len;
 	uint32_t				mask;

@@ -16,7 +16,6 @@ loop_call_fn thread_pass;
 stats_fn stats_stats_pass;
 stats_fn stats_adder_pass;
 stats_fn stats_gauge_pass;
-stats_fn stats_self_pass;
 
 
 throw_fn stats_loop;
@@ -42,7 +41,6 @@ enum stats_types
 #define DEFAULT_STATS_PREFIX		"stats.timers"
 #define DEFAULT_ADDER_PREFIX		""
 #define DEFAULT_GAUGE_PREFIX		""
-#define DEFAULT_SELF_PREFIX			"stats.ministry"
 
 
 #define TSBUF_SZ					32
@@ -117,7 +115,7 @@ struct stats_control
 };
 
 
-
+void bprintf( ST_THR *t, char *fmt, ... );
 
 void stats_start( ST_CFG *cf );
 void stats_init( void );
