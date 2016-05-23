@@ -228,6 +228,7 @@ void io_buf_send( IOBUF *buf )
 {
 	TARGET *t;
 	IOLIST *i;
+	int bc;
 
 	if( !buf )
 		return;
@@ -282,14 +283,15 @@ void io_buf_send( IOBUF *buf )
 			t->qhead       = i;
 		}
 
-		t->bufs++;
+		// increment and capture the buf count
+		bc = ++(t->bufs);
+
+		unlock_target( t );
 
 #ifdef DEBUG_IO
 		debug( "Target %s:%hu buf count is now %d",
-			t->host, t->port, t->bufs );
+			t->host, t->port, bc );
 #endif
-
-		unlock_target( t );
 	}
 }
 
