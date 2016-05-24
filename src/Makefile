@@ -9,7 +9,7 @@ HDRS   = $(HEADS:%=%.h)
 
 WFLAGS = -Wall -Wshadow
 IFLAGS = -I. 
-DFLAGS = -g -pg -ggdb3 -DDEBUG -DDEBUG_SYNTH
+DFLAGS = -g -pg -ggdb3 -DDEBUG
 TFLAGS = -pthread
 CFLAGS = $(TFLAGS) $(IFLAGS) -DMINISTRY_VERSION='"$(VERS)"'
 LFLAGS = $(TFLAGS) $(IFLAGS) -lm

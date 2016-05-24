@@ -55,11 +55,34 @@ int log_config_line( AVP *av );
 #define LLNZN( l, ... )			log_line( LOG_LEVEL_##l,     NULL,        0,     NULL, ## __VA_ARGS__ )
 
 #define fatal( ... )			LLFLF( FATAL,  ## __VA_ARGS__ )
-#define err( ... )			LLNZN( ERR,    ## __VA_ARGS__ )
-#define warn( ... )			LLNZN( WARN,   ## __VA_ARGS__ )
+#define err( ... )				LLNZN( ERR,    ## __VA_ARGS__ )
+#define warn( ... )				LLNZN( WARN,   ## __VA_ARGS__ )
 #define notice( ... )			LLNZN( NOTICE, ## __VA_ARGS__ )
-#define info( ... )			LLNZN( INFO,   ## __VA_ARGS__ )
+#define info( ... )				LLNZN( INFO,   ## __VA_ARGS__ )
 #define debug( ... )			LLFLF( DEBUG,  ## __VA_ARGS__ )
+
+
+//
+//  DEBUGGING for various parts
+//
+
+#ifdef DEBUG_IO
+#define debug_io( ... )			LLFLF( DEBUG, ## __VA_ARGS__ )
+#else
+#define debug_io( ... )			
+#endif
+
+#ifdef DEBUG_SYNTH
+#define debug_synth( ... )		LLFLF( DEBUG, ## __VA_ARGS__ )
+#else
+#define debug_synth( ... )		
+#endif
+
+#ifdef DEBUG_IPCHK
+#define debug_ipck( ... )		LLFLF( DEBUG, ## __VA_ARGS__ )
+#else
+#define debug_ipck( ... )		
+#endif
 
 
 #endif

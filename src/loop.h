@@ -13,16 +13,19 @@
 #define MINISTRY_LOOP_H
 
 #define DEFAULT_TICK_MSEC		20
-#define MAX_LOOP_USEC			3000000
+#define MAX_LOOP_NSEC			3000000000
+
+#define LOOP_TRIM				0x01
+#define LOOP_SYNC				0x02
 
 
 void loop_mark_start( const char *tag );
-void loop_mark_done( const char *tag );
+void loop_mark_done( const char *tag, int64_t skips, int64_t fires );
 
 void loop_end( char *reason );
 void loop_kill( int sig );
 
-void loop_control( const char *name, loop_call_fn *fp, void *arg, int usec, int sync, int offset );
+void loop_control( const char *name, loop_call_fn *fp, void *arg, int usec, int flags, int offset );
 
 void loop_start( void );
 

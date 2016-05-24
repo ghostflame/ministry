@@ -25,21 +25,19 @@ static inline IPNET *net_ip_lookup( uint32_t ip, IPCHK *in )
 
 #ifdef DEBUG_IPCHK
 	ina.s_addr = ip;
-	info( "Checking ip %s for %s", inet_ntoa( ina ), in->name );
 #endif
+	debug_ipck( "Checking ip %s for %s", inet_ntoa( ina ), in->name );
 
 	// try the hash
 	for( n = in->ips[ip % in->hashsz]; n; n = n->next )
 	{
 #ifdef DEBUG_IPCHK
 		ina.s_addr = n->ipnet;
-		info( "Trying %s", inet_ntoa( ina ) );
 #endif
+		debug_ipck( "Trying %s", inet_ntoa( ina ) );
 		if( ip == n->ipnet )
 		{
-#ifdef DEBUG_IPCHK
-			info( "Match on %s", inet_ntoa( ina ) );
-#endif
+			debug_ipck( "Match on %s", inet_ntoa( ina ) );
 			return n;
 		}
 	}
@@ -49,13 +47,11 @@ static inline IPNET *net_ip_lookup( uint32_t ip, IPCHK *in )
 	{
 #ifdef DEBUG_IPCHK
 		ina.s_addr = n->ipnet;
-		info( "Trying %s/%hu", inet_ntoa( ina ), n->bits );
 #endif
+		debug_ipck( "Trying %s/%hu", inet_ntoa( ina ), n->bits );
 		if( ( ip & net_masks[n->bits] ) == n->ipnet )
 		{
-#ifdef DEBUG_IPCHK
-			info( "Match on %s/%hu", inet_ntoa( ina ), n->bits );
-#endif
+			debug_ipck( "Match on %s/%hu", inet_ntoa( ina ), n->bits );
 			return n;
 		}
 	}

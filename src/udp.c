@@ -179,7 +179,7 @@ void *udp_loop_checks( void *arg )
 			data_parse_buf( h, b->buf, b->len );
 	}
 
-	loop_mark_done( "udp" );
+	loop_mark_done( "udp", 0, 0 );
 
 	mem_free_host( &h );
 
@@ -254,7 +254,7 @@ void *udp_loop_flat( void *arg )
 		data_parse_buf( h, b->buf, b->len );
 	}
 
-	loop_mark_done( "udp" );
+	loop_mark_done( "udp", 0, 0 );
 
 	mem_free_host( &h );
 

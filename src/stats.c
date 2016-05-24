@@ -30,9 +30,13 @@ static inline int cmp_floats( const void *p1, const void *p2 )
 }
 
 
+
+// a little caution so we cannot write off the
+// end of the buffer
 void bprintf( ST_THR *t, char *fmt, ... )
 {
 	va_list args;
+	int l, max;
 
 	// are we ready for a new buffer?
 	if( t->bp->len > IO_BUF_HWMK )
@@ -50,10 +54,19 @@ void bprintf( ST_THR *t, char *fmt, ... )
 	memcpy( t->bp->buf + t->bp->len, t->prefix, t->prlen );
 	t->bp->len += t->prlen;
 
+	// we need to leave room for the timestamp
+	max = t->bp->sz - t->bp->len - t->tsbufsz;
+
 	// write the variable part
 	va_start( args, fmt );
-	t->bp->len += vsnprintf( t->bp->buf + t->bp->len, t->bp->sz - t->bp->len, fmt, args );
+	l = vsnprintf( t->bp->buf + t->bp->len, max, fmt, args );
 	va_end( args );
+
+	// check for truncation
+	if( l > max )
+		l = max;
+
+	t->bp->len += l;
 
 	// add the timestamp and newline
 	memcpy( t->bp->buf + t->bp->len, t->tsbuf, t->tsbufsz );
@@ -206,7 +219,7 @@ void stats_stats_pass( ST_THR *t, int64_t tval )
 	for( i = 0; i < t->conf->hsize; i++ )
 		if( ( i % t->max ) == t->id )
 			for( d = t->conf->data[i]; d; d = d->next )
-				if( d->in.points )
+				if( d->len && d->in.points )
 				{
 					lock_stats( d );
 
@@ -238,7 +251,7 @@ void stats_stats_pass( ST_THR *t, int64_t tval )
 	for( i = 0; i < t->conf->hsize; i++ )
 		if( ( i % t->max ) == t->id )
 			for( d = t->conf->data[i]; d; d = d->next )
-				if( d->proc.points )
+				if( d->len && d->proc.points )
 				{
 					if( d->empty > 0 )
 						d->empty = 0;
@@ -537,7 +550,7 @@ void *stats_loop( void *arg )
 	cf = c->conf;
 
 	// and then loop round
-	loop_control( cf->name, thread_pass, c, cf->period, 1, cf->offset );
+	loop_control( cf->name, thread_pass, c, cf->period, LOOP_SYNC, cf->offset );
 
 	// and unlock ourself
 	unlock_stthr( c );

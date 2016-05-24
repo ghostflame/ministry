@@ -74,6 +74,12 @@ int io_write_data( NSOCK *s, int off )
 	{
 		if( ( rv = poll( &p, 1, 20 ) ) < 0 )
 		{
+			if( errno == EINTR )
+			{
+				debug_io( "Poll call to %s was interrupted.", s->name );
+				continue;
+			}
+
 			warn( "Poll error writing to host %s -- %s",
 				s->name, Err );
 			s->flags |= HOST_CLOSE;
@@ -87,9 +93,7 @@ int io_write_data( NSOCK *s, int off )
 				continue;
 
 			// we cannot write just yet
-#ifdef DEBUG_IO
-			debug( "Poll timed out try to write to %s", s->name );
-#endif
+			debug_io( "Poll timed out try to write to %s", s->name );
 			return sent;
 		}
 
@@ -118,9 +122,7 @@ int io_connected( NSOCK *s )
 
 	if( s->sock < 0 )
 	{
-#ifdef DEBUG_IO
-		debug( "Socket is -1, so not connected." );
-#endif
+		debug_io( "Socket is -1, so not connected." );
 		return -1;
 	}
 
@@ -228,7 +230,9 @@ void io_buf_send( IOBUF *buf )
 {
 	TARGET *t;
 	IOLIST *i;
+#ifdef DEBUG_IO
 	int bc;
+#endif
 
 	if( !buf )
 		return;
@@ -257,9 +261,7 @@ void io_buf_send( IOBUF *buf )
 		// decrement and maybe free
 		if( t->bufs > ctl->net->max_bufs )
 		{
-#ifdef DEBUG_IO
-			debug( "Dropping buffer to target %s:%hu", t->host, t->port );
-#endif
+			debug_io( "Dropping buffer to target %s:%hu", t->host, t->port );
 			io_decr_buf( buf );
 			continue;
 		}
@@ -283,15 +285,15 @@ void io_buf_send( IOBUF *buf )
 			t->qhead       = i;
 		}
 
+#ifdef DEBUG_IO
 		// increment and capture the buf count
 		bc = ++(t->bufs);
+#endif
 
 		unlock_target( t );
 
-#ifdef DEBUG_IO
-		debug( "Target %s:%hu buf count is now %d",
+		debug_io( "Target %s:%hu buf count is now %d",
 			t->host, t->port, bc );
-#endif
 	}
 }
 
@@ -330,93 +332,75 @@ void io_grab_buffer( TARGET *t )
 
 	mem_free_iolist( &l );
 
-#ifdef DEBUG_IO
-	debug( "Target %s:%hu has buffer %p (%d)",
+	debug_io( "Target %s:%hu has buffer %p (%d)",
 		t->host, t->port, t->sock->out, t->curr_len );
-#endif
 }
 
 
-void io_send_loop( TARGET *t )
+void io_send_loop( int64_t tval, void *arg )
 {
-	NSOCK *s;
+	TARGET *t = (TARGET *) arg;
+	NSOCK *s = t->sock;
 
-	s = t->sock;
+	debug_io( "Target %s:%hu loop.", t->host, t->port );
 
-	while( ctl->run_flags & RUN_LOOP )
+	// are we waiting to reconnect?
+	if( t->countdown > 0 )
 	{
-		// at the top to allow continue to invoke the sleep
-		usleep( ctl->net->io_usec );
+		t->countdown--;
+		debug_io( "Target %s:%hu countdown is now %d",
+			t->host, t->port, t->countdown );
+		return;
+	}
 
-#ifdef DEBUG_IO
-		debug( "Target %s:%hu loop.", t->host, t->port );
-#endif
+	// keep trying if we are not connected
+	if( io_connected( t->sock ) < 0
+	 && io_connect( t ) < 0 )
+	{
+		// don't try to reconnect at once
+		// sleep a few seconds
+		t->countdown = t->reconn_ct;
+		return;
+	}
 
-		// are we waiting to reconnect?
-		if( t->countdown > 0 )
+	// right, were we working on anything?
+	if( !s->out )
+		io_grab_buffer( t );
+
+	// while there's something to send
+	while( s->out )
+	{
+		// try to send the out buffer
+		t->curr_off += io_write_data( s, t->curr_off );
+
+		// did we have problems?
+		if( s->flags & HOST_CLOSE )
 		{
-			t->countdown--;
-#ifdef DEBUG_IO
-			debug( "Target %s:%hu countdown is now %d",
-				t->host, t->port, t->countdown );
-#endif
-			continue;
+			debug_io( "Disconnecting from target %s:%hu",
+				t->host, t->port );
+			tcp_disconnect( &(s->sock), "send target" );
+			s->flags &= ~HOST_CLOSE;
+			// try again later
+			break;
 		}
 
-		// keep trying if we are not connected
-		if( io_connected( t->sock ) < 0
-		 && io_connect( t ) < 0 )
+		// did we sent it all?
+		if( t->curr_off >= t->curr_len )
 		{
-			// don't try to reconnect at once
-			// sleep a few seconds
-			t->countdown = t->reconn_ct;
-			notice( "Resting for %d ticks before reconnecting to %s:%hu",
-					t->countdown, t->host, t->port );
-			continue;
-		}
-
-		// right, were we working on anything?
-		if( !s->out )
+			// drop that buffer and get a new one
+			io_decr_buf( s->out );
 			io_grab_buffer( t );
-
-		// while there's something to send
-		while( s->out )
+		}
+		else
 		{
-			// try to send the out buffer
-			t->curr_off += io_write_data( s, t->curr_off );
-
-			// did we have problems?
-			if( s->flags & HOST_CLOSE )
-			{
-#ifdef DEBUG_IO
-				debug( "Disconnecting from target %s:%hu",
-					t->host, t->port );
-#endif
-				tcp_disconnect( &(s->sock), "send target" );
-				s->flags &= ~HOST_CLOSE;
-				// try again later
-				break;
-			}
-
-			// did we sent it all?
-			if( t->curr_off >= t->curr_len )
-			{
-				// drop that buffer and get a new one
-				io_decr_buf( s->out );
-				io_grab_buffer( t );
-			}
-			else
-			{
-#ifdef DEBUG_IO
-				debug( "Target %s:%hu finishing with %d bytes to go.",
-					t->host, t->port, t->curr_len - t->curr_off );
-#endif
-				// try again later
-				break;
-			}
+			debug_io( "Target %s:%hu finishing with %d bytes to go.",
+				t->host, t->port, t->curr_len - t->curr_off );
+			// try again later
+			break;
 		}
 	}
 }
+
 
 
 
@@ -438,7 +422,7 @@ void *io_loop( void *arg )
 	}
 
 	// and we already have a port
-	sa.sin_port   = htons( d->port );
+	sa.sin_port = htons( d->port );
 
 	// make a socket
 	d->sock = net_make_sock( 0, 0, &sa );
@@ -451,14 +435,8 @@ void *io_loop( void *arg )
 	// init it's mutex
 	pthread_mutex_init( &(d->lock), NULL );
 
-
 	// now loop around sending
-	loop_mark_start( "io" );
-
-	io_send_loop( d );
-
-	loop_mark_done( "io" );
-
+	loop_control( "io", io_send_loop, d, ctl->net->io_usec, LOOP_TRIM, 0 );
 
 	// and tear down the mutex
 	pthread_mutex_destroy( &(d->lock) );

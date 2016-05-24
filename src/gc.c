@@ -41,6 +41,20 @@ int gc_hash_list( DHASH **list, DHASH **flist, unsigned int idx, int thresh )
 			h->next = *flist;
 			*flist  = h;
 
+			// clear any waiting data points
+			if( h->type == DATA_TYPE_STATS )
+			{
+				lock_stats( h );
+
+				pts = h->in.points;
+				h->in.points = NULL;
+
+				unlock_stats( h );
+
+				if( pts )
+					mem_free_point_list( pts );
+			}
+
 #ifdef DEBUG
 			debug( "GC on path %s", h->path );
 #endif
@@ -51,24 +65,12 @@ int gc_hash_list( DHASH **list, DHASH **flist, unsigned int idx, int thresh )
 			// this means searches will pass
 			// over this node
 			// and we will clear it out next time
-#ifdef DEBUG
-			debug( "Marking path %s dead.", h->path );
-#endif
 			h->len = 0;
 			freed++;
 
-			// clear any points waiting on this dhash immediately
-			// should prevent clashes with stats_report_stats
-			if( h->type == DATA_TYPE_STATS )
-			{
-				lock_stats( h );
-				pts = h->in.points;
-				h->in.points = NULL;
-				unlock_stats( h );
-
-				if( pts )
-					mem_free_point_list( pts );
-			}
+#ifdef DEBUG
+			debug( "Marked path %s dead.", h->path );
+#endif
 		}
 	}
 
@@ -108,21 +110,9 @@ void gc_one_set( ST_CFG *c, DHASH **flist, int thresh )
 }
 
 
-static int gc_check_counter = 0;
-static int gc_check_max     = 10;
-
-
 void gc_pass( int64_t tval, void *arg )
 {
 	DHASH *flist = NULL;
-
-	// we only do this every so often, but we need the faster
-	// loop for responsiveness to shutdown
-
-	if( ++gc_check_counter < gc_check_max )
-		return;
-
-	gc_check_counter = 0;
 
 	gc_one_set( ctl->stats->stats, &flist, ctl->mem->gc_thresh );
 	gc_one_set( ctl->stats->adder, &flist, ctl->mem->gc_thresh );
@@ -137,8 +127,11 @@ void gc_pass( int64_t tval, void *arg )
 void *gc_loop( void *arg )
 {
 	THRD *t = (THRD *) arg;
+	int usec;
 
-	loop_control( "gc", &gc_pass, NULL, 2987653, 0, 0 );
+	usec = (int) ( ( (double) ctl->stats->self->period ) * 1.72143698 );
+
+	loop_control( "gc", &gc_pass, NULL, usec, LOOP_TRIM, 0 );
 
 	free( t );
 	return NULL;

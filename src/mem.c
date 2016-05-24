@@ -520,19 +520,9 @@ void mem_free_buf_list( IOBUF *list )
 
 
 
-static int mem_check_counter = 0;
-static int mem_check_max     = 1;
-
 void mem_check( int64_t tval, void *arg )
 {
 	struct rusage ru;
-
-	// we only do this every so often, but we need the faster
-	// loop for responsiveness to shutdown
-	if( ++mem_check_counter < mem_check_max )
-		return;
-
-	mem_check_counter = 0;
 
 	getrusage( RUSAGE_SELF, &ru );
 
@@ -545,21 +535,9 @@ void mem_check( int64_t tval, void *arg )
 
 void *mem_loop( void *arg )
 {
-	THRD *t = (THRD *) arg;
-	int usec;
+	loop_control( "memory control", mem_check, NULL, 1000 * ctl->mem->interval, LOOP_TRIM, 0 );
 
-	usec = 1000 * ctl->mem->interval;
-
-	// don't make us wait too long
-	while( usec > MAX_LOOP_USEC )
-	{
-		mem_check_max *= 10;
-		usec /= 10;
-	}
-
-	loop_control( "memory control", mem_check, NULL, usec, 0, 0 );
-
-	free( t );
+	free( (THRD *) arg );
 	return NULL;
 }
 

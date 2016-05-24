@@ -249,7 +249,7 @@ void *tcp_loop( void *arg )
 		}
 	}
 
-	loop_mark_done( "tcp" );
+	loop_mark_done( "tcp", 0, 0 );
 
 	free( t );
 	return NULL;

@@ -124,9 +124,7 @@ void synth_generate( SYNTH *s )
 				// exempt that from gc
 				s->dhash[i]->empty = -1;
 				s->missing--;
-#ifdef DEBUG_SYNTH
-				debug( "Found source %s for synth %s", s->dhash[i]->path, s->target_path );
-#endif
+				debug_synth( "Found source %s for synth %s", s->dhash[i]->path, s->target_path );
 			}
 		}
 
@@ -151,9 +149,7 @@ void synth_generate( SYNTH *s )
 		// only generate if there's anything to do
 		if( pt > 0 )
 		{
-#ifdef DEBUG_SYNTH
-			debug( "Generating synthetic %s", s->target_path );
-#endif
+			debug_synth( "Generating synthetic %s", s->target_path );
 			(s->fn)( s );
 		}
 	}
@@ -167,77 +163,61 @@ void synth_pass( int64_t tval, void *arg )
 	ST_THR *t;
 	SYNTH *s;
 
-#ifdef DEBUG_SYNTH
-	debug( "Attempting to get adder thread locks." );
-#endif
+	debug_synth( "Attempting to get adder thread locks." );
 
 	// try to get the adder locks
 	// this should block until they are ready
 	for( t = ctl->stats->adder->ctls; t; t = t->next )
 		lock_stthr( t );
 
-#ifdef DEBUG_SYNTH
-	debug( "Generating synthetics." );
-#endif
+	debug_synth( "Generating synthetics." );
 
 	// run the list
 	for( s = ctl->synth->list; s; s = s->next )
 		synth_generate( s );
 
-#ifdef DEBUG_SYNTH
-	debug( "Unlocking synth." );
-#endif
+	debug_synth( "Unlocking synth." );
 
 	// unlock ourself
 	unlock_synth( );
 
-#ifdef DEBUG_SYNTH
-	debug( "Unlocking adder thread locks." );
-#endif
+	debug_synth( "Unlocking adder thread locks." );
 
 	// release those locks so the adder threads can carry on
 	for( t = ctl->stats->adder->ctls; t; t = t->next )
 		unlock_stthr( t );
 
-#ifdef DEBUG_SYNTH
-	debug( "Sleeping %d usec.", ctl->synth->wait_usec );
-#endif
+	debug_synth( "Synth sleeping %d usec.", ctl->synth->wait_usec );
 
 	// we have to make sure the adder threads have all called lock_synth before
 	// this does - so we deliberately yield a little while
 	// TODO device a more robust mechanism - another lock?
 	usleep( ctl->synth->wait_usec );
 
-#ifdef DEBUG_SYNTH
-	debug( "Relocking synth." );
-#endif
+	debug_synth( "Relocking synth." );
 
 	// and relock ourself for next time
 	lock_synth( );
 
-#ifdef DEBUG_SYNTH
-	debug( "Synth relocked after pass." );
-#endif
+	debug_synth( "Synth relocked after pass." );
 }
 
 
 
 void *synth_loop( void *arg )
 {
-	THRD *t = (THRD *) arg;
-
 	// a tenth of the adder period
 	ctl->synth->wait_usec = ctl->stats->adder->period / 10;
 
 	lock_synth( );
 
 	// and loop
-	loop_control( "synthetics", synth_pass, NULL, ctl->stats->adder->period, 1, ctl->stats->adder->offset );
+	loop_control( "synthetics", synth_pass, NULL, ctl->stats->adder->period, LOOP_SYNC|LOOP_TRIM, ctl->stats->adder->offset );
 
 	// and lock ourself
 	unlock_synth( );
 
-	free( t );
+	free( (THRD *) arg );
 	return NULL;
 }
 
