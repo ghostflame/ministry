@@ -610,8 +610,8 @@ int mem_config_line( AVP *av )
 
 	if( !strcasecmp( d, "block" ) )
 	{
-		mt->alloc_ct = (uint16_t) atoi( av->val );
-		info( "Allocation block for %s set to %hu", av->att, mt->alloc_ct );
+		mt->alloc_ct = (uint32_t) strtoul( av->val, NULL, 10 );
+		info( "Allocation block for %s set to %u", av->att, mt->alloc_ct );
 	}
 	else
 		return -1;
@@ -636,13 +636,14 @@ void mem_shutdown( void )
 }
 
 
-MTYPE *__mem_type_ctl( int sz, int ct )
+MTYPE *__mem_type_ctl( int sz, int ct, int extra )
 {
 	MTYPE *mt;
 
 	mt           = (MTYPE *) allocz( sizeof( MTYPE ) );
 	mt->alloc_sz = sz;
 	mt->alloc_ct = ct;
+	mt->stats_sz = sz + extra;
 
 	// and alloc some already
 	__mtype_alloc_free( mt, mt->alloc_ct );
@@ -661,11 +662,11 @@ MEM_CTL *mem_config_defaults( void )
 
 	m = (MEM_CTL *) allocz( sizeof( MEM_CTL ) );
 
-	m->hosts  = __mem_type_ctl( sizeof( HOST ),   MEM_ALLOCSZ_HOSTS  );
-	m->iobufs = __mem_type_ctl( sizeof( IOBUF ),  MEM_ALLOCSZ_IOBUF  );
-	m->points = __mem_type_ctl( sizeof( PTLIST ), MEM_ALLOCSZ_POINTS );
-	m->dhash  = __mem_type_ctl( sizeof( DHASH ),  MEM_ALLOCSZ_DHASH  );
-	m->iolist = __mem_type_ctl( sizeof( IOLIST ), MEM_ALLOCSZ_IOLIST );
+	m->hosts  = __mem_type_ctl( sizeof( HOST ),   MEM_ALLOCSZ_HOSTS,  0 );
+	m->iobufs = __mem_type_ctl( sizeof( IOBUF ),  MEM_ALLOCSZ_IOBUF,  ( MIN_NETBUF_SZ + IO_BUF_SZ ) / 2 );
+	m->points = __mem_type_ctl( sizeof( PTLIST ), MEM_ALLOCSZ_POINTS, 0 );
+	m->dhash  = __mem_type_ctl( sizeof( DHASH ),  MEM_ALLOCSZ_DHASH,  64 ); // guess on path length
+	m->iolist = __mem_type_ctl( sizeof( IOLIST ), MEM_ALLOCSZ_IOLIST, 0 );
 
 	m->max_kb       = DEFAULT_MEM_MAX_KB;
 	m->interval     = DEFAULT_MEM_CHECK_INTV;

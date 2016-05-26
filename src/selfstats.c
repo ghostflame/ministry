@@ -21,7 +21,8 @@ void self_report_mtype( ST_THR *t, char *name, MTYPE *mt )
 	// one of the reported types is buffers
 	lock_mem( mt );
 
-	bytes = (uint64_t) mt->alloc_sz * (uint64_t) mt->total;
+	// this is a guess, as stats_sz is not definitive
+	bytes = (uint64_t) mt->stats_sz * (uint64_t) mt->total;
 	alloc = mt->total;
 	freec = mt->fcount;
 

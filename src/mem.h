@@ -49,8 +49,10 @@ struct mem_type_control
 	uint32_t			fcount;
 	uint32_t			total;
 
-	uint16_t			alloc_sz;
-	uint16_t			alloc_ct;
+	uint32_t			alloc_sz;
+	uint32_t			alloc_ct;
+
+	uint32_t			stats_sz;
 
 	pthread_mutex_t		lock;
 };
