@@ -212,7 +212,7 @@ void *synth_loop( void *arg )
 	lock_synth( );
 
 	// and loop
-	loop_control( "synthetics", synth_pass, NULL, ctl->stats->adder->period, LOOP_SYNC|LOOP_TRIM, ctl->stats->adder->offset );
+	loop_control( "synthetics", synth_pass, NULL, ctl->stats->adder->period, LOOP_SYNC, ctl->stats->adder->offset );
 
 	// and lock ourself
 	unlock_synth( );
