@@ -337,12 +337,10 @@ void io_grab_buffer( TARGET *t )
 }
 
 
-void io_send_loop( int64_t tval, void *arg )
+int64_t io_send_loop( TARGET *t )
 {
-	TARGET *t = (TARGET *) arg;
 	NSOCK *s = t->sock;
-
-	debug_io( "Target %s:%hu loop.", t->host, t->port );
+	int64_t f = 0;
 
 	// are we waiting to reconnect?
 	if( t->countdown > 0 )
@@ -350,7 +348,7 @@ void io_send_loop( int64_t tval, void *arg )
 		t->countdown--;
 		debug_io( "Target %s:%hu countdown is now %d",
 			t->host, t->port, t->countdown );
-		return;
+		return 0;
 	}
 
 	// keep trying if we are not connected
@@ -360,7 +358,7 @@ void io_send_loop( int64_t tval, void *arg )
 		// don't try to reconnect at once
 		// sleep a few seconds
 		t->countdown = t->reconn_ct;
-		return;
+		return 0;
 	}
 
 	// right, were we working on anything?
@@ -372,6 +370,7 @@ void io_send_loop( int64_t tval, void *arg )
 	{
 		// try to send the out buffer
 		t->curr_off += io_write_data( s, t->curr_off );
+		f++;
 
 		// did we have problems?
 		if( s->flags & HOST_CLOSE )
@@ -399,6 +398,8 @@ void io_send_loop( int64_t tval, void *arg )
 			break;
 		}
 	}
+
+	return f;
 }
 
 
@@ -407,6 +408,7 @@ void io_send_loop( int64_t tval, void *arg )
 void *io_loop( void *arg )
 {
 	struct sockaddr_in sa;
+	int64_t fires;
 	TARGET *d;
 	THRD *t;
 
@@ -435,8 +437,16 @@ void *io_loop( void *arg )
 	// init it's mutex
 	pthread_mutex_init( &(d->lock), NULL );
 
+	loop_mark_start( "io" );
+
 	// now loop around sending
-	loop_control( "io", io_send_loop, d, ctl->net->io_usec, LOOP_TRIM, 0 );
+	while( ctl->run_flags && RUN_LOOP )
+	{
+		usleep( ctl->net->io_usec );
+		fires += io_send_loop( d );
+	}
+
+	loop_mark_done( "io", 0, fires );
 
 	// and tear down the mutex
 	pthread_mutex_destroy( &(d->lock) );
