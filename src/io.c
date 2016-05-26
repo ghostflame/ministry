@@ -408,7 +408,7 @@ int64_t io_send_loop( TARGET *t )
 void *io_loop( void *arg )
 {
 	struct sockaddr_in sa;
-	int64_t fires;
+	int64_t fires = 0;
 	TARGET *d;
 	THRD *t;
 
@@ -440,7 +440,7 @@ void *io_loop( void *arg )
 	loop_mark_start( "io" );
 
 	// now loop around sending
-	while( ctl->run_flags && RUN_LOOP )
+	while( ctl->run_flags & RUN_LOOP )
 	{
 		usleep( ctl->net->io_usec );
 		fires += io_send_loop( d );
