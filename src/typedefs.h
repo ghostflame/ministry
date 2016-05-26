@@ -48,6 +48,7 @@ typedef struct av_pair				AVP;
 typedef struct lockless_counter		LLCT;
 
 // function types
+typedef void tsf_fn ( ST_THR *, int64_t );
 typedef void stats_fn ( ST_THR *, int64_t );
 typedef void loop_call_fn ( int64_t, void * );
 typedef void * throw_fn ( void * );

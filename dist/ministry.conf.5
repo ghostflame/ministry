@@ -100,8 +100,12 @@ signed 16-bit int, so the max is 32766 (the comparison is if empty > threshold) 
 How many submission cycles a gauge must not be updated for before it is deleted.  This is stored in
 a signed 16-bit in, so the max is 32766 (default 25960)
 .SS [Stats]
+.TP
 \fBthresholds\fR
 A list of integer percentage values to generate thresholds at.  Must be 0 < x < 100.
+.TP
+\fBtimestamps\fR
+What format of timestamps should be outputted.  Options are: sec, tval, tspec, msec, usec, nsec.
 .PP
 The rest of these are of the form stats.XXX, adder.XXX, gauge.XXX or self.XXX, affecting the behaviour of
 stats reporting, adder reporting, gauge reporting or self reporting.

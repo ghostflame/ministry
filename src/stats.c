@@ -16,6 +16,13 @@ const char *stats_type_names[STATS_TYPE_MAX] =
 	"stats", "adder", "gauge", "self"
 };
 
+const char *stats_tsf_names[STATS_TSF_MAX] =
+{
+	"sec", "tval", "tspec", "msec", "usec", "nsec"
+};
+
+
+
 
 
 static inline int cmp_floats( const void *p1, const void *p2 )
@@ -74,17 +81,55 @@ void bprintf( ST_THR *t, char *fmt, ... )
 }
 
 
-// configure the line buffer of a thread from a prefix config
-void stats_set_bufs( ST_THR *t, ST_CFG *c, int64_t tval )
+// TIMESTAMP FUNCTIONS
+void stats_tsf_sec( ST_THR *t, int64_t tval )
 {
 	struct timespec now;
 
+	llts( tval, now );
+	t->tsbufsz = snprintf( t->tsbuf, TSBUF_SZ, " %ld\n", now.tv_sec );
+}
+
+void stats_tsf_tval( ST_THR *t, int64_t tval )
+{
+	struct timeval now;
+
+	lltv( tval, now );
+	t->tsbufsz = snprintf( t->tsbuf, TSBUF_SZ, " %ld.%06ld\n", now.tv_sec, now.tv_usec );
+}
+
+void stats_tsf_tspec( ST_THR *t, int64_t tval )
+{
+	struct timespec now;
+
+	llts( tval, now );
+	t->tsbufsz = snprintf( t->tsbuf, TSBUF_SZ, " %ld.%09ld\n", now.tv_sec, now.tv_nsec );
+}
+
+void stats_tsf_msec( ST_THR *t, int64_t tval )
+{
+	t->tsbufsz = snprintf( t->tsbuf, TSBUF_SZ, " %ld\n", tval / 1000000 );
+}
+
+void stats_tsf_usec( ST_THR *t, int64_t tval )
+{
+	t->tsbufsz = snprintf( t->tsbuf, TSBUF_SZ, " %ld\n", tval / 1000 );
+}
+
+void stats_tsf_nsec( ST_THR *t, int64_t tval )
+{
+	t->tsbufsz = snprintf( t->tsbuf, TSBUF_SZ, " %ld\n", tval );
+}
+
+
+
+
+// configure the line buffer of a thread from a prefix config
+void stats_set_bufs( ST_THR *t, ST_CFG *c, int64_t tval )
+{
 	// only set the timestamp buffer if we need to
 	if( tval )
-	{
-		llts( tval, now );
-		t->tsbufsz = snprintf( t->tsbuf, TSBUF_SZ, " %ld\n", now.tv_sec );
-	}
+		(*(ctl->stats->ts_fp))( t, tval );
 
 	// default to our own config
 	if( !c )
@@ -329,29 +374,29 @@ void stats_adder_pass( ST_THR *t, int64_t tval )
 
 	clock_gettime( CLOCK_REALTIME, &(tv[1]) );
 
-	//debug( "[%02d] Unlocking adder lock.", t->id );
+	debug_synth( "[%02d] Unlocking adder lock.", t->id );
 
 	// synth thread is waiting for this
 	unlock_stthr( t );
 
-	//debug( "[%02d] Trying to lock synth.", t->id );
+	debug_synth( "[%02d] Trying to lock synth.", t->id );
 
 	// try to lock the synth thread
 	lock_synth( );
 
-	//debug( "[%02d] Unlocking synth.", t->id );
+	debug_synth( "[%02d] Unlocking synth.", t->id );
 
 	// and then unlock it
 	unlock_synth( );
 
-	//debug( "[%02d] Trying to get our own lock back.", t->id );
+	debug_synth( "[%02d] Trying to get our own lock back.", t->id );
 
 	// and lock our own again
 	lock_stthr( t );
 
+#ifdef CALC_JITTER
 	//debug( "[%02d] Sleeping a little before processing.", t->id );
 
-#ifdef CALC_JITTER
 	// sleep a short time to avoid contention
 	usleep( 1000 + ( random( ) % 30011 ) );
 #endif
@@ -668,10 +713,23 @@ void stats_init_control( ST_CFG *c, int alloc_data )
 }
 
 
+tsf_fn *stats_tsf_fns[STATS_TSF_MAX] =
+{
+	&stats_tsf_sec,
+	&stats_tsf_tval,
+	&stats_tsf_tspec,
+	&stats_tsf_msec,
+	&stats_tsf_usec,
+	&stats_tsf_nsec
+};
+
 
 void stats_init( void )
 {
 	struct timespec ts;
+
+	// set our timestamps format
+	ctl->stats->ts_fp = stats_tsf_fns[ctl->stats->ts_fmt];
 
 	stats_init_control( ctl->stats->stats, 1 );
 	stats_init_control( ctl->stats->adder, 1 );
@@ -694,6 +752,9 @@ STAT_CTL *stats_config_defaults( void )
 	STAT_CTL *s;
 
 	s = (STAT_CTL *) allocz( sizeof( STAT_CTL ) );
+
+	// default to seconds format
+	s->ts_fmt = STATS_TSF_SEC;
 
 	s->stats          = (ST_CFG *) allocz( sizeof( ST_CFG ) );
 	s->stats->threads = DEFAULT_STATS_THREADS;
@@ -808,6 +869,18 @@ int stats_config_line( AVP *av )
 			}
 
 			debug( "Acquired %d thresholds.", wd.wc );
+		}
+		else if( attIs( "timestamps" ) || attIs( "tsformat" ) )
+		{
+			for( i = 0; i < STATS_TSF_MAX; i++ )
+				if( valIs( stats_tsf_names[i] ) )
+				{
+					ctl->stats->ts_fmt = i;
+					return 0;
+				}
+
+			warn( "Timestamp format %s not recognised.", av->val );
+			return -1;
 		}
 		else
 			return -1;

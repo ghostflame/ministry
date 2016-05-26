@@ -31,6 +31,18 @@ enum stats_types
 };
 
 
+enum stats_ts_format
+{
+	STATS_TSF_SEC = 0,
+	STATS_TSF_TVAL,
+	STATS_TSF_TSPEC,
+	STATS_TSF_MSEC,
+	STATS_TSF_USEC,
+	STATS_TSF_NSEC,
+	STATS_TSF_MAX,
+};
+
+
 
 #define DEFAULT_STATS_THREADS		6
 #define DEFAULT_ADDER_THREADS		2
@@ -110,6 +122,9 @@ struct stats_control
 	ST_CFG			*	adder;
 	ST_CFG			*	gauge;
 	ST_CFG			*	self;
+
+	int					ts_fmt;
+	tsf_fn			*	ts_fp;
 
 	ST_THOLD		*	thresholds;
 };
