@@ -62,7 +62,6 @@ void shut_down( int exval )
 
 	// shut down all those mutex locks
 	lock_shutdown( );
-	io_stop( );
 
 	pidfile_remove( );
 

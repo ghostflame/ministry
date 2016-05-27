@@ -201,7 +201,7 @@ int io_connect( TARGET *t )
 
 
 
-static inline void io_decr_buf( IOBUF *buf )
+void io_decr_buf( IOBUF *buf )
 {
 	int free_it = 0;
 
@@ -216,124 +216,85 @@ static inline void io_decr_buf( IOBUF *buf )
 }
 
 
-
-// attach a buffer for sending
-// this is called from multiple threads
-// they should never fight over a buffer
-// but WILL fight over targets
-//
-// After a call to this function, the buffer
-// is 'owned' by the targets and should not be
-// written to.  It will get recycled after
-// sending
-void io_buf_send( IOBUF *buf )
+// add a buffer under lock
+void io_post_buffer( TGTIO *t, IOBUF *buf )
 {
-	TARGET *t;
-	IOLIST *i;
-#ifdef DEBUG_IO
-	int bc;
-#endif
+	IOLIST *l;
 
-	if( !buf )
-		return;
+	// create the iolist structure
+	// and hand it off into the queue
+	l = mem_new_iolist( );
+	l->buf = buf;
 
-	// it does contain something, right?
-	if( !buf->len )
+	// and attach it
+	lock_tgtio( t );
+
+	if( !t->end )
+		t->end = t->head = l;
+	else
 	{
-		debug( "Empty buffer passed to io_buf_send." );
-		mem_free_buf( &buf );
-		return;
+		// make the doubly-linked list
+		l->next       = t->head;
+		t->head->prev = l;
+		t->head       = l;
 	}
 
-	// set the buffer to be handled by each target
-	// we have to do it here to prevent us getting
-	// tripped up midway through handing it to the
-	// io threads
-	buf->refs = ctl->net->tcount;
+	t->bufs++;
 
-	// as soon as the buffer is assigned to one target
-	// it's ref count is subject to multithreaded activity
+	unlock_tgtio( t );
+}
 
-	// give a ref to each io thread
-	for( t = ctl->net->targets; t; t = t->next )
+
+// retrive a buffer under lock
+IOBUF *io_fetch_buffer( TGTIO *t )
+{
+	IOLIST *l = NULL;
+	IOBUF *b = NULL;
+
+	lock_tgtio( t );
+
+	if( t->end )
 	{
-		// unless it's full already in which case
-		// decrement and maybe free
-		if( t->bufs > ctl->net->max_bufs )
-		{
-			debug_io( "Dropping buffer to target %s:%hu", t->host, t->port );
-			io_decr_buf( buf );
-			continue;
-		}
-		
+		// take one off the end
+		l = t->end;
+		t->end = l->prev;
+		t->bufs--;
 
-		// create the iolist structure
-		// and hand it off into the queue
-		i = mem_new_iolist( );
-		i->buf = buf;
-
-		// and attach it
-		lock_target( t );
-
-		if( !t->qend )
-			t->qend = t->qhead = i;
+		// was that the last one?
+		if( t->end )
+			t->end->next = NULL;
 		else
-		{
-			// make the doubly-linked list
-			i->next        = t->qhead;
-			t->qhead->prev = i;
-			t->qhead       = i;
-		}
-
-#ifdef DEBUG_IO
-		// increment and capture the buf count
-		bc = ++(t->bufs);
-#endif
-
-		unlock_target( t );
-
-		debug_io( "Target %s:%hu buf count is now %d",
-			t->host, t->port, bc );
+			t->head = NULL;
 	}
+
+	unlock_tgtio( t );
+
+	if( l )
+	{
+		b = l->buf;
+		mem_free_iolist( &l );
+	}
+
+	return b;
 }
 
 
 void io_grab_buffer( TARGET *t )
 {
-	IOLIST *l;
-
-	lock_target( t );
+	IOBUF *b;
 
 	t->curr_off  = 0;
 	t->curr_len  = 0;
 	t->sock->out = NULL;
 
-	if( !t->qend )
-	{
-		unlock_target( t );
+	if( !( b = io_fetch_buffer( t->iolist ) ) )
 		return;
-	}
 
-	// take one off the end
-	l = t->qend;
-	t->qend = l->prev;
-	t->bufs--;
-
-	// was that the last one?
-	if( t->qend )
-		t->qend->next = NULL;
-	else
-		t->qhead = NULL;
-
-	unlock_target( t );
-
-	t->sock->out = l->buf;
-	t->curr_len  = l->buf->len;
-
-	mem_free_iolist( &l );
+	t->sock->out = b;
+	t->curr_len  = b->len;
 
 	debug_io( "Target %s:%hu has buffer %p (%d)",
-		t->host, t->port, t->sock->out, t->curr_len );
+		t->host, t->port, b, b->len );
 }
 
 
@@ -407,32 +368,12 @@ int64_t io_send_loop( TARGET *t )
 
 void *io_loop( void *arg )
 {
-	struct sockaddr_in sa;
 	int64_t fires = 0;
 	TARGET *d;
 	THRD *t;
 
 	t = (THRD *) arg;
 	d = (TARGET *) t->arg;
-
-	// find out where we are connecting to
-	if( net_lookup_host( d->host, &sa ) )
-	{
-		loop_end( "Unable to loop up network target." );
-		free( t );
-		return NULL;
-	}
-
-	// and we already have a port
-	sa.sin_port = htons( d->port );
-
-	// make a socket
-	d->sock = net_make_sock( 0, 0, &sa );
-
-	// how long do we count down after 
-	d->reconn_ct = ctl->net->reconn / ctl->net->io_usec;
-	if( ctl->net->reconn % ctl->net->io_usec )
-		d->reconn_ct++;
 
 	// init it's mutex
 	pthread_mutex_init( &(d->lock), NULL );
@@ -465,36 +406,6 @@ void *io_loop( void *arg )
 }
 
 
-void io_start( void )
-{
-	TARGET *t;
-
-	// make a default target if we have none
-	if( ! ctl->net->targets )
-	{
-		t = (TARGET *) allocz( sizeof( TARGET ) );
-		t->host = str_dup( DEFAULT_TARGET_HOST, 0 );
-		t->port = DEFAULT_TARGET_PORT;
-
-		ctl->net->targets = t;
-		ctl->net->tcount  = 1;
-
-		info( "Created default target of %s:%hu", t->host, t->port );
-	}
-
-	// start one loop for each target
-	for( t = ctl->net->targets; t; t = t->next )
-		thread_throw( io_loop, t );
-}
-
-
-void io_stop( void )
-{
-	TARGET *t;
-
-	for( t = ctl->net->targets; t; t = t->next )
-		pthread_mutex_destroy( &(t->lock) );
-}
 
 
 

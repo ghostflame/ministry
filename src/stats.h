@@ -17,6 +17,14 @@ stats_fn stats_stats_pass;
 stats_fn stats_adder_pass;
 stats_fn stats_gauge_pass;
 
+tsf_fn stats_tsf_sec;
+tsf_fn stats_tsf_msec;
+tsf_fn stats_tsf_usec;
+tsf_fn stats_tsf_nsec;
+tsf_fn stats_tsf_dotmsec;
+tsf_fn stats_tsf_dotusec;
+tsf_fn stats_tsf_dotnsec;
+
 
 throw_fn stats_loop;
 
@@ -34,11 +42,12 @@ enum stats_types
 enum stats_ts_format
 {
 	STATS_TSF_SEC = 0,
-	STATS_TSF_TVAL,
-	STATS_TSF_TSPEC,
 	STATS_TSF_MSEC,
 	STATS_TSF_USEC,
 	STATS_TSF_NSEC,
+	STATS_TSF_DOTMSEC,
+	STATS_TSF_DOTUSEC,
+	STATS_TSF_DOTNSEC,
 	STATS_TSF_MAX,
 };
 
@@ -56,6 +65,8 @@ enum stats_ts_format
 
 
 #define TSBUF_SZ					32
+#define PREFIX_SZ					512
+#define PATH_SZ						8192
 
 
 struct stat_thread_ctl
@@ -75,11 +86,10 @@ struct stat_thread_ctl
 	int					wkspcsz;
 
 	// output
-	char			*	prefix;
-	char			*	tsbuf;
-	IOBUF			*	bp;
-	uint16_t			tsbufsz;
-	uint16_t			prlen;
+	BUF				*	prefix;
+	BUF				*	path;
+	BUF				**	ts;
+	IOBUF			**	bp;
 };
 
 
@@ -87,13 +97,12 @@ struct stat_thread_ctl
 struct stat_config
 {
 	ST_THR			*	ctls;
-	char			*	prefix;
+	BUF				*	prefix;
 	const char		*	name;
 	int					type;
 	int					dtype;
 	int					threads;
 	int					enable;
-	int					prlen;
 	int					period;		// msec config, converted to usec
 	int					offset;		// msec config, converted to usec
 	stats_fn		*	statfn;
@@ -122,9 +131,6 @@ struct stats_control
 	ST_CFG			*	adder;
 	ST_CFG			*	gauge;
 	ST_CFG			*	self;
-
-	int					ts_fmt;
-	tsf_fn			*	ts_fp;
 
 	ST_THOLD		*	thresholds;
 };

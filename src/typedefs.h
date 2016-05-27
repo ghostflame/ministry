@@ -16,7 +16,8 @@ typedef struct lock_control			LOCK_CTL;
 typedef struct mem_control			MEM_CTL;
 typedef struct network_control		NET_CTL;
 typedef struct stats_control		STAT_CTL;
-typedef struct synth_control        SYN_CTL;
+typedef struct synth_control		SYN_CTL;
+typedef struct target_control		TGT_CTL;
 
 typedef struct net_in_port			NET_PORT;
 typedef struct net_type				NET_TYPE;
@@ -36,7 +37,11 @@ typedef struct data_type_params		DTYPE;
 typedef struct io_buffer			IOBUF;
 typedef struct io_buffer_list		IOLIST;
 typedef struct net_socket			NSOCK;
-typedef struct network_target		TARGET;
+typedef struct target_io_list		TGTIO;
+typedef struct target_type_data		TTYPE;
+typedef struct target_stype_data	TSTYPE;
+typedef struct target_set			TSET;
+typedef struct target_conf			TARGET;
 typedef struct host_prefix			HPRFX;
 typedef struct host_prefixes		HPRFXS;
 typedef struct host_data			HOST;
@@ -44,11 +49,13 @@ typedef struct thread_data			THRD;
 typedef struct dhash_locks			DLOCKS;
 typedef struct synth_data			SYNTH;
 typedef struct words_data			WORDS;
+typedef struct string_buffer		BUF;
 typedef struct av_pair				AVP;
 typedef struct lockless_counter		LLCT;
 
 // function types
-typedef void tsf_fn ( ST_THR *, int64_t );
+typedef void target_fn ( ST_THR *, BUF *, IOBUF * );
+typedef void tsf_fn ( BUF *, int64_t );
 typedef void stats_fn ( ST_THR *, int64_t );
 typedef void loop_call_fn ( int64_t, void * );
 typedef void * throw_fn ( void * );

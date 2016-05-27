@@ -50,11 +50,11 @@
 #define lock_table( idx )		pthread_mutex_lock(   &(ctl->locks->table[idx & HASHT_MUTEX_MASK]) )
 #define unlock_table( idx )		pthread_mutex_unlock( &(ctl->locks->table[idx & HASHT_MUTEX_MASK]) )
 
-#define lock_target( t )		pthread_mutex_lock(   &(t->lock) )
-#define unlock_target( t )		pthread_mutex_unlock( &(t->lock) )
+#define lock_tgtio( t )			pthread_mutex_lock(   &(t->lock) )
+#define unlock_tgtio( t )		pthread_mutex_unlock( &(t->lock) )
 
-#define lock_stthr( s )			lock_target( s )
-#define unlock_stthr( s )		unlock_target( s )
+#define lock_stthr( s )			pthread_mutex_lock(   &(s->lock) )
+#define unlock_stthr( s )		pthread_mutex_unlock( &(s->lock) )
 
 #define lock_synth( )			pthread_mutex_lock(   &(ctl->locks->synth) )
 #define unlock_synth( )			pthread_mutex_unlock( &(ctl->locks->synth) )
