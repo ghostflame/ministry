@@ -50,6 +50,21 @@ void loop_set_time( int64_t tval, void *arg )
 }
 
 
+void *loop_timer( void *arg )
+{
+	THRD *t = (THRD *) arg;
+
+	// this just gather sets the time and doesn't exit
+	loop_control( "time set", &loop_set_time, NULL, ctl->tick_usec, LOOP_SYNC|LOOP_SILENT, 0 );
+
+	free( t );
+	return NULL;
+}
+
+
+
+
+
 
 static int64_t loop_control_factors[8] = {
 	2, 3, 5, 7, 11, 13, 17, 19
@@ -57,117 +72,23 @@ static int64_t loop_control_factors[8] = {
 
 
 
-
-// a simple timer loop
-int64_t loop_simple( loop_call_fn *fp, void *arg, int64_t base, int64_t intv, int64_t *skips )
-{
-	struct timespec spec, now;
-	int64_t fires, diff, t;
-
-	fires  = 0;
-	*skips = 0;
-
-	while( ctl->run_flags & RUN_LOOP )
-	{
-		// call out to the payload
-		(*fp)( base, arg );
-		fires++;
-
-		// advance the timer
-		base += intv;
-
-		// get the current time
-		clock_gettime( CLOCK_REALTIME, &now );
-		t = tsll( now );
-
-		// just in case we are still behind do
-		// this check, and count skips
-		while( base <= t )
-		{
-			base += intv;
-			(*skips)++;
-		}
-
-		// calculate how long to sleep for
-		diff = base - t;
-		llts( diff, spec );
-
-		// and sleep a bit
-		nanosleep( &spec, NULL );
-	}
-
-	return fires;
-}
-
-// a loop that fires more often to account for
-// long loop times, but provides rapid response
-int64_t loop_checks( const char *name, loop_call_fn *fp, void *arg, int64_t base, int64_t intv, int64_t *skips, int freq )
-{
-	struct timespec spec, now;
-	int64_t fires, diff, t;
-	int curr;
-
-	fires  = 0;
-	*skips = 0;
-	curr   = 0;
-
-	while( ctl->run_flags & RUN_LOOP )
-	{
-		if( ++curr == freq )
-		{
-			curr = 0;
-			fires++;
-
-			// call out to the payload
-			(*fp)( base, arg );
-		}
-
-		// advance the timer
-		base += intv;
-
-		// get the current time
-		clock_gettime( CLOCK_REALTIME, &now );
-		t = tsll( now );
-
-		// just in case we are still behind do
-		// this check, and count skips
-		while( base <= t )
-		{
-			base += intv;
-			(*skips)++;
-		}
-
-		// calculate how long to sleep for
-		diff = base - t;
-		llts( diff, spec );
-
-		// and sleep a bit
-		nanosleep( &spec, NULL );
-	}
-
-	return fires;
-}
-
-
-
-
-
 // we do integer maths here to avoid creeping
 // double-precision addition inaccuracies
 void loop_control( const char *name, loop_call_fn *fp, void *arg, int usec, int flags, int offset )
 {
-	int64_t diff, t, nsec, intv, offs, timer, skips, fires;
-	struct timespec spec;
-	int i, max;
+	int64_t timer, intv, nsec, offs, diff, t, skips, fires;
+	int i, ticks = 1, curr = 0;
+	struct timespec ts;
+#ifdef DEBUG_LOOPS
+	int64_t marker = 1;
+#endif
 
 	// convert to nsec
 	nsec = 1000 * (int64_t) usec;
 	offs = 1000 * (int64_t) offset;
-
 	// the actual sleep interval may be less
-	// if nsec is too high
+	// if period is too high
 	intv = nsec;
-	max  = 1;
 
 	// wind down to an acceptable interval
 	// try to avoid issues
@@ -186,16 +107,16 @@ void loop_control( const char *name, loop_call_fn *fp, void *arg, int usec, int 
 		}
 
 		// and adjust
-		intv /= loop_control_factors[i];
-		max  *= loop_control_factors[i];
+		intv  /= loop_control_factors[i];
+		ticks *= loop_control_factors[i];
 	}
 
-	if( max > 1 )
+	if( ticks > 1 )
 		debug( "Loop %s trimmed from %ld to %ld nsec interval.", name, nsec, intv );
 
 	// get the time
-	clock_gettime( CLOCK_REALTIME, &spec );
-	timer = tsll( spec );
+	clock_gettime( CLOCK_REALTIME, &ts );
+	timer = tsll( ts );
 
 	// do we synchronise to a clock?
 	if( flags & LOOP_SYNC )
@@ -204,22 +125,59 @@ void loop_control( const char *name, loop_call_fn *fp, void *arg, int usec, int 
 		diff  = t - timer;
 		timer = t;
 
-		llts( diff, spec );
-		nanosleep( &spec, NULL );
+		llts( diff, ts );
+		nanosleep( &ts, NULL );
 
 		debug( "Pushed paper for %d usec to synchronize %s loop.", diff / 1000, name );
 	}
 
+	fires = 0;
 	skips = 0;
 
 	// say a loop has started
 	loop_mark_start( name );
 
-	// call the appropriate loop fn
-	if( max > 0 )
-		fires = loop_checks( name, fp, arg, timer, intv, &skips, max );
-	else
-		fires = loop_simple( fp, arg, timer, intv, &skips );
+	while( ctl->run_flags & RUN_LOOP )
+	{
+		// decide if we are firing the payload
+		if( ++curr == ticks )
+		{
+#ifdef DEBUG_LOOPS
+			if( !( flags & LOOP_SILENT ) )
+				debug_loop( "Calling payload %s", name );
+#endif
+			(*fp)( timer, arg );
+			fires++;
+			curr = 0;
+		}
+
+		// roll on the timer
+		timer += intv;
+
+		// get the current time
+		clock_gettime( CLOCK_REALTIME, &ts );
+		t = tsll( ts );
+
+		// don't do negative sleep
+		if( t < timer )
+		{
+			// and sleep
+			diff = timer - t;
+			llts( diff, ts );
+			nanosleep( &ts, NULL );
+		}
+		else
+		{
+			skips++;
+#ifdef DEBUG_LOOPS
+			if( skips == marker )
+			{
+				debug( "Loop %s skips: %ld", name, skips );
+				marker = marker << 1;
+			}
+#endif
+		}
+	}
 
 	// and say it's finished
 	loop_mark_done( name, skips, fires );
@@ -233,6 +191,9 @@ void loop_start( void )
 	ctl->run_flags |= RUN_LOOP;
 
 	get_time( );
+
+	// start a timing circuit
+	thread_throw( &loop_timer, NULL );
 
 	// and the tset/target loops
 	// must happen before stats_start
@@ -259,8 +220,9 @@ void loop_start( void )
 	net_start_type( ctl->net->gauge );
 	net_start_type( ctl->net->compat );
 
-	// this just gather sets the time and doesn't exit
-	loop_control( "time set", &loop_set_time, NULL, ctl->tick_usec, LOOP_SYNC|LOOP_TRIM, 0 );
+	// and now we wait for the signal to end
+	while( ctl->run_flags & RUN_LOOP )
+		sleep( 1 );
 }
 
 

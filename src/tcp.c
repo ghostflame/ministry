@@ -133,10 +133,7 @@ __attribute__((hot)) void *tcp_connection( void *arg )
 		{
 			// don't sweat interruptions
 			if( errno == EINTR )
-			{
-				debug( "Poll call was interrupted." );
 				continue;
-			}
 
 			warn( "Poll error talk to host %s -- %s",
 				n->name, Err );

@@ -84,5 +84,10 @@ int log_config_line( AVP *av );
 #define debug_ipck( ... )		
 #endif
 
+#ifdef DEBUG_LOOPS
+#define debug_loop( ... )		LLFLF( DEBUG, ## __VA_ARGS__ )
+#else
+#define debug_loop( ... )		
+#endif
 
 #endif

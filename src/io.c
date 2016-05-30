@@ -307,8 +307,6 @@ int64_t io_send_loop( TARGET *t )
 	if( t->countdown > 0 )
 	{
 		t->countdown--;
-		debug_io( "Target %s:%hu countdown is now %d",
-			t->host, t->port, t->countdown );
 		return 0;
 	}
 
@@ -360,6 +358,11 @@ int64_t io_send_loop( TARGET *t )
 		}
 	}
 
+#ifdef DEBUG_IO
+	if( f > 0 )
+		debug_io( "Made %d writes to %s:%hu", f, t->host, t->port );
+#endif
+
 	return f;
 }
 
@@ -385,6 +388,7 @@ void *io_loop( void *arg )
 	{
 		usleep( ctl->net->io_usec );
 		fires += io_send_loop( d );
+		debug_io( "Target %s:%hu bufs %hu", d->host, d->port, d->bufs );
 	}
 
 	loop_mark_done( "io", 0, fires );
@@ -404,8 +408,5 @@ void *io_loop( void *arg )
 	free( t );
 	return NULL;
 }
-
-
-
 
 

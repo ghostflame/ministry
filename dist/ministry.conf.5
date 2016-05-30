@@ -178,7 +178,7 @@ How often, in msec, to perform asynchronous IO flushes to onward targets (defaul
 .TP
 \fBmax_waiting\fR
 Maximum number of IO buffers to permit to be waiting for flush to one target.  Each buffer can hold
-256KB but frequently holds much less.  Accounting is still done by number of buffers (default 128)
+256KB but frequently holds much less.  Accounting is still done by number of buffers (default 1024)
 .TP
 \fBprefix\fR
 Assigns prefixes to hosts, IPs or networks.  Hostnames are looked up and first IPv4 address taken.
