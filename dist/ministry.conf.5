@@ -151,7 +151,9 @@ timestamps but is otherwise the same.  OpenTSDB is sent using the telnet protoco
 Type of target.  Must be one of the known supported types:  graphite, influxdb, coal, opentsdb.
 .TP
 \fBhost\fR
-Hostname or IP address.  Names are looked up using normal DNS resolution.
+Hostname or IP address.  Names are looked up using normal DNS resolution.  The special string '-' will
+result in ministry writing to \fIstdout\fR and disable daemon mode.  Multiple targets writing to \fIstdout\fR
+will result in an error parsing config.
 .TP
 \fBport\fR
 Port the target is listening on.  Only TCP is supported as yet.  If this is not supplied, \fBministry\fR

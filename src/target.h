@@ -80,6 +80,7 @@ struct target_conf
 	TSET				*	set;
 	NSOCK				*	sock;
 	TGTIO				*	iolist;
+	io_fn				*	iofp;
 	char				*	host;
 	char				*	name;
 
@@ -91,6 +92,9 @@ struct target_conf
 	int						curr_off;
 	int						curr_len;
 	int						max;
+
+	// stdout flag
+	int						to_stdout;
 
 	pthread_mutex_t			lock;
 };

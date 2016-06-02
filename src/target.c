@@ -163,7 +163,7 @@ void target_buf_send( TSET *s, IOBUF *buf )
 	}
 
 	io_post_buffer( s->iolist, buf );
-	debug_io( "Tset %s buf count is now %d", t->name, s->iolist->bufs );
+	debug_io( "Tset %s buf count is now %d", s->stype->name, s->iolist->bufs );
 }
 
 
@@ -204,13 +204,13 @@ void *target_set_loop( void *arg )
 				// decrement and maybe free
 				if( io->bufs > tg->max )
 				{
-					debug_io( "Dropping buffer to target %s", t->name );
+					debug_io( "Dropping buffer to target %s", tg->name );
 					io_decr_buf( b );
 					continue;
 				}
 
 				// and post it
-				debug_io( "Sending buffer %p to target %s", b, t->name );
+				debug_io( "Sending buffer %p to target %s", b, tg->name );
 				io_post_buffer( io, b );
 			}
 	}
@@ -288,11 +288,26 @@ int target_add_config( TARGET *t )
 	TSET *s;
 	int l;
 
-	if( net_lookup_host( t->host, &sa ) )
+	// don't try to look up '-'
+	if( t->to_stdout )
+	{
+		memset( &sa, 0, sizeof( struct sockaddr_in ) );
+		l = snprintf( namebuf, 1024, "%s - stdout", t->type->name );
+		t->iofp = &io_send_stdout;
+	}
+	else if( net_lookup_host( t->host, &sa ) )
 	{
 		err( "Cannot look up host %s -- invalid target.", t->host );
 		return -1;
 	}
+	else
+	{
+		l = snprintf( namebuf, 1024, "%s - %s:%hu", t->type->name, t->host, t->port );
+		t->iofp = &io_send_net;
+	}
+
+	// create its name
+	t->name = str_dup( namebuf, l );
 
 	// make sure we have a target set to put it in
 	for( s = c->sets; s; s = s->next )
@@ -317,18 +332,19 @@ int target_add_config( TARGET *t )
 	sa.sin_port   = htons( t->port );
 	sa.sin_family = AF_INET;
 
+	// make a socket
 	t->sock = net_make_sock( 0, 0, &sa );
+
+	// just connect to stdout?
+	if( t->to_stdout )
+		t->sock->sock = fileno( stdout );
 
 	// how long do we count down after 
 	t->reconn_ct = ctl->net->reconn / ctl->net->io_usec;
 	if( ctl->net->reconn % ctl->net->io_usec )
 		t->reconn_ct++;
 
-	// create its name
-	l = snprintf( namebuf, 1024, "%s - %s:%hu", t->type->name, t->host, t->port );
-	t->name = str_dup( namebuf, l );
-
-	// and it's io list
+	// it's io list
 	t->iolist = (TGTIO *) allocz( sizeof( TGTIO ) );
 
 	// put it in the list
@@ -395,6 +411,21 @@ int target_config_line( AVP *av )
 			return -1;
 		}
 
+		// special value - stdout
+		if( valIs( "-" ) )
+		{
+			if( ctl->run_flags & RUN_TGT_STDOUT )
+			{
+				err( "Can only have one target writing to stdout." );
+				return -1;
+			}
+
+			ctl->run_flags |= RUN_TGT_STDOUT;
+			t->to_stdout = 1;
+
+			debug( "Target writing to stdout." );
+		}
+
 		t->host = str_dup( av->val, av->vlen );
 		__tgt_cfg_state = 1;
 	}
@@ -403,7 +434,7 @@ int target_config_line( AVP *av )
 		t->port = (uint16_t) strtoul( av->val, NULL, 10 );
 		__tgt_cfg_state = 1;
 	}
-	else if( attIs( "max_waiting" ) )
+	else if( attIs( "max_waiting" ) || attIs( "max" ) )
 	{
 		t->max = atoi( av->val );
 		if( t->max <= 0 || t->max > TARGET_MAX_MAX_WAITING )

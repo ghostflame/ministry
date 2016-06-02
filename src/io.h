@@ -49,6 +49,9 @@ void io_decr_buf( IOBUF *buf );
 void io_post_buffer( TGTIO *t, IOBUF *buf );
 IOBUF *io_fetch_buffer( TGTIO *t );
 
+io_fn io_send_net;
+io_fn io_send_stdout;
+
 throw_fn io_loop;
 
 

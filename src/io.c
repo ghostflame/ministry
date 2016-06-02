@@ -298,7 +298,35 @@ void io_grab_buffer( TARGET *t )
 }
 
 
-int64_t io_send_loop( TARGET *t )
+// a much simpler loop
+int64_t io_send_stdout( TARGET *t )
+{
+	NSOCK *s = t->sock;
+	int64_t f = 0;
+
+	// look for an outgoing buffer
+	if( !s->out )
+		io_grab_buffer( t );
+
+	// keep writing while there's something to send
+	while( s->out )
+	{
+		t->curr_off += write( s->sock, s->out->buf + t->curr_off, s->out->len - t->curr_off );
+		f++;
+
+		if( t->curr_off >= t->curr_len )
+		{
+			io_decr_buf( s->out );
+			io_grab_buffer( t );
+		}
+	}
+
+	return f;
+}
+
+
+
+int64_t io_send_net( TARGET *t )
 {
 	NSOCK *s = t->sock;
 	int64_t f = 0;
@@ -387,8 +415,11 @@ void *io_loop( void *arg )
 	while( ctl->run_flags & RUN_LOOP )
 	{
 		usleep( ctl->net->io_usec );
-		fires += io_send_loop( d );
-		debug_io( "Target %s:%hu bufs %hu", d->host, d->port, d->bufs );
+
+		// call the right io fn - stdout is different from network
+		fires += (*(d->iofp))( d );
+
+		debug_io( "Target %s:%hu bufs %d", d->host, d->port, d->iolist->bufs );
 	}
 
 	loop_mark_done( "io", 0, fires );
@@ -408,5 +439,8 @@ void *io_loop( void *arg )
 	free( t );
 	return NULL;
 }
+
+
+
 
 

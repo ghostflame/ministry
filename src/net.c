@@ -136,7 +136,10 @@ NSOCK *net_make_sock( int insz, int outsz, struct sockaddr_in *peer )
 	NSOCK *ns;
 
 	if( !( ns = (NSOCK *) allocz( sizeof( NSOCK ) ) ) )
+	{
 		fatal( "Could not allocate new nsock." );
+		return NULL;
+	}
 
 	if( !ns->name )
 	{
