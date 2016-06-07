@@ -140,8 +140,34 @@ int config_file_dupe( CCTXT *c, char *path )
 }
 
 
+
 int config_line( AVP *av )
 {
+	char *d;
+	int res;
+
+	if( ( d = strchr( av->att, '.' ) ) )
+	{
+		d++;
+
+		if( !strncasecmp( av->att, "limits.", 7 ) )
+		{
+			if( !strcasecmp( d, "procs" ) )
+				res = RLIMIT_NPROC;
+			else if( !strcasecmp( d, "files" ) )
+				res = RLIMIT_NOFILE;
+			else
+				return -1;
+
+			ctl->limits[res] = (int64_t) atoll( av->val );
+			ctl->setlim[res] = 0x01;
+		}
+		else
+			return -1;
+
+		return 0;
+	}
+
 	if( attIs( "tick_msec" ) )
 		ctl->tick_usec = 1000 * atoi( av->val );
 	else if( attIs( "daemon" ) )
@@ -302,6 +328,10 @@ MIN_CTL *config_create( void )
 	c->basedir    = strdup( DEFAULT_BASE_DIR );
 
 	c->tick_usec  = 1000 * DEFAULT_TICK_MSEC;
+
+	// max these two out
+	c->limits[RLIMIT_NOFILE] = -1;
+	c->limits[RLIMIT_NPROC]  = -1;
 
 	clock_gettime( CLOCK_REALTIME, &(c->init_time) );
 	tsdupe( c->init_time, c->curr_time );

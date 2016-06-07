@@ -109,4 +109,7 @@ void kahan_summation( float *list, int len, float *sum );
 // timespec difference as a double
 double ts_diff( struct timespec to, struct timespec from, double *store );
 
+// set an rlimit
+int setlimit( int res, int64_t val );
+
 #endif
