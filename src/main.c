@@ -100,6 +100,17 @@ int set_signals( void )
 	return 0;
 }
 
+int set_limits( void )
+{
+	int i, ret = 0;
+
+	for( i = 0; i < RLIMIT_NLIMITS; i++ )
+		if( ctl->setlim[i] )
+			ret += setlimit( i, ctl->limits[i] );
+
+	return ret;
+}
+
 
 
 int main( int ac, char **av )
@@ -169,7 +180,6 @@ int main( int ac, char **av )
 		return 0;
 	}
 
-
 	if( !ctl->log->force_stdout )
 		debug( "Starting logging - no more logs to stdout." );
 
@@ -194,6 +204,9 @@ int main( int ac, char **av )
 	}
 
 	pidfile_write( );
+
+	if( set_limits( ) )
+		fatal( "Failed to set limits." );
 
 	if( set_signals( ) )
 		fatal( "Failed to set signalling." );

@@ -394,3 +394,44 @@ double ts_diff( struct timespec to, struct timespec from, double *store )
 }
 
 
+int setlimit( int res, int64_t val )
+{
+	char *which = "unknown";
+	struct rlimit rl;
+
+	switch( res )
+	{
+		case RLIMIT_NOFILE:
+			which = "files";
+			break;
+		case RLIMIT_NPROC:
+			which = "procs";
+			break;
+	}
+
+	getrlimit( res, &rl );
+
+	// -1 means GIVE ME EVERYTHING!
+	if( val == -1 )
+		rl.rlim_cur = rl.rlim_max;
+	else
+	{
+		if( rl.rlim_max < val )
+		{
+			err( "Limit %s max is %ld.", which, rl.rlim_max );
+			return -1;
+		}
+		rl.rlim_cur = val;
+	}
+
+	if( setrlimit( res, &rl ) )
+	{
+		err( "Cannot set %s limit to %ld: %s",
+			which, val, Err );
+		return -1;
+	}
+
+	debug( "Set %s limit to %ld.", which, rl.rlim_cur );
+	return 0;
+}
+
