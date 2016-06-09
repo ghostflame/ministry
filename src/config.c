@@ -141,6 +141,11 @@ int config_file_dupe( CCTXT *c, char *path )
 
 
 
+#define config_set_limit( r, v )	\
+ctl->limits[r] = (int64_t) v;\
+ctl->setlim[r] = 0x01
+
+
 int config_line( AVP *av )
 {
 	char *d;
@@ -159,8 +164,7 @@ int config_line( AVP *av )
 			else
 				return -1;
 
-			ctl->limits[res] = (int64_t) atoll( av->val );
-			ctl->setlim[res] = 0x01;
+			config_set_limit( res, atoll( av->val ) );
 		}
 		else
 			return -1;
@@ -330,12 +334,14 @@ MIN_CTL *config_create( void )
 	c->tick_usec  = 1000 * DEFAULT_TICK_MSEC;
 
 	// max these two out
-	c->limits[RLIMIT_NOFILE] = -1;
-	c->limits[RLIMIT_NPROC]  = -1;
+	config_set_limit( RLIMIT_NOFILE, -1 );
+	config_set_limit( RLIMIT_NPROC,  -1 );
 
 	clock_gettime( CLOCK_REALTIME, &(c->init_time) );
 	tsdupe( c->init_time, c->curr_time );
 
 	return c;
 }
+
+#undef config_set_limit
 

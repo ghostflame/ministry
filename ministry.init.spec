@@ -1,5 +1,5 @@
 Name:		ministry
-Version:	0.3.4
+Version:	0.3.5
 Release:	1%{?dist}
 Summary:	A statsd implementation in threaded C.
 
