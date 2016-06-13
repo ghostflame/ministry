@@ -328,6 +328,7 @@ void mem_free_dhash( DHASH **d )
 	}
 
 	sd->type = 0;
+	sd->valid = 0;
 
 	__mtype_free( ctl->mem->dhash, sd );
 }
@@ -362,6 +363,9 @@ void mem_free_dhash_list( DHASH *list )
 			d->in.sum.total = 0;
 			d->in.sum.count = 0;
 		}
+
+		d->type = 0;
+		d->valid = 0;
 
 		d->next  = freed;
 		freed    = d;

@@ -23,7 +23,7 @@ int gc_hash_list( DHASH **list, DHASH **flist, unsigned int idx, int thresh )
 	{
 		next = h->next;
 
-		if( h->len == 0 )
+		if( h->valid == 0 )
 		{
 			if( !lock )
 			{
@@ -61,11 +61,9 @@ int gc_hash_list( DHASH **list, DHASH **flist, unsigned int idx, int thresh )
 		}
 		else if( h->empty > thresh )
 		{
-			// flatten the path length
-			// this means searches will pass
-			// over this node
-			// and we will clear it out next time
-			h->len = 0;
+			// unset the valid flag in the first pass
+			// then tidy up in the second pass
+			h->valid = 0;
 			freed++;
 
 #ifdef DEBUG

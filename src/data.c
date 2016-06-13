@@ -178,12 +178,17 @@ __attribute__((hot)) static inline DHASH *data_get_dhash( char *path, int len, S
 		if( !( d = data_find_path( c->data[idx], hval, path, len ) ) )
 		{
 			if( !( d = mem_new_dhash( path, len, c->dtype ) ) )
+			{
 				fatal( "Could not allocate dhash for %s.", c->name );
+				return NULL;
+			}
 
 			d->sum = hval;
 
 			d->next = c->data[idx];
 			c->data[idx] = d;
+
+			d->valid = 1;
 		}
 
 		unlock_table( idx );

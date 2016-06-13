@@ -264,7 +264,7 @@ void stats_stats_pass( ST_THR *t, int64_t tval )
 	for( i = 0; i < t->conf->hsize; i++ )
 		if( ( i % t->max ) == t->id )
 			for( d = t->conf->data[i]; d; d = d->next )
-				if( d->len && d->in.points )
+				if( d->valid && d->in.points )
 				{
 					lock_stats( d );
 
@@ -296,7 +296,7 @@ void stats_stats_pass( ST_THR *t, int64_t tval )
 	for( i = 0; i < t->conf->hsize; i++ )
 		if( ( i % t->max ) == t->id )
 			for( d = t->conf->data[i]; d; d = d->next )
-				if( d->len && d->proc.points )
+				if( d->valid && d->proc.points )
 				{
 					if( d->empty > 0 )
 						d->empty = 0;
@@ -359,7 +359,7 @@ void stats_adder_pass( ST_THR *t, int64_t tval )
 	for( i = 0; i < t->conf->hsize; i++ )
 		if( ( i % t->max ) == t->id )
 			for( d = t->conf->data[i]; d; d = d->next )
-				if( d->in.sum.count > 0 )
+				if( d->valid && d->in.sum.count > 0 )
 				{
 					lock_adder( d );
 
@@ -415,7 +415,7 @@ void stats_adder_pass( ST_THR *t, int64_t tval )
 	for( i = 0; i < t->conf->hsize; i++ )
 		if( ( i % t->max ) == t->id )
 			for( d = t->conf->data[i]; d; d = d->next )
-				if( d->proc.sum.count > 0 )
+				if( d->valid && d->proc.sum.count > 0 )
 				{
 					if( d->empty > 0 )
 						d->empty = 0;
@@ -480,7 +480,7 @@ void stats_gauge_pass( ST_THR *t, int64_t tval )
 	for( i = 0; i < t->conf->hsize; i++ )
 		if( ( i % t->max ) == t->id )
 			for( d = t->conf->data[i]; d; d = d->next )
-				if( d->in.sum.count ) 
+				if( d->valid && d->in.sum.count ) 
 				{
 					lock_gauge( d );
 

@@ -29,7 +29,7 @@ enum data_conn_type
 
 struct data_type_params
 {
-	int					type;
+	uint8_t				type;
 	char			*	name;
 	line_fn			*	lf;
 	line_fn			*	pf;
@@ -75,7 +75,8 @@ struct data_hash_entry
 	uint16_t			sz;
 	uint32_t			id;
 	uint32_t			sum;
-	uint16_t			type;
+	uint8_t				type;
+	uint8_t				valid;
 	int16_t				empty;
 };
 
