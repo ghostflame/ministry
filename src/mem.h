@@ -71,6 +71,7 @@ struct mem_control
 	int					hashsize;
 	int					interval;	// msec
 
+	int					gc_enabled;
 	int					gc_thresh;
 	int					gc_gg_thresh;
 };

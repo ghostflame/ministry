@@ -293,6 +293,7 @@ struct synth_fn_def synth_fn_defs[] =
 	{ { NULL,     NULL,      NULL   }, NULL,         0, 0 },
 };
 
+
 int synth_config_path( SYNTH *s, AVP *av )
 {
 	char *p;
@@ -321,12 +322,14 @@ int synth_config_line( AVP *av )
 {
 	SYNTH *ns, *s = &__synth_cfg_tmp;
 	struct synth_fn_def *def;
+	int i;
 
 	// empty?
 	if( !__synth_cfg_state )
 	{
 		memset( s, 0, sizeof( SYNTH ) );
 		s->factor = 1;
+		s->enable = 1;
 		s->min_parts = 1;
 	}
 
@@ -343,6 +346,11 @@ int synth_config_line( AVP *av )
 	{
 		if( synth_config_path( s, av ) != 0 )
 			return -1;
+		__synth_cfg_state = 1;
+	}
+	else if( attIs( "enable" ) )
+	{
+		s->enable = config_bool( av );
 		__synth_cfg_state = 1;
 	}
 	else if( attIs( "factor" ) )
@@ -399,19 +407,42 @@ int synth_config_line( AVP *av )
 				s->target_path, s->parts, s->max_parts );
 		}
 
-		// make a new synth and copy the contents
-		// yes we are copying the pointers
-		ns = (SYNTH *) allocz( sizeof( SYNTH ) );
-		*ns = *s;
+		if( s->enable )
+		{
+			// make a new synth and copy the contents
+			// yes we are copying the pointers
+			ns = (SYNTH *) allocz( sizeof( SYNTH ) );
+			*ns = *s;
 
-		// and link it
-		ns->next = ctl->synth->list;
-		ctl->synth->list = ns;
-		ctl->synth->scount++;
+			// and link it
+			ns->next = ctl->synth->list;
+			ctl->synth->list = ns;
+			ctl->synth->scount++;
 
-		debug( "Added synthetic %s (%s/%d).", ns->target_path,
-			ns->op_name, ns->parts );
+			debug( "Added synthetic %s (%s/%d).", ns->target_path,
+				ns->op_name, ns->parts );
+		}
+		else
+		{
+			// tidy up
+			if( s->target_path )
+			{
+				debug( "Dropping disabled synthetic %s (%s/%d).",
+					s->target_path, s->op_name, s->parts );
 
+				free( s->target_path );
+				s->target_path = NULL;
+			}
+
+			for( i = 0; i < s->parts; i++ )
+				if( s->paths[i] )
+				{
+					free( s->paths[i] );
+					s->paths[i] = NULL;
+				}
+		}
+
+		// and we start again next time
 		__synth_cfg_state = 0;
 	}
 

@@ -91,6 +91,15 @@ int config_ignore_section( FILE *fh )
 }
 
 
+int config_bool( AVP *av )
+{
+	if( valIs( "true" ) || valIs( "yes" ) || valIs( "y" ) || ( atoi( av->val ) != 0 ) )
+		return 1;
+
+	return 0;
+}
+
+
 
 CCTXT *config_make_context( char *path, CCTXT *parent )
 {
@@ -176,10 +185,10 @@ int config_line( AVP *av )
 		ctl->tick_usec = 1000 * atoi( av->val );
 	else if( attIs( "daemon" ) )
 	{
-	  	if( valIs( "yes" ) || valIs( "y" ) || atoi( av->val ) )
+		if( config_bool( av ) )
 			ctl->run_flags |= RUN_DAEMON;
 		else
-		  	ctl->run_flags &= ~RUN_DAEMON;
+			ctl->run_flags &= ~RUN_DAEMON;
 	}
 	else if( attIs( "pidfile" ) )
 	{

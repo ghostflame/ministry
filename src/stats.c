@@ -912,13 +912,8 @@ int stats_config_line( AVP *av )
 	}
 	else if( !strcasecmp( d, "enable" ) )
 	{
-		if( valIs( "y" ) || valIs( "yes" ) || atoi( av->val ) )
-			sc->enable = 1;
-		else
-		{
+		if( !( sc->enable = config_bool( av ) ) )
 			debug( "Stats type %s disabled.", sc->name );
-			sc->enable = 0;
-		}
 	}
 	else if( !strcasecmp( d, "prefix" ) )
 	{

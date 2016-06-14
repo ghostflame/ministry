@@ -29,6 +29,7 @@ struct synth_data
 
 	double				factor;			// defaults to 1
 
+	int					enable;
 	int					parts;
 	int					missing;
 	int					min_parts;

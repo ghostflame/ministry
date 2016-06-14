@@ -564,6 +564,8 @@ int mem_config_line( AVP *av )
 			ctl->mem->interval = atoi( av->val );
 		else if( attIs( "hashsize" ) )
 			ctl->mem->hashsize = atoi( av->val );
+		else if( attIs( "gc" ) )
+			ctl->mem->gc_enabled = config_bool( av );
 		else if( attIs( "gc_thresh" ) )
 		{
 			t = atoi( av->val );
