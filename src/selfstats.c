@@ -120,10 +120,8 @@ void self_report_nettype( ST_THR *t, NET_TYPE *n )
 
 
 // report our own pass
-void self_stats_pass( ST_THR *t, int64_t tval )
+void self_stats_pass( ST_THR *t )
 {
-	struct timespec now;
-
 #ifdef KEEP_LOCK_STATS
 	// report stats usage
 	self_report_dlocks( t, ctl->locks->dstats );
@@ -150,8 +148,8 @@ void self_stats_pass( ST_THR *t, int64_t tval )
 	self_report_mtype( t, "iolist", ctl->mem->iolist );
 
 	bprintf( t, "mem.total.kb %d", ctl->mem->curr_kb );
-	llts( tval, now );
-	bprintf( t, "uptime %.3f", ts_diff( now, ctl->init_time, NULL ) );
+	bprintf( t, "uptime %.3f", ts_diff( t->now, ctl->init_time, NULL ) );
+	bprintf( t, "workers.selfstats.0.self_paths %ld", t->paths + 1 );
 }
 
 
