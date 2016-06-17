@@ -133,6 +133,10 @@ void stats_set_bufs( ST_THR *t, ST_CFG *c, int64_t tval )
 		t->tval = tval;
 		llts( tval, t->now );
 
+		// and reset counters
+		t->paths  = 0;
+		t->points = 0;
+
 		// and run the relevant function
 		(*(ctl->stats->ts_fp))( t );
 	}
@@ -143,8 +147,6 @@ void stats_set_bufs( ST_THR *t, ST_CFG *c, int64_t tval )
 
 	t->prefix = c->prefix;
 	t->prlen  = c->prlen;
-	t->paths  = 0;
-	t->points = 0;
 
 	// grab a new buffer
 	if( !t->bp && !( t->bp = mem_new_buf( IO_BUF_SZ ) ) )
