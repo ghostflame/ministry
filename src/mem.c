@@ -564,6 +564,12 @@ int mem_config_line( AVP *av )
 			ctl->mem->interval = atoi( av->val );
 		else if( attIs( "hashsize" ) )
 			ctl->mem->hashsize = atoi( av->val );
+		else if( attIs( "stacksize" ) )
+		{
+			// gets converted to KB
+			ctl->mem->stacksize = atoi( av->val );
+			info( "Stack size set to %d KB.", ctl->mem->stacksize );
+		}
 		else if( attIs( "gc" ) )
 			ctl->mem->gc_enabled = config_bool( av );
 		else if( attIs( "gc_thresh" ) )
@@ -679,6 +685,7 @@ MEM_CTL *mem_config_defaults( void )
 	m->gc_thresh    = DEFAULT_GC_THRESH;
 	m->gc_gg_thresh = DEFAULT_GC_GG_THRESH;
 	m->hashsize     = MEM_HSZ_LARGE;
+	m->stacksize    = DEFAULT_MEM_STACK_SIZE;
 
 	return m;
 }

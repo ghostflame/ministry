@@ -96,6 +96,10 @@ This is the size that types will default to for their hash table size.  This is 
 all three types.  It should be of the same order of magnitude as the expected number of paths.  Prime
 numbers are recommended to prevent large numbers of hash collisions (default 100003)
 .TP
+\fBstacksize\fR
+This is the thread stack size (in KB).  This is mainly used during debugging to control VSS where there
+might be a lot of threads (from client connections mostly).  Best not mess with this (default 128).
+.TP
 \fBgc_thresh\fR
 How many submission cycles a path must lie empty for before it is deleted.  This is stored in a
 signed 16-bit int, so the max is 32766 (the comparison is if empty > threshold) (default 8640)
