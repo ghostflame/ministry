@@ -64,6 +64,7 @@ synth_fn synth_min;
 synth_fn synth_spread;
 synth_fn synth_mean;
 synth_fn synth_count;
+synth_fn synth_active;
 
 loop_call_fn synth_pass;
 

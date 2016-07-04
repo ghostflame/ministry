@@ -149,7 +149,7 @@ void self_stats_pass( ST_THR *t )
 
 	bprintf( t, "mem.total.kb %d", ctl->mem->curr_kb );
 	bprintf( t, "uptime %.3f", ts_diff( t->now, ctl->init_time, NULL ) );
-	bprintf( t, "workers.selfstats.0.self_paths %ld", t->paths + 1 );
+	bprintf( t, "workers.selfstats.0.self_paths %ld", t->active + 1 );
 }
 
 

@@ -12,7 +12,7 @@
 #ifndef MINISTRY_DATA_H
 #define MINISTRY_DATA_H
 
-// rounds the structure to 4k
+// rounds the structure to 8k with a spare space
 #define PTLIST_SIZE				1021
 
 #define LINE_SEPARATOR			'\n'
@@ -45,21 +45,17 @@ extern const DTYPE data_type_defns[];
 struct points_list
 {
 	PTLIST			*	next;
-	uint32_t			count;
-	float				vals[PTLIST_SIZE];
-};
-
-struct path_sum
-{
-	double				total;
-	uint64_t			count;
+	int64_t				count;
+	double				vals[PTLIST_SIZE];
+	double				sentinel;
 };
 
 
-union data_hash_vals
+struct data_hash_vals
 {
 	PTLIST			*	points;
-	PTSUM				sum;
+	double				total;
+	uint64_t			count;
 };
 
 
@@ -75,9 +71,11 @@ struct data_hash_entry
 	uint16_t			sz;
 	uint32_t			id;
 	uint32_t			sum;
-	uint8_t				type;
 	uint8_t				valid;
-	int16_t				empty;
+	uint8_t				do_pass;
+	uint8_t				type;
+	uint8_t				_pad;
+	int32_t				empty;
 };
 
 

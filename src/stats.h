@@ -68,8 +68,8 @@ struct stat_thread_ctl
 	pthread_mutex_t		lock;
 
 	// workspace
-	float			*	wkbuf;
-	float			*	wkspc;
+	double			*	wkbuf;
+	double			*	wkspc;
 	int					wkspcsz;
 
 	// output
@@ -83,7 +83,7 @@ struct stat_thread_ctl
 	int64_t				tval;
 
 	// counters
-	int64_t				paths;
+	int64_t				active;
 	int64_t				points;
 
 	// timings

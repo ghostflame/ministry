@@ -27,13 +27,13 @@ const char *stats_tsf_names[STATS_TSF_MAX] =
 
 static inline int cmp_floats( const void *p1, const void *p2 )
 {
-	float *f1, *f2;
+	double *d1, *d2;
 
-	f1 = (float *) p1;
-	f2 = (float *) p2;
+	d1 = (double *) p1;
+	d2 = (double *) p2;
 
-	return ( *f1 > *f2 ) ? 1  :
-	       ( *f2 < *f1 ) ? -1 : 0;
+	return ( *d1 > *d2 ) ? 1  :
+	       ( *d2 < *d1 ) ? -1 : 0;
 }
 
 
@@ -80,7 +80,7 @@ void bprintf( ST_THR *t, char *fmt, ... )
 	t->bp->len += t->tsbufsz;
 
 	// keep count
-	t->paths++;
+	t->active++;
 }
 
 
@@ -134,7 +134,7 @@ void stats_set_bufs( ST_THR *t, ST_CFG *c, int64_t tval )
 		llts( tval, t->now );
 
 		// and reset counters
-		t->paths  = 0;
+		t->active = 0;
 		t->points = 0;
 
 		// and run the relevant function
@@ -170,9 +170,9 @@ void stats_thread_report( ST_THR *t )
 	stats_set_bufs( t, ctl->stats->self, 0 );
 
 	// we have to capture it, because bprintf increments it
-	p = t->paths;
+	p = t->active;
 
-	bprintf( t, "%s.active %d", t->wkrstr, p );
+	bprintf( t, "%s.active %d", t->wkrstr, t->active );
 	bprintf( t, "%s.points %d", t->wkrstr, t->points );
 
 	if( t->conf->type == STATS_TYPE_STATS )
@@ -212,7 +212,7 @@ void stats_thread_report( ST_THR *t )
 	bprintf( t, "%s.interval_usage %.3f", t->wkrstr, intvpc );
 
 	// and report our own paths
-	bprintf( t, "%s.self_paths %ld", t->wkrstr, t->paths + 1 );
+	bprintf( t, "%s.self_paths %ld", t->wkrstr, t->active - p + 1 );
 }
 
 
@@ -223,18 +223,24 @@ void stats_report_one( ST_THR *t, DHASH *d )
 	PTLIST *list, *p;
 	int i, ct, idx;
 	ST_THOLD *thr;
-	float sum;
+	double sum;
 
 	// grab the points list
 	list = d->proc.points;
 	d->proc.points = NULL;
 
-	// count the points
-	for( ct = 0, p = list; p; p = p->next )
-		ct += p->count;
+#ifdef CATCH_HIGH_POINTERS
+	// weird pointer corruption check
+	if( ((unsigned long) list) & 0xfff0000000000000 )
+	{
+		fatal( "Found ptr val %p on dhash %s",
+			list, d->path );
+		return;
+	}
+#endif
 
 	// anything to do?
-	if( ct == 0 )
+	if( ( ct = (int) d->proc.count ) == 0 )
 	{
 		if( list )
 			mem_free_point_list( list );
@@ -256,15 +262,15 @@ void stats_report_one( ST_THR *t, DHASH *d )
 		if( ct > t->wkspcsz )
 		{
 			int sz = t->wkspcsz;
-			float *ws;
+			double *ws;
 
 			// double it until we have enough
 			while( ct > sz )
 				sz *= 2;
 
-			if( !( ws = (float *) allocz( sz * sizeof( float ) ) ) )
+			if( !( ws = (double *) allocz( sz * sizeof( double ) ) ) )
 			{
-				fatal( "Could not allocate new workbuf of %d floats.", sz );
+				fatal( "Could not allocate new workbuf of %d doubles.", sz );
 				return;
 			}
 
@@ -280,7 +286,7 @@ void stats_report_one( ST_THR *t, DHASH *d )
 		// now copy the data in
 		for( i = 0, p = list; p; p = p->next )
 		{
-			memcpy( t->wkspc + i, p->vals, p->count * sizeof( float ) );
+			memcpy( t->wkspc + i, p->vals, p->count * sizeof( double ) );
 			i += p->count;
 		}
 	}
@@ -292,10 +298,10 @@ void stats_report_one( ST_THR *t, DHASH *d )
 	idx = ct / 2;
 
 	// and sort them
-	qsort( t->wkspc, ct, sizeof( float ), cmp_floats );
+	qsort( t->wkspc, ct, sizeof( double ), cmp_floats );
 
 	bprintf( t, "%s.count %d",  d->path, ct );
-	bprintf( t, "%s.mean %f",   d->path, sum / (float) ct );
+	bprintf( t, "%s.mean %f",   d->path, sum / (double) ct );
 	bprintf( t, "%s.upper %f",  d->path, t->wkspc[ct-1] );
 	bprintf( t, "%s.lower %f",  d->path, t->wkspc[0] );
 	bprintf( t, "%s.median %f", d->path, t->wkspc[idx] );
@@ -332,13 +338,16 @@ void stats_stats_pass( ST_THR *t )
 	// take the data
 	for( i = 0; i < t->conf->hsize; i++ )
 		if( ( i % t->max ) == t->id )
-			for( d = t->conf->data[i]; d; d = d->next )
+			for( d = t->conf->data[i]; d && d->valid; d = d->next )
 				if( d->valid && d->in.points )
 				{
 					lock_stats( d );
 
 					d->proc.points = d->in.points;
+					d->proc.count  = d->in.count;
 					d->in.points   = NULL;
+					d->in.count    = 0;
+					d->do_pass     = 1;
 
 					unlock_stats( d );
 				}
@@ -354,13 +363,15 @@ void stats_stats_pass( ST_THR *t )
 	// and report it
 	for( i = 0; i < t->conf->hsize; i++ )
 		if( ( i % t->max ) == t->id )
-			for( d = t->conf->data[i]; d; d = d->next )
-				if( d->valid && d->proc.points )
+			for( d = t->conf->data[i]; d && d->valid; d = d->next )
+				if( d->do_pass && d->proc.points )
 				{
 					if( d->empty > 0 )
 						d->empty = 0;
 
 					stats_report_one( t, d );
+
+					d->do_pass = 0;
 				}
 
 	// and work out how long that took
@@ -383,14 +394,16 @@ void stats_adder_pass( ST_THR *t )
 	// take the data
 	for( i = 0; i < t->conf->hsize; i++ )
 		if( ( i % t->max ) == t->id )
-			for( d = t->conf->data[i]; d; d = d->next )
-				if( d->valid && d->in.sum.count > 0 )
+			for( d = t->conf->data[i]; d && d->valid; d = d->next )
+				if( d->in.count > 0 )
 				{
 					lock_adder( d );
 
-					d->proc.sum     = d->in.sum;
-					d->in.sum.total = 0;
-					d->in.sum.count = 0;
+					// copy everything, then zero the in
+					d->proc     = d->in;
+					d->in.total = 0;
+					d->in.count = 0;
+					d->do_pass  = 1;
 
 					unlock_adder( d );
 				}
@@ -428,19 +441,20 @@ void stats_adder_pass( ST_THR *t )
 	// and report it
 	for( i = 0; i < t->conf->hsize; i++ )
 		if( ( i % t->max ) == t->id )
-			for( d = t->conf->data[i]; d; d = d->next )
-				if( d->valid && d->proc.sum.count > 0 )
+			for( d = t->conf->data[i]; d && d->valid; d = d->next )
+				if( d->do_pass && d->proc.count > 0 )
 				{
 					if( d->empty > 0 )
 						d->empty = 0;
 
-					bprintf( t, "%s %f", d->path, d->proc.sum.total );
+					bprintf( t, "%s %f", d->path, d->proc.total );
 
-					// keep count
-					t->points += d->proc.sum.count;
+					// keep count and then zero it
+					t->points += d->proc.count;
+					d->proc.count = 0;
 
-					// and zero that
-					d->proc.sum.count = 0;
+					// and remove the pass marker
+					d->do_pass = 0;
 				}
 
 
@@ -463,14 +477,15 @@ void stats_gauge_pass( ST_THR *t )
 	// take the data
 	for( i = 0; i < t->conf->hsize; i++ )
 		if( ( i % t->max ) == t->id )
-			for( d = t->conf->data[i]; d; d = d->next )
-				if( d->valid && d->in.sum.count ) 
+			for( d = t->conf->data[i]; d && d->valid; d = d->next )
+				if( d->in.count ) 
 				{
 					lock_gauge( d );
 
-					d->proc.sum     = d->in.sum;
+					d->proc.count = d->in.count;
+					d->proc.total = d->in.total;
 					// don't reset the gauge, just the count
-					d->in.sum.count = 0;
+					d->in.count = 0;
 
 					unlock_gauge( d );
 				}
@@ -489,18 +504,16 @@ void stats_gauge_pass( ST_THR *t )
 			for( d = t->conf->data[i]; d; d = d->next )
 			{
 				// we report gauges anyway, updated or not
-				bprintf( t, "%s %f", d->path, d->proc.sum.total );
+				bprintf( t, "%s %f", d->path, d->proc.total );
 
-				if( d->proc.sum.count )
+				if( d->proc.count )
 				{
 					if( d->empty > 0 )
 						d->empty = 0;
 
-					// keep count
-					t->points += d->proc.sum.count;
-
-					// and zero that
-					d->proc.sum.count = 0;
+					// keep count and zero the counter
+					t->points += d->proc.count;
+					d->proc.count = 0;
 				}
 			}
 
@@ -653,7 +666,7 @@ void stats_init_control( ST_CFG *c, int alloc_data )
 		if( c->type == STATS_TYPE_STATS )
 		{
 			t->wkspcsz = 1024;
-			t->wkbuf   = (float *) allocz( t->wkspcsz * sizeof( float ) );
+			t->wkbuf   = (double *) allocz( t->wkspcsz * sizeof( double ) );
 		}
 
 		pthread_mutex_init( &(t->lock), NULL );

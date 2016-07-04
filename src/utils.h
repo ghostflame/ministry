@@ -104,7 +104,7 @@ void pidfile_write( void );
 void pidfile_remove( void );
 
 // proper float summation
-void kahan_summation( float *list, int len, float *sum );
+void kahan_summation( double *list, int len, double *sum );
 
 // timespec difference as a double
 double ts_diff( struct timespec to, struct timespec from, double *store );

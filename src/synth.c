@@ -13,17 +13,17 @@ void synth_sum( SYNTH *s )
 {
 	int i;
 
-	s->target->proc.sum.total = 0;
+	s->target->proc.total = 0;
 
 	for( i = 0; i < s->parts; i++ )
-		s->target->proc.sum.total += s->dhash[i]->proc.sum.total;
+		s->target->proc.total += s->dhash[i]->proc.total;
 
-	s->target->proc.sum.total *= s->factor;
+	s->target->proc.total *= s->factor;
 }
 
 void synth_diff( SYNTH *s )
 {
-	s->target->proc.sum.total = s->factor * ( s->dhash[0]->proc.sum.total - s->dhash[1]->proc.sum.total );
+	s->target->proc.total = s->factor * ( s->dhash[0]->proc.total - s->dhash[1]->proc.total );
 }
 
 void synth_div( SYNTH *s )
@@ -33,36 +33,36 @@ void synth_div( SYNTH *s )
 	a = s->dhash[0];
 	b = s->dhash[1];
 
-	if( b->proc.sum.total == 0 )
-		s->target->proc.sum.total = 0;
+	if( b->proc.total == 0 )
+		s->target->proc.total = 0;
 	else
-		s->target->proc.sum.total = ( a->proc.sum.total * s->factor ) / b->proc.sum.total;
+		s->target->proc.total = ( a->proc.total * s->factor ) / b->proc.total;
 }
 
 void synth_max( SYNTH *s )
 {
 	int i;
 
-	s->target->proc.sum.total = s->dhash[0]->proc.sum.total;
+	s->target->proc.total = s->dhash[0]->proc.total;
 
 	for( i = 1; i < s->parts; i++ )
-		if( s->target->proc.sum.total < s->dhash[i]->proc.sum.total )
-			s->target->proc.sum.total = s->dhash[i]->proc.sum.total;
+		if( s->target->proc.total < s->dhash[i]->proc.total )
+			s->target->proc.total = s->dhash[i]->proc.total;
 
-	s->target->proc.sum.total *= s->factor;
+	s->target->proc.total *= s->factor;
 }
 
 void synth_min( SYNTH *s )
 {
 	int i;
 
-	s->target->proc.sum.total = s->dhash[0]->proc.sum.total;
+	s->target->proc.total = s->dhash[0]->proc.total;
 
 	for( i = 1; i < s->parts; i++ )
-		if( s->target->proc.sum.total > s->dhash[i]->proc.sum.total )
-			s->target->proc.sum.total = s->dhash[i]->proc.sum.total;
+		if( s->target->proc.total > s->dhash[i]->proc.total )
+			s->target->proc.total = s->dhash[i]->proc.total;
 
-	s->target->proc.sum.total *= s->factor;
+	s->target->proc.total *= s->factor;
 }
 
 void synth_spread( SYNTH *s )
@@ -70,36 +70,50 @@ void synth_spread( SYNTH *s )
 	double min, max;
 	int i;
 
-	min = max = s->dhash[0]->proc.sum.total;
+	min = max = s->dhash[0]->proc.total;
 
 	for( i = 1; i < s->parts; i++ )
 	{
-		if( max < s->dhash[i]->proc.sum.total )
-			max = s->dhash[i]->proc.sum.total;
-		if( min > s->dhash[i]->proc.sum.total )
-			min = s->dhash[i]->proc.sum.total;
+		if( max < s->dhash[i]->proc.total )
+			max = s->dhash[i]->proc.total;
+		if( min > s->dhash[i]->proc.total )
+			min = s->dhash[i]->proc.total;
 	}
 
-	s->target->proc.sum.total = s->factor * ( max - min );
+	s->target->proc.total = s->factor * ( max - min );
 }
 
 void synth_mean( SYNTH *s )
 {
 	synth_sum( s );
-	s->target->proc.sum.total /= s->parts;
+	s->target->proc.total /= s->parts;
 }
 
 void synth_count( SYNTH *s )
 {
 	int i;
 
-	s->target->proc.sum.total = 0;
+	s->target->proc.total = 0;
 
 	for( i = 0; i < s->parts; i++ )
-		if( s->dhash[i]->proc.sum.count > 0 )
-			s->target->proc.sum.total += 1;
+		if( s->dhash[i]->proc.count > 0 )
+			s->target->proc.total += 1;
 
-	s->target->proc.sum.total *= s->factor;
+	s->target->proc.total *= s->factor;
+}
+
+void synth_active( SYNTH *s )
+{
+	int i;
+
+	s->target->proc.total = 0;
+
+	for( i = 0; i < s->parts; i++ )
+		if( s->dhash[i]->proc.count > 0 )
+		{
+			s->target->proc.total = 1;
+			break;
+		}
 }
 
 
@@ -141,10 +155,10 @@ void synth_generate( SYNTH *s )
 	{
 		// check to see if there's any data
 		for( pt = 0, i = 0; i < s->parts; i++ )
-			pt += s->dhash[i]->proc.sum.count;
+			pt += s->dhash[i]->proc.count;
 
 		// make the point appropriately
-		s->target->proc.sum.count = pt;
+		s->target->proc.count = pt;
 
 		// only generate if there's anything to do
 		if( pt > 0 )
@@ -289,6 +303,7 @@ struct synth_fn_def synth_fn_defs[] =
 	{ { "spread", "width",   NULL   }, synth_spread, 1, 0 },
 	{ { "mean",   "average", NULL   }, synth_mean,   1, 0 },
 	{ { "count",  "nonzero", NULL   }, synth_count,  1, 0 },
+	{ { "active", "present", NULL   }, synth_active, 1, 0 },
 	// last entry is a marker
 	{ { NULL,     NULL,      NULL   }, NULL,         0, 0 },
 };
