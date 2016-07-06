@@ -56,6 +56,9 @@ struct ministry_control
 
 	int						tick_usec;
 	int						loop_count;
+
+	int64_t					limits[RLIMIT_NLIMITS];
+	int8_t					setlim[RLIMIT_NLIMITS];
 };
 
 

@@ -66,6 +66,10 @@ Whether \fBministry\fR disconnects from the controlling terminal with the daemon
 \fBpidfile\fR
 Filename \fBministry\fR will write its process ID to (default /var/run/ministry.pid).  This can also
 be overriden with the -p <file> CLI option.
+.TP
+\fBlimits.TYPE\fR
+Make a call to setrlimit for the specified type.  Supported types are \fBprocs\fR and \fBfiles\fR.
+Both default to the system hard limit of the type.
 .SS [Logging]
 .TP
 \fBfilename\fR | \fBfile\fR | \fBlogfile\fR
