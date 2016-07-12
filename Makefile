@@ -28,6 +28,13 @@ subdirs:
 code:
 	@cd src && $(MAKE) $(MFLAGS) $(TARGET)
 
+
+docker: subdirs code
+	@rm -f src/*.o
+	docker build .
+	@cd src && $(MAKE) $(MFLAGS) clean
+
+
 install:
 	@echo "Making installation directories"
 	@mkdir -p $(CFGDIR) $(LRTDIR) $(MANDIR)/man1 $(MANDIR)/man5 $(DOCDIR)
