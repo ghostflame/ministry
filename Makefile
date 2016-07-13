@@ -31,7 +31,7 @@ code:
 
 docker: subdirs code
 	@rm -f src/*.o
-	docker build .
+	docker build -t ghostflame/ministry .
 	@cd src && $(MAKE) $(MFLAGS) clean
 
 

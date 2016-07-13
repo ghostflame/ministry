@@ -76,6 +76,12 @@ ADD dist/ministry.service /usr/lib/systemd/system/ministry.service
 # Add the single binary
 ADD src/ministry /usr/bin/ministry
 
+# make the ports available
+EXPOSE 8125
+EXPOSE 9125
+EXPOSE 9225
+EXPOSE 9325
+
 # and light it up
 RUN systemctl enable ministry.service
 
