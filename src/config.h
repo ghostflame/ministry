@@ -64,6 +64,7 @@ struct ministry_control
 int config_bool( AVP *av );
 int config_read( char *path );
 char *config_relative_path( char *inpath );
-MIN_CTL *config_create( void );
+int config_choose_handler( char *section, AVP *av );
+void config_create( char **env );
 
 #endif

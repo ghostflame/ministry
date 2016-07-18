@@ -90,4 +90,10 @@ int log_config_line( AVP *av );
 #define debug_loop( ... )		
 #endif
 
+#ifdef DEBUG_ENV
+#define debug_env( ... )		LLFLF( DEBUG, ## __VA_ARGS__ )
+#else
+#define debug_env( ... )		
+#endif
+
 #endif

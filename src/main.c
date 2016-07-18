@@ -113,14 +113,14 @@ int set_limits( void )
 
 
 
-int main( int ac, char **av )
+int main( int ac, char **av, char **env )
 {
 	int oc, justTest = 0, debug = 0;
 	char *pidfile = NULL;
 	double diff;
 
 	// make a control structure
-	ctl = config_create( );
+	config_create( env );
 
 	while( ( oc = getopt( ac, av, "hHDVdvtc:p:" ) ) != -1 )
 		switch( oc )

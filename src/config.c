@@ -78,6 +78,12 @@ int config_get_line( FILE *f, AVP *av )
 
 
 
+
+
+
+
+
+
 // step over one section
 int config_ignore_section( FILE *fh )
 {
@@ -227,7 +233,6 @@ char *config_relative_path( char *inpath )
 }
 
 
-#define	secIs( s )		!strcasecmp( context->section, s )
 
 int config_read( char *inpath )
 {
@@ -282,20 +287,8 @@ int config_read( char *inpath )
 			continue;
 		}
 
-		// hand some sections off to different config fns
-		if( secIs( "logging" ) )
-			lrv = log_config_line( &av );
-		else if( secIs( "network" ) )
-		  	lrv = net_config_line( &av );
-		else if( secIs( "memory" ) )
-			lrv = mem_config_line( &av );
-		else if( secIs( "stats" ) )
-			lrv = stats_config_line( &av );
-		else if( secIs( "synth" ) )
-			lrv = synth_config_line( &av );
-		else
-			lrv = config_line( &av );
-
+		// and dispatch it
+		lrv = config_choose_handler( context->section, &av );
         ret += lrv;
 
 		if( lrv )
@@ -319,37 +312,128 @@ END_FILE:
 	return ret;
 }
 
+
+
+#define	secIs( s )		!strcasecmp( section, s )
+
+int config_choose_handler( char *section, AVP *av )
+{
+	// hand some sections off to different config fns
+	if( secIs( "logging" ) )
+		return log_config_line( av );
+	else if( secIs( "network" ) )
+	  	return net_config_line( av );
+	else if( secIs( "memory" ) )
+		return mem_config_line( av );
+	else if( secIs( "stats" ) )
+		return stats_config_line( av );
+	else if( secIs( "synth" ) )
+		return synth_config_line( av );
+
+	return config_line( av );
+}
+
 #undef secIs
 
 
-
-MIN_CTL *config_create( void )
+int config_env_path( char *path, int len )
 {
-	MIN_CTL *c;
+	char *sec, *pth, *us, *p;
+	AVP av;
 
-	c             = (MIN_CTL *) allocz( sizeof( MIN_CTL ) );
-	c->log        = log_config_defaults( );
-	c->locks      = lock_config_defaults( );
-	c->mem        = mem_config_defaults( );
-	c->net        = net_config_defaults( );
-	c->stats      = stats_config_defaults( );
-	c->synth      = synth_config_defaults( );
+	if( path[0] == '_' )
+	{
+		// 'main' section
+		sec = "";
+		pth = path + 1;
+		len--;
+	}
+	else if( !( us = memchr( path, '_', len ) ) )
+	{
+		warn( "No section found in env path %s", path );
+		return -1;
+	}
+	else
+	{
+		sec  = path;
+		*us  = '\0';
+		pth  = ++us;
+		len -= pth - path;
 
-	c->cfg_file   = strdup( DEFAULT_CONFIG_FILE );
-	c->pidfile    = strdup( DEFAULT_PID_FILE );
-	c->version    = strdup( MINISTRY_VERSION );
-	c->basedir    = strdup( DEFAULT_BASE_DIR );
+		// lower-case the section
+		for( p = path; p < us; p++ )
+			*p = tolower( *p );
+	}
 
-	c->tick_usec  = 1000 * DEFAULT_TICK_MSEC;
+	if( var_val( pth, len, &av, CFG_VV_FLAGS ) )
+	{
+		warn( "Could not process env path." );
+		return -1;
+	}
+
+	// and try it
+	if( !config_choose_handler( sec, &av ) )
+	{
+		debug_env( "Found env %s -> %s", av.att, av.val );
+		return 0;
+	}
+
+	return -1;
+}
+
+
+
+int config_read_env( char **env )
+{
+	char buf[8192];
+	int l;
+
+	for( ; *env; env++ )
+	{
+		l = snprintf( buf, 8192, "%s", *env );
+
+		if( l < 14 || memcmp( buf, "MINISTRY_CFG_", 13 ) )
+			continue;
+
+		if( config_env_path( buf + 13, l - 13 ) )
+		{
+			warn( "Problematic environmental config item %s", *env );
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+
+
+void config_create( char **env )
+{
+	ctl             = (MIN_CTL *) allocz( sizeof( MIN_CTL ) );
+
+	ctl->log        = log_config_defaults( );
+	ctl->locks      = lock_config_defaults( );
+	ctl->mem        = mem_config_defaults( );
+	ctl->net        = net_config_defaults( );
+	ctl->stats      = stats_config_defaults( );
+	ctl->synth      = synth_config_defaults( );
+
+	ctl->cfg_file   = strdup( DEFAULT_CONFIG_FILE );
+	ctl->pidfile    = strdup( DEFAULT_PID_FILE );
+	ctl->version    = strdup( MINISTRY_VERSION );
+	ctl->basedir    = strdup( DEFAULT_BASE_DIR );
+
+	ctl->tick_usec  = 1000 * DEFAULT_TICK_MSEC;
 
 	// max these two out
-	config_set_limit( c, RLIMIT_NOFILE, -1 );
-	config_set_limit( c, RLIMIT_NPROC,  -1 );
+	config_set_limit( ctl, RLIMIT_NOFILE, -1 );
+	config_set_limit( ctl, RLIMIT_NPROC,  -1 );
 
-	clock_gettime( CLOCK_REALTIME, &(c->init_time) );
-	tsdupe( c->init_time, c->curr_time );
+	clock_gettime( CLOCK_REALTIME, &(ctl->init_time) );
+	tsdupe( ctl->init_time, ctl->curr_time );
 
-	return c;
+	// read our environment
+	config_read_env( env );
 }
 
 #undef config_set_limit
