@@ -65,13 +65,11 @@ struct stat_thread_ctl
 	char			*	wkrstr;
 	int					id;
 	int					max;
-	int					points;
-	int					active;
 	pthread_mutex_t		lock;
 
 	// workspace
-	float			*	wkbuf;
-	float			*	wkspc;
+	double			*	wkbuf;
+	double			*	wkspc;
 	int					wkspcsz;
 
 	// output
@@ -80,6 +78,22 @@ struct stat_thread_ctl
 	IOBUF			*	bp;
 	uint16_t			tsbufsz;
 	uint16_t			prlen;
+
+	// current timestamp
+	int64_t				tval;
+
+	// counters
+	int64_t				active;
+	int64_t				points;
+
+	// timings
+	struct timespec		now;
+	// these are taken at the time of *starting* to do something
+	struct timespec		steal;
+	struct timespec		wait;
+	struct timespec		stats;
+	// and this is taken when finished
+	struct timespec		done;
 };
 
 
@@ -102,7 +116,7 @@ struct stat_config
 	DHASH			**	data;
 	int					hsize;
 	int					dcurr;
-	int					gc_count;
+	LLCT				gc_count;
 	uint32_t			did;
 };
 

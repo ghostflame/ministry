@@ -37,31 +37,16 @@ void self_report_mtype( ST_THR *t, char *name, MTYPE *mt )
 
 void self_report_types( ST_THR *t, ST_CFG *c )
 {
-	float hr;
-
-	hr = (float) c->dcurr / (float) c->hsize;
+	float hr = (float) c->dcurr / (float) c->hsize;
 
 	bprintf( t, "paths.%s.curr %d",         c->name, c->dcurr );
-	bprintf( t, "paths.%s.gc %d",           c->name, c->gc_count );
+	bprintf( t, "paths.%s.gc %lu",          c->name, lockless_fetch( &(c->gc_count) ) );
+	bprintf( t, "paths.%s.gc_total %lu",    c->name, c->gc_count.count );
 	bprintf( t, "paths.%s.hash_ratio %.6f", c->name, hr );
 }
 
 
 
-uint64_t stats_lockless_fetch( LLCT *l )
-{
-	uint64_t diff, curr;
-
-	// we can only read from it *once*
-	// then we do maths
-	curr = l->count;
-	diff = curr - l->prev;
-
-	// and set the previous
-	l->prev = curr;
-
-	return diff;
-}
 
 
 void self_report_dlocks( ST_THR *t, DLOCKS *d )
@@ -71,7 +56,7 @@ void self_report_dlocks( ST_THR *t, DLOCKS *d )
 
 	for( total = 0, i = 0; i < d->len; i++ )
 	{
-		diff = stats_lockless_fetch( &(d->used[i]) );
+		diff = lockless_fetch( &(d->used[i]) );
 		total += diff;
 
 		bprintf( t, "locks.%s.%03d %lu", d->name, i, diff );
@@ -85,16 +70,16 @@ void self_report_netport( ST_THR *t, NET_PORT *p, char *name, char *proto, int d
 {
 	uint64_t diff;
 
-	diff = stats_lockless_fetch( &(p->errors)  );
+	diff = lockless_fetch( &(p->errors)  );
 	bprintf( t, "network.%s.%s.%hu.errors %lu",  name, proto, p->port, diff );
 
 	if( do_drops )
 	{
-		diff = stats_lockless_fetch( &(p->drops)   );
+		diff = lockless_fetch( &(p->drops)   );
 		bprintf( t, "network.%s.%s.%hu.drops %lu",   name, proto, p->port, diff );
 	}
 
-	diff = stats_lockless_fetch( &(p->accepts) );
+	diff = lockless_fetch( &(p->accepts) );
 	bprintf( t, "network.%s.%s.%hu.accepts %lu", name, proto, p->port, diff );
 }
 
@@ -120,10 +105,8 @@ void self_report_nettype( ST_THR *t, NET_TYPE *n )
 
 
 // report our own pass
-void self_stats_pass( ST_THR *t, int64_t tval )
+void self_stats_pass( ST_THR *t )
 {
-	struct timespec now;
-
 #ifdef KEEP_LOCK_STATS
 	// report stats usage
 	self_report_dlocks( t, ctl->locks->dstats );
@@ -150,8 +133,8 @@ void self_stats_pass( ST_THR *t, int64_t tval )
 	self_report_mtype( t, "iolist", ctl->mem->iolist );
 
 	bprintf( t, "mem.total.kb %d", ctl->mem->curr_kb );
-	llts( tval, now );
-	bprintf( t, "uptime %.3f", ts_diff( now, ctl->init_time, NULL ) );
+	bprintf( t, "uptime %.3f", ts_diff( t->now, ctl->init_time, NULL ) );
+	bprintf( t, "workers.selfstats.0.self_paths %ld", t->active + 1 );
 }
 
 

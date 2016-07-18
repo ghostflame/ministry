@@ -355,9 +355,9 @@ void pidfile_remove( void )
 // an implementation of Kaham Summation
 // https://en.wikipedia.org/wiki/Kahan_summation_algorithm
 // useful to avoid floating point errors
-static inline void kahan_sum( float val, float *sum, float *low )
+static inline void kahan_sum( double val, double *sum, double *low )
 {
-	float y, t;
+	double y, t;
 
 	y = val - *low;		// low starts off small
 	t = *sum + y;		// sum is big, y small, lo-order y is lost
@@ -366,9 +366,9 @@ static inline void kahan_sum( float val, float *sum, float *low )
 	*sum = t;		// low is algebraically always 0
 }
 
-void kahan_summation( float *list, int len, float *sum )
+void kahan_summation( double *list, int len, double *sum )
 {
-	float low = 0;
+	double low = 0;
 	int i;
 
 	for( *sum = 0, i = 0; i < len; i++ )
@@ -434,4 +434,22 @@ int setlimit( int res, int64_t val )
 	debug( "Set %s limit to %ld.", which, rl.rlim_cur );
 	return 0;
 }
+
+
+uint64_t lockless_fetch( LLCT *l )
+{
+	uint64_t diff, curr;
+
+	// we can only read from it *once*
+	// then we do maths
+	curr = l->count;
+	diff = curr - l->prev;
+
+	// and set the previous
+	l->prev = curr;
+
+	return diff;
+}
+
+
 

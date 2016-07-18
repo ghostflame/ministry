@@ -250,7 +250,8 @@ void mem_free_point( PTLIST **p )
 	sp = *p;
 	*p = NULL;
 
-	sp->count = 0;
+	sp->count    = 0;
+	sp->sentinel = 0;
 
 	__mtype_free( ctl->mem->points, sp );
 }
@@ -267,7 +268,9 @@ void mem_free_point_list( PTLIST *list )
 		p    = list;
 		list = p->next;
 
-		p->count = 0;
+		p->count    = 0;
+		p->sentinel = 0;
+
 		p->next  = freed;
 		freed    = p;
 
@@ -314,20 +317,23 @@ void mem_free_dhash( DHASH **d )
 	sd = *d;
 	*d = NULL;
 
-	*(sd->path) = '\0';
+	*(sd->path)  = '\0';
+	sd->len      = 0;
+	sd->in.total = 0;
+	sd->in.count = 0;
+	sd->type     = 0;
+	sd->valid    = 0;
+	sd->empty    = 0;
 
-	if( sd->type == DATA_TYPE_STATS && sd->in.points )
+	if( sd->in.points )
 	{
 		mem_free_point_list( sd->in.points );
 		sd->in.points = NULL;
 	}
-	else
-	{
-		sd->in.sum.total = 0;
-		sd->in.sum.count = 0;
-	}
 
-	sd->type = 0;
+	sd->proc.points = NULL;
+	sd->proc.total  = 0;
+	sd->proc.count  = 0;
 
 	__mtype_free( ctl->mem->dhash, sd );
 }
@@ -346,9 +352,16 @@ void mem_free_dhash_list( DHASH *list )
 		d    = list;
 		list = d->next;
 
-		*(d->path) = '\0';
+		*(d->path)  = '\0';
+		d->len      = 0;
+		d->in.total = 0;
+		d->in.count = 0;
+		d->type     = 0;
+		d->valid    = 0;
+		d->do_pass  = 0;
+		d->empty    = 0;
 
-		if( d->type == DATA_TYPE_STATS && d->in.points )
+		if( d->in.points )
 		{
 			for( p = d->in.points; p->next; p = p->next );
 
@@ -357,14 +370,13 @@ void mem_free_dhash_list( DHASH *list )
 
 			d->in.points = NULL;
 		}
-		else
-		{
-			d->in.sum.total = 0;
-			d->in.sum.count = 0;
-		}
 
-		d->next  = freed;
-		freed    = d;
+		d->proc.points = NULL;
+		d->proc.total  = 0;
+		d->proc.count  = 0;
+
+		d->next = freed;
+		freed   = d;
 
 		if( !end )
 			end = d;
@@ -560,16 +572,19 @@ int mem_config_line( AVP *av )
 			ctl->mem->interval = atoi( av->val );
 		else if( attIs( "hashsize" ) )
 			ctl->mem->hashsize = atoi( av->val );
+		else if( attIs( "stacksize" ) )
+		{
+			// gets converted to KB
+			ctl->mem->stacksize = atoi( av->val );
+			info( "Stack size set to %d KB.", ctl->mem->stacksize );
+		}
+		else if( attIs( "gc" ) )
+			ctl->mem->gc_enabled = config_bool( av );
 		else if( attIs( "gc_thresh" ) )
 		{
 			t = atoi( av->val );
 			if( !t )
 				t = DEFAULT_GC_THRESH;
-			if( t > 32766 )
-			{
-				warn( "Garbage collection threshold is over max (32766), clipping to 32766." );
-				t = 32766;
-			}
 			info( "Garbage collection threshold set to %d stats intervals.", t );
 			ctl->mem->gc_thresh = t;
 		}
@@ -578,11 +593,6 @@ int mem_config_line( AVP *av )
 			t = atoi( av->val );
 			if( !t )
 				t = DEFAULT_GC_GG_THRESH;
-			if( t > 32766 )
-			{
-				warn( "Gauge garbage collection threshold is over max (32766), clipping to 32766." );
-				t = 32766;
-			}
 			info( "Gauge garbage collection threshold set to %d stats intervals.", t );
 			ctl->mem->gc_gg_thresh = t;
 		}
@@ -670,9 +680,11 @@ MEM_CTL *mem_config_defaults( void )
 
 	m->max_kb       = DEFAULT_MEM_MAX_KB;
 	m->interval     = DEFAULT_MEM_CHECK_INTV;
+	m->gc_enabled   = 1;
 	m->gc_thresh    = DEFAULT_GC_THRESH;
 	m->gc_gg_thresh = DEFAULT_GC_GG_THRESH;
 	m->hashsize     = MEM_HSZ_LARGE;
+	m->stacksize    = DEFAULT_MEM_STACK_SIZE;
 
 	return m;
 }

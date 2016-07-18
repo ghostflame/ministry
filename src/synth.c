@@ -13,17 +13,17 @@ void synth_sum( SYNTH *s )
 {
 	int i;
 
-	s->target->proc.sum.total = 0;
+	s->target->proc.total = 0;
 
 	for( i = 0; i < s->parts; i++ )
-		s->target->proc.sum.total += s->dhash[i]->proc.sum.total;
+		s->target->proc.total += s->dhash[i]->proc.total;
 
-	s->target->proc.sum.total *= s->factor;
+	s->target->proc.total *= s->factor;
 }
 
 void synth_diff( SYNTH *s )
 {
-	s->target->proc.sum.total = s->factor * ( s->dhash[0]->proc.sum.total - s->dhash[1]->proc.sum.total );
+	s->target->proc.total = s->factor * ( s->dhash[0]->proc.total - s->dhash[1]->proc.total );
 }
 
 void synth_div( SYNTH *s )
@@ -33,36 +33,36 @@ void synth_div( SYNTH *s )
 	a = s->dhash[0];
 	b = s->dhash[1];
 
-	if( b->proc.sum.total == 0 )
-		s->target->proc.sum.total = 0;
+	if( b->proc.total == 0 )
+		s->target->proc.total = 0;
 	else
-		s->target->proc.sum.total = ( a->proc.sum.total * s->factor ) / b->proc.sum.total;
+		s->target->proc.total = ( a->proc.total * s->factor ) / b->proc.total;
 }
 
 void synth_max( SYNTH *s )
 {
 	int i;
 
-	s->target->proc.sum.total = s->dhash[0]->proc.sum.total;
+	s->target->proc.total = s->dhash[0]->proc.total;
 
 	for( i = 1; i < s->parts; i++ )
-		if( s->target->proc.sum.total < s->dhash[i]->proc.sum.total )
-			s->target->proc.sum.total = s->dhash[i]->proc.sum.total;
+		if( s->target->proc.total < s->dhash[i]->proc.total )
+			s->target->proc.total = s->dhash[i]->proc.total;
 
-	s->target->proc.sum.total *= s->factor;
+	s->target->proc.total *= s->factor;
 }
 
 void synth_min( SYNTH *s )
 {
 	int i;
 
-	s->target->proc.sum.total = s->dhash[0]->proc.sum.total;
+	s->target->proc.total = s->dhash[0]->proc.total;
 
 	for( i = 1; i < s->parts; i++ )
-		if( s->target->proc.sum.total > s->dhash[i]->proc.sum.total )
-			s->target->proc.sum.total = s->dhash[i]->proc.sum.total;
+		if( s->target->proc.total > s->dhash[i]->proc.total )
+			s->target->proc.total = s->dhash[i]->proc.total;
 
-	s->target->proc.sum.total *= s->factor;
+	s->target->proc.total *= s->factor;
 }
 
 void synth_spread( SYNTH *s )
@@ -70,36 +70,50 @@ void synth_spread( SYNTH *s )
 	double min, max;
 	int i;
 
-	min = max = s->dhash[0]->proc.sum.total;
+	min = max = s->dhash[0]->proc.total;
 
 	for( i = 1; i < s->parts; i++ )
 	{
-		if( max < s->dhash[i]->proc.sum.total )
-			max = s->dhash[i]->proc.sum.total;
-		if( min > s->dhash[i]->proc.sum.total )
-			min = s->dhash[i]->proc.sum.total;
+		if( max < s->dhash[i]->proc.total )
+			max = s->dhash[i]->proc.total;
+		if( min > s->dhash[i]->proc.total )
+			min = s->dhash[i]->proc.total;
 	}
 
-	s->target->proc.sum.total = s->factor * ( max - min );
+	s->target->proc.total = s->factor * ( max - min );
 }
 
 void synth_mean( SYNTH *s )
 {
 	synth_sum( s );
-	s->target->proc.sum.total /= s->parts;
+	s->target->proc.total /= s->parts;
 }
 
 void synth_count( SYNTH *s )
 {
 	int i;
 
-	s->target->proc.sum.total = 0;
+	s->target->proc.total = 0;
 
 	for( i = 0; i < s->parts; i++ )
-		if( s->dhash[i]->proc.sum.count > 0 )
-			s->target->proc.sum.total += 1;
+		if( s->dhash[i]->proc.count > 0 )
+			s->target->proc.total += 1;
 
-	s->target->proc.sum.total *= s->factor;
+	s->target->proc.total *= s->factor;
+}
+
+void synth_active( SYNTH *s )
+{
+	int i;
+
+	s->target->proc.total = 0;
+
+	for( i = 0; i < s->parts; i++ )
+		if( s->dhash[i]->proc.count > 0 )
+		{
+			s->target->proc.total = 1;
+			break;
+		}
 }
 
 
@@ -141,10 +155,10 @@ void synth_generate( SYNTH *s )
 	{
 		// check to see if there's any data
 		for( pt = 0, i = 0; i < s->parts; i++ )
-			pt += s->dhash[i]->proc.sum.count;
+			pt += s->dhash[i]->proc.count;
 
 		// make the point appropriately
-		s->target->proc.sum.count = pt;
+		s->target->proc.count = pt;
 
 		// only generate if there's anything to do
 		if( pt > 0 )
@@ -289,9 +303,11 @@ struct synth_fn_def synth_fn_defs[] =
 	{ { "spread", "width",   NULL   }, synth_spread, 1, 0 },
 	{ { "mean",   "average", NULL   }, synth_mean,   1, 0 },
 	{ { "count",  "nonzero", NULL   }, synth_count,  1, 0 },
+	{ { "active", "present", NULL   }, synth_active, 1, 0 },
 	// last entry is a marker
 	{ { NULL,     NULL,      NULL   }, NULL,         0, 0 },
 };
+
 
 int synth_config_path( SYNTH *s, AVP *av )
 {
@@ -321,12 +337,14 @@ int synth_config_line( AVP *av )
 {
 	SYNTH *ns, *s = &__synth_cfg_tmp;
 	struct synth_fn_def *def;
+	int i;
 
 	// empty?
 	if( !__synth_cfg_state )
 	{
 		memset( s, 0, sizeof( SYNTH ) );
 		s->factor = 1;
+		s->enable = 1;
 		s->min_parts = 1;
 	}
 
@@ -343,6 +361,11 @@ int synth_config_line( AVP *av )
 	{
 		if( synth_config_path( s, av ) != 0 )
 			return -1;
+		__synth_cfg_state = 1;
+	}
+	else if( attIs( "enable" ) )
+	{
+		s->enable = config_bool( av );
 		__synth_cfg_state = 1;
 	}
 	else if( attIs( "factor" ) )
@@ -399,19 +422,42 @@ int synth_config_line( AVP *av )
 				s->target_path, s->parts, s->max_parts );
 		}
 
-		// make a new synth and copy the contents
-		// yes we are copying the pointers
-		ns = (SYNTH *) allocz( sizeof( SYNTH ) );
-		*ns = *s;
+		if( s->enable )
+		{
+			// make a new synth and copy the contents
+			// yes we are copying the pointers
+			ns = (SYNTH *) allocz( sizeof( SYNTH ) );
+			*ns = *s;
 
-		// and link it
-		ns->next = ctl->synth->list;
-		ctl->synth->list = ns;
-		ctl->synth->scount++;
+			// and link it
+			ns->next = ctl->synth->list;
+			ctl->synth->list = ns;
+			ctl->synth->scount++;
 
-		debug( "Added synthetic %s (%s/%d).", ns->target_path,
-			ns->op_name, ns->parts );
+			debug( "Added synthetic %s (%s/%d).", ns->target_path,
+				ns->op_name, ns->parts );
+		}
+		else
+		{
+			// tidy up
+			if( s->target_path )
+			{
+				debug( "Dropping disabled synthetic %s (%s/%d).",
+					s->target_path, s->op_name, s->parts );
 
+				free( s->target_path );
+				s->target_path = NULL;
+			}
+
+			for( i = 0; i < s->parts; i++ )
+				if( s->paths[i] )
+				{
+					free( s->paths[i] );
+					s->paths[i] = NULL;
+				}
+		}
+
+		// and we start again next time
 		__synth_cfg_state = 0;
 	}
 

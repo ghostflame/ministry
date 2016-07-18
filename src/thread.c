@@ -19,6 +19,10 @@ void thread_throw_init_attr( void )
 
 	if( pthread_attr_setdetachstate( tt_attr, PTHREAD_CREATE_DETACHED ) )
 		err( "Cannot set default attr state to detached -- %s", Err );
+
+	if( pthread_attr_setstacksize( tt_attr, ctl->mem->stacksize << 10 ) )
+		err( "Cannot set default attr stacksize to %dKB -- %s",
+			ctl->mem->stacksize >> 10, Err );
 }
 
 

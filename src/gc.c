@@ -23,7 +23,7 @@ int gc_hash_list( DHASH **list, DHASH **flist, unsigned int idx, int thresh )
 	{
 		next = h->next;
 
-		if( h->len == 0 )
+		if( h->valid == 0 )
 		{
 			if( !lock )
 			{
@@ -55,22 +55,16 @@ int gc_hash_list( DHASH **list, DHASH **flist, unsigned int idx, int thresh )
 					mem_free_point_list( pts );
 			}
 
-#ifdef DEBUG
-			debug( "GC on path %s", h->path );
-#endif
+			debug_gc( "GC on path %s", h->path );
 		}
 		else if( h->empty > thresh )
 		{
-			// flatten the path length
-			// this means searches will pass
-			// over this node
-			// and we will clear it out next time
-			h->len = 0;
+			// unset the valid flag in the first pass
+			// then tidy up in the second pass
+			h->valid = 0;
 			freed++;
 
-#ifdef DEBUG
-			debug( "Marked path %s dead.", h->path );
-#endif
+			debug_gc( "Marked path %s dead.", h->path );
 		}
 	}
 
@@ -93,8 +87,10 @@ void gc_one_set( ST_CFG *c, DHASH **flist, int thresh )
 	{
 		pthread_mutex_lock( &(ctl->locks->hashstats) );
 
-		c->dcurr    -= hits;
-		c->gc_count += hits;
+		c->dcurr -= hits;
+
+		// this is a lockless counter
+		c->gc_count.count += hits;
 
 		if( c->dcurr < 0 )
 		{
@@ -126,14 +122,18 @@ void gc_pass( int64_t tval, void *arg )
 
 void *gc_loop( void *arg )
 {
-	THRD *t = (THRD *) arg;
 	int usec;
 
-	usec = (int) ( ( (double) ctl->stats->self->period ) * 1.72143698 );
+	// we don't use that
+	free( (THRD *) arg );
 
-	loop_control( "gc", &gc_pass, NULL, usec, LOOP_TRIM, 0 );
+	// we only loop if we are gc-enabled
+	// otherwise exit straight away
+	if( ctl->mem->gc_enabled ) {
+		usec = (int) ( ( (double) ctl->stats->self->period ) * 1.72143698 );
+		loop_control( "gc", &gc_pass, NULL, usec, LOOP_TRIM, 0 );
+	}
 
-	free( t );
 	return NULL;
 }
 

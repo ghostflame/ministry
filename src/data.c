@@ -178,12 +178,17 @@ __attribute__((hot)) static inline DHASH *data_get_dhash( char *path, int len, S
 		if( !( d = data_find_path( c->data[idx], hval, path, len ) ) )
 		{
 			if( !( d = mem_new_dhash( path, len, c->dtype ) ) )
+			{
 				fatal( "Could not allocate dhash for %s.", c->name );
+				return NULL;
+			}
 
 			d->sum = hval;
 
 			d->next = c->data[idx];
 			c->data[idx] = d;
+
+			d->valid = 1;
 		}
 
 		unlock_table( idx );
@@ -226,16 +231,17 @@ void data_point_gauge( char *path, int len, char *dat )
 	switch( op )
 	{
 		case '+':
-			d->in.sum.total += val;
+			d->in.total += val;
 			break;
 		case '-':
-			d->in.sum.total -= val;
+			d->in.total -= val;
 			break;
 		default:
-			d->in.sum.total = val;
+			d->in.total = val;
 			break;
 	}
-	d->in.sum.count++;
+
+	++(d->in.count);
 
 	// and unlock
 	unlock_gauge( d );
@@ -256,8 +262,8 @@ __attribute__((hot)) void data_point_adder( char *path, int len, char *dat )
 	lock_adder( d );
 
 	// add in that data point
-	d->in.sum.total += val;
-	d->in.sum.count++;
+	d->in.total += val;
+	++(d->in.count);
 
 	// and unlock
 	unlock_adder( d );
@@ -266,7 +272,7 @@ __attribute__((hot)) void data_point_adder( char *path, int len, char *dat )
 
 __attribute__((hot)) void data_point_stats( char *path, int len, char *dat )
 {
-	float val;
+	double val;
 	PTLIST *p;
 	DHASH *d;
 
@@ -278,17 +284,23 @@ __attribute__((hot)) void data_point_stats( char *path, int len, char *dat )
 	lock_stats( d );
 
 	// make a new one if need be
-	if( !( p = d->in.points ) || p->count == PTLIST_SIZE )
+	if( !( p = d->in.points ) || p->count >= PTLIST_SIZE )
 	{
 		if( !( p = mem_new_point( ) ) )
+		{
 			fatal( "Could not allocate new point struct." );
+			unlock_stats( d );
+			return;
+		}
 
 		p->next = d->in.points;
 		d->in.points = p;
 	}
 
 	// keep that data point
-	p->vals[p->count++] = val;
+	p->vals[p->count] = val;
+	++(d->in.count);
+	++(p->count);
 
 	// and unlock
 	unlock_stats( d );
