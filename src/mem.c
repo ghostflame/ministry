@@ -250,7 +250,8 @@ void mem_free_point( PTLIST **p )
 	sp = *p;
 	*p = NULL;
 
-	sp->count = 0;
+	sp->count    = 0;
+	sp->sentinel = 0;
 
 	__mtype_free( ctl->mem->points, sp );
 }
@@ -267,7 +268,9 @@ void mem_free_point_list( PTLIST *list )
 		p    = list;
 		list = p->next;
 
-		p->count = 0;
+		p->count    = 0;
+		p->sentinel = 0;
+
 		p->next  = freed;
 		freed    = p;
 
@@ -320,6 +323,7 @@ void mem_free_dhash( DHASH **d )
 	sd->in.count = 0;
 	sd->type     = 0;
 	sd->valid    = 0;
+	sd->empty    = 0;
 
 	if( sd->in.points )
 	{
@@ -355,6 +359,7 @@ void mem_free_dhash_list( DHASH *list )
 		d->type     = 0;
 		d->valid    = 0;
 		d->do_pass  = 0;
+		d->empty    = 0;
 
 		if( d->in.points )
 		{
@@ -675,6 +680,7 @@ MEM_CTL *mem_config_defaults( void )
 
 	m->max_kb       = DEFAULT_MEM_MAX_KB;
 	m->interval     = DEFAULT_MEM_CHECK_INTV;
+	m->gc_enabled   = 1;
 	m->gc_thresh    = DEFAULT_GC_THRESH;
 	m->gc_gg_thresh = DEFAULT_GC_GG_THRESH;
 	m->hashsize     = MEM_HSZ_LARGE;

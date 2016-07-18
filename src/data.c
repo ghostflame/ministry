@@ -284,7 +284,7 @@ __attribute__((hot)) void data_point_stats( char *path, int len, char *dat )
 	lock_stats( d );
 
 	// make a new one if need be
-	if( !( p = d->in.points ) || p->count == PTLIST_SIZE )
+	if( !( p = d->in.points ) || p->count >= PTLIST_SIZE )
 	{
 		if( !( p = mem_new_point( ) ) )
 		{
