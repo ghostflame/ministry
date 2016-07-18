@@ -435,3 +435,21 @@ int setlimit( int res, int64_t val )
 	return 0;
 }
 
+
+uint64_t lockless_fetch( LLCT *l )
+{
+	uint64_t diff, curr;
+
+	// we can only read from it *once*
+	// then we do maths
+	curr = l->count;
+	diff = curr - l->prev;
+
+	// and set the previous
+	l->prev = curr;
+
+	return diff;
+}
+
+
+

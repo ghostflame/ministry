@@ -112,4 +112,7 @@ double ts_diff( struct timespec to, struct timespec from, double *store );
 // set an rlimit
 int setlimit( int res, int64_t val );
 
+// fetch a lockless counter
+uint64_t lockless_fetch( LLCT *l );
+
 #endif

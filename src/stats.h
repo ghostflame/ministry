@@ -116,7 +116,7 @@ struct stat_config
 	DHASH			**	data;
 	int					hsize;
 	int					dcurr;
-	int					gc_count;
+	LLCT				gc_count;
 	uint32_t			did;
 };
 
