@@ -27,6 +27,9 @@
 #define VV_LINE_BLANK		3
 #define VV_LINE_NOATT		4
 #define VV_LINE_ATTVAL		5
+#define VV_LINE_AOVERLEN	6
+#define VV_LINE_VOVERLEN	7
+
 
 // var_val flags
 #define	VV_NO_EQUAL			0x01	// don't check for equal
@@ -36,7 +39,10 @@
 #define	VV_VAL_WHITESPACE	0x10	// don't clean value whitespace
 #define	VV_AUTO_VAL			0x20	// put "1" as value where none present
 #define VV_LOWER_ATT		0x40	// lowercase the attribute
+#define VV_REMOVE_UDRSCR	0x80	// remove underscores
 
+#define AVP_MAX_ATT			1024
+#define	AVP_MAX_VAL			8192
 
 
 #define tsll( a )			( ( 1000000000 * (int64_t) a.tv_sec ) + (int64_t) a.tv_nsec )
@@ -68,8 +74,8 @@ struct lockless_counter
 
 struct av_pair
 {
-	char				*	att;
-	char				*	val;
+	char					att[AVP_MAX_ATT];
+	char					val[AVP_MAX_VAL];
 	int						alen;
 	int						vlen;
 	int						status;

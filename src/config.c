@@ -15,7 +15,7 @@
 CCTXT *ctxt_top = NULL;
 CCTXT *context  = NULL;
 
-#define CFG_VV_FLAGS	(VV_AUTO_VAL|VV_LOWER_ATT)
+#define CFG_VV_FLAGS	(VV_AUTO_VAL|VV_LOWER_ATT|VV_REMOVE_UDRSCR)
 
 // read a file until we find a config line
 char __cfg_read_line[1024];
@@ -187,7 +187,7 @@ int config_line( AVP *av )
 		return 0;
 	}
 
-	if( attIs( "tick_msec" ) )
+	if( attIs( "tickMsec" ) )
 		ctl->tick_usec = 1000 * atoi( av->val );
 	else if( attIs( "daemon" ) )
 	{
@@ -196,12 +196,12 @@ int config_line( AVP *av )
 		else
 			ctl->run_flags &= ~RUN_DAEMON;
 	}
-	else if( attIs( "pidfile" ) )
+	else if( attIs( "pidFile" ) )
 	{
 		free( ctl->pidfile );
 		ctl->pidfile = config_relative_path( av->val );
 	}
-	else if( attIs( "basedir" ) )
+	else if( attIs( "baseDir" ) )
 	{
 		free( ctl->basedir );
 		ctl->basedir = str_copy( av->val, av->vlen );
@@ -363,8 +363,16 @@ int config_env_path( char *path, int len )
 		// lower-case the section
 		for( p = path; p < us; p++ )
 			*p = tolower( *p );
+
+		// we have to swap any _ for . in the config path here because
+		// env names cannot have dots in
+		for( p = pth; *p; p++ )
+			if( *p == '_' )
+				*p = '.';
+
 	}
 
+	// this lowercases it
 	if( var_val( pth, len, &av, CFG_VV_FLAGS ) )
 	{
 		warn( "Could not process env path." );
@@ -374,7 +382,7 @@ int config_env_path( char *path, int len )
 	// and try it
 	if( !config_choose_handler( sec, &av ) )
 	{
-		debug_env( "Found env %s -> %s", av.att, av.val );
+		debug( "Found env [%s] %s -> %s", sec, av.att, av.val );
 		return 0;
 	}
 

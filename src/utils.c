@@ -201,7 +201,7 @@ int strwords( WORDS *w, char *src, int len, char sep )
 #define	VV_NO_CHECKS	0x07
 int var_val( char *line, int len, AVP *av, int flags )
 {
-	char *p, *q, *r, *s;
+	char *a, *v, *p, *q, *r, *s;
 
 	if( !line || !av )
 		return 1;
@@ -249,17 +249,17 @@ int var_val( char *line, int len, AVP *av, int flags )
 	// if we are ignoring values, what we have is an attribute
 	if( ( flags & VV_NO_VALS ) )
 	{
-		av->att = p;
+		a = p;
 		av->alen = len;
 
 		// if we're automatically setting vals, set 1
 		if( flags & VV_AUTO_VAL )
 		{
-			av->val  = "1";
+			v  = "1";
 			av->vlen = 1;
 		}
 		else
-			av->val = "";
+			v = "";
 	}
 	else
 	{
@@ -278,9 +278,9 @@ int var_val( char *line, int len, AVP *av, int flags )
 			if( flags & VV_AUTO_VAL )
 			{
 				// then we have an attribute and an auto value
-				av->att  = p;
+				a        = p;
 				av->alen = s - p;
-				av->val  = "1";
+				v        = "1";
 				av->vlen = 1;
 				goto vv_finish;
 			}
@@ -304,9 +304,9 @@ int var_val( char *line, int len, AVP *av, int flags )
 			*--q = '\0';
 
 		// OK, let's record those
-		av->att = p;
+		a        = q;
 		av->alen = q - p;
-		av->val = r;
+		v        = r;
 		av->vlen = s - r;
 	}
 
@@ -318,6 +318,48 @@ int var_val( char *line, int len, AVP *av, int flags )
 	}
 
 vv_finish:
+
+	if( av->alen >= AVP_MAX_ATT )
+	{
+		av->status = VV_LINE_AOVERLEN;
+		return 1;
+	}
+	if( av->vlen >= AVP_MAX_VAL )
+	{
+		av->status = VV_LINE_VOVERLEN;
+		return 1;
+	}
+
+	// were we squashing underscores in attrs?
+	if( flags && VV_REMOVE_UDRSCR )
+	{
+	    // we are deprecating key names with _ in them, to enable
+	    // supporting environment names where we will need to
+	    // replace _ with . to support the hierarchical keys
+	    // so warn about any key with _ in it.
+
+	    if( memchr( a, '_', av->alen ) )
+    	    warn( "Key %s contains an underscore _, this is deprecated in favour of camelCase.", a );
+
+		// copy without underscores
+		for( p = a, q = av->att; *p; p++ )
+			if( *p != '_' )
+				*q++ = *p;
+
+		// cap it
+		*q = '\0';
+
+		// and recalculate the length
+		av->alen = q - av->att;
+	}
+	else
+	{
+		memcpy( av->att, a, av->alen );
+		av->att[av->alen] = '\0';
+	}
+
+	memcpy( av->val, v, av->vlen );
+	av->val[av->vlen] = '\0';
 
 	// are were lower-casing the attributes?
 	if( flags && VV_LOWER_ATT )

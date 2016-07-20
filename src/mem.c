@@ -564,15 +564,15 @@ int mem_config_line( AVP *av )
 	if( !( d = strchr( av->att, '.' ) ) )
 	{
 		// just the singles
-		if( attIs( "max_mb" ) || attIs( "max_size" ) )
+		if( attIs( "maxMb" ) || attIs( "maxSize" ) )
 			ctl->mem->max_kb = 1024 * atoi( av->val );
-		else if( attIs( "max_kb" ) )
+		else if( attIs( "maxKb") )
 			ctl->mem->max_kb = atoi( av->val );
 		else if( attIs( "interval" ) || attIs( "msec" ) )
 			ctl->mem->interval = atoi( av->val );
-		else if( attIs( "hashsize" ) )
+		else if( attIs( "hashSize" ) )
 			ctl->mem->hashsize = atoi( av->val );
-		else if( attIs( "stacksize" ) )
+		else if( attIs( "stackSize" ) )
 		{
 			// gets converted to KB
 			ctl->mem->stacksize = atoi( av->val );
@@ -580,7 +580,7 @@ int mem_config_line( AVP *av )
 		}
 		else if( attIs( "gc" ) )
 			ctl->mem->gc_enabled = config_bool( av );
-		else if( attIs( "gc_thresh" ) )
+		else if( attIs( "gcThresh" ) )
 		{
 			t = atoi( av->val );
 			if( !t )
@@ -588,7 +588,7 @@ int mem_config_line( AVP *av )
 			info( "Garbage collection threshold set to %d stats intervals.", t );
 			ctl->mem->gc_thresh = t;
 		}
-		else if( attIs( "gc_gauge_thresh" ) )
+		else if( attIs( "gcGaugeThresh" ) )
 		{
 			t = atoi( av->val );
 			if( !t )
