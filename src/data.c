@@ -240,7 +240,8 @@ void data_point_gauge( char *path, int len, char *dat )
 			d->in.total = val;
 			break;
 	}
-	d->in.count++;
+
+	++(d->in.count);
 
 	// and unlock
 	unlock_gauge( d );
@@ -262,7 +263,7 @@ __attribute__((hot)) void data_point_adder( char *path, int len, char *dat )
 
 	// add in that data point
 	d->in.total += val;
-	d->in.count++;
+	++(d->in.count);
 
 	// and unlock
 	unlock_adder( d );
@@ -283,11 +284,12 @@ __attribute__((hot)) void data_point_stats( char *path, int len, char *dat )
 	lock_stats( d );
 
 	// make a new one if need be
-	if( !( p = d->in.points ) || p->count == PTLIST_SIZE )
+	if( !( p = d->in.points ) || p->count >= PTLIST_SIZE )
 	{
 		if( !( p = mem_new_point( ) ) )
 		{
 			fatal( "Could not allocate new point struct." );
+			unlock_stats( d );
 			return;
 		}
 
@@ -296,8 +298,9 @@ __attribute__((hot)) void data_point_stats( char *path, int len, char *dat )
 	}
 
 	// keep that data point
-	p->vals[p->count++] = val;
-	d->in.count++;
+	p->vals[p->count] = val;
+	++(d->in.count);
+	++(p->count);
 
 	// and unlock
 	unlock_stats( d );

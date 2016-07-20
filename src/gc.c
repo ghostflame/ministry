@@ -55,9 +55,7 @@ int gc_hash_list( DHASH **list, DHASH **flist, unsigned int idx, int thresh )
 					mem_free_point_list( pts );
 			}
 
-#ifdef DEBUG
-			debug( "GC on path %s", h->path );
-#endif
+			debug_gc( "GC on path %s", h->path );
 		}
 		else if( h->empty > thresh )
 		{
@@ -66,9 +64,7 @@ int gc_hash_list( DHASH **list, DHASH **flist, unsigned int idx, int thresh )
 			h->valid = 0;
 			freed++;
 
-#ifdef DEBUG
-			debug( "Marked path %s dead.", h->path );
-#endif
+			debug_gc( "Marked path %s dead.", h->path );
 		}
 	}
 
@@ -91,8 +87,10 @@ void gc_one_set( ST_CFG *c, DHASH **flist, int thresh )
 	{
 		pthread_mutex_lock( &(ctl->locks->hashstats) );
 
-		c->dcurr    -= hits;
-		c->gc_count += hits;
+		c->dcurr -= hits;
+
+		// this is a lockless counter
+		c->gc_count.count += hits;
 
 		if( c->dcurr < 0 )
 		{
