@@ -29,10 +29,12 @@ code:
 	@cd src && $(MAKE) $(MFLAGS) $(TARGET)
 
 
-docker: subdirs code
-	@rm -f src/*.o
-	docker build -t ghostflame/ministry .
-	@cd src && $(MAKE) $(MFLAGS) clean
+docker:
+	DDIR=$(shell mktemp -d)
+	@echo "DESTDIR=$(DDIR) make all unitinstall"
+	@echo "cp Dockerfile $(DDIR)/"
+	@echo "docker build -t ghostflame/ministry $(DDIR)"
+	@echo "rm -rf $(DDIR)"
 
 
 install:
@@ -76,4 +78,5 @@ clean:
 	@rm -f logs/* core*
 	@echo "done."
 
+.PHONY:  docker
 
