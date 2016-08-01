@@ -77,8 +77,7 @@ int gc_hash_list( DHASH **list, DHASH **flist, unsigned int idx, int thresh )
 
 void gc_one_set( ST_CFG *c, DHASH **flist, int thresh )
 {
-	unsigned int i;
-	int hits = 0;
+	int i, hits = 0;
 
 	for( i = 0; i < c->hsize; i++ )
 		hits += gc_hash_list( &(c->data[i]), flist, i, thresh );

@@ -20,7 +20,7 @@
  * problem.  Of course, threads will "help"...
  */
 
-const static uint8_t mem_signal_array[128] = {
+static const uint8_t mem_signal_array[128] = {
 	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0,
 	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0,
 	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0,
@@ -416,7 +416,7 @@ int setlimit( int res, int64_t val )
 		rl.rlim_cur = rl.rlim_max;
 	else
 	{
-		if( rl.rlim_max < val )
+		if( (int64_t) rl.rlim_max < val )
 		{
 			err( "Limit %s max is %ld.", which, rl.rlim_max );
 			return -1;

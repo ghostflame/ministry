@@ -52,7 +52,7 @@ void self_report_types( ST_THR *t, ST_CFG *c )
 void self_report_dlocks( ST_THR *t, DLOCKS *d )
 {
 	uint64_t total, diff;
-	int i;
+	uint32_t i;
 
 	for( total = 0, i = 0; i < d->len; i++ )
 	{
