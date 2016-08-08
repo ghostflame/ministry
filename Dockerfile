@@ -12,8 +12,4 @@ VOLUME "/var/log/ministry"
 RUN mkdir /var/run/ministry
 
 # and what we do - this is the executable
-ENTRYPOINT [ "/usr/bin/ministry" ]
-
-# and these are the default params
-CMD [ "-c", "/etc/ministry/ministry.conf" ]
-
+CMD [ "/usr/bin/ministry", "-c", "/etc/ministry/ministry.conf" ]

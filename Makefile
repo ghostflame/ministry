@@ -30,11 +30,7 @@ code:
 
 
 docker:
-	DDIR=$(shell mktemp -d)
-	@echo "DESTDIR=$(DDIR) make all unitinstall"
-	@echo "cp Dockerfile $(DDIR)/"
-	@echo "docker build -t ghostflame/ministry $(DDIR)"
-	@echo "rm -rf $(DDIR)"
+	./docker.sh
 
 
 install:
