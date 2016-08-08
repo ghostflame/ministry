@@ -13,7 +13,7 @@
 // does not have it's own config - owned by mem.c
 
 
-int gc_hash_list( DHASH **list, DHASH **flist, unsigned int idx, int thresh )
+__attribute__((hot)) int gc_hash_list( DHASH **list, DHASH **flist, unsigned int idx, int thresh )
 {
 	int lock = 0, freed = 0;
 	DHASH *h, *prev, *next;
