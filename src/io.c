@@ -424,7 +424,7 @@ void *io_loop( void *arg )
 	// find out where we are connecting to
 	if( net_lookup_host( d->host, &sa ) )
 	{
-		loop_end( "Unable to loop up network target." );
+		loop_end( "Unable to look up network target." );
 		free( t );
 		return NULL;
 	}

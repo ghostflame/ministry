@@ -419,9 +419,17 @@ int net_lookup_host( char *host, struct sockaddr_in *res )
 	struct addrinfo *ap, *ai = NULL;
 
 	// try the lookup
-	if( getaddrinfo( host, NULL, NULL, &ai ) || !ai )
+	if( getaddrinfo( host, NULL, NULL, &ai ) )
 	{
 		err( "Could not look up host %s -- %s", host, Err );
+		return -1;
+	}
+
+	// we get anything?
+	if( !ai )
+	{
+		err( "Found nothing when looking up host %s", host );
+		freeaddrinfo( ai );
 		return -1;
 	}
 
