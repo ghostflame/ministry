@@ -34,7 +34,9 @@ struct log_control
 {
 	char			*	filename;
 	int					level;
-	int					fd;
+	int					ok_fd;
+	int					err_fd;
+	int					use_std;
 	int					force_stdout;
 	int					notify_re;
 };
