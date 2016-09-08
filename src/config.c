@@ -283,7 +283,9 @@ int config_read( char *inpath )
 		}
 
 		// hand some sections off to different config fns
-		if( secIs( "logging" ) )
+		if( secIs( "http" ) )
+			lrv = http_config_line( &av );
+		else if( secIs( "logging" ) )
 			lrv = log_config_line( &av );
 		else if( secIs( "network" ) )
 		  	lrv = net_config_line( &av );
@@ -328,6 +330,7 @@ MIN_CTL *config_create( void )
 	MIN_CTL *c;
 
 	c             = (MIN_CTL *) allocz( sizeof( MIN_CTL ) );
+	c->http       = http_config_defaults( );
 	c->log        = log_config_defaults( );
 	c->locks      = lock_config_defaults( );
 	c->mem        = mem_config_defaults( );

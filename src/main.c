@@ -72,6 +72,12 @@ void shut_down( int exval )
 }
 
 
+void catch_pipe( int sig )
+{
+	debug( "Caught SIGPIPE." );
+}
+
+
 
 int set_signals( void )
 {
@@ -81,6 +87,7 @@ int set_signals( void )
 	sa.sa_handler = loop_kill;
 	sa.sa_flags   = SA_NOMASK;
 
+	// finish signal
 	if( sigaction( SIGTERM, &sa, NULL )
 	 || sigaction( SIGQUIT, &sa, NULL )
 	 || sigaction( SIGINT,  &sa, NULL ) )
@@ -95,6 +102,14 @@ int set_signals( void )
 	{
 		err( "Could not set hup signal handler -- %s", Err );
 		return -2;
+	}
+
+	// and sigpipe
+	sa.sa_handler = catch_pipe;
+	if( sigaction( SIGPIPE, &sa, NULL ) )
+	{
+		err( "Could not set pipe signal handler -- %s", Err );
+		return -3;
 	}
 
 	return 0;

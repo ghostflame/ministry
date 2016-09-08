@@ -33,6 +33,7 @@
 #include <sys/time.h>
 #include <arpa/inet.h>
 #include <sys/types.h>
+#include <microhttpd.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <openssl/sha.h>

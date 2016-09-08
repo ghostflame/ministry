@@ -17,6 +17,7 @@ typedef struct mem_control			MEM_CTL;
 typedef struct network_control		NET_CTL;
 typedef struct stats_control		STAT_CTL;
 typedef struct synth_control        SYN_CTL;
+typedef struct http_control         HTTP_CTL;
 
 typedef struct net_in_port			NET_PORT;
 typedef struct net_type				NET_TYPE;

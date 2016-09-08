@@ -36,6 +36,7 @@ struct config_context
 // main control structure
 struct ministry_control
 {
+	HTTP_CTL			*	http;
 	LOG_CTL				*	log;
 	LOCK_CTL			*	locks;
 	MEM_CTL				*	mem;
