@@ -33,12 +33,13 @@
 #include <sys/time.h>
 #include <arpa/inet.h>
 #include <sys/types.h>
-#include <microhttpd.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <openssl/sha.h>
 #include <sys/resource.h>
 
+#define MHD_PLATFORM_H
+#include <microhttpd.h>
 
 #ifndef Err
 #define Err strerror( errno )

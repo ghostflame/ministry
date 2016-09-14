@@ -46,6 +46,7 @@ typedef struct synth_data			SYNTH;
 typedef struct words_data			WORDS;
 typedef struct av_pair				AVP;
 typedef struct lockless_counter		LLCT;
+typedef struct http_ssl				HTTP_SSL;
 
 // function types
 typedef void tsf_fn ( ST_THR * );
