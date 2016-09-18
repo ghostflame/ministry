@@ -27,6 +27,8 @@ getent group  ministry > /dev/null || groupadd -r ministry
 getent passwd ministry > /dev/null || useradd  -r -g ministry -M -d /etc/ministry -s /sbin/nologin -c 'Minister for Statistics' ministry
 # note, we do not remove the group/user post uninstall
 # see https://fedoraproject.org/wiki/Packaging:UsersAndGroups for reasoning
+mkdir -p -m 700 /etc/ministry/ssl
+chown ministry:ministry /etc/ministry/ssl
 mkdir -p /var/log/ministry
 chown ministry:ministry /var/log/ministry
 
@@ -41,6 +43,7 @@ LOGDIR=%{buildroot}/var/log/ministry \
 DOCDIR=%{buildroot}%{_docdir}/ministry \
 MANDIR=%{buildroot}%{_mandir} \
 UNIDIR=%{buildroot}%{_unitdir} \
+SSLDIR=%{buildroot}/etc/ministry/ssl \
 USER=ministry GROUP=ministry \
 make unitinstall
 
@@ -49,6 +52,8 @@ make unitinstall
 %doc %{_docdir}/ministry/
 %config(noreplace) /etc/ministry/ministry.conf
 %config(noreplace) /etc/logrotate.d/ministry
+%config(noreplace) /etc/ministry/ssl/cert.pem
+%config(noreplace) /etc/ministry/ssl/key.pem
 %{_bindir}/ministry
 %{_mandir}/man1/ministry.1.gz
 %{_mandir}/man5/ministry.conf.5.gz

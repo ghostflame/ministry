@@ -16,7 +16,7 @@ int http_unused_policy( void *cls, const struct sockaddr *addr, socklen_t addrle
 	return MHD_YES;
 }
 
-int http_unused_reader( void *cls, uint64_t pos, char *buf, size_t max )
+ssize_t http_unused_reader( void *cls, uint64_t pos, char *buf, size_t max )
 {
 	return -1;
 }
@@ -26,12 +26,12 @@ void http_unused_reader_free( void *cls )
 	return;
 }
 
-int http_unused_kv( void *cls, enum MHD_ValueKind kind, const char *key, const char *value )
+int http_unused_kv( void *cls, HTTP_VAL kind, const char *key, const char *value )
 {
 	return MHD_NO;
 }
 
-int http_unused_post( void *cls, MHD_ValueKind kind, const char *key, const char *filename,
+int http_unused_post( void *cls, HTTP_VAL kind, const char *key, const char *filename,
                     const char *content_type, const char *transfer_encoding, const char *data,
                     uint64_t off, size_t size )
 {
@@ -40,17 +40,24 @@ int http_unused_post( void *cls, MHD_ValueKind kind, const char *key, const char
 
 
 
-void *http_log_request( void *cls, const char *uri, HTTP_CONN *conn )
+void http_server_panic( void *cls, const char *file, unsigned int line, const char *reason )
 {
-	return NULL;
+	err( "[HTTP] Server panic: (%s/%u) %s", file, line, reason );
 }
 
 
-void http_log( void *arg, const char *fmt, va_list ap )
+
+void http_log_request( void *cls, const char *uri, HTTP_CONN *conn )
+{
+	info( "[HTTP] Request: %s", uri );
+}
+
+
+void http_log( void *arg, const char *fm, va_list ap )
 {
 	char lbuf[4096];
 
-	vsnprintf( lbuf, 4096, fmt, ap );
+	vsnprintf( lbuf, 4096, fm, ap );
 
 	info( "[HTTP] %s", lbuf );
 }
@@ -58,156 +65,278 @@ void http_log( void *arg, const char *fmt, va_list ap )
 
 int http_request_handler( void *cls, HTTP_CONN *conn,
 	const char *url, const char *method, const char *version,
-	const char *upload_data, size_t upload_data_size,
+	const char *upload_data, size_t *upload_data_size,
 	void **con_cls )
 {
+	HTTP_RESP *resp;
+	char buf[1024];
+	int ret, len;
 
 	// we only support GET right now
 	if( strcasecmp( method, "GET" ) )
 		return MHD_NO;
 
+	len = snprintf( buf, 1024, "This is the response.\r\n" );
 
+	resp = MHD_create_response_from_buffer( len, (void *) buf, MHD_RESPMEM_MUST_COPY );
+	ret  = MHD_queue_response( conn, MHD_HTTP_OK, resp );
+	MHD_destroy_response( resp );
 
-
-	return MHD_YES;
+	return ret;
 }
 
 
 void http_request_complete( void *cls, HTTP_CONN *conn,
 	void **con_cls, HTTP_CODE toe )
 {
-
+	return;
 }
 
 
 
-
-
-
-
-int http_start( void )
+int http_ssl_load_file( SSL_FILE *sf, char *type )
 {
-	CTL_HTTP *h = ctl->http;
-	struct in_addr ina;
+	char desc[32];
 
-	if( ! h->enabled )
-		return 0;
+	sf->type = str_dup( type, 0 );
 
-	h->server = MHD_start_daemon( h->flags, h->port,
-			h->cb_ap, NULL,
-			h->cb_ah, NULL,
-			MHD_OPTION_CONNECTION_LIMIT,        h->conns_max,
-			MHD_OPTION_PER_IP_CONNECTION_LIMIT, h->conns_max_ip,
-			MHD_OPTION_CONNECTION_TIMEOUT,      h->conns_tmout,
-			MHD_OPTION_SOCK_ADDR,				&(h->sin),
-			MHD_OPTION_URI_LOG_CALLBACK,		h->cb_rl,
-			MHD_OPTION_HTTPS_MEM_KEY,           h->ssl->key,
-			MHD_OPTION_HTTPS_MEM_CERT,			h->ssl->cert,
-			MHD_OPTION_EXTERNAL_LOGGER,			h->cb_lg,
-			MHD_OPTION_END
-		);
+	snprintf( desc, 32, "SSL %s file", sf->type );
+	return read_file( sf->path, &(sf->content), &(sf->len), MAX_SSL_FILE_SIZE, 1, desc );
+}
+
+
+
+int http_ssl_setup( SSL_CONF *s )
+{
+	if( http_ssl_load_file( &(s->cert), "cert" )
+	 || http_ssl_load_file( &(s->key),  "key"  ) )
+		return -1;
+
+	
 
 	return 0;
 }
 
 
+
+
+#define mop( _o )		MHD_OPTION_ ## _o
+
+int http_start( void )
+{
+	HTTP_CTL *h = ctl->http;
+	uint16_t port;
+
+	if( !h->enabled )
+		return 0;
+
+	if( h->ssl->enabled )
+	{
+		if( http_ssl_setup( h->ssl ) )
+			return -1;
+
+		port = h->ssl->port;
+		h->proto = "https";
+		h->flags |= MHD_USE_SSL;
+	}
+	else
+	{
+		port = h->port;
+		h->proto = "http";
+	}
+
+	h->sin->sin_port = htons( port );
+
+
+	MHD_set_panic_func( h->calls->panic, (void *) h );
+
+	h->server = MHD_start_daemon( h->flags, 0,
+			NULL, NULL,
+			h->calls->handler, (void *) h,
+			mop( CONNECTION_LIMIT ),         h->conns_max,
+			mop( PER_IP_CONNECTION_LIMIT ),  h->conns_max_ip,
+			mop( CONNECTION_TIMEOUT ),       h->conns_tmout,
+			mop( SOCK_ADDR ),                (struct sockaddr *) h->sin,
+			mop( URI_LOG_CALLBACK ),         h->calls->reqlog, NULL,
+			mop( HTTPS_MEM_KEY ),            (const char *) h->ssl->key.content,
+			mop( HTTPS_KEY_PASSWORD ),       (const char *) h->ssl->password,
+			mop( HTTPS_MEM_CERT ),           (const char *) h->ssl->cert.content,
+			mop( EXTERNAL_LOGGER ),          h->calls->log, (void *) h,
+			mop( END )
+		);
+
+	if( !h->server )
+	{
+		err( "Failed to start %s server.", h->proto );
+		return -1;
+	}
+
+	notice( "Started up %s server on port %hu.", h->proto, port );
+	return 0;
+}
+
+#undef mop
+
 void http_stop( void )
 {
-	MHD_stop_daemon( ctl->http->server );
+	HTTP_CTL *h = ctl->http;
+
+	if( h->server )
+	{
+		MHD_stop_daemon( h->server );
+		notice( "Shut down %s server.", h->proto );
+	}
 }
 
 
 
 
-HTTP_CTL *http_default_config( void )
+HTTP_CTL *http_config_defaults( void )
 {
+	struct sockaddr_in *sin;
 	HTTP_CTL *h;
 
-	h = (HTTP_CTL *) allocz( sizeof( HTTP_CTL ) );
+	h                  = (HTTP_CTL *) allocz( sizeof( HTTP_CTL ) );
+	h->ssl             = (SSL_CONF *) allocz( sizeof( SSL_CONF ) );
+	h->calls           = (HTTP_CB *) allocz( sizeof( HTTP_CB ) );
 
-	h->ssl     = (HTTP_SSL *) allocz( sizeof( HTTP_SSL ) );
+	h->conns_max       = DEFAULT_HTTP_CONN_LIMIT;
+	h->conns_max_ip    = DEFAULT_HTTP_CONN_IP_LIMIT;
+	h->conns_tmout     = DEFAULT_HTTP_CONN_TMOUT;
+	h->port            = DEFAULT_HTTP_PORT;
+	h->addr            = NULL;
+	h->stats           = 1;
+	h->flags           = MHD_USE_THREAD_PER_CONNECTION|MHD_USE_POLL|MHD_USE_DEBUG;
 
-	h->cb_ah   = &http_request_handler;
-	h->cb_ap   = &http_unused_policy;
-	h->cb_cr   = &http_unused_reader;
-	h->cb_lg   = &http_log;
-	h->cb_rc   = &http_request_complete;
-	h->cb_rf   = &http_unused_reader_free;
-	h->cb_rl   = &http_log_request;
+	h->enabled         = 0;
+	h->ssl->enabled    = 0;
 
-	h->it_kv   = &http_unused_kv;
-	h->it_pd   = &http_unused_post;
+	h->calls->handler  = &http_request_handler;
+	h->calls->panic    = &http_server_panic;
+	h->calls->policy   = &http_unused_policy;
+	h->calls->reader   = &http_unused_reader;
+	h->calls->complete = &http_request_complete;
+	h->calls->rfree    = &http_unused_reader_free;
 
-	h->port    = DEFAULT_HTTP_PORT;
-	h->addr    = NULL;
-	h->enabled = 0;
-	h->stats   = 1;
-	h->flags   = MHD_USE_SSL
-	            |MHD_USE_THREAD_PER_CONNECTION
-	            |MHD_USE_POLL
-	            |MHD_USE_PIPE_FOR_SHUTDOWN;
+	h->calls->kv       = &http_unused_kv;
+	h->calls->post     = &http_unused_post;
 
-	h->sin.sin_family      = AF_INET;
-	h->sin.sin_port        = htons( h->port );
-	h->sin.sin_addr.s_addr = INADDR_ANY;
+	h->calls->log      = &http_log;
+	h->calls->reqlog   = &http_log_request;
 
+
+	// make the address binding structure
+	sin = (struct sockaddr_in *) allocz( sizeof( struct sockaddr_in ) );
+	sin->sin_family      = AF_INET;
+	sin->sin_addr.s_addr = INADDR_ANY;
+	h->sin               = sin;
 
 	return h;
 }
 
 
+#define dIs( _str )		!strcasecmp( d, _str )
 
-int httpd_config_line( APV *av )
+int http_config_line( AVP *av )
 {
 	HTTP_CTL *h = ctl->http;
+	char *d;
 
-	if( attIs( "port" ) )
+	if( !( d = strchr( av->att, '.' ) ) )
 	{
-		h->port = (uint16_t) ( strtoul( av->val, NULL, 10 ) & 0xffffUL );
-		h->sin.sin_port = htons( h->port );
-
-		debug( "Http port set to %hu.", h->port );
-	}
-	else if( attIs( "bind" ) )
-	{
-		if( h->addr )
-			free( h->addr );
-		h->addr = str_copy( av->val, av->vlen );
-
-		if( !inet_aton( h->addr, &(h->sin.sin_addr) ) )
+		if( attIs( "port" ) )
 		{
-			err( "Invalid http bind IP address '%s'.", h->addr );
-			return -1;
+			h->port = (uint16_t) ( strtoul( av->val, NULL, 10 ) & 0xffffUL );
+			debug( "Http port set to %hu.", h->port );
 		}
+		else if( attIs( "bind" ) )
+		{
+			if( h->addr )
+				free( h->addr );
+			h->addr = str_copy( av->val, av->vlen );
 
-		debug( "Http bind address set to %s.", h->addr );
-	}
-	else if( attIs( "enable" ) )
-	{
-		h->enabled = config_bool( av );
-		debug( "Http server is %sabled.", ( h->enabled ) ? "en" : "dis" );
-	}
-	else if( attIs( "stats" ) || attIs( "exposeStats" ) )
-	{
-		h->stats = config_bool( av );
-		debug( "Http exposure of internal stats is %sabled.",
-			( h->stats ) ? "en" : "dis" );
-	}
-	else if( attIs( "maxConns" ) )
-	{
-		h->conns_max = (unsigned int) strtoul( av->val, NULL, 10 );
-		debug( "Http max conns set to %u", h->conns_max );
-	}
-	else if( attIs( "maxPerIp" ) )
-	{
-		h->conns_max_ip = (unsigned int) strtoul( av->val, NULL, 10 );
-		debug( "Http max conns per IP set to %u", h->conns_max_ip );
+			if( !inet_aton( h->addr, &(h->sin->sin_addr) ) )
+			{
+				err( "Invalid http server bind IP address '%s'.", h->addr );
+				return -1;
+			}
 
+			debug( "Http server bind address set to %s.", h->addr );
+		}
+		else if( attIs( "enable" ) )
+		{
+			h->enabled = config_bool( av );
+			debug( "Http server is %sabled.", ( h->enabled ) ? "en" : "dis" );
+		}
+		else if( attIs( "stats" ) || attIs( "exposeStats" ) )
+		{
+			h->stats = config_bool( av );
+			debug( "Http exposure of internal stats is %sabled.",
+				( h->stats ) ? "en" : "dis" );
+		}
+		else
+			return -1;
+
+		return 0;
 	}
-	else if( attIs( "timeout" ) || attIs( "tmout" ) )
+
+	// then its conns. or ssl.
+	d++;
+
+	if( !strncasecmp( av->att, "conns.", 6 ) )
 	{
-		h->conns_tmout = (unsigned int) strtoul( av->val, NULL, 10 );
-		debug( "Http connection timeout set to %u seconds.", h->conns_tmout );
+		if( dIs( "max" ) )
+		{
+			h->conns_max = (unsigned int) strtoul( av->val, NULL, 10 );
+		}
+		else if( dIs( "maxPerIp" ) || dIs( "maxPerHost" ) )
+		{
+			h->conns_max_ip = (unsigned int) strtoul( av->val, NULL, 10 );
+		}
+		else if( dIs( "timeout" ) || dIs( "tmout" ) )
+		{
+			h->conns_tmout = (unsigned int) strtoul( av->val, NULL, 10 );
+		}
+		else
+			return -1;
+	}
+	else if( !strncasecmp( av->att, "ssl.", 4 ) )
+	{
+		if( dIs( "certFile" ) || dIs( "cert" ) )
+		{
+			if( h->ssl->cert.path )
+				free( h->ssl->cert.path );
+			h->ssl->cert.path = str_copy( av->val, av->vlen );
+		}
+		else if( dIs( "keyFile" ) || dIs( "key" ) )
+		{
+			if( h->ssl->key.path )
+				free( h->ssl->key.path );
+			h->ssl->key.path = str_copy( av->val, av->vlen );
+		}
+		else if( dIs( "keyPass" ) || dIs( "pass" ) || dIs( "password" ) )
+		{
+			if( h->ssl->password )
+			{
+				free( h->ssl->password );
+				h->ssl->password = NULL;
+			}
+			
+			if( !valIs( "null" ) && !valIs( "-" ) )
+				h->ssl->password = str_copy( av->val, av->vlen );
+		}
+		else if( dIs( "enable" ) )
+		{
+			h->ssl->enabled = config_bool( av );
+
+			if( h->ssl->enabled )
+				debug( "SSL enabled on http server." );
+		}
+		else if( dIs( "port" ) )
+		{
+			h->ssl->port = (uint16_t) strtoul( av->val, NULL, 10 );
+			debug( "SSL port set to %hu.", h->ssl->port );
+		}
 	}
 	else
 		return -1;
@@ -215,4 +344,5 @@ int httpd_config_line( APV *av )
 	return 0;
 }
 
+#undef dIs
 

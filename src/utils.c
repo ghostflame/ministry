@@ -503,4 +503,65 @@ uint64_t lockless_fetch( LLCT *l )
 }
 
 
+int read_file( char *path, char **buf, int *len, size_t max, int perm, char *desc )
+{
+	struct stat sb;
+	FILE *h;
+	int l;
 
+	if( !buf || !len )
+	{
+		err( "Need a buffer and length parameter in read_file." );
+		return 1;
+	}
+
+	if( !desc )
+		desc = "file";
+
+	if( !path )
+	{
+		err( "No %s path.", desc );
+		return -1;
+	}
+
+	if( stat( path, &sb ) )
+	{
+		err( "Cannot stat %s %s: %s", desc, path, Err );
+		return -2;
+	}
+
+	if( !S_ISREG( sb.st_mode ) )
+	{
+		err( "Mode of %s %s is not a regular file.", desc, path );
+		return -3;
+	}
+
+	l = (int) sb.st_size;
+	*len = l;
+
+	if( l > (int) max )
+	{
+		err( "Size of %s %s is too big at %d bytes.", desc, path, l );
+		return -4;
+	}
+
+	if( !( h = fopen( path, "r" ) ) )
+	{
+		err( "Cannot open %s %s: %s", desc, path, Err );
+		return -5;
+	}
+
+	if( !*buf )
+		*buf = ( perm ) ? perm_str( l ) : (char *) allocz( l + 1 );
+
+	if( !fread( *buf, l, 1, h ) || ferror( h ) )
+	{
+		err( "Could not read %s %s: %s", desc, path, Err );
+		fclose( h );
+		*len = 0;
+		return -6;
+	}
+
+	fclose( h );
+	return 0;
+}

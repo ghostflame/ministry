@@ -46,6 +46,9 @@ void shut_down( int exval )
 	// shut down ports
 	net_stop( );
 
+	// and http server
+	http_stop( );
+
 	info( "Waiting for all threads to stop." );
 
 	for( i = 0; i < 300 && ctl->loop_count > 0; i++ )
@@ -236,6 +239,10 @@ int main( int ac, char **av )
 	// also connects to graphite
 	if( net_start( ) )
 		fatal( "Failed to start networking." );
+
+	// light up http server if configured
+	if( http_start( ) )
+		fatal( "Failed to start HTTP server." );
 
 	get_time( );
 	ts_diff( ctl->curr_time, ctl->init_time, &diff );

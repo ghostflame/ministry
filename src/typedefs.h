@@ -16,8 +16,8 @@ typedef struct lock_control			LOCK_CTL;
 typedef struct mem_control			MEM_CTL;
 typedef struct network_control		NET_CTL;
 typedef struct stats_control		STAT_CTL;
-typedef struct synth_control        SYN_CTL;
-typedef struct http_control         HTTP_CTL;
+typedef struct synth_control		SYN_CTL;
+typedef struct http_control			HTTP_CTL;
 
 typedef struct net_in_port			NET_PORT;
 typedef struct net_type				NET_TYPE;
@@ -46,7 +46,9 @@ typedef struct synth_data			SYNTH;
 typedef struct words_data			WORDS;
 typedef struct av_pair				AVP;
 typedef struct lockless_counter		LLCT;
-typedef struct http_ssl				HTTP_SSL;
+typedef struct http_callbacks		HTTP_CB;
+typedef struct http_ssl				SSL_CONF;
+typedef struct http_ssl_file		SSL_FILE;
 
 // function types
 typedef void tsf_fn ( ST_THR * );

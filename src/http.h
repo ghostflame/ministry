@@ -11,83 +11,91 @@
 #define MINISTRY_HTTP_H
 
 
-typedef cb_ContentReader     MHD_ContentReaderCallback;
-typedef cb_ContentReaderFree MHD_ContentReaderFreeCallback;
-typedef cb_AccessPolicy      MHD_AccessPolicyCallback;
-typedef cb_AccessHandler     MHD_AccessHandlerCallback;
-typedef cb_RequestCompleted  MHD_RequestCompletedCallback;
-typedef it_KeyValue          MHD_KeyValueIterator;
-typedef it_PostData          MHD_PostDataIterator;
+typedef struct MHD_Daemon               HTTP_SVR;
+typedef struct MHD_Connection           HTTP_CONN;
+typedef enum MHD_RequestTerminationCode HTTP_CODE;
+typedef enum MHD_ValueKind              HTTP_VAL;
+typedef struct MHD_Response             HTTP_RESP;
 
-typedef HTTP_CONN struct MHD_Connection;
-typedef HTTP_CODE enum MHD_RequestTerminationCode;
-
-typedef void *cb_RequestLogger ( void *cls, const char *uri, HTTP_CONN *conn );
-typedef void *cb_Logger        ( void *arg, const char *fmt, va_list ap );
+typedef void (*cb_RequestLogger) ( void *cls, const char *uri, HTTP_CONN *conn );
 
 
-cb_AccessHandler http_request_handler;
-cb_RequestCompleted http_request_complete;
-cb_AccessPolicy http_unused_policy;
-cb_ContentReader http_unused_reader;
-cb_ContentReaderFree http_unused_reader_free;
-cb_RequestLogger http_log_request;
-cb_Logger http_log;
-it_KeyValue http_unused_kv;
-it_PostData http_unused_post;
+#define DEFAULT_HTTP_CONN_LIMIT			256
+#define DEFAULT_HTTP_CONN_IP_LIMIT		64
+#define DEFAULT_HTTP_CONN_TMOUT			10
+
+#define MAX_SSL_FILE_SIZE				65536
 
 
-#define HTTP_DEFAULT_CONN_LIMIT			256
-#define HTTP_DEFAULT_CONN_IP_LIMIT		64
-#define HTTP_DEFAULT_CONN_TMOUT			10
+struct http_ssl_file
+{
+	const char				*	type;
+	char					*	content;
+	char					*	path;
+	int							len;
+};
 
 
 struct http_ssl
 {
-	const char				*	key;
-	const char				*	cert;
+	SSL_FILE					key;
+	SSL_FILE					cert;
+	char					*	password;
+	int							enabled;
+
+	uint16_t					port;
+};
+
+
+struct http_callbacks
+{
+	MHD_PanicCallback						panic;
+	MHD_AcceptPolicyCallback				policy;
+	MHD_AccessHandlerCallback				handler;
+	MHD_RequestCompletedCallback			complete;
+	MHD_ContentReaderCallback				reader;
+	MHD_ContentReaderFreeCallback			rfree;
+
+	MHD_LogCallback							log;
+	cb_RequestLogger						reqlog;
+
+	MHD_KeyValueIterator					kv;
+	MHD_PostDataIterator					post;
 };
 
 
 
 struct http_control
 {
-	MHD_Daemon				*	server;
-	cb_AccessHandler		*	cb_ah;
-	cb_AccessPolicy			*	cb_ap;
-	cb_ContentReader		*	cb_cr;
-	cb_Logger				*	cb_lg;
-	cb_RequestCompleted		*	cb_rc;
-	cb_ContentReaderFree	*   cb_rf;
-	cb_RequestLogger		*	cb_rl;
-	it_KeyValue				*	it_kv;
-	it_PostData				*	it_pd;
+	//struct MHD_Daemon	*	server;
+	HTTP_SVR			*	server;
 
-	unsigned int				flags;
-	unsigned int				conns_max;
-	unsigned int				conns_max_ip;
-	unsigned int				conns_tmout;
+	HTTP_CB				*	calls;
+	SSL_CONF			*	ssl;
 
-	struct sockaddr_in			sin;
+	unsigned int			flags;
+	unsigned int			conns_max;
+	unsigned int			conns_max_ip;
+	unsigned int			conns_tmout;
 
-	uint16_t					port;
-	char					*	addr;
+	struct sockaddr_in	*	sin;
 
-	HTTP_SSL				*	ssl;
+	uint16_t				port;
+	char				*	addr;
+	char				*	proto;
 
-	int							enabled;
-	int							stats;
-	int							sock;
+	int						enabled;
+	int						stats;
 };
 
 
 
+int http_start( void );
+void http_stop( void );
 
 
-
-throw_fn http_loop;
-
-HTTP_CTL *http_default_config( void );
+HTTP_CTL *http_config_defaults( void );
 int http_config_line( AVP *av );
 
 #endif
+

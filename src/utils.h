@@ -115,4 +115,7 @@ int setlimit( int res, int64_t val );
 // fetch a lockless counter
 uint64_t lockless_fetch( LLCT *l );
 
+// read a file into memory
+int read_file( char *path, char **buf, int *len, size_t max, int perm, char *desc );
+
 #endif

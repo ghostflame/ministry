@@ -70,6 +70,7 @@
 #include "mem.h"
 #include "synth.h"
 #include "stats.h"
+#include "http.h"
 #include "selfstats.h"
 
 // last
