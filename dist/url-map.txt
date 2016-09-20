@@ -1,0 +1,4 @@
+/                           Url Map
+/stats                      Ministry internal stats
+/metrics                    Prometheus metrics endpoint
+/tokens                     Get adder/stats/guage tokens

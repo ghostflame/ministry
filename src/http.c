@@ -63,26 +63,110 @@ void http_log( void *arg, const char *fm, va_list ap )
 }
 
 
+
+
+int http_handler_tokens( char *buf, int max )
+{
+	int len;
+
+	len = snprintf( buf, max,
+			"{\"adder\":%d,\"stats\":%d,\"gauge\":%d}\r\n",
+			1234567890, 1357908642, 1029384756 );
+
+	return len;
+}
+
+
+struct url_map_help
+{
+	char		*	url;
+	char		*	desc;
+};
+
+const struct url_map_help url_mapping[] = {
+	{ "/",               "View URL Map"                   },
+	{ "/stats",          "Ministry internal stats"        },
+	{ "/metrics",        "Prometheus metrics endpoint"    },
+	{ "/tokens",         "Connection tokens endpoint"     },
+	{ NULL,              NULL                             }
+};
+
+
+int http_handler_usage( char *buf, int max )
+{
+	const struct url_map_help *umh;
+	int len = 0;
+
+	for( umh = url_mapping; umh->url; umh++ )
+		len += snprintf( buf + len, max - len, "%-16s %s\n",
+		                 umh->url, umh->desc );
+
+	return len;
+}
+
+
+int http_send_response( char *buf, int len, HTTP_CONN *conn, unsigned int code )
+{
+	HTTP_RESP *resp;
+	int ret;
+
+	if( !len )
+		len = strlen( buf );
+
+	resp = MHD_create_response_from_buffer( len, (void *) buf, MHD_RESPMEM_MUST_COPY );
+	ret  = MHD_queue_response( conn, code, resp );
+	MHD_destroy_response( resp );
+
+	return ret;
+}
+
+
+
 int http_request_handler( void *cls, HTTP_CONN *conn,
 	const char *url, const char *method, const char *version,
 	const char *upload_data, size_t *upload_data_size,
 	void **con_cls )
 {
-	HTTP_RESP *resp;
+	int len, rlen, code;
 	char buf[1024];
-	int ret, len;
+
 
 	// we only support GET right now
 	if( strcasecmp( method, "GET" ) )
-		return MHD_NO;
+		return http_send_response( "Only GET is supported.", 0, conn, MHD_HTTP_METHOD_NOT_ALLOWED );
 
-	len = snprintf( buf, 1024, "This is the response.\r\n" );
+	code = MHD_HTTP_OK;
+	rlen = strlen( url );
+	len  = 0;
 
-	resp = MHD_create_response_from_buffer( len, (void *) buf, MHD_RESPMEM_MUST_COPY );
-	ret  = MHD_queue_response( conn, MHD_HTTP_OK, resp );
-	MHD_destroy_response( resp );
+	switch( rlen )
+	{
+		case 1:
+			if( !strcmp( url, "/" ) )
+				len = http_handler_usage( buf, 1024 );
+			break;
+		case 6:
+			if( !strcmp( url, "/stats" ) )
+				len = snprintf( buf, 1024, "Ministry internal stats.\r\n" );
+			break;
+		case 7:
+			if( !strcmp( url, "/tokens" ) )
+				len = http_handler_tokens( buf, 1024 );
+			break;
+		case 8:
+			if( !strcmp( url, "/metrics" ) )
+				len = snprintf( buf, 1024, "Prometheus metrics!\r\n" );
+			break;
+	}
 
-	return ret;
+	// don't recognise that url
+	if( !len )
+	{
+		len  = snprintf( buf, 1024, "That url is not recognised.\r\n" );
+		code = MHD_HTTP_NOT_FOUND;
+	}
+
+	return http_send_response( buf, len, conn, code );
 }
 
 
