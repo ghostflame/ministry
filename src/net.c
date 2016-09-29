@@ -136,7 +136,10 @@ NSOCK *net_make_sock( int insz, int outsz, struct sockaddr_in *peer )
 	NSOCK *ns;
 
 	if( !( ns = (NSOCK *) allocz( sizeof( NSOCK ) ) ) )
+	{
 		fatal( "Could not allocate new nsock." );
+		return NULL;
+	}
 
 	if( !ns->name )
 	{
@@ -729,10 +732,10 @@ int net_config_line( AVP *av )
 		}
 		else if( attIs( "max_waiting" ) )
 		{
+			warn( "Net config max_waiting is deprecated - use [Target] : max_waiting." );
 			ctl->net->max_bufs = atoi( av->val );
 			if( ctl->net->max_bufs <= 0 )
 				ctl->net->max_bufs = IO_MAX_WAITING;
-			debug( "Max waiting buffers set to %d.", ctl->net->max_bufs );
 		}
 		else if( attIs( "prefix" ) )
 		{
@@ -741,6 +744,9 @@ int net_config_line( AVP *av )
 		}
 		else if( attIs( "target" ) || attIs( "targets" ) )
 		{
+			warn( "WARNING: config item %s is deprecated, use [Target] section.", av->att );
+			return 0;
+
 			w  = (WORDS *) allocz( sizeof( WORDS ) );
 			cp = strdup( av->val );
 			strwords( w, cp, 0, ',' );

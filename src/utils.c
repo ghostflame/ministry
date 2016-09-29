@@ -122,6 +122,52 @@ char *str_copy( char *src, int len )
 	return p;
 }
 
+// permanent string buffer
+BUF *strbuf( uint32_t size )
+{
+	BUF *b = (BUF *) allocz( sizeof( BUF ) );
+
+	if( size )
+	{
+		b->space = (char *) allocz( size );
+		b->sz    = size;
+	}
+
+	b->buf = b->space;
+	return b;
+}
+
+int strbuf_copy( BUF *b, char *str, int len )
+{
+	if( !len )
+		len = strlen( str );
+
+	if( (uint32_t) len >= b->sz )
+		return -1;
+
+	memcpy( b->buf, str, len );
+	b->len = len;
+	b->buf[b->len] = '\0';
+
+	return len;
+}
+
+int strbuf_add( BUF *b, char *str, int len )
+{
+	if( !len )
+		len = strlen( str );
+
+	if( ( b->len + len ) >= b->sz )
+		return -1;
+
+	memcpy( b->buf + b->len, str, len );
+	b->len += len;
+	b->buf[b->len] = '\0';
+
+	return len;
+}
+
+
 // a capped version of strlen
 int str_nlen( char *src, int max )
 {

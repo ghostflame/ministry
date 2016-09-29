@@ -59,6 +59,15 @@ struct words_data
 };
 
 
+struct string_buffer
+{
+	char				*	space;
+	char				*	buf;
+	uint32_t				len;
+	uint32_t				sz;
+};
+
+
 struct lockless_counter
 {
 	uint64_t				count;
@@ -89,6 +98,11 @@ char *str_dup( char *src, int len );
 
 // this can be freed
 char *str_copy( char *src, int len );
+
+// get a buffer
+BUF *strbuf( uint32_t size );
+int strbuf_copy( BUF *b, char *str, int len );
+int strbuf_add( BUF *b, char *str, int len );
 
 // get string length, up to a maximum
 int str_nlen( char *src, int max );

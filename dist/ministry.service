@@ -9,6 +9,12 @@ User=ministry
 Group=ministry
 PermissionsStartOnly=true
 
+# set higher limits than defaults - ministry needs resources
+# ministry needs an fd per connected client
+LimitNOFILE=131072
+# ministry has a process per connected client, plus some
+LimitNPROC=65536
+
 ExecStartPre=/bin/mkdir -p -m755 /run/ministry
 ExecStartPre=/bin/chown ministry:ministry /run/ministry
 PIDFile=/run/ministry/ministry.pid

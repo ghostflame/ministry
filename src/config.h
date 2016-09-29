@@ -43,6 +43,7 @@ struct ministry_control
 	NET_CTL				*	net;
 	STAT_CTL			*	stats;
 	SYN_CTL				*	synth;
+	TGT_CTL				*	tgt;
 
 	struct timespec			init_time;
 	struct timespec			curr_time;

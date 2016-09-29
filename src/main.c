@@ -65,7 +65,6 @@ void shut_down( int exval )
 
 	// shut down all those mutex locks
 	lock_shutdown( );
-	io_stop( );
 
 	pidfile_remove( );
 
@@ -211,7 +210,11 @@ int main( int ac, char **av )
 
 	if( ctl->run_flags & RUN_DAEMON )
 	{
-		if( daemon( 1, 0 ) < 0 )
+		if( ctl->run_flags & RUN_TGT_STDOUT )
+		{
+			warn( "Daemon mode disabled by stdout target." );
+		}
+		else if( daemon( 1, 0 ) < 0 )
 		{
 			fprintf( stderr, "Unable to daemonize -- %s", Err );
 			warn( "Unable to daemonize -- %s", Err );

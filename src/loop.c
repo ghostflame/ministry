@@ -38,7 +38,7 @@ void loop_mark_done( const char *tag, int64_t skips, int64_t fires )
 	pthread_mutex_lock( &(ctl->locks->loop) );
 	ctl->loop_count--;
 	pthread_mutex_unlock( &(ctl->locks->loop) );
-	debug( "Some %s loop thread has ended.  [%ld/%ld]", tag, skips, fires );
+	debug( "Some %s loop thread has ended.  [%ld/%ld]", tag, fires, skips );
 }
 
 
@@ -195,6 +195,10 @@ void loop_start( void )
 	// start a timing circuit
 	thread_throw( &loop_timer, NULL );
 
+	// and the tset/target loops
+	// must happen before stats_start
+	target_start( );
+
 	// throw the data submission loops
 	stats_start( ctl->stats->stats );
 	stats_start( ctl->stats->adder );
@@ -209,9 +213,6 @@ void loop_start( void )
 
 	// and gc
 	thread_throw( &gc_loop, NULL );
-
-	// and the network io loops
-	io_start( );
 
 	// throw the data listener loop
 	net_start_type( ctl->net->stats );

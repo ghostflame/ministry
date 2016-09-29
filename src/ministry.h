@@ -10,6 +10,8 @@
 #ifndef MINISTRY_H
 #define MINISTRY_H
 
+#define _GNU_SOURCE
+
 // here's what we need in addition
 #include <poll.h>
 #include <time.h>
@@ -64,6 +66,7 @@
 #include "udp.h"
 #include "tcp.h"
 #include "io.h"
+#include "target.h"
 #include "log.h"
 #include "data.h"
 #include "gc.h"
