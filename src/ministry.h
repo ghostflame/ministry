@@ -13,6 +13,7 @@
 #define _GNU_SOURCE
 
 // here's what we need in addition
+#include <ldap.h>
 #include <poll.h>
 #include <time.h>
 #include <ctype.h>
@@ -73,6 +74,7 @@
 #include "mem.h"
 #include "synth.h"
 #include "stats.h"
+#include "auth_ldap.h"
 #include "http.h"
 #include "selfstats.h"
 

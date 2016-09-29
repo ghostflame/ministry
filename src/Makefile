@@ -1,7 +1,7 @@
 CC     = /usr/bin/gcc -std=gnu99 $(WFLAGS)
 
-FILES  = utils log loop thread mem gc net tcp udp io target data synth stats selfstats http config main
-HEADS  = config data gc io log loop mem ministry target net tcp udp run stats selfstats http synth thread typedefs utils
+FILES  = utils log loop thread mem gc net tcp udp io target data synth stats selfstats http auth_ldap config main
+HEADS  = config data gc io log loop mem ministry target net tcp udp run stats selfstats http auth_ldap synth thread typedefs utils
 VERS   = $(shell sed -rn 's/^Version:\t(.*)/\1/p' ../ministry.spec)
 
 OBJS   = $(FILES:%=%.o)
@@ -12,7 +12,7 @@ IFLAGS = -I.
 DFLAGS = -g -pg -ggdb3 -DDEBUG -DDEBUG_LOOPS -DDEBUG_SYNTH -DDEBUG_IO
 TFLAGS = -pthread
 CFLAGS = $(TFLAGS) $(IFLAGS) -DMINISTRY_VERSION='"$(VERS)"'
-LFLAGS = $(TFLAGS) $(IFLAGS) -lm -lmicrohttpd
+LFLAGS = $(TFLAGS) $(IFLAGS) -lm -lmicrohttpd -lldap
 
 BINDIR = $(DESTDIR)/usr/bin
 BIN    = ministry

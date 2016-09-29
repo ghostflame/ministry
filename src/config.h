@@ -37,6 +37,7 @@ struct config_context
 struct ministry_control
 {
 	HTTP_CTL			*	http;
+	LDAP_CTL			*	ldap;
 	LOG_CTL				*	log;
 	LOCK_CTL			*	locks;
 	MEM_CTL				*	mem;

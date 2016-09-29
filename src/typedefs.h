@@ -11,6 +11,7 @@
 #define MINISTRY_TYPEDEFS_H
 
 typedef struct ministry_control		MIN_CTL;
+typedef struct auth_ldap_control	LDAP_CTL;
 typedef struct log_control			LOG_CTL;
 typedef struct lock_control			LOCK_CTL;
 typedef struct mem_control			MEM_CTL;
@@ -55,6 +56,7 @@ typedef struct lockless_counter		LLCT;
 typedef struct http_callbacks		HTTP_CB;
 typedef struct http_ssl				SSL_CONF;
 typedef struct http_ssl_file		SSL_FILE;
+typedef struct auth_ldap_server		LDAP_SVR;
 
 // function types
 typedef void target_fn ( ST_THR *, BUF *, IOBUF * );
