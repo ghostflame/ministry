@@ -196,7 +196,7 @@ int http_ssl_setup( SSL_CONF *s )
 	 || http_ssl_load_file( &(s->key),  "key"  ) )
 		return -1;
 
-	
+	// do things here
 
 	return 0;
 }
