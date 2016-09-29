@@ -399,12 +399,32 @@ int64_t io_send_net( TARGET *t )
 
 void *io_loop( void *arg )
 {
+	struct sockaddr_in sa;
 	int64_t fires = 0;
 	TARGET *d;
 	THRD *t;
 
 	t = (THRD *) arg;
 	d = (TARGET *) t->arg;
+
+	// find out where we are connecting to
+	if( net_lookup_host( d->host, &sa ) )
+	{
+		loop_end( "Unable to look up network target." );
+		free( t );
+		return NULL;
+	}
+
+	// and we already have a port
+	sa.sin_port = htons( d->port );
+
+	// make a socket
+	d->sock = net_make_sock( 0, 0, &sa );
+
+	// how long do we count down after 
+	d->reconn_ct = ctl->net->reconn / ctl->net->io_usec;
+	if( ctl->net->reconn % ctl->net->io_usec )
+		d->reconn_ct++;
 
 	// init it's mutex
 	pthread_mutex_init( &(d->lock), NULL );

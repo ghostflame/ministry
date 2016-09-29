@@ -26,12 +26,11 @@ typedef struct stat_thread_ctl		ST_THR;
 typedef struct stat_threshold		ST_THOLD;
 typedef struct config_context		CCTXT;
 typedef struct points_list			PTLIST;
-typedef struct path_sum				PTSUM;
 typedef struct mem_type_blank		MTBLANK;
 typedef struct ip_network			IPNET;
 typedef struct ip_check				IPCHK;
 typedef struct mem_type_control		MTYPE;
-typedef union  data_hash_vals		DVAL;
+typedef struct data_hash_vals		DVAL;
 typedef struct data_hash_entry		DHASH;
 typedef struct data_type_params		DTYPE;
 typedef struct io_buffer			IOBUF;
@@ -55,9 +54,9 @@ typedef struct lockless_counter		LLCT;
 
 // function types
 typedef void target_fn ( ST_THR *, BUF *, IOBUF * );
-typedef void tsf_fn ( BUF *, int64_t );
 typedef int64_t io_fn( TARGET * );
-typedef void stats_fn ( ST_THR *, int64_t );
+typedef void tsf_fn ( ST_THR *, BUF * );
+typedef void stats_fn ( ST_THR * );
 typedef void loop_call_fn ( int64_t, void * );
 typedef void * throw_fn ( void * );
 typedef void add_fn ( char *, int, char * );

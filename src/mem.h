@@ -13,6 +13,7 @@
 
 #define DEFAULT_MEM_MAX_KB			( 10 * 1024 * 1024 )
 #define DEFAULT_MEM_CHECK_INTV		5000		// msec
+#define DEFAULT_MEM_STACK_SIZE		128			// gets converted to KB
 
 #define MEM_ALLOCSZ_HOSTS			128
 #define MEM_ALLOCSZ_POINTS			512
@@ -69,8 +70,10 @@ struct mem_control
 	int					curr_kb;
 	int					max_kb;
 	int					hashsize;
+	int					stacksize;
 	int					interval;	// msec
 
+	int					gc_enabled;
 	int					gc_thresh;
 	int					gc_gg_thresh;
 };

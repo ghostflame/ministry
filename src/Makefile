@@ -17,10 +17,11 @@ LFLAGS = $(TFLAGS) $(IFLAGS) -lm
 BINDIR = $(DESTDIR)/usr/bin
 BIN    = ministry
 
-all:   WFLAGS += -Wpedantic
+all:   WFLAGS += -Wpedantic -Wextra -Wno-unused-parameter
 all:   CFLAGS += -O2
 all:   $(BIN)
 
+debug: WFLAGS += -Wpedantic -Wextra -Wno-unused-parameter
 debug: CFLAGS += $(DFLAGS)
 debug: LFLAGS += $(DFLAGS)
 debug: $(BIN)

@@ -39,18 +39,6 @@ enum stats_types
 };
 
 
-enum stats_ts_format
-{
-	STATS_TSF_SEC = 0,
-	STATS_TSF_MSEC,
-	STATS_TSF_USEC,
-	STATS_TSF_NSEC,
-	STATS_TSF_DOTMSEC,
-	STATS_TSF_DOTUSEC,
-	STATS_TSF_DOTNSEC,
-	STATS_TSF_MAX,
-};
-
 
 
 #define DEFAULT_STATS_THREADS		6
@@ -76,13 +64,11 @@ struct stat_thread_ctl
 	char			*	wkrstr;
 	int					id;
 	int					max;
-	int					points;
-	int					active;
 	pthread_mutex_t		lock;
 
 	// workspace
-	float			*	wkbuf;
-	float			*	wkspc;
+	double			*	wkbuf;
+	double			*	wkspc;
 	int					wkspcsz;
 
 	// output
@@ -90,6 +76,22 @@ struct stat_thread_ctl
 	BUF				*	path;
 	BUF				**	ts;
 	IOBUF			**	bp;
+
+	// current timestamp
+	int64_t				tval;
+
+	// counters
+	int64_t				active;
+	int64_t				points;
+
+	// timings
+	struct timespec		now;
+	// these are taken at the time of *starting* to do something
+	struct timespec		steal;
+	struct timespec		wait;
+	struct timespec		stats;
+	// and this is taken when finished
+	struct timespec		done;
 };
 
 
@@ -111,7 +113,7 @@ struct stat_config
 	DHASH			**	data;
 	int					hsize;
 	int					dcurr;
-	int					gc_count;
+	LLCT				gc_count;
 	uint32_t			did;
 };
 

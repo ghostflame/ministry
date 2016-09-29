@@ -414,7 +414,7 @@ NET_CTL *net_config_defaults( void )
 }
 
 
-#define ntflag( f )			if( atoi( av->val ) ) nt->flags |= NTYPE_##f; else nt->flags &= ~NTYPE_##f
+#define ntflag( f )			if( config_bool( av ) ) nt->flags |= NTYPE_##f; else nt->flags &= ~NTYPE_##f
 
 
 int net_lookup_host( char *host, struct sockaddr_in *res )
@@ -422,9 +422,17 @@ int net_lookup_host( char *host, struct sockaddr_in *res )
 	struct addrinfo *ap, *ai = NULL;
 
 	// try the lookup
-	if( getaddrinfo( host, NULL, NULL, &ai ) || !ai )
+	if( getaddrinfo( host, NULL, NULL, &ai ) )
 	{
 		err( "Could not look up host %s -- %s", host, Err );
+		return -1;
+	}
+
+	// we get anything?
+	if( !ai )
+	{
+		err( "Found nothing when looking up host %s", host );
+		freeaddrinfo( ai );
 		return -1;
 	}
 
@@ -787,11 +795,11 @@ int net_config_line( AVP *av )
 	else if( !strncasecmp( av->att, "ipcheck.", 8 ) )
 	{
 		if( !strcasecmp( p, "enable" ) )
-			ctl->net->iplist->enable = ( atoi( av->val ) ) ? 1 : 0;
+			ctl->net->iplist->enable = config_bool( av );
 		else if( !strcasecmp( p, "verbose" ) )
-			ctl->net->iplist->verbose = ( atoi( av->val ) ) ? 1 : 0;
+			ctl->net->iplist->verbose = config_bool( av );
 		else if( !strcasecmp( p, "drop_unknown" ) || !strcasecmp( p, "drop" ) )
-			ctl->net->iplist->drop = ( atoi( av->val ) ) ? 1 : 0;
+			ctl->net->iplist->drop = config_bool( av );
 		else if( !strcasecmp( p, "whitelist" ) )
 			return net_add_list_member( av->val, av->vlen, NET_IP_WHITELIST );
 		else if( !strcasecmp( p, "blacklist" ) )
@@ -849,7 +857,9 @@ int net_config_line( AVP *av )
 		if( tcp )
 			warn( "To disable prefix checks on TCP, set enable 0 on prefixes." );
 		else
+		{
 			ntflag( UDP_CHECKS );
+		}
 	}
 	else if( !strcasecmp( d, "bind" ) )
 	{

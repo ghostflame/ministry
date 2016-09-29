@@ -19,6 +19,10 @@ void thread_throw_init_attr( void )
 
 	if( pthread_attr_setdetachstate( tt_attr, PTHREAD_CREATE_DETACHED ) )
 		err( "Cannot set default attr state to detached -- %s", Err );
+
+	if( pthread_attr_setstacksize( tt_attr, ctl->mem->stacksize << 10 ) )
+		err( "Cannot set default attr stacksize to %dKB -- %s",
+			ctl->mem->stacksize >> 10, Err );
 }
 
 
@@ -40,8 +44,8 @@ pthread_t thread_throw( void *(*fp) (void *), void *arg )
 DLOCKS *dhash_locks_create( int type )
 {
 	const DTYPE *dt = data_type_defns + type;
+	uint32_t i;
 	DLOCKS *d;
-	int i;
 
 	d = (DLOCKS *) allocz( sizeof( DLOCKS ) );
 
@@ -60,7 +64,7 @@ DLOCKS *dhash_locks_create( int type )
 
 void dhash_locks_destroy( DLOCKS *d )
 {
-	int i;
+	uint32_t i;
 
 	for( i = 0; i < d->len; i++ )
 		pthread_spin_destroy( d->locks + i );

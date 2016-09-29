@@ -20,7 +20,8 @@
  * problem.  Of course, threads will "help"...
  */
 
-const static uint8_t mem_signal_array[128] = {
+#ifdef USE_MEM_SIGNAL_ARRAY
+static const uint8_t mem_signal_array[128] = {
 	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0,
 	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0,
 	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0,
@@ -38,7 +39,7 @@ const static uint8_t mem_signal_array[128] = {
 	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0,
 	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0
 };
-
+#endif
 
 
 // zero'd memory
@@ -141,7 +142,7 @@ int strbuf_copy( BUF *b, char *str, int len )
 	if( !len )
 		len = strlen( str );
 
-	if( len >= b->sz )
+	if( (uint32_t) len >= b->sz )
 		return -1;
 
 	memcpy( b->buf, str, len );
@@ -376,10 +377,60 @@ vv_finish:
 }
 
 
+void pidfile_mkdir( char *path )
+{
+	char dbuf[2048], *ls;
+	struct stat sb;
+	int l;
+
+	// we have a sensible looking path?
+	if( !( ls = strrchr( path, '/' ) )
+	 || ls == path )
+		return;
+
+	// path too long for us?
+	if( ( l = ls - path ) > 2047 )
+		return;
+
+	memcpy( dbuf, path, l );
+	dbuf[l] = '\0';
+
+	// prune trailing /
+	while( l > 1 && dbuf[l-1] == '/' )
+		dbuf[--l] = '\0';
+
+	// recurse up towards /
+	pidfile_mkdir( dbuf );
+
+	if( stat( dbuf, &sb ) )
+	{
+		if( errno == ENOENT )
+		{
+			if( mkdir( dbuf, 0755 ) )
+				warn( "Could not create pidfile path parent dir %s -- %s",
+					dbuf, Err );
+			else
+				info( "Created pidfile path parent dir %s", dbuf );
+		}
+		else
+			warn( "Cannot stat pidfile parent dir %s -- %s", dbuf, Err );
+	}
+	else if( !S_ISDIR( sb.st_mode ) )
+	{
+		warn( "Pidfile parent %s is not a directory.", dbuf );
+	}
+}
+
+
+
 void pidfile_write( void )
 {
 	FILE *fh;
 
+	// make our piddir
+	pidfile_mkdir( ctl->pidfile );
+
+	// and our file
 	if( !( fh = fopen( ctl->pidfile, "w" ) ) )
 	{	
 		warn( "Unable to write to pidfile %s -- %s",
@@ -401,9 +452,9 @@ void pidfile_remove( void )
 // an implementation of Kaham Summation
 // https://en.wikipedia.org/wiki/Kahan_summation_algorithm
 // useful to avoid floating point errors
-static inline void kahan_sum( float val, float *sum, float *low )
+static inline void kahan_sum( double val, double *sum, double *low )
 {
-	float y, t;
+	double y, t;
 
 	y = val - *low;		// low starts off small
 	t = *sum + y;		// sum is big, y small, lo-order y is lost
@@ -412,9 +463,9 @@ static inline void kahan_sum( float val, float *sum, float *low )
 	*sum = t;		// low is algebraically always 0
 }
 
-void kahan_summation( float *list, int len, float *sum )
+void kahan_summation( double *list, int len, double *sum )
 {
-	float low = 0;
+	double low = 0;
 	int i;
 
 	for( *sum = 0, i = 0; i < len; i++ )
@@ -462,7 +513,7 @@ int setlimit( int res, int64_t val )
 		rl.rlim_cur = rl.rlim_max;
 	else
 	{
-		if( rl.rlim_max < val )
+		if( (int64_t) rl.rlim_max < val )
 		{
 			err( "Limit %s max is %ld.", which, rl.rlim_max );
 			return -1;
@@ -480,4 +531,22 @@ int setlimit( int res, int64_t val )
 	debug( "Set %s limit to %ld.", which, rl.rlim_cur );
 	return 0;
 }
+
+
+uint64_t lockless_fetch( LLCT *l )
+{
+	uint64_t diff, curr;
+
+	// we can only read from it *once*
+	// then we do maths
+	curr = l->count;
+	diff = curr - l->prev;
+
+	// and set the previous
+	l->prev = curr;
+
+	return diff;
+}
+
+
 

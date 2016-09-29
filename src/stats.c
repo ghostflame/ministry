@@ -16,24 +16,18 @@ const char *stats_type_names[STATS_TYPE_MAX] =
 	"stats", "adder", "gauge", "self"
 };
 
-const char *stats_tsf_names[STATS_TSF_MAX] =
-{
-	"sec", "msec", "usec", "nsec", "dotmsec", "dotusec", "dotnsec"
-};
-
-
 
 
 
 static inline int cmp_floats( const void *p1, const void *p2 )
 {
-	float *f1, *f2;
+	double *d1, *d2;
 
-	f1 = (float *) p1;
-	f2 = (float *) p2;
+	d1 = (double *) p1;
+	d2 = (double *) p2;
 
-	return ( *f1 > *f2 ) ? 1  :
-	       ( *f2 < *f1 ) ? -1 : 0;
+	return ( *d1 > *d2 ) ? 1  :
+	       ( *d2 < *d1 ) ? -1 : 0;
 }
 
 
@@ -42,13 +36,14 @@ static inline int cmp_floats( const void *p1, const void *p2 )
 // end of the buffer
 void bprintf( ST_THR *t, char *fmt, ... )
 {
-	int i, l, total;
+	int i, total;
 	va_list args;
+	uint32_t l;
 	TSET *s;
 
 	// write the variable part into the thread's path buffer
 	va_start( args, fmt );
-	l = vsnprintf( t->path->buf, t->path->sz, fmt, args );
+	l = (uint32_t) vsnprintf( t->path->buf, t->path->sz, fmt, args );
 	va_end( args );
 
 	// check for truncation
@@ -84,67 +79,41 @@ void bprintf( ST_THR *t, char *fmt, ... )
 }
 
 
-// send all remaining buffers
-void stats_send_bufs( ST_THR *t )
-{
-	int i;
-
-	for( i = 0; i < ctl->tgt->set_count; i++ )
-		if( t->bp[i] )
-		{
-			target_buf_send( ctl->tgt->setarr[i], t->bp[i] );
-			t->bp[i] = NULL;
-		}
-}
-
-
 
 // TIMESTAMP FUNCTIONS
-void stats_tsf_sec( BUF *ts, int64_t tval )
+void stats_tsf_sec( ST_THR *t, BUF *b )
 {
-	struct timespec now;
-
-	llts( tval, now );
-	ts->len = snprintf( ts->buf, TSBUF_SZ, " %ld\n", now.tv_sec );
+	b->len = snprintf( b->buf, TSBUF_SZ, " %ld\n", t->now.tv_sec );
 }
 
-void stats_tsf_msec( BUF *ts, int64_t tval )
+void stats_tsf_msval( ST_THR *t, BUF *b )
 {
-	ts->len = snprintf( ts->buf, TSBUF_SZ, " %ld\n", tval / 1000000 );
+	b->len = snprintf( b->buf, TSBUF_SZ, " %ld.%03ld\n", t->now.tv_sec, t->now.tv_nsec / 1000000 );
 }
 
-void stats_tsf_usec( BUF *ts, int64_t tval )
+void stats_tsf_tval( ST_THR *t, BUF *b )
 {
-	ts->len = snprintf( ts->buf, TSBUF_SZ, " %ld\n", tval / 1000 );
+	b->len = snprintf( b->buf, TSBUF_SZ, " %ld.%06ld\n", t->now.tv_sec, t->now.tv_nsec / 1000 );
 }
 
-void stats_tsf_nsec( BUF *ts, int64_t tval )
+void stats_tsf_tspec( ST_THR *t, BUF *b )
 {
-	ts->len = snprintf( ts->buf, TSBUF_SZ, " %ld\n", tval );
+	b->len = snprintf( b->buf, TSBUF_SZ, " %ld.%09ld\n", t->now.tv_sec, t->now.tv_nsec );
 }
 
-void stats_tsf_dotmsec( BUF *ts, int64_t tval )
+void stats_tsf_msec( ST_THR *t, BUF *b )
 {
-	struct timespec now;
-
-	llts( tval, now );
-	ts->len = snprintf( ts->buf, TSBUF_SZ, " %ld.%03ld\n", now.tv_sec, now.tv_nsec / 1000000 );
+	b->len = snprintf( b->buf, TSBUF_SZ, " %ld\n", t->tval / 1000000 );
 }
 
-void stats_tsf_dotusec( BUF *ts, int64_t tval )
+void stats_tsf_usec( ST_THR *t, BUF *b )
 {
-	struct timespec now;
-
-	llts( tval, now );
-	ts->len = snprintf( ts->buf, TSBUF_SZ, " %ld.%06ld\n", now.tv_sec, now.tv_nsec / 1000 );
+	b->len = snprintf( b->buf, TSBUF_SZ, " %ld\n", t->tval / 1000 );
 }
 
-void stats_tsf_dotnsec( BUF *ts, int64_t tval )
+void stats_tsf_nsec( ST_THR *t, BUF *b )
 {
-	struct timespec now;
-
-	llts( tval, now );
-	ts->len = snprintf( ts->buf, TSBUF_SZ, " %ld.%09ld\n", now.tv_sec, now.tv_nsec );
+	b->len = snprintf( b->buf, TSBUF_SZ, " %ld\n", t->tval );
 }
 
 
@@ -155,6 +124,18 @@ void stats_set_bufs( ST_THR *t, ST_CFG *c, int64_t tval )
 {
 	TSET *s;
 	int i;
+
+	// only set the timestamp buffer if we need to
+	if( tval )
+	{
+		// grab the timestamp
+		t->tval = tval;
+		llts( tval, t->now );
+
+		// and reset counters
+		t->active = 0;
+		t->points = 0;
+	}
 
 	// default to our own config
 	if( !c )
@@ -170,7 +151,7 @@ void stats_set_bufs( ST_THR *t, ST_CFG *c, int64_t tval )
 
 		// only set the timestamp buffers if we need to
 		if( tval )
-			(*(s->stype->tsfp))( t->ts[i], tval );
+			(*(s->stype->tsfp))( t, t->ts[i] );
 
 		// grab a new buffer
 		if( !t->bp[i] && !( t->bp[i] = mem_new_buf( IO_BUF_SZ ) ) )
@@ -182,23 +163,90 @@ void stats_set_bufs( ST_THR *t, ST_CFG *c, int64_t tval )
 }
 
 
+// report on a single thread's performance
+void stats_thread_report( ST_THR *t )
+{
+	int64_t p, tsteal, tstats, twait, tdone, delay, steal, wait, stats, total;
+	double intvpc;
+
+	// report some self stats?
+	if( !ctl->stats->self->enable )
+		return;
+
+	stats_set_bufs( t, ctl->stats->self, 0 );
+
+	// we have to capture it, because bprintf increments it
+	p = t->active;
+
+	bprintf( t, "%s.active %d", t->wkrstr, t->active );
+	bprintf( t, "%s.points %d", t->wkrstr, t->points );
+
+	if( t->conf->type == STATS_TYPE_STATS )
+		bprintf( t, "%s.workspace %d", t->wkrstr, t->wkspcsz );
+
+	tsteal = tsll( t->steal );
+	twait  = tsll( t->wait );
+	tstats = tsll( t->stats );
+	tdone  = tsll( t->done );
+
+	delay  = tsteal - t->tval;
+	stats  = tdone  - tstats;
+	total  = tdone  - t->tval;
+
+	if( twait )
+	{
+		steal = twait  - tsteal;
+		wait  = tstats - twait;
+	}
+	else
+	{
+		steal = tstats - tsteal;
+		wait  = 0;
+	}
+
+	bprintf( t, "%s.delay %ld", t->wkrstr, delay / 1000 );
+	bprintf( t, "%s.steal %ld", t->wkrstr, steal / 1000 );
+	bprintf( t, "%s.stats %ld", t->wkrstr, stats / 1000 );
+	bprintf( t, "%s.usec %ld",  t->wkrstr, total / 1000 );
+
+	if( wait )
+		bprintf( t, "%s.wait %ld",  t->wkrstr, wait  / 1000 );
+
+	// calculate percentage of interval
+	intvpc  = (double) ( total / 10 );
+	intvpc /= (double) t->conf->period;
+	bprintf( t, "%s.interval_usage %.3f", t->wkrstr, intvpc );
+
+	// and report our own paths
+	bprintf( t, "%s.self_paths %ld", t->wkrstr, t->active - p + 1 );
+}
+
+
+
+
 void stats_report_one( ST_THR *t, DHASH *d )
 {
 	PTLIST *list, *p;
 	int i, ct, idx;
 	ST_THOLD *thr;
-	float sum;
+	double sum;
 
 	// grab the points list
 	list = d->proc.points;
 	d->proc.points = NULL;
 
-	// count the points
-	for( ct = 0, p = list; p; p = p->next )
-		ct += p->count;
+#ifdef CATCH_HIGH_POINTERS
+	// weird pointer corruption check
+	if( ((unsigned long) list) & 0xfff0000000000000 )
+	{
+		fatal( "Found ptr val %p on dhash %s",
+			list, d->path );
+		return;
+	}
+#endif
 
 	// anything to do?
-	if( ct == 0 )
+	if( ( ct = (int) d->proc.count ) == 0 )
 	{
 		if( list )
 			mem_free_point_list( list );
@@ -220,15 +268,15 @@ void stats_report_one( ST_THR *t, DHASH *d )
 		if( ct > t->wkspcsz )
 		{
 			int sz = t->wkspcsz;
-			float *ws;
+			double *ws;
 
 			// double it until we have enough
 			while( ct > sz )
 				sz *= 2;
 
-			if( !( ws = (float *) allocz( sz * sizeof( float ) ) ) )
+			if( !( ws = (double *) allocz( sz * sizeof( double ) ) ) )
 			{
-				fatal( "Could not allocate new workbuf of %d floats.", sz );
+				fatal( "Could not allocate new workbuf of %d doubles.", sz );
 				return;
 			}
 
@@ -244,7 +292,7 @@ void stats_report_one( ST_THR *t, DHASH *d )
 		// now copy the data in
 		for( i = 0, p = list; p; p = p->next )
 		{
-			memcpy( t->wkspc + i, p->vals, p->count * sizeof( float ) );
+			memcpy( t->wkspc + i, p->vals, p->count * sizeof( double ) );
 			i += p->count;
 		}
 	}
@@ -256,10 +304,10 @@ void stats_report_one( ST_THR *t, DHASH *d )
 	idx = ct / 2;
 
 	// and sort them
-	qsort( t->wkspc, ct, sizeof( float ), cmp_floats );
+	qsort( t->wkspc, ct, sizeof( double ), cmp_floats );
 
 	bprintf( t, "%s.count %d",  d->path, ct );
-	bprintf( t, "%s.mean %f",   d->path, sum / (float) ct );
+	bprintf( t, "%s.mean %f",   d->path, sum / (double) ct );
 	bprintf( t, "%s.upper %f",  d->path, t->wkspc[ct-1] );
 	bprintf( t, "%s.lower %f",  d->path, t->wkspc[0] );
 	bprintf( t, "%s.median %f", d->path, t->wkspc[idx] );
@@ -276,16 +324,14 @@ void stats_report_one( ST_THR *t, DHASH *d )
 
 	// keep count
 	t->points += ct;
-	t->active++;
 }
 
 
+#define st_thr_time( _name )		clock_gettime( CLOCK_REALTIME, &(t->_name) )
 
-void stats_stats_pass( ST_THR *t, int64_t tval )
+
+void stats_stats_pass( ST_THR *t )
 {
-	struct timespec tv[4];
-	double intvpc;
-	int64_t nsec;
 	DHASH *d;
 	int i;
 
@@ -293,94 +339,57 @@ void stats_stats_pass( ST_THR *t, int64_t tval )
 	debug( "[%02d] Stats claim", t->id );
 #endif
 
-	clock_gettime( CLOCK_REALTIME, &(tv[0]) );
+	st_thr_time( steal );
 
 	// take the data
 	for( i = 0; i < t->conf->hsize; i++ )
 		if( ( i % t->max ) == t->id )
-			for( d = t->conf->data[i]; d; d = d->next )
-				if( d->len && d->in.points )
+		{
+			for( d = t->conf->data[i]; d && d->valid; d = d->next )
+				if( d->valid && d->in.points )
 				{
 					lock_stats( d );
 
 					d->proc.points = d->in.points;
+					d->proc.count  = d->in.count;
 					d->in.points   = NULL;
+					d->in.count    = 0;
+					d->do_pass     = 1;
 
 					unlock_stats( d );
 				}
 				else if( d->empty >= 0 )
 					d->empty++;
-
-#ifdef CALC_JITTER
-	clock_gettime( CLOCK_REALTIME, &(tv[1]) );
-
-	// sleep a bit to avoid contention
-	usleep( 1000 + ( random( ) % 30011 ) );
-#endif
+		}
 
 #ifdef DEBUG
 	debug( "[%02d] Stats report", t->id );
 #endif
 
-	clock_gettime( CLOCK_REALTIME, &(tv[2]) );
-
-	t->points = 0;
-	t->active = 0;
+	st_thr_time( stats );
 
 	// and report it
 	for( i = 0; i < t->conf->hsize; i++ )
 		if( ( i % t->max ) == t->id )
-			for( d = t->conf->data[i]; d; d = d->next )
-				if( d->len && d->proc.points )
+			for( d = t->conf->data[i]; d && d->valid; d = d->next )
+				if( d->do_pass && d->proc.points )
 				{
 					if( d->empty > 0 )
 						d->empty = 0;
 
 					stats_report_one( t, d );
+
+					d->do_pass = 0;
 				}
 
 	// and work out how long that took
-	clock_gettime( CLOCK_REALTIME, &(tv[3]) );
-
-	// report some self stats?
-	if( !ctl->stats->self->enable )
-		return;
-
-	stats_set_bufs( t, ctl->stats->self, 0 );
-
-	bprintf( t, "%s.points %d",    t->wkrstr, t->points );
-	bprintf( t, "%s.active %d",    t->wkrstr, t->active );
-	bprintf( t, "%s.workspace %d", t->wkrstr, t->wkspcsz );
-
-	nsec = tsll( tv[0] ) - tval;
-	bprintf( t, "%s.delay %lu",    t->wkrstr, nsec / 1000 );
-
-#ifdef CALC_JITTER
-	nsec = tsll( tv[1] ) - tsll( tv[0] );
-#else
-	nsec = tsll( tv[2] ) - tsll( tv[0] );
-#endif
-	bprintf( t, "%s.steal %lu",    t->wkrstr, nsec / 1000 );
-
-	nsec = tsll( tv[3] ) - tsll( tv[2] );
-	bprintf( t, "%s.stats %lu",    t->wkrstr, nsec / 1000 );
-
-	nsec = tsll( tv[3] ) - tval;
-	bprintf( t, "%s.usec %lu",     t->wkrstr, nsec / 1000 );
-
-	// calculate percentage of interval
-	intvpc  = (double) ( nsec / 10 );
-	intvpc /= (double) t->conf->period;
-	bprintf( t, "%s.interval_usage %.3f", t->wkrstr, intvpc );
+	st_thr_time( done );
 }
 
 
 
-void stats_adder_pass( ST_THR *t, int64_t tval )
+void stats_adder_pass( ST_THR *t )
 {
-	struct timespec tv[4];
-	double intvpc;
-	int64_t nsec;
 	DHASH *d;
 	int i;
 
@@ -388,26 +397,30 @@ void stats_adder_pass( ST_THR *t, int64_t tval )
 	debug( "[%02d] Adder claim", t->id );
 #endif
 
-	clock_gettime( CLOCK_REALTIME, &(tv[0]) );
+	st_thr_time( steal );
 
 	// take the data
 	for( i = 0; i < t->conf->hsize; i++ )
 		if( ( i % t->max ) == t->id )
-			for( d = t->conf->data[i]; d; d = d->next )
-				if( d->in.sum.count > 0 )
+		{
+			for( d = t->conf->data[i]; d && d->valid; d = d->next )
+				if( d->in.count > 0 )
 				{
 					lock_adder( d );
 
-					d->proc.sum     = d->in.sum;
-					d->in.sum.total = 0;
-					d->in.sum.count = 0;
+					// copy everything, then zero the in
+					d->proc     = d->in;
+					d->in.total = 0;
+					d->in.count = 0;
+					d->do_pass  = 1;
 
 					unlock_adder( d );
 				}
 				else if( d->empty >= 0 )
 					d->empty++;
+		}
 
-	clock_gettime( CLOCK_REALTIME, &(tv[1]) );
+	st_thr_time( wait );
 
 	debug_synth( "[%02d] Unlocking adder lock.", t->id );
 
@@ -429,79 +442,39 @@ void stats_adder_pass( ST_THR *t, int64_t tval )
 	// and lock our own again
 	lock_stthr( t );
 
-#ifdef CALC_JITTER
-	//debug( "[%02d] Sleeping a little before processing.", t->id );
-
-	// sleep a short time to avoid contention
-	usleep( 1000 + ( random( ) % 30011 ) );
-#endif
-
 #ifdef DEBUG
 	debug( "[%02d] Adder report", t->id );
 #endif
 
-	clock_gettime( CLOCK_REALTIME, &(tv[2]) );
-
-	// zero the counters
-	t->points = 0;
-	t->active = 0;
+	st_thr_time( stats );
 
 	// and report it
 	for( i = 0; i < t->conf->hsize; i++ )
 		if( ( i % t->max ) == t->id )
-			for( d = t->conf->data[i]; d; d = d->next )
-				if( d->proc.sum.count > 0 )
+			for( d = t->conf->data[i]; d && d->valid; d = d->next )
+				if( d->do_pass && d->proc.count > 0 )
 				{
 					if( d->empty > 0 )
 						d->empty = 0;
 
-					bprintf( t, "%s %f", d->path, d->proc.sum.total );
+					bprintf( t, "%s %f", d->path, d->proc.total );
 
-					// keep count
-					t->points += d->proc.sum.count;
-					t->active++;
+					// keep count and then zero it
+					t->points += d->proc.count;
+					d->proc.count = 0;
 
-					// and zero that
-					d->proc.sum.count = 0;
+					// and remove the pass marker
+					d->do_pass = 0;
 				}
 
 
 	// and work out how long that took
-	clock_gettime( CLOCK_REALTIME, &(tv[3]) );
-
-	// report some self stats?
-	if( !ctl->stats->self->enable )
-		return;
-
-	stats_set_bufs( t, ctl->stats->self, 0 );
-
-	bprintf( t, "%s.points %d", t->wkrstr, t->points );
-	bprintf( t, "%s.active %d", t->wkrstr, t->active );
-
-	nsec = tsll( tv[0] ) - tval;
-	bprintf( t, "%s.delay %lu", t->wkrstr, nsec / 1000 );
-
-	nsec = tsll( tv[1] ) - tsll( tv[0] );
-	bprintf( t, "%s.steal %lu", t->wkrstr, nsec / 1000 );
-
-	nsec = tsll( tv[3] ) - tsll( tv[2] );
-	bprintf( t, "%s.stats %lu", t->wkrstr, nsec / 1000 );
-
-	nsec = tsll( tv[3] ) - tval;
-	bprintf( t, "%s.usec %lu",  t->wkrstr, nsec / 1000 );
-
-	// calculate percentage of interval
-	intvpc  = (double) ( nsec / 10 );
-	intvpc /= (double) t->conf->period;
-	bprintf( t, "%s.interval_usage %.3f", t->wkrstr, intvpc );
+	st_thr_time( done );
 }
 
 
-void stats_gauge_pass( ST_THR *t, int64_t tval )
+void stats_gauge_pass( ST_THR *t )
 {
-	struct timespec tv[4];
-	double intvpc;
-	int64_t nsec;
 	DHASH *d;
 	int i;
 
@@ -509,41 +482,33 @@ void stats_gauge_pass( ST_THR *t, int64_t tval )
 	debug( "[%02d] Gauge claim", t->id );
 #endif
 
-	clock_gettime( CLOCK_REALTIME, &(tv[0]) );
+	st_thr_time( steal );
 
 	// take the data
 	for( i = 0; i < t->conf->hsize; i++ )
 		if( ( i % t->max ) == t->id )
-			for( d = t->conf->data[i]; d; d = d->next )
-				if( d->in.sum.count ) 
+		{
+			for( d = t->conf->data[i]; d && d->valid; d = d->next )
+				if( d->in.count ) 
 				{
 					lock_gauge( d );
 
-					d->proc.sum     = d->in.sum;
+					d->proc.count = d->in.count;
+					d->proc.total = d->in.total;
 					// don't reset the gauge, just the count
-					d->in.sum.count = 0;
+					d->in.count = 0;
 
 					unlock_gauge( d );
 				}
 				else if( d->empty >= 0 )
 					d->empty++;
-
-
-#ifdef CALC_JITTER
-	clock_gettime( CLOCK_REALTIME, &(tv[1]) );
-
-	// sleep a bit to avoid contention
-	usleep( 1000 + ( random( ) % 30011 ) );
-#endif
+		}
 
 #ifdef DEBUG
 	debug( "[%02d] Gauge report", t->id );
 #endif
 
-	clock_gettime( CLOCK_REALTIME, &(tv[2]) );
-
-	t->active = 0;
-	t->points = 0;
+	st_thr_time( stats );
 
 	// and report it
 	for( i = 0; i < t->conf->hsize; i++ )
@@ -551,54 +516,26 @@ void stats_gauge_pass( ST_THR *t, int64_t tval )
 			for( d = t->conf->data[i]; d; d = d->next )
 			{
 				// we report gauges anyway, updated or not
-				bprintf( t, "%s %f", d->path, d->proc.sum.total );
+				bprintf( t, "%s %f", d->path, d->proc.total );
 
-				if( d->proc.sum.count )
+				if( d->proc.count )
 				{
 					if( d->empty > 0 )
 						d->empty = 0;
 
-					// keep count
-					t->points += d->proc.sum.count;
-					t->active++;
-
-					// and zero that
-					d->proc.sum.count = 0;
+					// keep count and zero the counter
+					t->points += d->proc.count;
+					d->proc.count = 0;
 				}
 			}
 
-	clock_gettime( CLOCK_REALTIME, &(tv[3]) );
-
-	// report some self stats?
-	if( !ctl->stats->self->enable )
-		return;
-
-	stats_set_bufs( t, ctl->stats->self, 0 );
-
-	bprintf( t, "%s.points %d", t->wkrstr, t->points );
-	bprintf( t, "%s.active %d", t->wkrstr, t->active );
-
-	nsec = tsll( tv[0] ) - tval;
-	bprintf( t, "%s.delay %lu", t->wkrstr, nsec / 1000 );
-
-#ifdef CALC_JITTER
-	nsec = tsll( tv[1] ) - tsll( tv[0] );
-#else
-	nsec = tsll( tv[2] ) - tsll( tv[0] );
-#endif
-	bprintf( t, "%s.steal %lu", t->wkrstr, nsec / 1000 );
-
-	nsec = tsll( tv[3] ) - tsll( tv[2] );
-	bprintf( t, "%s.stats %lu", t->wkrstr, nsec / 1000 );
-
-	nsec = tsll( tv[3] ) - tval;
-	bprintf( t, "%s.usec %lu",  t->wkrstr, nsec / 1000 );
-
-	// calculate percentage of interval
-	intvpc  = (double) ( nsec / 10 );
-	intvpc /= (double) t->conf->period;
-	bprintf( t, "%s.interval_usage %.3f", t->wkrstr, intvpc );
+	// how long did all that take?
+	st_thr_time( done );
 }
+
+
+#undef st_thr_time
+
 
 
 
@@ -611,7 +548,11 @@ void thread_pass( int64_t tval, void *arg )
 	stats_set_bufs( t, NULL, tval );
 
 	// do the work
-	(*(t->conf->statfn))( t, tval );
+	(*(t->conf->statfn))( t );
+
+	// and report on ourself, except self-stats
+	if( t->conf->type != STATS_TYPE_SELF )
+		stats_thread_report( t );
 
 	// send any outstanding data
 	for( i = 0; i < ctl->tgt->set_count; i++ )
@@ -747,7 +688,7 @@ void stats_init_control( ST_CFG *c, int alloc_data )
 		if( c->type == STATS_TYPE_STATS )
 		{
 			t->wkspcsz = 1024;
-			t->wkbuf   = (float *) allocz( t->wkspcsz * sizeof( float ) );
+			t->wkbuf   = (double *) allocz( t->wkspcsz * sizeof( double ) );
 		}
 
 		pthread_mutex_init( &(t->lock), NULL );
@@ -929,13 +870,8 @@ int stats_config_line( AVP *av )
 	}
 	else if( !strcasecmp( d, "enable" ) )
 	{
-		if( valIs( "y" ) || valIs( "yes" ) || atoi( av->val ) )
-			sc->enable = 1;
-		else
-		{
+		if( !( sc->enable = config_bool( av ) ) )
 			debug( "Stats type %s disabled.", sc->name );
-			sc->enable = 0;
-		}
 	}
 	else if( !strcasecmp( d, "prefix" ) )
 	{

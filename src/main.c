@@ -175,7 +175,7 @@ int main( int ac, char **av )
 
 	if( justTest )
 	{
-		printf( "Config is OK." );
+		printf( "Config is OK.\n" );
 		return 0;
 	}
 

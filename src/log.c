@@ -182,7 +182,7 @@ void log_reopen( int sig )
 	}
 
 	if( nre )
-		info( "Log file re-opened (version v%s).", ctl->version );
+		info( "Log file re-opened (version %s).", ctl->version );
 }
 
 
@@ -234,7 +234,7 @@ int log_config_line( AVP *av )
 		lc->level = lvl;
 	}
 	else if( attIs( "notify" ) )
-		lc->notify_re = atoi( av->val );
+		lc->notify_re = config_bool( av );
 	else
 		return -1;
 

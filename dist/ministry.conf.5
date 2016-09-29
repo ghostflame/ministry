@@ -36,6 +36,10 @@ config variables contain dots.  Wherever lists of values are permitted, they sho
 comma-separated without intervening spaces.  e.g.
 .PP
 \fBstats.udp.ports = 8100,8101,8102,8103\fR
+.SS Bools
+.PP
+Anything marked as a boolean accepts the following responses as true to (case insenstive) "true",
+"y", "yes" or any non-zero number.  Any other value is taken as false.
 .SS File Inclusion
 Ministry can read in other config files using an \fBinclude\fR = \fIfilename\fR directive.
 .SH CONFIG
@@ -61,7 +65,7 @@ Overall internal tick time in msec.  Controls internal time accuracy (default 20
 .TP
 \fBdaemon\fR
 Whether \fBministry\fR disconnects from the controlling terminal with the daemon(2) system call
-(default 0).  This can also be switched on with the -d CLI option.
+(boolean, default 0).  This can also be switched on with the -d CLI option.
 .TP
 \fBpidfile\fR
 Filename \fBministry\fR will write its process ID to (default /var/run/ministry.pid).  This can also
@@ -73,20 +77,21 @@ Both default to the system hard limit of the type.
 .SS [Logging]
 .TP
 \fBfilename\fR | \fBfile\fR | \fBlogfile\fR
-File name to write the log to
+File name to write the log to.
 .TP
 \fBlevel\fR
-Log level, one of FATAL, ERR, WARN, NOTICE, INFO or DEBUG
+Log level, one of FATAL, ERR, WARN, NOTICE, INFO or DEBUG.
 .TP
 \fBnotify\fR
-Add a notification of log re-opening.  Guarantees a non-zero log file size after log rotation (default 1)
+Add a notification of log re-opening.  Guarantees a non-zero log file size after log rotation (boolean,
+default 1).
 .SS [Memory]
 .TP
 \fBmax_mb\fR | \fBmax_size\fR
-Maximum in-memory size (in MB) before \fBministry\fR self-terminates (default 10GB)
+Maximum in-memory size (in MB) before \fBministry\fR self-terminates (default 10GB).
 .TP
 \fBmax_kb\fR
-As above, but expressed in KB
+As above, but expressed in KB.
 .TP
 \fBinterval\fR | \fBmsec\fR
 Memory size check interval, in milliseconds (default 5000)
@@ -96,13 +101,18 @@ This is the size that types will default to for their hash table size.  This is 
 all three types.  It should be of the same order of magnitude as the expected number of paths.  Prime
 numbers are recommended to prevent large numbers of hash collisions (default 100003)
 .TP
+\fBstacksize\fR
+This is the thread stack size (in KB).  This is mainly used during debugging to control VSS where there
+might be a lot of threads (from client connections mostly).  Best not mess with this (default 128).
+.TP
+\fBgc\fR
+Whether gc is enabled or not (boolean, default 1).
+.TP
 \fBgc_thresh\fR
-How many submission cycles a path must lie empty for before it is deleted.  This is stored in a
-signed 16-bit int, so the max is 32766 (the comparison is if empty > threshold) (default 8640)
+How many submission cycles a path must lie empty for before it is deleted (default 8640).
 .TP
 \fBgc_gauge_thresh\fR
-How many submission cycles a gauge must not be updated for before it is deleted.  This is stored in
-a signed 16-bit in, so the max is 32766 (default 25960)
+How many submission cycles a gauge must not be updated for before it is deleted (default 25960).
 .SS [Stats]
 .TP
 \fBthresholds\fR
@@ -118,7 +128,7 @@ stats reporting, adder reporting, gauge reporting or self reporting.
 How many reporting threads to run (not used for self) (default 2)
 .TP
 \fBTYPE.enable\fR
-Enable or disable this reporting (defaults to 1 for all)
+Enable or disable this reporting (boolean, defaults to 1 for all)
 .TP
 \fBTYPE.size\fR
 Hashsize information for this type.  Not used for self.  Tells \fBministry\fR how to size the hash table
@@ -177,14 +187,14 @@ Number of seconds a client connection must have been silent for before being con
 Number of seconds to set on UDP sockets for SO_RCVTIMEO (prevents receive blocking indefinitely).
 .TP
 \fBreconn_msec\fR
-Time to wait, in msec, before attempting reconnect to onward targets (default 3000)
+Time to wait, in msec, before attempting reconnect to onward targets (default 3000).
 .TP
 \fBio_msec\fR
-How often, in msec, to perform asynchronous IO flushes to onward targets (default 500)
+How often, in msec, to perform asynchronous IO flushes to onward targets (default 500).
 .TP
 \fBmax_waiting\fR
 Maximum number of IO buffers to permit to be waiting for flush to one target.  Each buffer can hold
-256KB but frequently holds much less.  Accounting is still done by number of buffers (default 1024)
+256KB but frequently holds much less.  Accounting is still done by number of buffers (default 1024).
 .TP
 \fBprefix\fR
 Assigns prefixes to hosts, IPs or networks.  Hostnames are looked up and first IPv4 address taken.
@@ -200,31 +210,31 @@ addresses (and resolved names) are checked first, and then networks \fBin the or
 This allows for complex allow/deny decisions - provided the most specific networks come first.
 .TP
 \fBipcheck.enable\fR
-Enable the IP checking code.  Without this set, no checks are performed (default is 0)
+Enable the IP checking code.  Without this set, no checks are performed (boolean, default is 0).
 .TP
 \fBipcheck.drop\fR
-Default drop connections which do not match a rule (default is 0)
+Default drop connections which do not match a rule (boolean, default is 0).
 .TP
 \fBipcheck.verbose\fR
-Report on the ruleset in the log, and log on denied connections (default is 0)
+Report on the ruleset in the log, and log on denied connections (boolean, default is 0).
 .TP
 \fBipcheck.whitelist\fR
-Specifically allow the listed host, IP or network
+Specifically allow the listed host, IP or network.
 .TP
 \fBipcheck.blacklist\fR
-Specifically deny the listed host, IP or network
+Specifically deny the listed host, IP or network.
 .PP
 All remaining network variables are of the form stats.XXX, compat.XXX, gauge.XXX or adder.XXX, pertaining
 to new-style stats ports, statsd-compatible ports, new-style gauge ports or new-style adder ports.
 .TP
 \fBTYPE.enable\fR
-Enable or disable this type of collection (defaults to 1 for all)
+Enable or disable this type of collection (boolean, defaults to 1 for all).
 .TP
 \fBTYPE.label\fR
 Label these ports have within logging.
 .TP
 \fBTYPE.tcp.backlog\fR
-Backlog for incoming TCP connections (default 32)
+Backlog for incoming TCP connections (default 32).
 .TP
 \fBTYPE.udp.checks\fR
 Perform blacklist/whitelist checks and prefixing on UDP for this type.
@@ -236,7 +246,7 @@ or TCP ports respectively.
 Bind address for this type and protocol - must be a local IP address (default IPADDR_ANY)
 .TP
 \fBTYPE.PROTO.enable\fR
-Enable or disable his protocol for this type of collection (defaults to 1)
+Enable or disable his protocol for this type of collection (boolean, defaults to 1).
 .TP
 \fBTYPE.PROTO.port\fR
 A list of listen ports, comma separated.  By default, statsd-compatible listens on 8125, the default
@@ -298,6 +308,9 @@ The arithmetic mean of the values of all source metrics.
 .TP
 \fBcount\fR
 The number of source metrics with a non-zero value.
+.TP
+\fBactive\fR
+Returns 0 or 1 depending on whether any data points were present.
 .SH SEE ALSO
 .BR ministry (1)
 .SH AUTHOR
