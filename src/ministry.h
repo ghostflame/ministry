@@ -14,6 +14,7 @@
 
 // here's what we need in addition
 #include <ldap.h>
+#include <math.h>
 #include <poll.h>
 #include <time.h>
 #include <ctype.h>

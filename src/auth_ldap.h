@@ -27,16 +27,30 @@
 #define MAX_LDAP_HOSTS				7
 
 
+enum auth_ldap_result
+{
+	AUTH_LDAP_OK = 0,
+	AUTH_LDAP_NO_USER,
+	AUTH_LDAP_NO_PASS,
+	AUTH_LDAP_NOT_READY,
+	AUTH_LDAP_USER_UNKNOWN,
+	AUTH_LDAP_PASS_WRONG
+};
+
+
+
 struct auth_ldap_server
 {
 	LDAP_SVR				*	next;
 
 	char					*	host;
+	char					*	path;
 	char					*	login;
 	char					*	pass;
 	char					*	uri;
 
 	uint16_t					port;
+	int							secure;
 
 	LDAP					*	hdl;
 
@@ -58,7 +72,6 @@ struct auth_ldap_control
 
 	int							enabled;
 	int							version;
-	int							secure;
 
 	int							loop_msec;
 	int							tmout_msec;
@@ -75,7 +88,7 @@ loop_call_fn auth_ldap_server_connect;
 throw_fn auth_ldap_server_control;
 
 
-int auth_ldap_start( void );
+void auth_ldap_start( void );
 
 
 LDAP_CTL *auth_ldap_config_defaults( void );

@@ -199,6 +199,9 @@ void loop_start( void )
 	// must happen before stats_start
 	target_start( );
 
+	// see if we need ldap
+	auth_ldap_start( );
+
 	// throw the data submission loops
 	stats_start( ctl->stats->stats );
 	stats_start( ctl->stats->adder );

@@ -132,4 +132,7 @@ uint64_t lockless_fetch( LLCT *l );
 // read a file into memory
 int read_file( char *path, char **buf, int *len, size_t max, int perm, char *desc );
 
+// pick a value from 0 up to (but not including N)
+int rand_val( int size );
+
 #endif

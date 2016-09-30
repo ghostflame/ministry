@@ -65,6 +65,9 @@
 #define lock_ntype( nt )		pthread_mutex_lock(   &(nt->lock) )
 #define unlock_ntype( nt )		pthread_mutex_unlock( &(nt->lock) )
 
+#define lock_ldap( s )			pthread_mutex_lock(   &(s->lock) )
+#define unlock_ldap( s )		pthread_mutex_unlock( &(s->lock) )
+
 
 struct dhash_locks
 {

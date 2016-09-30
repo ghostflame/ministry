@@ -611,3 +611,16 @@ int read_file( char *path, char **buf, int *len, size_t max, int perm, char *des
 	fclose( h );
 	return 0;
 }
+
+
+int rand_val( int size )
+{
+	double d;
+
+	d  = (double) rand( );
+	d /= 1.0 + (double) RAND_MAX;
+	d *= (double) size;
+
+	return (int) floor( d );
+}
+
