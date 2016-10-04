@@ -81,13 +81,13 @@ int net_ip_check( struct sockaddr_in *sin )
 
 HPRFX *net_prefix_check( struct sockaddr_in *sin )
 {
-	IPNET *i;
+	IPNET *i = NULL;
 
-	if( ctl->net->prefix->total
-     && ( i = net_ip_lookup( sin->sin_addr.s_addr, ctl->net->prefix ) ) )
-		return i->prefix;
+	if( ctl->net->prefix->enable
+	 && ctl->net->prefix->total )
+		i = net_ip_lookup( sin->sin_addr.s_addr, ctl->net->prefix );
 
-	return NULL;
+	return ( i ) ? i->prefix : NULL;
 }
 
 
@@ -115,13 +115,16 @@ int net_set_host_prefix( HOST *h, HPRFX *pr )
 
 	// and make a copy of the prefix for this host
 	memcpy( h->workbuf, pr->pstr, pr->plen );
+	h->workbuf[pr->plen] = '\0';
 	h->plen = pr->plen;
 
 	// set the max line we like and the target to copy to
 	h->lmax = HPRFX_BUFSZ - h->plen - 1;
 	h->ltarget = h->workbuf + h->plen;
 
-	info( "Connection from %s:%hu gets prefix %s",
+	// report on that?
+	if( ctl->net->prefix->verbose )
+		info( "Connection from %s:%hu gets prefix %s",
 			inet_ntoa( h->peer->sin_addr ), ntohs( h->peer->sin_port ),
 			h->workbuf );
 
@@ -241,7 +244,7 @@ int net_startup( NET_TYPE *nt )
 }
 
 
-void __net_rule_explain_list( IPNET *list )
+void __net_rule_explain_list( IPNET *list, int show_prfx )
 {
 	struct in_addr ina;
 	IPNET *ip;
@@ -249,9 +252,10 @@ void __net_rule_explain_list( IPNET *list )
 	for( ip = list; ip; ip = ip->next )
 	{
 		ina.s_addr = ip->ipnet;
-		info( "   %-6s    %s/%hu",
-			( ip->act == NET_IP_WHITELIST ) ? "Allow" : "Deny",
-			inet_ntoa( ina ), ip->bits );
+		info( "   %-6s    %s/%hu    %s",
+			( ip->act == NET_IP_WHITELIST ) ? ( ( show_prfx ) ? "Prefix" : "Allow" ) : "Deny",
+			inet_ntoa( ina ), ip->bits,
+			( show_prfx ) ? ip->prefix->pstr : "" );
 	}
 }
 
@@ -271,11 +275,22 @@ int net_start( void )
 		info( "Network ipcheck config order:" );
 
 		for( i = 0; i < ipc->hashsz; i++ )
-			__net_rule_explain_list( ipc->ips[i] );
+			__net_rule_explain_list( ipc->ips[i], 0 );
 
-		__net_rule_explain_list( ipc->nets );
+		__net_rule_explain_list( ipc->nets, 0 );
 
 		info( "   %-6s    %s", ( ipc->drop ) ? "Deny" : "Allow", "Default" );
+	}
+
+	ipc = ctl->net->prefix;
+	if( ipc->enable && ipc->verbose )
+	{
+		info( "Prefixing config order:" );
+
+		for( i = 0; i < ipc->hashsz; i++ )
+			__net_rule_explain_list( ipc->ips[i], 1 );
+
+		__net_rule_explain_list( ipc->nets, 1 );
 	}
 
 	notice( "Starting networking." );
@@ -662,7 +677,10 @@ int net_config_prefix( char *line, int len )
 	// copy the string, add a dot if necessary
 	h->pstr = str_copy( prfx, plen + adddot );
 	if( adddot )
-		h->pstr[plen] = '.';
+	{
+		h->pstr[plen]   = '.';
+		h->pstr[plen+1] = '\0';
+	}
 	h->plen = plen + adddot;
 
 	// copy the host config
@@ -736,8 +754,7 @@ int net_config_line( AVP *av )
 		}
 		else if( attIs( "prefix" ) )
 		{
-			// this is messy
-			return net_config_prefix( av->val, av->vlen );
+			err( "Prefix singleton is deprecated: use prefix.set." );
 		}
 		else if( attIs( "target" ) || attIs( "targets" ) )
 		{
@@ -786,6 +803,22 @@ int net_config_line( AVP *av )
 		nt = ctl->net->gauge;
 	else if( !strncasecmp( av->att, "compat.", 7 ) || !strncasecmp( av->att, "statsd.", 7 ) )
 		nt = ctl->net->compat;
+	else if( !strncasecmp( av->att, "prefix.", 7 ) )
+	{
+		if( !strcasecmp( p, "enable" ) )
+			ctl->net->prefix->enable = config_bool( av );
+		else if( !strcasecmp( p, "verbose" ) )
+			ctl->net->prefix->verbose = config_bool( av );
+		else if( !strcasecmp( p, "set" ) || !strcasecmp( p, "add" ) )
+		{
+			// this is messy
+			return net_config_prefix( av->val, av->vlen );
+		}
+		else
+			return -1;
+
+		return 0;
+	}
 	else if( !strncasecmp( av->att, "ipcheck.", 8 ) )
 	{
 		if( !strcasecmp( p, "enable" ) )
