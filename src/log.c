@@ -81,14 +81,16 @@ int log_line( int level, const char *file, const int line, const char *fn, char 
   	char buf[LOG_LINE_MAX];
 	LOG_CTL *lc = ctl->log;
 	va_list args;
-	int l = 0;
+	int l = 0, d;
 
 	// check level
 	if( level > lc->level )
 		return 0;
 
+	d = ( level <= LOG_LEVEL_ERR ) ? lc->err_fd : lc->ok_fd;
+
 	// can we write?
-	if( lc->fd < 0 )
+	if( d < 0 )
 		return -1;
 
 	// write the predictable parts
@@ -120,16 +122,16 @@ int log_line( int level, const char *file, const int line, const char *fn, char 
 
 
 	// maybe always log to stdout?
-	if( lc->force_stdout )
+	if( lc->force_stdout && !lc->use_std )
 		printf( "%s", buf );
 
-	l = write( lc->fd, buf, l );
+	l = write( d, buf, l );
 
 	// FATAL never returns
 	if( level == LOG_LEVEL_FATAL )
 	{
 		// try to make sure we have that log line
-		fsync( lc->fd );
+		fsync( d );
 
 		// and we're out
 		shut_down( 1 );
@@ -141,17 +143,17 @@ int log_line( int level, const char *file, const int line, const char *fn, char 
 
 int __log_open( void )
 {
-	// require a valid fd, and ! stderr
-	if( ctl->log->fd >= 0
-	 && ctl->log->fd != 2 )
-		close( ctl->log->fd );
+	if( ctl->log->use_std )
+		return 0;
 
-	if( ( ctl->log->fd = open( ctl->log->filename, O_WRONLY|O_APPEND|O_CREAT, 0644 ) ) < 0 )
+	if( ( ctl->log->ok_fd = open( ctl->log->filename, O_WRONLY|O_APPEND|O_CREAT, 0644 ) ) < 0 )
 	{
 		fprintf( stderr, "Unable to open log file '%s' -- %s\n",
 			ctl->log->filename, Err );
 		return -1;
 	}
+	// both go to file
+	ctl->log->err_fd = ctl->log->ok_fd;
 
 	return 0;
 }
@@ -161,10 +163,15 @@ int log_close( void )
 {
 	if( ctl
 	 && ctl->log
-	 && ctl->log->fd != 2 )
+	 && !ctl->log->use_std )
 	{
-		close( ctl->log->fd );
-		ctl->log->fd = 2;
+		if( ctl->log->err_fd != ctl->log->ok_fd )
+			close( ctl->log->err_fd );
+
+		close( ctl->log->ok_fd );
+
+		ctl->log->ok_fd  = fileno( stdout );
+		ctl->log->err_fd = fileno( stderr );
 	}
 
 	return 0;
@@ -175,7 +182,7 @@ void log_reopen( int sig )
 {
 	int nre = 0;
 
-	if( ctl && ctl->log )
+	if( ctl && ctl->log && !ctl->log->use_std )
 	{
 		__log_open( );
 		nre = ctl->log->notify_re;
@@ -203,9 +210,12 @@ LOG_CTL *log_config_defaults( void )
 
 	l = (LOG_CTL *) allocz( sizeof( LOG_CTL ) );
 
-	l->filename       = strdup( DEFAULT_LOG_FILE );
+	// default to stdout
+	l->filename       = strdup( "-" );
 	l->level          = LOG_LEVEL_INFO;
-	l->fd             = fileno( stderr );
+	l->ok_fd          = fileno( stdout );
+	l->err_fd         = fileno( stderr );
+	l->use_std        = 1;
 	l->force_stdout   = 0;
 	l->notify_re      = 1;
 
@@ -222,6 +232,9 @@ int log_config_line( AVP *av )
 	{
 	 	free( lc->filename );
 		lc->filename = strdup( av->val );
+
+		// are we still using stdout/stderr?
+		lc->use_std = ( strcmp( lc->filename, "-" ) ) ? 0 : 1;
 	}
 	else if( attIs( "level" ) )
 	{
