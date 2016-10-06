@@ -305,7 +305,7 @@ int var_val( char *line, int len, AVP *av, int flags )
 			*--q = '\0';
 
 		// OK, let's record those
-		a        = q;
+		a        = p;
 		av->alen = q - p;
 		v        = r;
 		av->vlen = s - r;
@@ -334,13 +334,13 @@ vv_finish:
 	// were we squashing underscores in attrs?
 	if( flags && VV_REMOVE_UDRSCR )
 	{
-	    // we are deprecating key names with _ in them, to enable
-	    // supporting environment names where we will need to
-	    // replace _ with . to support the hierarchical keys
-	    // so warn about any key with _ in it.
+		// we are deprecating key names with _ in them, to enable
+		// supporting environment names where we will need to
+		// replace _ with . to support the hierarchical keys
+		// so warn about any key with _ in it.
 
-	    if( memchr( a, '_', av->alen ) )
-    	    warn( "Key %s contains an underscore _, this is deprecated in favour of camelCase.", a );
+		if( memchr( a, '_', av->alen ) )
+			warn( "Key %s contains an underscore _, this is deprecated in favour of camelCase.", a );
 
 		// copy without underscores
 		for( p = a, q = av->att; *p; p++ )
