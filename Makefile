@@ -30,7 +30,7 @@ code:
 
 
 docker:
-	./docker.sh
+	dist/docker.sh
 
 
 install:
