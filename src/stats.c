@@ -338,6 +338,7 @@ void stats_stats_pass( ST_THR *t )
 	// take the data
 	for( i = 0; i < t->conf->hsize; i++ )
 		if( ( i % t->max ) == t->id )
+		{
 			for( d = t->conf->data[i]; d && d->valid; d = d->next )
 				if( d->valid && d->in.points )
 				{
@@ -353,6 +354,7 @@ void stats_stats_pass( ST_THR *t )
 				}
 				else if( d->empty >= 0 )
 					d->empty++;
+		}
 
 #ifdef DEBUG
 	debug( "[%02d] Stats report", t->id );
@@ -394,6 +396,7 @@ void stats_adder_pass( ST_THR *t )
 	// take the data
 	for( i = 0; i < t->conf->hsize; i++ )
 		if( ( i % t->max ) == t->id )
+		{
 			for( d = t->conf->data[i]; d && d->valid; d = d->next )
 				if( d->in.count > 0 )
 				{
@@ -409,6 +412,7 @@ void stats_adder_pass( ST_THR *t )
 				}
 				else if( d->empty >= 0 )
 					d->empty++;
+		}
 
 	st_thr_time( wait );
 
@@ -477,6 +481,7 @@ void stats_gauge_pass( ST_THR *t )
 	// take the data
 	for( i = 0; i < t->conf->hsize; i++ )
 		if( ( i % t->max ) == t->id )
+		{
 			for( d = t->conf->data[i]; d && d->valid; d = d->next )
 				if( d->in.count ) 
 				{
@@ -491,6 +496,7 @@ void stats_gauge_pass( ST_THR *t )
 				}
 				else if( d->empty >= 0 )
 					d->empty++;
+		}
 
 #ifdef DEBUG
 	debug( "[%02d] Gauge report", t->id );

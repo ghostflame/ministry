@@ -61,12 +61,14 @@ void __mtype_alloc_free( MTYPE *mt, int count )
 #ifdef __GNUC__
 #if __GNUC_PREREQ(4,8)
 #pragma GCC diagnostic ignored "-Wpointer-arith"
+#pragma GCC diagnostic ignored "-Wpedantic"
 #endif
 #endif
 		// yes GCC, I know what I'm doing, thanks
 		vp     += mt->alloc_sz;
 #ifdef __GNUC__
 #if __GNUC_PREREQ(4,8)
+#pragma GCC diagnostic pop
 #pragma GCC diagnostic pop
 #endif
 #endif
@@ -107,26 +109,28 @@ static inline void *__mtype_new( MTYPE *mt )
 static inline void *__mtype_new_list( MTYPE *mt, int count )
 {
 	MTBLANK *top, *end;
-	int i;
+	uint32_t c, i;
 
 	if( count <= 0 )
 		return NULL;
 
+	c = (uint32_t) count;
+
 	lock_mem( mt );
 
 	// get enough
-	while( mt->fcount < count )
+	while( mt->fcount < c )
 		__mtype_alloc_free( mt, 0 );
 
 	top = end = mt->flist;
 
 	// run down count - 1 elements
-	for( i = count - 1; i > 0; i-- )
+	for( i = c - 1; i > 0; i-- )
 		end = end->next;
 
 	// end is now the last in the list we want
 	mt->flist   = end->next;
-	mt->fcount -= count;
+	mt->fcount -= c;
 
 	unlock_mem( mt );
 

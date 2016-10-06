@@ -20,7 +20,8 @@
  * problem.  Of course, threads will "help"...
  */
 
-const static uint8_t mem_signal_array[128] = {
+#ifdef USE_MEM_SIGNAL_ARRAY
+static const uint8_t mem_signal_array[128] = {
 	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0,
 	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0,
 	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0,
@@ -38,7 +39,7 @@ const static uint8_t mem_signal_array[128] = {
 	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0,
 	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0
 };
-
+#endif
 
 
 // zero'd memory
@@ -372,10 +373,60 @@ vv_finish:
 }
 
 
+void pidfile_mkdir( char *path )
+{
+	char dbuf[2048], *ls;
+	struct stat sb;
+	int l;
+
+	// we have a sensible looking path?
+	if( !( ls = strrchr( path, '/' ) )
+	 || ls == path )
+		return;
+
+	// path too long for us?
+	if( ( l = ls - path ) > 2047 )
+		return;
+
+	memcpy( dbuf, path, l );
+	dbuf[l] = '\0';
+
+	// prune trailing /
+	while( l > 1 && dbuf[l-1] == '/' )
+		dbuf[--l] = '\0';
+
+	// recurse up towards /
+	pidfile_mkdir( dbuf );
+
+	if( stat( dbuf, &sb ) )
+	{
+		if( errno == ENOENT )
+		{
+			if( mkdir( dbuf, 0755 ) )
+				warn( "Could not create pidfile path parent dir %s -- %s",
+					dbuf, Err );
+			else
+				info( "Created pidfile path parent dir %s", dbuf );
+		}
+		else
+			warn( "Cannot stat pidfile parent dir %s -- %s", dbuf, Err );
+	}
+	else if( !S_ISDIR( sb.st_mode ) )
+	{
+		warn( "Pidfile parent %s is not a directory.", dbuf );
+	}
+}
+
+
+
 void pidfile_write( void )
 {
 	FILE *fh;
 
+	// make our piddir
+	pidfile_mkdir( ctl->pidfile );
+
+	// and our file
 	if( !( fh = fopen( ctl->pidfile, "w" ) ) )
 	{	
 		warn( "Unable to write to pidfile %s -- %s",
@@ -458,7 +509,7 @@ int setlimit( int res, int64_t val )
 		rl.rlim_cur = rl.rlim_max;
 	else
 	{
-		if( rl.rlim_max < val )
+		if( (int64_t) rl.rlim_max < val )
 		{
 			err( "Limit %s max is %ld.", which, rl.rlim_max );
 			return -1;
