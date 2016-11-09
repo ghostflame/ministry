@@ -611,3 +611,85 @@ int read_file( char *path, char **buf, int *len, size_t max, int perm, char *des
 	fclose( h );
 	return 0;
 }
+
+
+int parse_number( char *str, int64_t *iv, double *dv )
+{
+	if( iv )
+		*iv = 0;
+	if( dv )
+		*dv = 0;
+
+	if( !strncmp( str, "0x", 2 ) )
+	{
+		if( iv )
+			*iv = strtoll( str, NULL, 16 );
+		return NUM_HEX;
+	}
+
+	while( *str == '+' )
+		str++;
+
+	if( !isdigit( *str ) )
+		return NUM_INVALID;
+
+	if( strchr( str, '.' ) )
+	{
+		if( dv )
+			*dv = strtod( str, NULL );
+		return NUM_FLOAT;
+	}
+
+	if( strlen( str ) > 1 && *str == '0' )
+	{
+		if( iv )
+			*iv = strtoll( str, NULL, 8 );
+		return NUM_OCTAL;
+	}
+
+	if( iv )
+		*iv = strtoll( str, NULL, 10 );
+
+	return NUM_NORMAL;
+}
+
+
+
+int hash_size( char *str )
+{
+	int64_t v;
+
+	if( !str || !strlen( str ) )
+	{
+		warn( "Invalid hashtable size string." );
+		return -1;
+	}
+
+	if( !strcasecmp( str, "tiny" ) )
+		return MEM_HSZ_TINY;
+
+	if( !strcasecmp( str, "small" ) )
+		return MEM_HSZ_SMALL;
+
+	if( !strcasecmp( str, "medium" ) )
+		return MEM_HSZ_MEDIUM;
+
+	if( !strcasecmp( str, "large" ) )
+		return MEM_HSZ_LARGE;
+
+	if( !strcasecmp( str, "xlarge" ) )
+		return MEM_HSZ_XLARGE;
+
+	if( !strcasecmp( str, "x2large" ) )
+		return MEM_HSZ_X2LARGE;
+
+	if( parse_number( str, &v, NULL ) == NUM_INVALID )
+	{
+		warn( "Unrecognised hash table size '%s'", str );
+		return -1;
+	}
+
+	return (int) v;
+}
+
+

@@ -20,6 +20,15 @@
 // for breaking up strings on a delimiter
 #define STRWORDS_MAX		339			// makes for a 4k struct
 
+enum num_types
+{
+	NUM_INVALID = -1,
+	NUM_NORMAL = 0,
+	NUM_OCTAL,
+	NUM_HEX,
+	NUM_FLOAT
+};
+
 // var_val status
 #define VV_LINE_UNKNOWN		0
 #define VV_LINE_BROKEN		1
@@ -131,5 +140,12 @@ uint64_t lockless_fetch( LLCT *l );
 
 // read a file into memory
 int read_file( char *path, char **buf, int *len, size_t max, int perm, char *desc );
+
+// handle any number type
+// returns the type it thought it was
+int parse_number( char *str, int64_t *iv, double *dv );
+
+// hash size lookup
+int hash_size( char *str );
 
 #endif

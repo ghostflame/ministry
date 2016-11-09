@@ -55,6 +55,9 @@ typedef struct lockless_counter		LLCT;
 typedef struct http_callbacks		HTTP_CB;
 typedef struct http_ssl				SSL_CONF;
 typedef struct http_ssl_file		SSL_FILE;
+typedef struct token_data			TOKEN;
+typedef struct token_info			TOKENS;
+
 
 // function types
 typedef void target_fn ( ST_THR *, BUF *, IOBUF * );

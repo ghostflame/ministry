@@ -20,6 +20,7 @@
 #define MEM_ALLOCSZ_DHASH			512
 #define MEM_ALLOCSZ_IOBUF			128
 #define MEM_ALLOCSZ_IOLIST			512
+#define MEM_ALLOCSZ_TOKEN			128
 
 #define DEFAULT_GC_THRESH			8640		// 1 day @ 10s
 #define DEFAULT_GC_GG_THRESH		25920		// 3 days @ 10s
@@ -66,6 +67,7 @@ struct mem_control
 	MTYPE			*	dhash;
 	MTYPE			*	iobufs;
 	MTYPE			*	iolist;
+	MTYPE			*	token;
 
 	int					curr_kb;
 	int					max_kb;
@@ -99,6 +101,10 @@ void mem_free_dhash_list( DHASH *list );
 IOBUF *mem_new_buf( int sz );
 void mem_free_buf( IOBUF **b );
 void mem_free_buf_list( IOBUF *list );
+
+TOKEN *mem_new_token( void );
+void mem_free_token( TOKEN **t );
+void mem_free_token_list( TOKEN *list );
 
 loop_call_fn mem_check;
 throw_fn mem_loop;

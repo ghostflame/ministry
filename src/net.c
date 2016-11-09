@@ -264,6 +264,9 @@ int net_start( void )
 	IPCHK *ipc;
 	int i;
 
+	// create our token hash table
+	token_init( );
+
 	// reverse the ip net lists
 	ctl->net->iplist->nets = (IPNET *) mtype_reverse_list( ctl->net->iplist->nets );
 	ctl->net->prefix->nets = (IPNET *) mtype_reverse_list( ctl->net->prefix->nets );
@@ -402,6 +405,9 @@ NET_CTL *net_config_defaults( void )
 
 	if( !( net->prefix = __net_get_ipcheck( NET_IP_HASHSZ, "prefix" ) ) )
 		return NULL;
+
+	// create our tokens structure
+	net->tokens = token_setup( );
 
 	// can't add default target, it's a linked list
 
@@ -804,6 +810,34 @@ int net_config_line( AVP *av )
 			return net_add_list_member( av->val, av->vlen, NET_IP_WHITELIST );
 		else if( !strcasecmp( p, "blacklist" ) )
 			return net_add_list_member( av->val, av->vlen, NET_IP_BLACKLIST );
+		else
+			return -1;
+
+		return 0;
+	}
+	else if( !strncasecmp( av->att, "tokens.", 7 ) )
+	{
+		if( !strcasecmp( p, "enable" ) )
+			ctl->net->tokens->enable = config_bool( av );
+		else if( !strcasecmp( p, "msec" ) || !strcasecmp( p, "lifetime" ) )
+		{
+			i = atoi( av->val );
+			if( i < 10 )
+			{
+				i = DEFAULT_TOKEN_LIFETIME;
+				warn( "Minimum token lifetime is 10msec - setting to %d", i );
+			}
+			ctl->net->tokens->lifetime = i;
+		}
+		else if( !strcasecmp( p, "hashsize" ) )
+		{
+			if( ( ctl->net->tokens->hsize = hash_size( av->val ) ) < 0 )
+				return -1;
+		}
+		else if( !strcasecmp( p, "mask" ) )
+		{
+			parse_number( av->val, &(ctl->net->tokens->mask), NULL );
+		}
 		else
 			return -1;
 

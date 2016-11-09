@@ -643,7 +643,7 @@ void stats_init_control( ST_CFG *c, int alloc_data )
 	ST_THR *t;
 
 	// maybe fall back to default hash size
-	if( c->hsize < 0 )
+	if( c->hsize == 0 )
 		c->hsize = ctl->mem->hashsize;
 
 	debug( "Hash size set to %d for %s", c->hsize, c->name );
@@ -896,34 +896,9 @@ int stats_config_line( AVP *av )
 	}
 	else if( !strcasecmp( d, "size" ) || !strcasecmp( d, "hashsize" ) )
 	{
-		if( valIs( "tiny" ) )
-			sc->hsize = MEM_HSZ_TINY;
-		else if( valIs( "small" ) )
-			sc->hsize = MEM_HSZ_SMALL;
-		else if( valIs( "medium" ) )
-			sc->hsize = MEM_HSZ_MEDIUM;
-		else if( valIs( "large" ) )
-			sc->hsize = MEM_HSZ_LARGE;
-		else if( valIs( "xlarge" ) )
-			sc->hsize = MEM_HSZ_XLARGE;
-		else if( valIs( "x2large" ) )
-			sc->hsize = MEM_HSZ_X2LARGE;
-		else
-		{
-			if( !isdigit( av->val[0] ) )
-			{
-				warn( "Unrecognised hash table size '%s'", av->val );
-				return -1;
-			}
-			t = atoi( av->val );
-			if( t == 0 )
-			{
-				warn( "Cannot set zero size hash table." );
-				return -1;
-			}
-			// < 0 means default
-			sc->hsize = t;
-		}
+		// 0 means default
+		if( ( sc->hsize = hash_size( av->val ) ) < 0 )
+			return -1;
 	}
 	else
 		return -1;

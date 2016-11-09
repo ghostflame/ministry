@@ -214,6 +214,9 @@ void loop_start( void )
 	// and gc
 	thread_throw( &gc_loop, NULL );
 
+	// and token cleanup
+	thread_throw( &token_loop, NULL );
+
 	// throw the data listener loop
 	net_start_type( ctl->net->stats );
 	net_start_type( ctl->net->adder );

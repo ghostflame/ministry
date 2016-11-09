@@ -199,6 +199,8 @@ struct network_control
 
 	TARGET				*	targets;
 
+	TOKENS				*	tokens;
+
 	IPCHK				*	iplist;
 	IPCHK				*	prefix;
 	regex_t					ipregex;
