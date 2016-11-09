@@ -24,14 +24,14 @@ struct token_data
 {
 	TOKEN			*	next;
 
-	int64_t				expires;
+	char			*	name;	// assigned, not allocated
 
-	int64_t				stats;
-	int64_t				adder;
-	int64_t				gauge;
+	int64_t				expires;
+	int64_t				nonce;
 
 	uint32_t			ip;
-	int32_t				burned;
+	int16_t				type;
+	int16_t				burned;
 
 	int64_t				id;
 };
@@ -48,8 +48,9 @@ struct token_info
 
 void token_burn( TOKEN *t );
 
-TOKEN *token_find( uint32_t ip, int type, int64_t val );
-TOKEN *token_generate( uint32_t ip, int types );
+TOKEN *token_find( uint32_t ip, int16_t type, int64_t val );
+void token_generate( uint32_t ip, int16_t types, TOKEN **ptrs, int max, int *count );
+
 
 throw_fn token_loop;
 

@@ -10,7 +10,7 @@
 
 #include "ministry.h"
 
-inline int64_t token_gen_value( void )
+int64_t token_gen_value( void )
 {
 	int tries = 10;
 	int64_t v = 0;
@@ -33,10 +33,23 @@ void token_burn( TOKEN *t )
 }
 
 
-TOKEN *token_find( uint32_t ip, int type, int64_t val )
+int64_t token_hashval( uint32_t ip, int16_t type )
+{
+	int64_t hval;
+
+	// hash on IP address and type
+	hval  = (int64_t) type;
+	hval  = hval << 33;
+	hval += (int64_t) ip; 
+
+	// and hashed on token hashsize
+	return hval % ctl->net->tokens->hsize;
+}
+
+
+TOKEN *token_find( uint32_t ip, int16_t type, int64_t val )
 {
 	TOKENS *ts = ctl->net->tokens;
-	int64_t tval;
 	TOKEN *t;
 	int hval;
 
@@ -44,38 +57,30 @@ TOKEN *token_find( uint32_t ip, int type, int64_t val )
 	if( !val )
 		return NULL;
 
-	// we hash on ip address
-	hval = ip % ts->hsize;
+	hval = token_hashval( ip, type );
 
-	// search under lock
+	// search under lock - avoids problems with the purger
+	// both the purge and the lookup happen in single-purpose
+	// threads so we're not bothered if the sleep a bit
 	lock_tokens( );
 
 	for( t = ts->hash[hval]; t; t = t->next )
 	{
 		// wrong IP or already burned
 		if( t->ip != ip || t->burned )
-			continue;
-
-		switch( type )
 		{
-			case TOKEN_TYPE_STATS:
-				tval = t->stats;
-				break;
-			case TOKEN_TYPE_ADDER:
-				tval = t->adder;
-				break;
-			case TOKEN_TYPE_GAUGE:
-				tval = t->gauge;
-				break;
-			default:
-				unlock_tokens( );
-				return NULL;
+			debug( "Ignoring token %ld, ip mismatch or burned.", t->id );
+			continue;
 		}
 
+		debug( "Comparing nonce %ld with val %ld", t->nonce, val );
+
 		// if this matches, that is it
-		if( tval == val )
+		if( t->nonce == val )
 			break;
 	}
+
+	debug( "Token pointer: %p", t );
 
 	unlock_tokens( );
 	return t;
@@ -84,33 +89,42 @@ TOKEN *token_find( uint32_t ip, int type, int64_t val )
 
 static int64_t token_id = 0;
 
-TOKEN *token_generate( uint32_t ip, int types )
+static char *token_type_names[4] = {
+	"stats", "adder", "gauge", "weird"
+};
+
+TOKEN *__token_generate_type( uint32_t ip, int16_t type )
 {
 	TOKENS *ts = ctl->net->tokens;
+	int64_t hval;
 	TOKEN *t;
-	int hval;
 
+
+	// create a new token and fill it in
 	t = mem_new_token( );
-	t->ip = ip;
-
-	// NOT THREAD SAFE
-	t->id = token_id++;
-
-	// hash on IP address
-	hval = t->ip % ts->hsize;
-
-	// mask our types
-	types &= ts->mask;
-
-	if( types & TOKEN_TYPE_STATS )
-		t->stats = token_gen_value( );
-	if( types & TOKEN_TYPE_ADDER )
-		t->adder = token_gen_value( );
-	if( types & TOKEN_TYPE_GAUGE )
-		t->gauge = token_gen_value( );
-
-	// and set the expires time
+	t->ip      = ip;
+	t->id      = ++token_id; // NOT THREAD SAFE
+	t->type    = type;
 	t->expires = ts->lifetime + tsll( ctl->curr_time );
+	t->nonce   = token_gen_value( );
+
+	switch( type )
+	{
+		case TOKEN_TYPE_STATS:
+			t->name = token_type_names[0];
+			break;
+		case TOKEN_TYPE_ADDER:
+			t->name = token_type_names[1];
+			break;
+			case TOKEN_TYPE_GAUGE:
+			t->name = token_type_names[2];
+			break;
+		default:
+			t->name = token_type_names[3];
+			break;
+	}
+
+	hval = token_hashval( ip, type );
 
 	// and insert
 	lock_tokens( );
@@ -120,10 +134,39 @@ TOKEN *token_generate( uint32_t ip, int types )
 
 	unlock_tokens( );
 
+	debug( "Generated token %ld, type: %hd, ip: %u, nonce: %ld",
+		t->id, type, t->ip, t->nonce );
+
 	return t;
 }
 
 
+
+void token_generate( uint32_t ip, int16_t types, TOKEN **ptrs, int max, int *count )
+{
+	TOKEN *t;
+
+	memset( ptrs, 0, max * sizeof( TOKEN * ) );
+	*count = 0;
+
+	types &= ctl->net->tokens->mask;
+
+	if( types & TOKEN_TYPE_STATS )
+	{
+		t = __token_generate_type( ip, TOKEN_TYPE_STATS );
+		ptrs[(*count)++] = t;
+	}
+	if( types & TOKEN_TYPE_ADDER )
+	{
+		t = __token_generate_type( ip, TOKEN_TYPE_ADDER );
+		ptrs[(*count)++] = t;
+	}
+	if( types & TOKEN_TYPE_GAUGE )
+	{
+		t = __token_generate_type( ip, TOKEN_TYPE_GAUGE );
+		ptrs[(*count)++] = t;
+	}
+}
 
 
 
@@ -181,8 +224,6 @@ void token_purge( int64_t tval, void *arg )
 	TOKEN *free = NULL;
 	int i;
 
-	info( "Token purge." );
-
 	for( i = 0; i < ts->hsize; i++ )
 		token_table_purge( tval, i, &free );
 
@@ -193,9 +234,10 @@ void token_purge( int64_t tval, void *arg )
 		for( t = free; t; t = t->next )
 		{
 			ina.s_addr = t->ip;
-			info( "Purging token: %ld: %s @ %ld",
+			info( "Purging token: %ld: %s/%hd @ %ld",
 				t->id,
 				inet_ntoa( ina ),
+				t->type,
 				t->expires );
 		}
 	}

@@ -72,15 +72,32 @@ void http_log( void *arg, const char *fm, va_list ap )
 
 int http_handler_tokens( uint32_t ip, char *buf, int max )
 {
-	int types;
-	TOKEN *t;
+	int types, len, i, count;
+	TOKEN *t, *tlist[8];
 
-	types = (TOKEN_TYPE_STATS|TOKEN_TYPE_ADDER|TOKEN_TYPE_GAUGE) & ctl->net->tokens->mask;
-	t     = token_generate( ip, types );
+	types = TOKEN_TYPE_STATS|TOKEN_TYPE_ADDER|TOKEN_TYPE_GAUGE;
+	token_generate( ip, types, tlist, 8, &count );
 
-	return snprintf( buf, max,
-			"{\"stats\":%ld,\"adder\":%ld,\"gauge\":%ld}\n",
-			t->stats, t->adder, t->gauge );
+	len = snprintf( buf, max, "{" );
+
+	// run down the tokens
+	for( i = 0; i < count; i++ )
+	{
+		t = tlist[i];
+
+		len += snprintf( buf + len, max - len, "\"%s\": %ld,",
+			t->name, t->nonce );
+	}
+
+	// chop off the trailing ,
+	// hand-crafting json is such a pain but all the C libs to
+	// do it really, really suck.
+	if( buf[len-1] == ',' )
+		len--;
+
+	len += snprintf( buf + len, max - len, "}" );
+
+	return len;
 }
 
 

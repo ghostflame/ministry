@@ -129,6 +129,30 @@ int net_set_host_prefix( HOST *h, HPRFX *pr )
 }
 
 
+// set the line parser on a host.  We prefer the flat parser, but if
+// tokens are on for that type, set the token handler.
+int net_set_host_parser( HOST *h, int token_check, int prefix_check )
+{
+	// this is the default
+	h->parser = h->type->flat_parser;
+
+	// are we doing a token check?
+	if(   token_check
+	 &&   ctl->net->tokens->enable
+	 && ( ctl->net->tokens->mask & h->type->token_type ) )
+	{
+		// token handler is the same for all types
+		h->parser = &data_line_token;
+		return 0;
+	}
+
+	// do we have a prefix for this host?
+	if( prefix_check )
+		return net_set_host_prefix( h, net_prefix_check( h->peer ) );
+
+	return 0;
+}
+
 
 
 NSOCK *net_make_sock( int insz, int outsz, struct sockaddr_in *peer )
@@ -352,6 +376,7 @@ NET_TYPE *net_type_defaults( int type )
 	nt->label       = strdup( d->sock );
 	nt->name        = strdup( d->name );
 	nt->flags       = NTYPE_ENABLED|NTYPE_TCP_ENABLED|NTYPE_UDP_ENABLED;
+	nt->token_type  = d->tokn;
 
 	return nt;
 }
