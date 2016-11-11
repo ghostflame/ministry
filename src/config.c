@@ -234,7 +234,7 @@ char *config_relative_path( char *inpath )
 
 
 
-int config_read( char *inpath )
+int config_read_file( char *inpath )
 {
 	int ret = 0, rv, lrv;
 	FILE *fh = NULL;
@@ -310,6 +310,42 @@ END_FILE:
 
 	free( path );
 	return ret;
+}
+
+
+int config_read_url( char *url )
+{
+	CURLcode cc;
+	int ret = 0;
+	CURL *c;
+
+	if( !( c = curl_easy_init( ) ) )
+	{
+		err( "Could not init curl for url fetch -- %s", Err );
+		return -1;
+	}
+
+	curl_easy_setopt( c, CURLOPT_URL, url );
+	cc = curl_easy_perform( c );
+
+	if( cc != 0 )
+	{
+		err( "Could not curl target url '%s' -- %s", url, Err );
+		ret = -1;
+	}
+
+	curl_easy_cleanup( c );
+	return ret;
+}
+
+
+
+int config_read( char *path )
+{
+	if( !strncmp( path, "http://", 7 ) )
+		return config_read_url( path );
+
+	return config_read_path( path );
 }
 
 
@@ -390,20 +426,23 @@ int config_env_path( char *path, int len )
 }
 
 
+#define ENV_MAX_LENGTH			65536
+#define ENV_PREFIX				"MINISTRY_CFG_"
+#define ENV_PREFIX_LEN			13	// length of the above
 
 int config_read_env( char **env )
 {
-	char buf[8192];
+	char buf[ENV_MAX_LENGTH];
 	int l;
 
 	for( ; *env; env++ )
 	{
-		l = snprintf( buf, 8192, "%s", *env );
+		l = snprintf( buf, ENV_MAX_LENGTH, "%s", *env );
 
-		if( l < 14 || memcmp( buf, "MINISTRY_CFG_", 13 ) )
+		if( l < 14 || memcmp( buf, ENV_PREFIX, ENV_PREFIX_LEN ) )
 			continue;
 
-		if( config_env_path( buf + 13, l - 13 ) )
+		if( config_env_path( buf + ENV_PREFIX_LEN, l - ENV_PREFIX_LEN ) )
 		{
 			warn( "Problematic environmental config item %s", *env );
 			return -1;
@@ -413,6 +452,9 @@ int config_read_env( char **env )
 	return 0;
 }
 
+#undef ENV_MAX_LENGTH
+#undef ENV_PREFIX
+#undef ENV_PREFIX_LEN
 
 
 void config_create( char **env )

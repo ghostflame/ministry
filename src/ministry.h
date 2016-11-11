@@ -32,6 +32,7 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <arpa/inet.h>
+#include <curl/curl.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>

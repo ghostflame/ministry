@@ -13,7 +13,7 @@ void usage( void )
 {
 	char *help_str = "\
 Usage\tministry -h\n\
-\tministry [OPTIONS] -c <config file>\n\n\
+\tministry [OPTIONS] [-c <config file>]\n\n\
 Options:\n\
  -h           Print this help\n\
  -c <file>    Select config file to use\n\
@@ -115,19 +115,22 @@ int set_limits( void )
 
 int main( int ac, char **av, char **env )
 {
-	int oc, justTest = 0, debug = 0;
+	int oc, justTest = 0, debug = 0, readConf = 1;
 	char *pidfile = NULL;
 	double diff;
 
 	// make a control structure
 	config_create( env );
 
-	while( ( oc = getopt( ac, av, "hHDVdvtc:p:" ) ) != -1 )
+	while( ( oc = getopt( ac, av, "hHCDVdvtc:p:" ) ) != -1 )
 		switch( oc )
 		{
 			case 'c':
 				free( ctl->cfg_file );
 				ctl->cfg_file = strdup( optarg );
+				break;
+			case 'C':
+				readConf = 0;
 				break;
 			case 'v':
 				printf( "Ministry version: %s\n", ctl->version );
@@ -159,7 +162,7 @@ int main( int ac, char **av, char **env )
 		}
 
 	// try to read the config
-	if( config_read( ctl->cfg_file ) )
+	if( readConf && config_read( ctl->cfg_file ) )
 		fatal( "Unable to read config file '%s'", ctl->cfg_file );
 
 	// enforce what we got in arguments
