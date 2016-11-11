@@ -398,7 +398,7 @@ void mem_free_dhash_list( DHASH *list )
 
 IOLIST *mem_new_iolist( void )
 {
-	return __mtype_new( ctl->mem->iolist );
+	return (IOLIST *) __mtype_new( ctl->mem->iolist );
 }
 
 void mem_free_iolist( IOLIST **l )
@@ -535,6 +535,52 @@ void mem_free_buf_list( IOBUF *list )
 }
 
 
+TOKEN *mem_new_token( void )
+{
+	return (TOKEN *) __mtype_new( ctl->mem->token );
+}
+
+
+void mem_free_token( TOKEN **t )
+{
+	TOKEN *tp;
+
+	tp = *t;
+	*t = NULL;
+
+	memset( tp, 0, sizeof( TOKEN ) );
+	__mtype_free( ctl->mem->token, tp );
+}
+
+void mem_free_token_list( TOKEN *list )
+{
+	TOKEN *t, *freed, *end;
+	int j = 0;
+
+	freed = end = NULL;
+
+	while( list )
+	{
+		t    = list;
+		list = t->next;
+
+		memset( t, 0, sizeof( TOKEN ) );
+
+		t->next = freed;
+		freed   = t;
+
+		if( !end )
+			end = t;
+
+		j++;
+	}
+
+	__mtype_free_list( ctl->mem->token, j, freed, end );
+}
+
+
+
+
 
 void mem_check( int64_t tval, void *arg )
 {
@@ -619,6 +665,8 @@ int mem_config_line( AVP *av )
 		mt = ctl->mem->dhash;
 	else if( !strncasecmp( av->att, "iolist.", 7 ) )
 		mt = ctl->mem->iolist;
+	else if( !strncasecmp( av->att, "token.", 6 ) )
+		mt = ctl->mem->token;
 	else
 		return -1;
 
@@ -647,6 +695,7 @@ void mem_shutdown( void )
 	pthread_mutex_destroy( &(m->iobufs->lock) );
 	pthread_mutex_destroy( &(m->dhash->lock)  );
 	pthread_mutex_destroy( &(m->iolist->lock) );
+	pthread_mutex_destroy( &(m->token->lock)  );
 }
 
 
@@ -681,6 +730,7 @@ MEM_CTL *mem_config_defaults( void )
 	m->points = __mem_type_ctl( sizeof( PTLIST ), MEM_ALLOCSZ_POINTS, 0 );
 	m->dhash  = __mem_type_ctl( sizeof( DHASH ),  MEM_ALLOCSZ_DHASH,  64 ); // guess on path length
 	m->iolist = __mem_type_ctl( sizeof( IOLIST ), MEM_ALLOCSZ_IOLIST, 0 );
+	m->token  = __mem_type_ctl( sizeof( TOKEN ),  MEM_ALLOCSZ_TOKEN,  0 );
 
 	m->max_kb       = DEFAULT_MEM_MAX_KB;
 	m->interval     = DEFAULT_MEM_CHECK_INTV;

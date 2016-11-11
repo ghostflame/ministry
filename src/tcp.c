@@ -75,13 +75,10 @@ HOST *tcp_get_host( int sock, NET_PORT *np )
 	h->type      = np->type;
 
 	// assume type-based handler functions
-	h->parser    = np->type->flat_parser;
-
-	// maybe set a prefix
-	if( net_set_host_prefix( h, net_prefix_check( &from ) ) )
+	// and maybe set a profile
+	if( net_set_host_parser( h, 1, 1 ) )
 	{
 		np->errors.count++;
-		mem_free_host( &h );
 		return NULL;
 	}
 
@@ -168,6 +165,11 @@ __attribute__((hot)) void *tcp_connection( void *arg )
 		// we need to loop until there's nothing left to read
 		while( io_read_data( n ) > 0 )
 		{
+			// data_parse_buf can set this, so let's not carry
+			// on reading from a spammy source if we don't like them
+			if( n->flags & HOST_CLOSE )
+				break;
+
 			// do we have anything
 			if( !n->in->len )
 			{

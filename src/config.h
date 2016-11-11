@@ -36,12 +36,14 @@ struct config_context
 // main control structure
 struct ministry_control
 {
+	HTTP_CTL			*	http;
 	LOG_CTL				*	log;
 	LOCK_CTL			*	locks;
 	MEM_CTL				*	mem;
 	NET_CTL				*	net;
 	STAT_CTL			*	stats;
 	SYN_CTL				*	synth;
+	TGT_CTL				*	tgt;
 
 	struct timespec			init_time;
 	struct timespec			curr_time;

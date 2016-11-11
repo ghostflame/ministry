@@ -122,6 +122,52 @@ char *str_copy( char *src, int len )
 	return p;
 }
 
+// permanent string buffer
+BUF *strbuf( uint32_t size )
+{
+	BUF *b = (BUF *) allocz( sizeof( BUF ) );
+
+	if( size )
+	{
+		b->space = (char *) allocz( size );
+		b->sz    = size;
+	}
+
+	b->buf = b->space;
+	return b;
+}
+
+int strbuf_copy( BUF *b, char *str, int len )
+{
+	if( !len )
+		len = strlen( str );
+
+	if( (uint32_t) len >= b->sz )
+		return -1;
+
+	memcpy( b->buf, str, len );
+	b->len = len;
+	b->buf[b->len] = '\0';
+
+	return len;
+}
+
+int strbuf_add( BUF *b, char *str, int len )
+{
+	if( !len )
+		len = strlen( str );
+
+	if( ( b->len + len ) >= b->sz )
+		return -1;
+
+	memcpy( b->buf + b->len, str, len );
+	b->len += len;
+	b->buf[b->len] = '\0';
+
+	return len;
+}
+
+
 // a capped version of strlen
 int str_nlen( char *src, int max )
 {
@@ -502,5 +548,148 @@ uint64_t lockless_fetch( LLCT *l )
 	return diff;
 }
 
+
+int read_file( char *path, char **buf, int *len, size_t max, int perm, char *desc )
+{
+	struct stat sb;
+	FILE *h;
+	int l;
+
+	if( !buf || !len )
+	{
+		err( "Need a buffer and length parameter in read_file." );
+		return 1;
+	}
+
+	if( !desc )
+		desc = "file";
+
+	if( !path )
+	{
+		err( "No %s path.", desc );
+		return -1;
+	}
+
+	if( stat( path, &sb ) )
+	{
+		err( "Cannot stat %s %s: %s", desc, path, Err );
+		return -2;
+	}
+
+	if( !S_ISREG( sb.st_mode ) )
+	{
+		err( "Mode of %s %s is not a regular file.", desc, path );
+		return -3;
+	}
+
+	l = (int) sb.st_size;
+	*len = l;
+
+	if( l > (int) max )
+	{
+		err( "Size of %s %s is too big at %d bytes.", desc, path, l );
+		return -4;
+	}
+
+	if( !( h = fopen( path, "r" ) ) )
+	{
+		err( "Cannot open %s %s: %s", desc, path, Err );
+		return -5;
+	}
+
+	if( !*buf )
+		*buf = ( perm ) ? perm_str( l ) : (char *) allocz( l + 1 );
+
+	if( !fread( *buf, l, 1, h ) || ferror( h ) )
+	{
+		err( "Could not read %s %s: %s", desc, path, Err );
+		fclose( h );
+		*len = 0;
+		return -6;
+	}
+
+	fclose( h );
+	return 0;
+}
+
+
+int parse_number( char *str, int64_t *iv, double *dv )
+{
+	if( iv )
+		*iv = 0;
+	if( dv )
+		*dv = 0;
+
+	if( !strncmp( str, "0x", 2 ) )
+	{
+		if( iv )
+			*iv = strtoll( str, NULL, 16 );
+		return NUM_HEX;
+	}
+
+	while( *str == '+' )
+		str++;
+
+	if( !isdigit( *str ) )
+		return NUM_INVALID;
+
+	if( strchr( str, '.' ) )
+	{
+		if( dv )
+			*dv = strtod( str, NULL );
+		return NUM_FLOAT;
+	}
+
+	if( strlen( str ) > 1 && *str == '0' )
+	{
+		if( iv )
+			*iv = strtoll( str, NULL, 8 );
+		return NUM_OCTAL;
+	}
+
+	if( iv )
+		*iv = strtoll( str, NULL, 10 );
+
+	return NUM_NORMAL;
+}
+
+
+
+int hash_size( char *str )
+{
+	int64_t v;
+
+	if( !str || !strlen( str ) )
+	{
+		warn( "Invalid hashtable size string." );
+		return -1;
+	}
+
+	if( !strcasecmp( str, "tiny" ) )
+		return MEM_HSZ_TINY;
+
+	if( !strcasecmp( str, "small" ) )
+		return MEM_HSZ_SMALL;
+
+	if( !strcasecmp( str, "medium" ) )
+		return MEM_HSZ_MEDIUM;
+
+	if( !strcasecmp( str, "large" ) )
+		return MEM_HSZ_LARGE;
+
+	if( !strcasecmp( str, "xlarge" ) )
+		return MEM_HSZ_XLARGE;
+
+	if( !strcasecmp( str, "x2large" ) )
+		return MEM_HSZ_X2LARGE;
+
+	if( parse_number( str, &v, NULL ) == NUM_INVALID )
+	{
+		warn( "Unrecognised hash table size '%s'", str );
+		return -1;
+	}
+
+	return (int) v;
+}
 
 

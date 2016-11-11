@@ -14,6 +14,8 @@
 #define DEFAULT_ADDER_PORT				9225
 #define DEFAULT_GAUGE_PORT				9325
 #define DEFAULT_COMPAT_PORT				8125
+#define DEFAULT_HTTP_PORT				9080
+#define DEFAULT_HTTPS_PORT				9443
 
 #define POLL_EVENTS						(POLLIN|POLLPRI|POLLRDNORM|POLLRDBAND|POLLHUP)
 
@@ -161,6 +163,8 @@ struct net_type
 	uint16_t				flags;
 	uint16_t				udp_count;
 	uint32_t				udp_bind;
+
+	int32_t					token_type;
 };
 
 
@@ -197,6 +201,8 @@ struct network_control
 
 	TARGET				*	targets;
 
+	TOKENS				*	tokens;
+
 	IPCHK				*	iplist;
 	IPCHK				*	prefix;
 	regex_t					ipregex;
@@ -217,6 +223,9 @@ int net_ip_check( struct sockaddr_in *sin );
 
 // set up a host with a prefix
 int net_set_host_prefix( HOST *h, HPRFX *pr );
+
+// set a host parser fn
+int net_set_host_parser( HOST *h, int token_check, int prefix_check );
 
 NSOCK *net_make_sock( int insz, int outsz, struct sockaddr_in *peer );
 //int net_port_sock( PORT_CTL *pc, uint32_t ip, int backlog );

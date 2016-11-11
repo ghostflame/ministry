@@ -50,11 +50,11 @@
 #define lock_table( idx )		pthread_mutex_lock(   &(ctl->locks->table[idx & HASHT_MUTEX_MASK]) )
 #define unlock_table( idx )		pthread_mutex_unlock( &(ctl->locks->table[idx & HASHT_MUTEX_MASK]) )
 
-#define lock_target( t )		pthread_mutex_lock(   &(t->lock) )
-#define unlock_target( t )		pthread_mutex_unlock( &(t->lock) )
+#define lock_tgtio( t )			pthread_mutex_lock(   &(t->lock) )
+#define unlock_tgtio( t )		pthread_mutex_unlock( &(t->lock) )
 
-#define lock_stthr( s )			lock_target( s )
-#define unlock_stthr( s )		unlock_target( s )
+#define lock_stthr( s )			pthread_mutex_lock(   &(s->lock) )
+#define unlock_stthr( s )		pthread_mutex_unlock( &(s->lock) )
 
 #define lock_synth( )			pthread_mutex_lock(   &(ctl->locks->synth) )
 #define unlock_synth( )			pthread_mutex_unlock( &(ctl->locks->synth) )
@@ -64,6 +64,9 @@
 
 #define lock_ntype( nt )		pthread_mutex_lock(   &(nt->lock) )
 #define unlock_ntype( nt )		pthread_mutex_unlock( &(nt->lock) )
+
+#define lock_tokens( )			pthread_mutex_lock(   &(ctl->locks->tokens) )
+#define unlock_tokens( )		pthread_mutex_unlock( &(ctl->locks->tokens) )
 
 
 struct dhash_locks
@@ -78,12 +81,7 @@ struct dhash_locks
 
 struct lock_control
 {
-	pthread_mutex_t			hostalloc;					// mem hosts
-	pthread_mutex_t			hashalloc;					// control of dhash allocation
-	pthread_mutex_t			pointalloc;					// point list structures
-	pthread_mutex_t			bufalloc;					// buffer structures
-	pthread_mutex_t			listalloc;					// buflist structures
-
+	pthread_mutex_t			tokens;						// token control
 	pthread_mutex_t			hashstats;					// used for counters
 	pthread_mutex_t			loop;						// thread startup/shutdown
 	pthread_mutex_t			synth;						// synthetics control
