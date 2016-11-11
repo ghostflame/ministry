@@ -60,6 +60,8 @@ var connect_with_token = function( tokens ) {
     var path = new net.Socket( );
     var stat = new net.Socket( );
 
+    console.log( tokens );
+
     stat.connect( 9125, '127.0.0.1', function( ) {
         stat.write( tokens.stats + '\n' );
         setInterval( sendSet, 10, stat );

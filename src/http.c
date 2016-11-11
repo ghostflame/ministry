@@ -110,7 +110,7 @@ struct url_map_help
 const struct url_map_help url_mapping[] = {
 	{ "/",               "View URL Map"                   },
 	{ "/stats",          "Ministry internal stats"        },
-	{ "/metrics",        "Prometheus metrics endpoint"    },
+//	{ "/metrics",        "Prometheus metrics endpoint"    },
 	{ "/tokens",         "Connection tokens endpoint"     },
 	{ NULL,              NULL                             }
 };
@@ -182,10 +182,10 @@ int http_request_handler( void *cls, HTTP_CONN *conn,
 			if( !strcmp( url, "/tokens" ) )
 				len = http_handler_tokens( ip, buf, 1024 );
 			break;
-		case 8:
-			if( !strcmp( url, "/metrics" ) )
-				len = snprintf( buf, 1024, "# Prometheus metrics!\r\n" );
-			break;
+//		case 8:
+//			if( !strcmp( url, "/metrics" ) )
+//				len = snprintf( buf, 1024, "# Prometheus metrics!\r\n" );
+//			break;
 	}
 
 	// don't recognise that url
