@@ -33,7 +33,7 @@ with_old_gcc:  $(BIN)
 
 
 $(BIN): $(HDRS) $(OBJS)
-	$(CC) -o $(BIN) $(LFLAGS) $(OBJS)
+	$(CC) -o $(BIN) $(OBJS) $(LFLAGS)
 	@echo "Ministry constructed.  Submit your forms, citizen!"
 
 install: $(BIN)

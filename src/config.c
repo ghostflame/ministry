@@ -277,6 +277,7 @@ int config_read( char *inpath )
 			if( config_read( av.val ) != 0 )
 			{
 				err( "Included config file '%s' invalid.", av.val );
+				ret = -1;
 				goto END_FILE;
 			}
 			continue;

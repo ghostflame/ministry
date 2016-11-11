@@ -177,7 +177,10 @@ int main( int ac, char **av )
 
 	// try to read the config
 	if( config_read( ctl->cfg_file ) )
-		fatal( "Unable to read config file '%s'", ctl->cfg_file );
+	{
+		printf( "Config file '%s' is invalid.\n", ctl->cfg_file );
+		return 1;
+	}
 
 	// enforce what we got in arguments
 	if( debug )
@@ -193,7 +196,7 @@ int main( int ac, char **av )
 
 	if( justTest )
 	{
-		printf( "Config is OK.\n" );
+		printf( "Config file '%s' is OK.\n", ctl->cfg_file );
 		return 0;
 	}
 
