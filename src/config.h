@@ -33,16 +33,6 @@ struct config_context
 };
 
 
-struct config_writedata
-{
-	char				*	url;
-	int						fd;
-	int						ssl;
-	int						err;
-	int						bc;
-};
-
-
 // main control structure
 struct ministry_control
 {
