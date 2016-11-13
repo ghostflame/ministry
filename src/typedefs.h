@@ -24,6 +24,7 @@ typedef struct stat_config			ST_CFG;
 typedef struct stat_thread_ctl		ST_THR;
 typedef struct stat_threshold		ST_THOLD;
 typedef struct config_context		CCTXT;
+typedef struct config_writedataa	CWRDT;
 typedef struct points_list			PTLIST;
 typedef struct mem_type_blank		MTBLANK;
 typedef struct ip_network			IPNET;

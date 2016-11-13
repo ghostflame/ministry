@@ -137,7 +137,7 @@ CCTXT *config_make_context( char *path, CCTXT *parent )
 
 
 
-int config_file_dupe( CCTXT *c, char *path )
+int config_source_dupe( CCTXT *c, char *path )
 {
 	CCTXT *ch;
 
@@ -148,7 +148,7 @@ int config_file_dupe( CCTXT *c, char *path )
 		return 1;
 
 	for( ch = c->children; ch; ch = ch->next )
-		if( config_file_dupe( ch, path ) )
+		if( config_source_dupe( ch, path ) )
 			return 1;
 
 	return 0;
@@ -216,6 +216,10 @@ char *config_relative_path( char *inpath )
 	char *ret;
 	int len;
 
+	// is it a URI?
+	if( strstr( inpath, "://" ) )
+		return strdup( inpath );
+
 	if( *inpath != '~' )
 		return strdup( inpath );
 
@@ -233,42 +237,10 @@ char *config_relative_path( char *inpath )
 }
 
 
-
-int config_read_file( char *inpath )
+int __config_read_file( FILE *fh )
 {
-	int ret = 0, rv, lrv;
-	FILE *fh = NULL;
-	char *path;
+	int rv, lrv, ret = 0;
 	AVP av;
-
-	// maybe add basedir
-	path = config_relative_path( inpath );
-
-	// check this isn't a duplicate
-	if( config_file_dupe( ctxt_top, path ) )
-	{
-		warn( "Skipping duplicate config file '%s'.", path );
-		free( path );
-		return 0;
-	}
-
-	// set up our new context
-	context = config_make_context( path, context );
-
-	debug( "Opening config file %s, section %s",
-		path, context->section );
-
-	// is this the first call
-	if( !ctxt_top )
-		ctxt_top = context;
-
-	// die on not reading main config file, warn on others
-	if( !( fh = fopen( path, "r" ) ) )
-	{
-		err("Could not open config file '%s' -- %s", path, Err );
-		ret = -1;
-		goto END_FILE;
-	}
 
 	while( ( rv = config_get_line( fh, &av ) ) != -1 )
 	{
@@ -282,43 +254,80 @@ int config_read_file( char *inpath )
 			if( config_read( av.val ) != 0 )
 			{
 				err( "Included config file '%s' invalid.", av.val );
-				goto END_FILE;
+				ret = -1;
+				break;
 			}
 			continue;
 		}
 
 		// and dispatch it
 		lrv = config_choose_handler( context->section, &av );
-        ret += lrv;
+		ret += lrv;
 
 		if( lrv )
 		{
 			err( "Bad config in file '%s', line %d", context->file, context->lineno );
-			goto END_FILE;
+			break;
 		}
 	}
 
-
-END_FILE:
 	if( fh )
 		fclose( fh );
 
-	debug( "Finished with config file '%s': %d", context->file, ret );
+	debug( "Finished with config source '%s': %d", context->file, ret );
 
 	// step our context back
 	context = context->parent;
 
-	free( path );
 	return ret;
 }
 
 
-int config_read_url( char *url )
+
+
+
+int config_read_file( char *path )
 {
-	CURLcode cc;
+	FILE *fh = NULL;
+
+	debug( "Opening config file %s, section %s",
+		path, context->section );
+
+	// is this the first call
+	if( !ctxt_top )
+		ctxt_top = context;
+
+	// die on not reading main config file, warn on others
+	if( !( fh = fopen( path, "r" ) ) )
+	{
+		err("Could not open config file '%s' -- %s", path, Err );
+		return -1;
+	}
+
+	return __config_read_file( fh );
+}
+
+
+
+
+#define CErr		curl_easy_strerror( cc )
+
+
+int config_read_url( char *url, int ssl )
+{
 	int ret = 0;
+	CURLcode cc;
+	FILE *fh;
 	CURL *c;
 
+	debug( "Opening config url '%s', section %s",
+		url, context->section );
+
+	// is this the first call
+	if( !ctxt_top )
+		ctxt_top = context;
+
+	// set up our new context
 	if( !( c = curl_easy_init( ) ) )
 	{
 		err( "Could not init curl for url fetch -- %s", Err );
@@ -326,26 +335,75 @@ int config_read_url( char *url )
 	}
 
 	curl_easy_setopt( c, CURLOPT_URL, url );
-	cc = curl_easy_perform( c );
 
-	if( cc != 0 )
+	if( ssl )
 	{
-		err( "Could not curl target url '%s' -- %s", url, Err );
-		ret = -1;
+		curl_easy_setopt( c, CURLOPT_SSL_VERIFYPEER, 0L );
+		curl_easy_setopt( c, CURLOPT_SSL_VERIFYHOST, 0L );
 	}
 
+	// make a temporary file
+	if( !( fh = tmpfile( ) ) )
+	{
+		err( "Could not create a temporary file for fetching '%s' -- %s",
+			url, Err );
+		ret = -2;
+		goto CRU_CLEANUP;
+	}
+
+	// and set the file handle
+	curl_easy_setopt( c, CURLOPT_WRITEDATA, (void *) fh );
+
+	// and go get it
+	if( ( cc = curl_easy_perform( c ) ) != CURLE_OK )
+	{
+		err( "Could not curl target url '%s' -- %s", url, CErr );
+		ret = -1;
+		goto CRU_CLEANUP;
+	}
+
+	// and go back to the beginning
+	fseek( fh, 0L, SEEK_SET );
+
+	// and read that file
+	ret = __config_read_file( fh );
+
+CRU_CLEANUP:
 	curl_easy_cleanup( c );
 	return ret;
 }
 
 
+#undef CErr
 
-int config_read( char *path )
+
+int config_read( char *inpath )
 {
-	if( !strncmp( path, "http://", 7 ) )
-		return config_read_url( path );
+	char *path;
+	int ret;
 
-	return config_read_path( path );
+	path = config_relative_path( inpath );
+
+	// check this isn't a duplicate
+	if( config_source_dupe( ctxt_top, path ) )
+	{
+		warn( "Skipping duplicate config source '%s'.", path );
+		free( path );
+		return 0;
+	}
+
+	// set up our new context
+	context = config_make_context( path, context );
+
+	if( !strncmp( path, "http://", 7 ) )
+		ret = config_read_url( path, 0 );
+	else if( !strncmp( path, "https://", 8 ) )
+		ret = config_read_url( path, 1 );
+	else
+		ret = config_read_file( path );
+
+	free( path );
+	return ret;
 }
 
 

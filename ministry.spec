@@ -8,8 +8,8 @@ License:	ASL 2.0
 URL:		https://github.com/ghostflame/ministry
 Source:		https://github.com/ghostflame/ministry/archive/%{version}.tar.gz
 
-BuildRequires: gcc
-Requires(pre): shadow-utils systemd
+BuildRequires: gcc libcurl-devel
+Requires(pre): shadow-utils systemd libcurl
 
 %description
 A drop-in replacement for Etsy's statsd, written in threaded C.  Designed to

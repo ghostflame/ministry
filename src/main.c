@@ -161,9 +161,15 @@ int main( int ac, char **av, char **env )
 				return 1;
 		}
 
+	// set up curl
+	curl_global_init( CURL_GLOBAL_SSL );
+
 	// try to read the config
 	if( readConf && config_read( ctl->cfg_file ) )
 		fatal( "Unable to read config file '%s'", ctl->cfg_file );
+
+	// tidy up curl
+	curl_global_cleanup( );
 
 	// enforce what we got in arguments
 	if( debug )
