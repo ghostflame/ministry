@@ -45,12 +45,14 @@ struct config_context
 // main control structure
 struct ministry_control
 {
+	HTTP_CTL			*	http;
 	LOG_CTL				*	log;
 	LOCK_CTL			*	locks;
 	MEM_CTL				*	mem;
 	NET_CTL				*	net;
 	STAT_CTL			*	stats;
 	SYN_CTL				*	synth;
+	TGT_CTL				*	tgt;
 
 	struct timespec			init_time;
 	struct timespec			curr_time;
@@ -73,7 +75,7 @@ struct ministry_control
 
 int config_bool( AVP *av );
 int config_read( char *path );
-int config_read_env(char **env );
+int config_read_env( char **env );
 char *config_relative_path( char *inpath );
 int config_choose_handler( char *section, AVP *av );
 void config_create( void );

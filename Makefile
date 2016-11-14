@@ -11,6 +11,7 @@ MANDIR ?= $(DESTDIR)/usr/share/man
 DOCDIR ?= $(DESTDIR)/usr/share/doc/ministry
 UNIDIR ?= $(DESTDIR)/usr/lib/systemd/system
 INIDIR ?= $(DESTDIR)/etc/init.d
+SSLDIR ?= $(CFGDIR)/ssl
 
 
 all:  subdirs
@@ -35,11 +36,13 @@ docker:
 
 install:
 	@echo "Making installation directories"
-	@mkdir -p $(CFGDIR) $(LRTDIR) $(MANDIR)/man1 $(MANDIR)/man5 $(DOCDIR)
+	@mkdir -p $(CFGDIR) $(SSLDIR) $(LRTDIR) $(MANDIR)/man1 $(MANDIR)/man5 $(DOCDIR)
 	@cd src && $(MAKE) $(MFLAGS) install
 	@echo "Creating config and scripts."
 	@install -m644 dist/ministry.logrotate $(LRTDIR)/ministry
 	@install -m644 conf/install.conf $(CFGDIR)/ministry.conf
+	@install -m644 dist/ssl/cert.pem $(SSLDIR)/cert.pem
+	@install -m600 dist/ssl/key.pem $(SSLDIR)/key.pem
 	@echo "Creating manual pages and docs."
 	@gzip -c dist/ministry.1 > $(MANDIR)/man1/ministry.1.gz
 	@chmod 644 $(MANDIR)/man1/ministry.1.gz
@@ -67,7 +70,7 @@ version:
 remove:
 	@cd src && $(MAKE) $(MFLAGS) uninstall
 	@service ministry stop || :
-	@rm -rf $(LOGDIR) $(DOCDIR) $(CFGDIR) $(UNIDIR)/ministry.service $(MANDIR)/man1/ministry.1.gz $(MANDIR)/man5/ministry.conf.5.gz $(LRTDIR)/ministry $(INIDIR)/ministry
+	@rm -rf $(LOGDIR) $(DOCDIR) $(SSLDIR) $(CFGDIR) $(UNIDIR)/ministry.service $(MANDIR)/man1/ministry.1.gz $(MANDIR)/man5/ministry.conf.5.gz $(LRTDIR)/ministry $(INIDIR)/ministry
 
 clean:
 	@cd src && $(MAKE) $(MFLAGS) clean

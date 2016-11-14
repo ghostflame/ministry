@@ -32,7 +32,7 @@ URI config include a non-secure one, but this can be enabled explicitly.
 .SS Section Format
 .PP
 Sections are expected to be presented inside square brackets.  Valid sections are:  \fBmain\fR,
-\fBlogging\fR, \fBnetwork\fR, \fBmemory\fR, \fBsynth\fR and \fBstats\fR.  e.g.
+\fBlogging\fR, \fBnetwork\fR, \fBmemory\fR, \fBsynth\fR, \fBtarget\fR and \fBstats\fR.  e.g.
 .PP
 \fB[Logging]\fR
 .SS Line Format
@@ -135,7 +135,7 @@ How many submission cycles a gauge must not be updated for before it is deleted 
 A list of integer percentage values to generate thresholds at.  Must be 0 < x < 100.
 .TP
 \fBtimestamps\fR
-What format of timestamps should be outputted.  Options are: sec, tval, tspec, msec, usec, nsec.
+What format of timestamps should be outputted.  Options are: sec, msec, usec, nsec, dotmsec, dotusec, dotnsec.
 .PP
 The rest of these are of the form stats.XXX, adder.XXX, gauge.XXX or self.XXX, affecting the behaviour of
 stats reporting, adder reporting, gauge reporting or self reporting.
@@ -170,6 +170,30 @@ and is used to offset reporting into that interval.  This is useful when systems
 So if a reporting system submits adder data every 10 seconds, and \fBministry\fR reports every 10
 seconds, it might be prudent to set an offset of 3 or 4 seconds, so that all data for the interval
 is in and recorded by the interval is closed (defaults are 0 for all).
+.SS [Target]
+.PP
+Target configs are a block, ending in a \fBdone\fR statement.  They can repeat as needed.
+.PP
+Both Graphite and InfluxDB are sent to using graphite line-based protocol.  Coal receives nanosecond
+timestamps but is otherwise the same.  OpenTSDB is sent using the telnet protocol.
+.TP
+\fBtype\fR
+Type of target.  Must be one of the known supported types:  graphite, influxdb, coal, opentsdb.
+.TP
+\fBhost\fR
+Hostname or IP address.  Names are looked up using normal DNS resolution.  The special string '-' will
+result in ministry writing to \fIstdout\fR and disable daemon mode.  Multiple targets writing to \fIstdout\fR
+will result in an error parsing config.
+.TP
+\fBport\fR
+Port the target is listening on.  Only TCP is supported as yet.  If this is not supplied, \fBministry\fR
+can guess the port for some types.
+.TP
+\fBmax\fR
+Maximum waiting buffers when the host is unresponsive.  Between 1 and 64K.  The default is 128.
+.TP
+\fBdone\fR
+No value; signifies the end of the target config block.
 .SS [Network]
 .TP
 \fBtimeout\fR

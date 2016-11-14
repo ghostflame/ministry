@@ -123,9 +123,10 @@ void *udp_loop_checks( void *arg )
 	h = mem_new_host( &sa, MIN_NETBUF_SZ );
 	b = h->net->in;
 
-	h->type   = n->type;
-	// for now we don't do prefixing on UDP
-	h->parser = n->type->flat_parser;
+	h->type = n->type;
+
+	// for now we don't do prefixing or tokens on UDP
+	net_set_host_parser( h, 0, 0 );
 
 	// prepopulate the hash table with prefixes
 	udp_prefix_prepop( n );
@@ -212,8 +213,8 @@ void *udp_loop_flat( void *arg )
 	b = h->net->in;
 
 	h->type   = n->type;
-	// for now we don't do prefixing on UDP
-	h->parser = n->type->flat_parser;
+	// for now we don't do prefixing or tokens on UDP
+	net_set_host_parser( h, 0, 0 );
 
 	loop_mark_start( "udp" );
 

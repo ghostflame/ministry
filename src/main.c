@@ -51,6 +51,9 @@ void shut_down( int exval )
 	// shut down ports
 	net_stop( );
 
+	// and http server
+	http_stop( );
+
 	info( "Waiting for all threads to stop." );
 
 	for( i = 0; i < 300 && ctl->loop_count > 0; i++ )
@@ -67,13 +70,18 @@ void shut_down( int exval )
 
 	// shut down all those mutex locks
 	lock_shutdown( );
-	io_stop( );
 
 	pidfile_remove( );
 
 	notice( "Ministry v%s exiting.", ctl->version );
 	log_close( );
 	exit( exval );
+}
+
+
+void catch_pipe( int sig )
+{
+	debug( "Caught SIGPIPE." );
 }
 
 
@@ -86,6 +94,7 @@ int set_signals( void )
 	sa.sa_handler = loop_kill;
 	sa.sa_flags   = SA_NOMASK;
 
+	// finish signal
 	if( sigaction( SIGTERM, &sa, NULL )
 	 || sigaction( SIGQUIT, &sa, NULL )
 	 || sigaction( SIGINT,  &sa, NULL ) )
@@ -100,6 +109,14 @@ int set_signals( void )
 	{
 		err( "Could not set hup signal handler -- %s", Err );
 		return -2;
+	}
+
+	// and sigpipe
+	sa.sa_handler = catch_pipe;
+	if( sigaction( SIGPIPE, &sa, NULL ) )
+	{
+		err( "Could not set pipe signal handler -- %s", Err );
+		return -3;
 	}
 
 	return 0;
@@ -187,7 +204,10 @@ int main( int ac, char **av, char **env )
 
 	// try to read the config
 	if( config_read( ctl->cfg_file ) )
-		fatal( "Unable to read config source '%s'", ctl->cfg_file );
+	{
+		printf( "Config file '%s' is invalid.\n", ctl->cfg_file );
+		return 1;
+	}
 
 	// tidy up curl
 	curl_global_cleanup( );
@@ -206,7 +226,7 @@ int main( int ac, char **av, char **env )
 
 	if( justTest )
 	{
-		printf( "Config is OK.\n" );
+		printf( "Config file '%s' is OK.\n", ctl->cfg_file );
 		return 0;
 	}
 
@@ -223,7 +243,11 @@ int main( int ac, char **av, char **env )
 
 	if( ctl->run_flags & RUN_DAEMON )
 	{
-		if( daemon( 1, 0 ) < 0 )
+		if( ctl->run_flags & RUN_TGT_STDOUT )
+		{
+			warn( "Daemon mode disabled by stdout target." );
+		}
+		else if( daemon( 1, 0 ) < 0 )
 		{
 			fprintf( stderr, "Unable to daemonize -- %s", Err );
 			warn( "Unable to daemonize -- %s", Err );
@@ -251,6 +275,10 @@ int main( int ac, char **av, char **env )
 	// also connects to graphite
 	if( net_start( ) )
 		fatal( "Failed to start networking." );
+
+	// light up http server if configured
+	if( http_start( ) )
+		fatal( "Failed to start HTTP server." );
 
 	get_time( );
 	ts_diff( ctl->curr_time, ctl->init_time, &diff );

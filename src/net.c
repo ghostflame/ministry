@@ -132,6 +132,30 @@ int net_set_host_prefix( HOST *h, HPRFX *pr )
 }
 
 
+// set the line parser on a host.  We prefer the flat parser, but if
+// tokens are on for that type, set the token handler.
+int net_set_host_parser( HOST *h, int token_check, int prefix_check )
+{
+	// this is the default
+	h->parser = h->type->flat_parser;
+
+	// are we doing a token check?
+	if(   token_check
+	 &&   ctl->net->tokens->enable
+	 && ( ctl->net->tokens->mask & h->type->token_type ) )
+	{
+		// token handler is the same for all types
+		h->parser = &data_line_token;
+		return 0;
+	}
+
+	// do we have a prefix for this host?
+	if( prefix_check )
+		return net_set_host_prefix( h, net_prefix_check( h->peer ) );
+
+	return 0;
+}
+
 
 
 NSOCK *net_make_sock( int insz, int outsz, struct sockaddr_in *peer )
@@ -139,7 +163,10 @@ NSOCK *net_make_sock( int insz, int outsz, struct sockaddr_in *peer )
 	NSOCK *ns;
 
 	if( !( ns = (NSOCK *) allocz( sizeof( NSOCK ) ) ) )
+	{
 		fatal( "Could not allocate new nsock." );
+		return NULL;
+	}
 
 	if( !ns->name )
 	{
@@ -265,6 +292,9 @@ int net_start( void )
 	IPCHK *ipc;
 	int i;
 
+	// create our token hash table
+	token_init( );
+
 	// reverse the ip net lists
 	ctl->net->iplist->nets = (IPNET *) mtype_reverse_list( ctl->net->iplist->nets );
 	ctl->net->prefix->nets = (IPNET *) mtype_reverse_list( ctl->net->prefix->nets );
@@ -361,6 +391,7 @@ NET_TYPE *net_type_defaults( int type )
 	nt->label       = strdup( d->sock );
 	nt->name        = strdup( d->name );
 	nt->flags       = NTYPE_ENABLED|NTYPE_TCP_ENABLED|NTYPE_UDP_ENABLED;
+	nt->token_type  = d->tokn;
 
 	return nt;
 }
@@ -414,6 +445,9 @@ NET_CTL *net_config_defaults( void )
 
 	if( !( net->prefix = __net_get_ipcheck( NET_IP_HASHSZ, "prefix" ) ) )
 		return NULL;
+
+	// create our tokens structure
+	net->tokens = token_setup( );
 
 	// can't add default target, it's a linked list
 
@@ -747,10 +781,10 @@ int net_config_line( AVP *av )
 		}
 		else if( attIs( "maxWaiting" ) )
 		{
+			warn( "Net config max_waiting is deprecated - use [Target] : max_waiting." );
 			ctl->net->max_bufs = atoi( av->val );
 			if( ctl->net->max_bufs <= 0 )
 				ctl->net->max_bufs = IO_MAX_WAITING;
-			debug( "Max waiting buffers set to %d.", ctl->net->max_bufs );
 		}
 		else if( attIs( "prefix" ) )
 		{
@@ -758,6 +792,9 @@ int net_config_line( AVP *av )
 		}
 		else if( attIs( "target" ) || attIs( "targets" ) )
 		{
+			warn( "WARNING: config item %s is deprecated, use [Target] section.", av->att );
+			return 0;
+
 			w  = (WORDS *) allocz( sizeof( WORDS ) );
 			cp = strdup( av->val );
 			strwords( w, cp, 0, ',' );
@@ -831,6 +868,34 @@ int net_config_line( AVP *av )
 			return net_add_list_member( av->val, av->vlen, NET_IP_WHITELIST );
 		else if( !strcasecmp( p, "blacklist" ) )
 			return net_add_list_member( av->val, av->vlen, NET_IP_BLACKLIST );
+		else
+			return -1;
+
+		return 0;
+	}
+	else if( !strncasecmp( av->att, "tokens.", 7 ) )
+	{
+		if( !strcasecmp( p, "enable" ) )
+			ctl->net->tokens->enable = config_bool( av );
+		else if( !strcasecmp( p, "msec" ) || !strcasecmp( p, "lifetime" ) )
+		{
+			i = atoi( av->val );
+			if( i < 10 )
+			{
+				i = DEFAULT_TOKEN_LIFETIME;
+				warn( "Minimum token lifetime is 10msec - setting to %d", i );
+			}
+			ctl->net->tokens->lifetime = i;
+		}
+		else if( !strcasecmp( p, "hashsize" ) )
+		{
+			if( ( ctl->net->tokens->hsize = hash_size( av->val ) ) < 0 )
+				return -1;
+		}
+		else if( !strcasecmp( p, "mask" ) )
+		{
+			parse_number( av->val, &(ctl->net->tokens->mask), NULL );
+		}
 		else
 			return -1;
 

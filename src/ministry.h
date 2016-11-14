@@ -10,6 +10,8 @@
 #ifndef MINISTRY_H
 #define MINISTRY_H
 
+#define _GNU_SOURCE
+
 // here's what we need in addition
 #include <poll.h>
 #include <time.h>
@@ -40,6 +42,8 @@
 #include <openssl/sha.h>
 #include <sys/resource.h>
 
+#define MHD_PLATFORM_H
+#include <microhttpd.h>
 
 #ifndef Err
 #define Err strerror( errno )
@@ -64,12 +68,15 @@
 #include "udp.h"
 #include "tcp.h"
 #include "io.h"
+#include "token.h"
+#include "target.h"
 #include "log.h"
 #include "data.h"
 #include "gc.h"
 #include "mem.h"
 #include "synth.h"
 #include "stats.h"
+#include "http.h"
 #include "selfstats.h"
 
 // last

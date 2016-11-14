@@ -454,7 +454,9 @@ int config_read( char *inpath )
 int config_choose_handler( char *section, AVP *av )
 {
 	// hand some sections off to different config fns
-	if( secIs( "logging" ) )
+	if( secIs( "http" ) )
+		return http_config_line( av );
+	else if( secIs( "logging" ) )
 		return log_config_line( av );
 	else if( secIs( "network" ) )
 	  	return net_config_line( av );
@@ -464,6 +466,8 @@ int config_choose_handler( char *section, AVP *av )
 		return stats_config_line( av );
 	else if( secIs( "synth" ) )
 		return synth_config_line( av );
+	else if( secIs( "target" ) )
+		return target_config_line( av );
 
 	return config_line( av );
 }
@@ -567,12 +571,14 @@ void config_create( void )
 {
 	ctl             = (MIN_CTL *) allocz( sizeof( MIN_CTL ) );
 
+	ctl->http       = http_config_defaults( );
 	ctl->log        = log_config_defaults( );
 	ctl->locks      = lock_config_defaults( );
 	ctl->mem        = mem_config_defaults( );
 	ctl->net        = net_config_defaults( );
 	ctl->stats      = stats_config_defaults( );
 	ctl->synth      = synth_config_defaults( );
+	ctl->tgt        = target_config_defaults( );
 
 	ctl->cfg_file   = strdup( DEFAULT_CONFIG_FILE );
 	ctl->pidfile    = strdup( DEFAULT_PID_FILE );
@@ -593,7 +599,7 @@ void config_create( void )
 	ctl->conf_flags |= CONF_READ_ENV;
 	ctl->conf_flags |= CONF_READ_URL;
 	ctl->conf_flags |= CONF_URL_INC_URL;
-	// but not sec include non-sec
+	// but not: sec include non-sec
 }
 
 #undef config_set_limit

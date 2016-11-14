@@ -16,12 +16,6 @@ const char *stats_type_names[STATS_TYPE_MAX] =
 	"stats", "adder", "gauge", "self"
 };
 
-const char *stats_tsf_names[STATS_TSF_MAX] =
-{
-	"sec", "tval", "tspec", "msec", "usec", "nsec"
-};
-
-
 
 
 
@@ -42,82 +36,84 @@ static inline int cmp_floats( const void *p1, const void *p2 )
 // end of the buffer
 void bprintf( ST_THR *t, char *fmt, ... )
 {
+	int i, total;
 	va_list args;
-	int l, max;
+	uint32_t l;
+	TSET *s;
 
-	// are we ready for a new buffer?
-	if( t->bp->len > IO_BUF_HWMK )
-	{
-		io_buf_send( t->bp );
-
-		if( !( t->bp = mem_new_buf( IO_BUF_SZ ) ) )
-		{
-			fatal( "Could not allocate a new IOBUF." );
-			return;
-		}
-	}
-
-	// copy the prefix
-	memcpy( t->bp->buf + t->bp->len, t->prefix, t->prlen );
-	t->bp->len += t->prlen;
-
-	// we need to leave room for the timestamp
-	max = t->bp->sz - t->bp->len - t->tsbufsz;
-
-	// write the variable part
+	// write the variable part into the thread's path buffer
 	va_start( args, fmt );
-	l = vsnprintf( t->bp->buf + t->bp->len, max, fmt, args );
+	l = (uint32_t) vsnprintf( t->path->buf, t->path->sz, fmt, args );
 	va_end( args );
 
 	// check for truncation
-	if( l > max )
-		l = max;
+	if( l > t->path->sz )
+		l = t->path->sz;
 
-	t->bp->len += l;
+	t->path->len = l;
 
-	// add the timestamp and newline
-	memcpy( t->bp->buf + t->bp->len, t->tsbuf, t->tsbufsz );
-	t->bp->len += t->tsbufsz;
+	// length of prefix and path and max ts buf
+	total = t->prefix->len + t->path->len + TSBUF_SZ;
 
-	// keep count
-	t->active++;
+	// loop through the target sets, making sure we can
+	// send to them
+	for( i = 0; i < ctl->tgt->set_count; i++ )
+	{
+		s = ctl->tgt->setarr[i];
+
+		// are we ready for a new buffer?
+		if( ( t->bp[i]->len + total ) >= IO_BUF_SZ )
+		{
+			target_buf_send( s, t->bp[i] );
+
+			if( !( t->bp[i] = mem_new_buf( IO_BUF_SZ ) ) )
+			{
+				fatal( "Could not allocate a new IOBUF." );
+				return;
+			}
+		}
+
+		// so write out the new data
+		(*(s->stype->wrfp))( t, t->ts[i], t->bp[i] );
+	}
 }
+
 
 
 // TIMESTAMP FUNCTIONS
-void stats_tsf_sec( ST_THR *t )
+void stats_tsf_sec( ST_THR *t, BUF *b )
 {
-	t->tsbufsz = snprintf( t->tsbuf, TSBUF_SZ, " %ld\n", t->now.tv_sec );
+	b->len = snprintf( b->buf, TSBUF_SZ, " %ld\n", t->now.tv_sec );
 }
 
-void stats_tsf_msval( ST_THR *t )
+void stats_tsf_msval( ST_THR *t, BUF *b )
 {
-	t->tsbufsz = snprintf( t->tsbuf, TSBUF_SZ, " %ld.%03ld\n", t->now.tv_sec, t->now.tv_nsec / 1000000 );
+	b->len = snprintf( b->buf, TSBUF_SZ, " %ld.%03ld\n", t->now.tv_sec, t->now.tv_nsec / 1000000 );
 }
 
-void stats_tsf_tval( ST_THR *t )
+void stats_tsf_tval( ST_THR *t, BUF *b )
 {
-	t->tsbufsz = snprintf( t->tsbuf, TSBUF_SZ, " %ld.%06ld\n", t->now.tv_sec, t->now.tv_nsec / 1000 );
+	b->len = snprintf( b->buf, TSBUF_SZ, " %ld.%06ld\n", t->now.tv_sec, t->now.tv_nsec / 1000 );
 }
 
-void stats_tsf_tspec( ST_THR *t )
+void stats_tsf_tspec( ST_THR *t, BUF *b )
 {
-	t->tsbufsz = snprintf( t->tsbuf, TSBUF_SZ, " %ld.%09ld\n", t->now.tv_sec, t->now.tv_nsec );
+	b->len = snprintf( b->buf, TSBUF_SZ, " %ld.%09ld\n", t->now.tv_sec, t->now.tv_nsec );
 }
 
-void stats_tsf_msec( ST_THR *t )
+void stats_tsf_msec( ST_THR *t, BUF *b )
 {
-	t->tsbufsz = snprintf( t->tsbuf, TSBUF_SZ, " %ld\n", t->tval / 1000000 );
+	b->len = snprintf( b->buf, TSBUF_SZ, " %ld\n", t->tval / 1000000 );
 }
 
-void stats_tsf_usec( ST_THR *t )
+void stats_tsf_usec( ST_THR *t, BUF *b )
 {
-	t->tsbufsz = snprintf( t->tsbuf, TSBUF_SZ, " %ld\n", t->tval / 1000 );
+	b->len = snprintf( b->buf, TSBUF_SZ, " %ld\n", t->tval / 1000 );
 }
 
-void stats_tsf_nsec( ST_THR *t )
+void stats_tsf_nsec( ST_THR *t, BUF *b )
 {
-	t->tsbufsz = snprintf( t->tsbuf, TSBUF_SZ, " %ld\n", t->tval );
+	b->len = snprintf( b->buf, TSBUF_SZ, " %ld\n", t->tval );
 }
 
 
@@ -126,6 +122,9 @@ void stats_tsf_nsec( ST_THR *t )
 // configure the line buffer of a thread from a prefix config
 void stats_set_bufs( ST_THR *t, ST_CFG *c, int64_t tval )
 {
+	TSET *s;
+	int i;
+
 	// only set the timestamp buffer if we need to
 	if( tval )
 	{
@@ -136,23 +135,30 @@ void stats_set_bufs( ST_THR *t, ST_CFG *c, int64_t tval )
 		// and reset counters
 		t->active = 0;
 		t->points = 0;
-
-		// and run the relevant function
-		(*(ctl->stats->ts_fp))( t );
 	}
 
 	// default to our own config
 	if( !c )
 		c = t->conf;
 
+	// just point to the prefix buffer we want
 	t->prefix = c->prefix;
-	t->prlen  = c->prlen;
 
-	// grab a new buffer
-	if( !t->bp && !( t->bp = mem_new_buf( IO_BUF_SZ ) ) )
+	// grab new buffers
+	for( i = 0; i < ctl->tgt->set_count; i++ )
 	{
-		fatal( "Could not allocate a new IOBUF." );
-		return;
+		s = ctl->tgt->setarr[i];
+
+		// only set the timestamp buffers if we need to
+		if( tval )
+			(*(s->stype->tsfp))( t, t->ts[i] );
+
+		// grab a new buffer
+		if( !t->bp[i] && !( t->bp[i] = mem_new_buf( IO_BUF_SZ ) ) )
+		{
+			fatal( "Could not allocate a new IOBUF." );
+			return;
+		}
 	}
 }
 
@@ -536,6 +542,7 @@ void stats_gauge_pass( ST_THR *t )
 void thread_pass( int64_t tval, void *arg )
 {
 	ST_THR *t = (ST_THR *) arg;
+	int i;
 
 	// set up bufs and such
 	stats_set_bufs( t, NULL, tval );
@@ -548,8 +555,12 @@ void thread_pass( int64_t tval, void *arg )
 		stats_thread_report( t );
 
 	// send any outstanding data
-	io_buf_send( t->bp );
-	t->bp = NULL;
+	for( i = 0; i < ctl->tgt->set_count; i++ )
+		if( t->bp[i] )
+		{
+			target_buf_send( ctl->tgt->setarr[i], t->bp[i] );
+			t->bp[i] = NULL;
+		}
 }
 
 
@@ -602,9 +613,8 @@ void stats_prefix( ST_CFG *c, char *s )
 {
 	int len, dot = 0;
 
-	// free an existing
-	if( c->prefix )
-		free( c->prefix );
+	if( !c->prefix )
+		c->prefix = strbuf( PREFIX_SZ );
 
 	len = strlen( s );
 
@@ -615,14 +625,12 @@ void stats_prefix( ST_CFG *c, char *s )
 			dot = 1;
 	}
 
-	c->prlen = len + dot;
-
-	// include space for a dot
-	c->prefix = (char *) allocz( c->prlen + 1 );
-	memcpy( c->prefix, s, len );
-
-	if( dot )
-		c->prefix[len] = '.';
+	if( ( strbuf_copy( c->prefix, s, len ) < 0 )
+	 || ( dot && ( strbuf_add(  c->prefix, ".", 1 ) < 0 ) ) )
+	{
+		fatal( "Prefix is larger than allowed max %d", c->prefix->sz );
+		return;
+	}
 }
 
 
@@ -631,11 +639,11 @@ void stats_prefix( ST_CFG *c, char *s )
 void stats_init_control( ST_CFG *c, int alloc_data )
 {
 	char wkrstrbuf[128];
+	int i, l, j;
 	ST_THR *t;
-	int i, l;
 
 	// maybe fall back to default hash size
-	if( c->hsize < 0 )
+	if( c->hsize == 0 )
 		c->hsize = ctl->mem->hashsize;
 
 	debug( "Hash size set to %d for %s", c->hsize, c->name );
@@ -665,8 +673,16 @@ void stats_init_control( ST_CFG *c, int alloc_data )
 		l = snprintf( wkrstrbuf, 128, "workers.%s.%d", c->name, t->id );
 		t->wkrstr = str_dup( wkrstrbuf, l );
 
-		// timestamp buffer
-		t->tsbuf = perm_str( TSBUF_SZ );
+		// timestamp buffers
+		t->ts = (BUF **) allocz( ctl->tgt->set_count * sizeof( BUF * ) );
+		for( j = 0; j < ctl->tgt->set_count; j++ )
+			t->ts[j] = strbuf( TSBUF_SZ );
+
+		// and a path workspace
+		t->path = strbuf( PATH_SZ );
+
+		// and make space for a buffer for each target set we must write to
+		t->bp = (IOBUF **) allocz( ctl->tgt->set_count * sizeof( IOBUF * ) );
 
 		// make some floats workspace - we realloc this if needed
 		if( c->type == STATS_TYPE_STATS )
@@ -683,23 +699,10 @@ void stats_init_control( ST_CFG *c, int alloc_data )
 }
 
 
-tsf_fn *stats_tsf_fns[STATS_TSF_MAX] =
-{
-	&stats_tsf_sec,
-	&stats_tsf_tval,
-	&stats_tsf_tspec,
-	&stats_tsf_msec,
-	&stats_tsf_usec,
-	&stats_tsf_nsec
-};
-
 
 void stats_init( void )
 {
 	struct timespec ts;
-
-	// set our timestamps format
-	ctl->stats->ts_fp = stats_tsf_fns[ctl->stats->ts_fmt];
 
 	stats_init_control( ctl->stats->stats, 1 );
 	stats_init_control( ctl->stats->adder, 1 );
@@ -722,9 +725,6 @@ STAT_CTL *stats_config_defaults( void )
 	STAT_CTL *s;
 
 	s = (STAT_CTL *) allocz( sizeof( STAT_CTL ) );
-
-	// default to seconds format
-	s->ts_fmt = STATS_TSF_SEC;
 
 	s->stats          = (ST_CFG *) allocz( sizeof( ST_CFG ) );
 	s->stats->threads = DEFAULT_STATS_THREADS;
@@ -840,18 +840,6 @@ int stats_config_line( AVP *av )
 
 			debug( "Acquired %d thresholds.", wd.wc );
 		}
-		else if( attIs( "timestamps" ) || attIs( "tsformat" ) )
-		{
-			for( i = 0; i < STATS_TSF_MAX; i++ )
-				if( valIs( stats_tsf_names[i] ) )
-				{
-					ctl->stats->ts_fmt = i;
-					return 0;
-				}
-
-			warn( "Timestamp format %s not recognised.", av->val );
-			return -1;
-		}
 		else
 			return -1;
 
@@ -888,7 +876,7 @@ int stats_config_line( AVP *av )
 	else if( !strcasecmp( d, "prefix" ) )
 	{
 		stats_prefix( sc, av->val );
-		debug( "%s prefix set to '%s'", sc->name, sc->prefix );
+		debug( "%s prefix set to '%s'", sc->name, sc->prefix->buf );
 	}
 	else if( !strcasecmp( d, "period" ) )
 	{
@@ -908,34 +896,9 @@ int stats_config_line( AVP *av )
 	}
 	else if( !strcasecmp( d, "size" ) || !strcasecmp( d, "hashSize" ) )
 	{
-		if( valIs( "tiny" ) )
-			sc->hsize = MEM_HSZ_TINY;
-		else if( valIs( "small" ) )
-			sc->hsize = MEM_HSZ_SMALL;
-		else if( valIs( "medium" ) )
-			sc->hsize = MEM_HSZ_MEDIUM;
-		else if( valIs( "large" ) )
-			sc->hsize = MEM_HSZ_LARGE;
-		else if( valIs( "xlarge" ) )
-			sc->hsize = MEM_HSZ_XLARGE;
-		else if( valIs( "x2large" ) )
-			sc->hsize = MEM_HSZ_X2LARGE;
-		else
-		{
-			if( !isdigit( av->val[0] ) )
-			{
-				warn( "Unrecognised hash table size '%s'", av->val );
-				return -1;
-			}
-			t = atoi( av->val );
-			if( t == 0 )
-			{
-				warn( "Cannot set zero size hash table." );
-				return -1;
-			}
-			// < 0 means default
-			sc->hsize = t;
-		}
+		// 0 means default
+		if( ( sc->hsize = hash_size( av->val ) ) < 0 )
+			return -1;
 	}
 	else
 		return -1;
