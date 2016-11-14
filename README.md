@@ -91,6 +91,8 @@ And then conf/log.conf
 level = info
 ```
 
-Strings such as log level, yes/no, are case insensitive.
+Ministry ships with a self-documenting config file with every option mentioned and
+explained in it, as well as a manual page for its config file.
 
+Ministry can take HTTP URI's as config sources, even for includes.
 
