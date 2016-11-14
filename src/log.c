@@ -123,7 +123,7 @@ int log_line( int level, const char *file, const int line, const char *fn, char 
 {
 	char buf[LOG_LINE_MAX];
 	LOG_CTL *lc = ctl->log;
-	int l = 0, d;
+	int l = 0, d, tslen;
 	va_list args;
 
 	// check level
@@ -136,12 +136,14 @@ int log_line( int level, const char *file, const int line, const char *fn, char 
 	if( d < 0 )
 		return -1;
 
-	// write the predictable parts
-	l = log_write_ts( buf, LOG_LINE_MAX );
+	// capture the timestamp length, we won't write it to syslog
+	l += log_write_ts( buf, LOG_LINE_MAX );
+	tslen = l;
 
-	// we don't write the level for syslog
-	if( !lc->use_syslog )
-		l += snprintf( buf + l, LOG_LINE_MAX - l, "[%s] ", log_level_strings[level] );
+	// and if we don't want the log level either, step over that
+	l += snprintf( buf + l, LOG_LINE_MAX - l, "[%s] ", log_level_strings[level] );
+	if( !lc->write_level )
+		tslen = l;
 
 	// fatals, errs and debugs get details
 	switch( level )
@@ -172,7 +174,7 @@ int log_line( int level, const char *file, const int line, const char *fn, char 
 	// use syslog?
 	if( lc->use_syslog )
 	{
-		syslog( lc->facility|log_syslog_levels[level], "%s", buf );
+		syslog( lc->facility|log_syslog_levels[level], "%s", buf + tslen );
 		return l;
 	}
 
@@ -313,6 +315,7 @@ LOG_CTL *log_config_defaults( void )
 	l->ok_fd          = fileno( stdout );
 	l->err_fd         = fileno( stderr );
 	l->use_std        = 1;
+	l->write_level    = 1;
 	l->force_stdout   = 0;
 	l->notify_re      = 1;
 
@@ -351,6 +354,8 @@ int log_config_line( AVP *av )
 		// and set it
 		lc->level = lvl;
 	}
+	else if( attIs( "writelevel" ) )
+		lc->write_level = config_bool( av );
 	else if( attIs( "notify" ) )
 		lc->notify_re = config_bool( av );
 	else if( attIs( "facility" ) )

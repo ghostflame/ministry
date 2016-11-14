@@ -50,6 +50,7 @@ struct log_control
 	int					err_fd;
 	int					use_std;
 	int					use_syslog;
+	int					write_level;
 	int					force_stdout;
 	int					notify_re;
 };
