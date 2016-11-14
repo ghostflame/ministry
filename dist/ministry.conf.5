@@ -19,6 +19,15 @@ examines the config line.  This means that config names are essentially namespac
 in which they are found, and as such names may be present in more than one section.  Section names
 are not case sensitive.  In fact, only values are case-preserving - all config variable names are
 examined case-insensitively.
+.PP
+\fBMinistry\fR can fetch its config from an HTTP URI (http or https, though it is light on checks
+for the validity of https certificates).  It will fetch the source and write it to a temporary file,
+and then read it back.  At this time, \fBMinistry\fR does not support authentication for URI's.  It
+uses \fIlibcurl\fR for these fetches.
+.PP
+By default, \fBMinistry\fR will allow URI configs to include other URI's.  This can be disabled
+separately from reading a URI config.  Also by default, \fBMinistry\fR will refused to let a secure
+URI config include a non-secure one, but this can be enabled explicitly.
 .SH FORMAT
 .SS Section Format
 .PP
@@ -50,10 +59,10 @@ The config variables accepted by \fBministry\fR are presented here by section.
 These values can appear in any section.  Just include for now.
 .TP
 \fBinclude\fR
-The name of another file to read in.  \fBMinistry\fR will refuse to read what it believes is the
+The name of another source to read in.  \fBMinistry\fR will refuse to read what it believes is the
 same file twice - it could be fooled with symlinks or multiple hardlinks.  This is a protection
-against circular includes.  Included files are read in depth-first, meaning reading the current
-file is paused until the included file is read (possibly recursively).  This is important for any
+against circular includes.  Included source are read in depth-first, meaning reading the current
+source is paused until the included file is read (possibly recursively).  This is important for any
 duplication of config values, as the last one read will win.  If include is found within a section,
 that section context is preserved into the new file, until it is changed by a new section heading.
 .SS [Main]
@@ -77,14 +86,21 @@ Both default to the system hard limit of the type.
 .SS [Logging]
 .TP
 \fBfilename\fR | \fBfile\fR | \fBlogfile\fR
-File name to write the log to.  The special value \fB-\fR writes to stdout, and is the default.
+File name to write the log to.  The special value \fB-\fR writes to stdout, and is the default.  The
+special value \fBsyslog\fR writes to syslog.
 .TP
 \fBlevel\fR
-Log level, one of FATAL, ERR, WARN, NOTICE, INFO or DEBUG.
+Maximum log level, one of FATAL, ERR, WARN, NOTICE, INFO or DEBUG.
 .TP
 \fBnotify\fR
 Add a notification of log re-opening.  Guarantees a non-zero log file size after log rotation (boolean,
-default 1).
+default 1).  Disabled for stdout logs and syslog.
+.TP
+\fBfacility\fR
+Set the facility to write to syslog with (if that is the configured output).  Only some are available.
+.TP
+\fBidentifier\fR
+Set the identifier string for syslog messages (default 'ministry').
 .SS [Memory]
 .TP
 \fBmax_mb\fR | \fBmax_size\fR

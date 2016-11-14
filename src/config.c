@@ -379,10 +379,21 @@ CRU_CLEANUP:
 
 int config_read( char *inpath )
 {
+	int ret, is_url, is_ssl;
 	char *path;
-	int ret;
+
+	is_url = 0;
+	is_ssl = 0;
 
 	path = config_relative_path( inpath );
+
+	if( !strncmp( path, "http://", 7 ) )
+		is_url = 1;
+	else if( !strncmp( path, "https://", 8 ) )
+	{
+		is_url = 1;
+		is_ssl = 1;
+	}
 
 	// check this isn't a duplicate
 	if( config_source_dupe( ctxt_top, path ) )
@@ -392,13 +403,43 @@ int config_read( char *inpath )
 		return 0;
 	}
 
+	// read checks
+	if( is_url )
+	{
+		// do we allow urls to include urls?
+		if( !( ctl->conf_flags & CONF_READ_URL ) )
+		{
+			debug( "Skipping URL source '%s' due to config flags.", path );
+			return 0;
+		}
+
+		if( context->is_url && !( ctl->conf_flags & CONF_URL_INC_URL ) )
+		{
+			debug( "Skipping URL-included URL '%s' due to config flags.", path );
+			return 0;
+		}
+
+		// do we allow secure urls to include insecure ones?
+		if( !is_ssl && context->is_url && context->is_ssl
+		 && !( ctl->conf_flags & CONF_SEC_INC_UNSEC ) )
+		{
+
+		}
+	}
+	// do we allow files?
+	else if( !( ctl->conf_flags & CONF_READ_FILE ) )
+	{
+		debug( "Skipping file source '%s' due to config flags.", path );
+		return 0;
+	}
+
 	// set up our new context
 	context = config_make_context( path, context );
+	context->is_url = is_url;
+	context->is_ssl = is_ssl;
 
-	if( !strncmp( path, "http://", 7 ) )
-		ret = config_read_url( path, 0 );
-	else if( !strncmp( path, "https://", 8 ) )
-		ret = config_read_url( path, 1 );
+	if( is_url )
+		ret = config_read_url( path, is_ssl );
 	else
 		ret = config_read_file( path );
 
@@ -493,6 +534,13 @@ int config_read_env( char **env )
 	char buf[ENV_MAX_LENGTH];
 	int l;
 
+	// config flag disables this
+	if( !( ctl->conf_flags & CONF_READ_ENV ) )
+	{
+		debug( "No reading environment due to config flags." );
+		return 0;
+	}
+
 	for( ; *env; env++ )
 	{
 		l = snprintf( buf, ENV_MAX_LENGTH, "%s", *env );
@@ -515,7 +563,7 @@ int config_read_env( char **env )
 #undef ENV_PREFIX_LEN
 
 
-void config_create( char **env )
+void config_create( void )
 {
 	ctl             = (MIN_CTL *) allocz( sizeof( MIN_CTL ) );
 
@@ -540,8 +588,12 @@ void config_create( char **env )
 	clock_gettime( CLOCK_REALTIME, &(ctl->init_time) );
 	tsdupe( ctl->init_time, ctl->curr_time );
 
-	// read our environment
-	config_read_env( env );
+	// initial conf flags
+	ctl->conf_flags |= CONF_READ_FILE;
+	ctl->conf_flags |= CONF_READ_ENV;
+	ctl->conf_flags |= CONF_READ_URL;
+	ctl->conf_flags |= CONF_URL_INC_URL;
+	// but not sec include non-sec
 }
 
 #undef config_set_limit

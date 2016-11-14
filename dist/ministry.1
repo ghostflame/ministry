@@ -5,7 +5,7 @@ ministry \- stats daemon
 .SH SYNOPSIS
 .nf
 .BI "ministry [-v|-h]"
-.BI "ministry [-DVt] -c <" config-file "> [-p <" pid-file ">]"
+.BI "ministry [-DVtEFIUu] -c <" config-file "> [-p <" pid-file ">]"
 .fi
 .SH DESCRIPTION
 .PP
@@ -24,8 +24,23 @@ print version and exit
 \fB\-t\fR
 just test config and exit
 .TP
-\fB\-c\fR \fI<FILE>\fR
-select config file
+\fB\-c\fR \fI<FILE|URI>\fR
+select config source instead of default file
+.TP
+\fB\-F\fR
+disable reading config source (environment only)
+.TP
+\fB\-E\fR
+disable reading variables from the environment
+.TP
+\fB\-U\fR
+disable reading any URI config (even if given with -c)
+.TP
+\fB\-u\fR
+disable URI config including other URI configs
+.TP
+\fB\-I\fR
+allow secure URI's to include non-secure URI's
 .TP
 \fB\-D\fR
 run in debug mode

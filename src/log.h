@@ -15,6 +15,8 @@
 #endif
 
 #define	DEFAULT_LOG_FILE	"-"   // log to stdout by default
+#define DEFAULT_LOG_FAC		LOG_LOCAL4
+#define DEFAULT_LOG_IDENT	"ministry"
 #define LOG_LINE_MAX		8192
 
 
@@ -30,13 +32,24 @@ enum log_levels
 };
 
 
+struct log_facility
+{
+	int					facility;
+	char			*	name;
+};
+
+
+
 struct log_control
 {
 	char			*	filename;
 	int					level;
+	char			*	identifier;
+	int					facility;
 	int					ok_fd;
 	int					err_fd;
 	int					use_std;
+	int					use_syslog;
 	int					force_stdout;
 	int					notify_re;
 };

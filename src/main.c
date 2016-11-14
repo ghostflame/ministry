@@ -16,7 +16,12 @@ Usage\tministry -h\n\
 \tministry [OPTIONS] [-c <config file>]\n\n\
 Options:\n\
  -h           Print this help\n\
- -c <file>    Select config file to use\n\
+ -c <path>    Select config file or URI to use\n\
+ -E           Disable reading environment variables\n\
+ -F           Disable reading a config file (env only)\n\
+ -U           Disable all reading of URI's\n\
+ -u           Disable URI config including other URI's\n\
+ -I           Allow https URI's include http URI's.\n\
  -d           Daemonize in the background\n\
  -D           Switch on debug output (overrides config)\n\
  -V           Verbose logging to console\n\
@@ -115,22 +120,19 @@ int set_limits( void )
 
 int main( int ac, char **av, char **env )
 {
-	int oc, justTest = 0, debug = 0, readConf = 1;
+	int oc, justTest = 0, debug = 0;
 	char *pidfile = NULL;
 	double diff;
 
 	// make a control structure
-	config_create( env );
+	config_create( );
 
-	while( ( oc = getopt( ac, av, "hHCDVdvtc:p:" ) ) != -1 )
+	while( ( oc = getopt( ac, av, "hHDVEFUIudvtc:p:" ) ) != -1 )
 		switch( oc )
 		{
 			case 'c':
 				free( ctl->cfg_file );
 				ctl->cfg_file = strdup( optarg );
-				break;
-			case 'C':
-				readConf = 0;
 				break;
 			case 'v':
 				printf( "Ministry version: %s\n", ctl->version );
@@ -152,6 +154,21 @@ int main( int ac, char **av, char **env )
 			case 't':
 				justTest = 1;
 				break;
+			case 'U':
+				ctl->conf_flags &= ~(CONF_URL_INC_URL|CONF_READ_URL);
+				break;
+			case 'u':
+				ctl->conf_flags &= ~CONF_URL_INC_URL;
+				break;
+			case 'I':
+				ctl->conf_flags |= CONF_SEC_INC_UNSEC;
+				break;
+			case 'E':
+				ctl->conf_flags &= ~CONF_READ_ENV;
+				break;
+			case 'F':
+				ctl->conf_flags &= ~CONF_READ_FILE;
+				break;
 			case 'H':
 			case 'h':
 				usage( );
@@ -161,12 +178,16 @@ int main( int ac, char **av, char **env )
 				return 1;
 		}
 
+	// read our environment
+	// has to happen after parsing args
+	config_read_env( env );
+
 	// set up curl
 	curl_global_init( CURL_GLOBAL_SSL );
 
 	// try to read the config
-	if( readConf && config_read( ctl->cfg_file ) )
-		fatal( "Unable to read config file '%s'", ctl->cfg_file );
+	if( config_read( ctl->cfg_file ) )
+		fatal( "Unable to read config source '%s'", ctl->cfg_file );
 
 	// tidy up curl
 	curl_global_cleanup( );
