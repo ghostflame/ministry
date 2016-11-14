@@ -15,7 +15,7 @@
 CCTXT *ctxt_top = NULL;
 CCTXT *context  = NULL;
 
-#define CFG_VV_FLAGS	(VV_AUTO_VAL|VV_LOWER_ATT)
+#define CFG_VV_FLAGS	(VV_AUTO_VAL|VV_LOWER_ATT|VV_REMOVE_UDRSCR)
 
 // read a file until we find a config line
 char __cfg_read_line[1024];
@@ -78,6 +78,12 @@ int config_get_line( FILE *f, AVP *av )
 
 
 
+
+
+
+
+
+
 // step over one section
 int config_ignore_section( FILE *fh )
 {
@@ -131,7 +137,7 @@ CCTXT *config_make_context( char *path, CCTXT *parent )
 
 
 
-int config_file_dupe( CCTXT *c, char *path )
+int config_source_dupe( CCTXT *c, char *path )
 {
 	CCTXT *ch;
 
@@ -142,7 +148,7 @@ int config_file_dupe( CCTXT *c, char *path )
 		return 1;
 
 	for( ch = c->children; ch; ch = ch->next )
-		if( config_file_dupe( ch, path ) )
+		if( config_source_dupe( ch, path ) )
 			return 1;
 
 	return 0;
@@ -181,7 +187,7 @@ int config_line( AVP *av )
 		return 0;
 	}
 
-	if( attIs( "tick_msec" ) )
+	if( attIs( "tickMsec" ) )
 		ctl->tick_usec = 1000 * atoi( av->val );
 	else if( attIs( "daemon" ) )
 	{
@@ -190,12 +196,12 @@ int config_line( AVP *av )
 		else
 			ctl->run_flags &= ~RUN_DAEMON;
 	}
-	else if( attIs( "pidfile" ) )
+	else if( attIs( "pidFile" ) )
 	{
 		free( ctl->pidfile );
 		ctl->pidfile = config_relative_path( av->val );
 	}
-	else if( attIs( "basedir" ) )
+	else if( attIs( "baseDir" ) )
 	{
 		free( ctl->basedir );
 		ctl->basedir = str_copy( av->val, av->vlen );
@@ -209,6 +215,10 @@ char *config_relative_path( char *inpath )
 {
 	char *ret;
 	int len;
+
+	// is it a URI?
+	if( strstr( inpath, "://" ) )
+		return strdup( inpath );
 
 	if( *inpath != '~' )
 		return strdup( inpath );
@@ -227,43 +237,10 @@ char *config_relative_path( char *inpath )
 }
 
 
-#define	secIs( s )		!strcasecmp( context->section, s )
-
-int config_read( char *inpath )
+int __config_read_file( FILE *fh )
 {
-	int ret = 0, rv, lrv;
-	FILE *fh = NULL;
-	char *path;
+	int rv, lrv, ret = 0;
 	AVP av;
-
-	// maybe add basedir
-	path = config_relative_path( inpath );
-
-	// check this isn't a duplicate
-	if( config_file_dupe( ctxt_top, path ) )
-	{
-		warn( "Skipping duplicate config file '%s'.", path );
-		free( path );
-		return 0;
-	}
-
-	// set up our new context
-	context = config_make_context( path, context );
-
-	debug( "Opening config file %s, section %s",
-		path, context->section );
-
-	// is this the first call
-	if( !ctxt_top )
-		ctxt_top = context;
-
-	// die on not reading main config file, warn on others
-	if( !( fh = fopen( path, "r" ) ) )
-	{
-		err("Could not open config file '%s' -- %s", path, Err );
-		ret = -1;
-		goto END_FILE;
-	}
 
 	while( ( rv = config_get_line( fh, &av ) ) != -1 )
 	{
@@ -278,85 +255,351 @@ int config_read( char *inpath )
 			{
 				err( "Included config file '%s' invalid.", av.val );
 				ret = -1;
-				goto END_FILE;
+				break;
 			}
 			continue;
 		}
 
-		// hand some sections off to different config fns
-		if( secIs( "http" ) )
-			lrv = http_config_line( &av );
-		else if( secIs( "logging" ) )
-			lrv = log_config_line( &av );
-		else if( secIs( "network" ) )
-		  	lrv = net_config_line( &av );
-		else if( secIs( "memory" ) )
-			lrv = mem_config_line( &av );
-		else if( secIs( "stats" ) )
-			lrv = stats_config_line( &av );
-		else if( secIs( "synth" ) )
-			lrv = synth_config_line( &av );
-		else if( secIs( "target" ) )
-			lrv = target_config_line( &av );
-		else
-			lrv = config_line( &av );
-
-        ret += lrv;
+		// and dispatch it
+		lrv = config_choose_handler( context->section, &av );
+		ret += lrv;
 
 		if( lrv )
 		{
 			err( "Bad config in file '%s', line %d", context->file, context->lineno );
-			goto END_FILE;
+			break;
 		}
 	}
 
-
-END_FILE:
 	if( fh )
 		fclose( fh );
 
-	debug( "Finished with config file '%s': %d", context->file, ret );
+	debug( "Finished with config source '%s': %d", context->file, ret );
 
 	// step our context back
 	context = context->parent;
+
+	return ret;
+}
+
+
+
+
+
+int config_read_file( char *path )
+{
+	FILE *fh = NULL;
+
+	debug( "Opening config file %s, section %s",
+		path, context->section );
+
+	// is this the first call
+	if( !ctxt_top )
+		ctxt_top = context;
+
+	// die on not reading main config file, warn on others
+	if( !( fh = fopen( path, "r" ) ) )
+	{
+		err("Could not open config file '%s' -- %s", path, Err );
+		return -1;
+	}
+
+	return __config_read_file( fh );
+}
+
+
+
+
+#define CErr		curl_easy_strerror( cc )
+
+
+int config_read_url( char *url, int ssl )
+{
+	int ret = 0;
+	CURLcode cc;
+	FILE *fh;
+	CURL *c;
+
+	debug( "Opening config url '%s', section %s",
+		url, context->section );
+
+	// is this the first call
+	if( !ctxt_top )
+		ctxt_top = context;
+
+	// set up our new context
+	if( !( c = curl_easy_init( ) ) )
+	{
+		err( "Could not init curl for url fetch -- %s", Err );
+		return -1;
+	}
+
+	curl_easy_setopt( c, CURLOPT_URL, url );
+
+	if( ssl )
+	{
+		curl_easy_setopt( c, CURLOPT_SSL_VERIFYPEER, 0L );
+		curl_easy_setopt( c, CURLOPT_SSL_VERIFYHOST, 0L );
+	}
+
+	// make a temporary file
+	if( !( fh = tmpfile( ) ) )
+	{
+		err( "Could not create a temporary file for fetching '%s' -- %s",
+			url, Err );
+		ret = -2;
+		goto CRU_CLEANUP;
+	}
+
+	// and set the file handle
+	curl_easy_setopt( c, CURLOPT_WRITEDATA, (void *) fh );
+
+	// and go get it
+	if( ( cc = curl_easy_perform( c ) ) != CURLE_OK )
+	{
+		err( "Could not curl target url '%s' -- %s", url, CErr );
+		ret = -1;
+		goto CRU_CLEANUP;
+	}
+
+	// and go back to the beginning
+	fseek( fh, 0L, SEEK_SET );
+
+	// and read that file
+	ret = __config_read_file( fh );
+
+CRU_CLEANUP:
+	curl_easy_cleanup( c );
+	return ret;
+}
+
+
+#undef CErr
+
+
+int config_read( char *inpath )
+{
+	int ret, is_url, is_ssl;
+	char *path;
+
+	is_url = 0;
+	is_ssl = 0;
+
+	path = config_relative_path( inpath );
+
+	if( !strncmp( path, "http://", 7 ) )
+		is_url = 1;
+	else if( !strncmp( path, "https://", 8 ) )
+	{
+		is_url = 1;
+		is_ssl = 1;
+	}
+
+	// check this isn't a duplicate
+	if( config_source_dupe( ctxt_top, path ) )
+	{
+		warn( "Skipping duplicate config source '%s'.", path );
+		free( path );
+		return 0;
+	}
+
+	// read checks
+	if( is_url )
+	{
+		// do we allow urls to include urls?
+		if( !( ctl->conf_flags & CONF_READ_URL ) )
+		{
+			debug( "Skipping URL source '%s' due to config flags.", path );
+			return 0;
+		}
+
+		if( context->is_url && !( ctl->conf_flags & CONF_URL_INC_URL ) )
+		{
+			debug( "Skipping URL-included URL '%s' due to config flags.", path );
+			return 0;
+		}
+
+		// do we allow secure urls to include insecure ones?
+		if( !is_ssl && context->is_url && context->is_ssl
+		 && !( ctl->conf_flags & CONF_SEC_INC_UNSEC ) )
+		{
+
+		}
+	}
+	// do we allow files?
+	else if( !( ctl->conf_flags & CONF_READ_FILE ) )
+	{
+		debug( "Skipping file source '%s' due to config flags.", path );
+		return 0;
+	}
+
+	// set up our new context
+	context = config_make_context( path, context );
+	context->is_url = is_url;
+	context->is_ssl = is_ssl;
+
+	if( is_url )
+		ret = config_read_url( path, is_ssl );
+	else
+		ret = config_read_file( path );
 
 	free( path );
 	return ret;
 }
 
+
+
+#define	secIs( s )		!strcasecmp( section, s )
+
+int config_choose_handler( char *section, AVP *av )
+{
+	// hand some sections off to different config fns
+	if( secIs( "http" ) )
+		return http_config_line( av );
+	else if( secIs( "logging" ) )
+		return log_config_line( av );
+	else if( secIs( "network" ) )
+	  	return net_config_line( av );
+	else if( secIs( "memory" ) )
+		return mem_config_line( av );
+	else if( secIs( "stats" ) )
+		return stats_config_line( av );
+	else if( secIs( "synth" ) )
+		return synth_config_line( av );
+	else if( secIs( "target" ) )
+		return target_config_line( av );
+
+	return config_line( av );
+}
+
 #undef secIs
 
 
-
-MIN_CTL *config_create( void )
+int config_env_path( char *path, int len )
 {
-	MIN_CTL *c;
+	char *sec, *pth, *us, *p;
+	AVP av;
 
-	c             = (MIN_CTL *) allocz( sizeof( MIN_CTL ) );
-	c->http       = http_config_defaults( );
-	c->log        = log_config_defaults( );
-	c->locks      = lock_config_defaults( );
-	c->mem        = mem_config_defaults( );
-	c->net        = net_config_defaults( );
-	c->stats      = stats_config_defaults( );
-	c->synth      = synth_config_defaults( );
-	c->tgt        = target_config_defaults( );
+	if( path[0] == '_' )
+	{
+		// 'main' section
+		sec = "";
+		pth = path + 1;
+		len--;
+	}
+	else if( !( us = memchr( path, '_', len ) ) )
+	{
+		warn( "No section found in env path %s", path );
+		return -1;
+	}
+	else
+	{
+		sec  = path;
+		*us  = '\0';
+		pth  = ++us;
+		len -= pth - path;
 
-	c->cfg_file   = strdup( DEFAULT_CONFIG_FILE );
-	c->pidfile    = strdup( DEFAULT_PID_FILE );
-	c->version    = strdup( MINISTRY_VERSION );
-	c->basedir    = strdup( DEFAULT_BASE_DIR );
+		// lower-case the section
+		for( p = path; p < us; p++ )
+			*p = tolower( *p );
 
-	c->tick_usec  = 1000 * DEFAULT_TICK_MSEC;
+		// we have to swap any _ for . in the config path here because
+		// env names cannot have dots in
+		for( p = pth; *p; p++ )
+			if( *p == '_' )
+				*p = '.';
+
+	}
+
+	// this lowercases it
+	if( var_val( pth, len, &av, CFG_VV_FLAGS ) )
+	{
+		warn( "Could not process env path." );
+		return -1;
+	}
+
+	// and try it
+	if( !config_choose_handler( sec, &av ) )
+	{
+		debug( "Found env [%s] %s -> %s", sec, av.att, av.val );
+		return 0;
+	}
+
+	return -1;
+}
+
+
+#define ENV_MAX_LENGTH			65536
+#define ENV_PREFIX				"MINISTRY_CFG_"
+#define ENV_PREFIX_LEN			13	// length of the above
+
+int config_read_env( char **env )
+{
+	char buf[ENV_MAX_LENGTH];
+	int l;
+
+	// config flag disables this
+	if( !( ctl->conf_flags & CONF_READ_ENV ) )
+	{
+		debug( "No reading environment due to config flags." );
+		return 0;
+	}
+
+	for( ; *env; env++ )
+	{
+		l = snprintf( buf, ENV_MAX_LENGTH, "%s", *env );
+
+		if( l < 14 || memcmp( buf, ENV_PREFIX, ENV_PREFIX_LEN ) )
+			continue;
+
+		if( config_env_path( buf + ENV_PREFIX_LEN, l - ENV_PREFIX_LEN ) )
+		{
+			warn( "Problematic environmental config item %s", *env );
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+#undef ENV_MAX_LENGTH
+#undef ENV_PREFIX
+#undef ENV_PREFIX_LEN
+
+
+void config_create( void )
+{
+	ctl             = (MIN_CTL *) allocz( sizeof( MIN_CTL ) );
+
+	ctl->http       = http_config_defaults( );
+	ctl->log        = log_config_defaults( );
+	ctl->locks      = lock_config_defaults( );
+	ctl->mem        = mem_config_defaults( );
+	ctl->net        = net_config_defaults( );
+	ctl->stats      = stats_config_defaults( );
+	ctl->synth      = synth_config_defaults( );
+	ctl->tgt        = target_config_defaults( );
+
+	ctl->cfg_file   = strdup( DEFAULT_CONFIG_FILE );
+	ctl->pidfile    = strdup( DEFAULT_PID_FILE );
+	ctl->version    = strdup( MINISTRY_VERSION );
+	ctl->basedir    = strdup( DEFAULT_BASE_DIR );
+
+	ctl->tick_usec  = 1000 * DEFAULT_TICK_MSEC;
 
 	// max these two out
-	config_set_limit( c, RLIMIT_NOFILE, -1 );
-	config_set_limit( c, RLIMIT_NPROC,  -1 );
+	config_set_limit( ctl, RLIMIT_NOFILE, -1 );
+	config_set_limit( ctl, RLIMIT_NPROC,  -1 );
 
-	clock_gettime( CLOCK_REALTIME, &(c->init_time) );
-	tsdupe( c->init_time, c->curr_time );
+	clock_gettime( CLOCK_REALTIME, &(ctl->init_time) );
+	tsdupe( ctl->init_time, ctl->curr_time );
 
-	return c;
+	// initial conf flags
+	ctl->conf_flags |= CONF_READ_FILE;
+	ctl->conf_flags |= CONF_READ_ENV;
+	ctl->conf_flags |= CONF_READ_URL;
+	ctl->conf_flags |= CONF_URL_INC_URL;
+	// but not: sec include non-sec
 }
 
 #undef config_set_limit

@@ -13,10 +13,15 @@ void usage( void )
 {
 	char *help_str = "\
 Usage\tministry -h\n\
-\tministry [OPTIONS] -c <config file>\n\n\
+\tministry [OPTIONS] [-c <config file>]\n\n\
 Options:\n\
  -h           Print this help\n\
- -c <file>    Select config file to use\n\
+ -c <path>    Select config file or URI to use\n\
+ -E           Disable reading environment variables\n\
+ -F           Disable reading a config file (env only)\n\
+ -U           Disable all reading of URI's\n\
+ -u           Disable URI config including other URI's\n\
+ -I           Allow https URI's include http URI's.\n\
  -d           Daemonize in the background\n\
  -D           Switch on debug output (overrides config)\n\
  -V           Verbose logging to console\n\
@@ -130,16 +135,16 @@ int set_limits( void )
 
 
 
-int main( int ac, char **av )
+int main( int ac, char **av, char **env )
 {
 	int oc, justTest = 0, debug = 0;
 	char *pidfile = NULL;
 	double diff;
 
 	// make a control structure
-	ctl = config_create( );
+	config_create( );
 
-	while( ( oc = getopt( ac, av, "hHDVdvtc:p:" ) ) != -1 )
+	while( ( oc = getopt( ac, av, "hHDVEFUIudvtc:p:" ) ) != -1 )
 		switch( oc )
 		{
 			case 'c':
@@ -166,6 +171,21 @@ int main( int ac, char **av )
 			case 't':
 				justTest = 1;
 				break;
+			case 'U':
+				ctl->conf_flags &= ~(CONF_URL_INC_URL|CONF_READ_URL);
+				break;
+			case 'u':
+				ctl->conf_flags &= ~CONF_URL_INC_URL;
+				break;
+			case 'I':
+				ctl->conf_flags |= CONF_SEC_INC_UNSEC;
+				break;
+			case 'E':
+				ctl->conf_flags &= ~CONF_READ_ENV;
+				break;
+			case 'F':
+				ctl->conf_flags &= ~CONF_READ_FILE;
+				break;
 			case 'H':
 			case 'h':
 				usage( );
@@ -175,12 +195,22 @@ int main( int ac, char **av )
 				return 1;
 		}
 
+	// read our environment
+	// has to happen after parsing args
+	config_read_env( env );
+
+	// set up curl
+	curl_global_init( CURL_GLOBAL_SSL );
+
 	// try to read the config
 	if( config_read( ctl->cfg_file ) )
 	{
 		printf( "Config file '%s' is invalid.\n", ctl->cfg_file );
 		return 1;
 	}
+
+	// tidy up curl
+	curl_global_cleanup( );
 
 	// enforce what we got in arguments
 	if( debug )

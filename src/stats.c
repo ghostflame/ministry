@@ -894,7 +894,7 @@ int stats_config_line( AVP *av )
 		else
 			warn( "Stats offset must be > 0, value %d given.", t );
 	}
-	else if( !strcasecmp( d, "size" ) || !strcasecmp( d, "hashsize" ) )
+	else if( !strcasecmp( d, "size" ) || !strcasecmp( d, "hashSize" ) )
 	{
 		// 0 means default
 		if( ( sc->hsize = hash_size( av->val ) ) < 0 )

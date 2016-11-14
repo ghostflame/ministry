@@ -15,6 +15,13 @@
 #define DEFAULT_CONFIG_FILE		"/etc/ministry/ministry.conf"
 
 
+// config flags
+#define CONF_READ_ENV			0x0001
+#define CONF_READ_FILE			0x0002
+#define CONF_READ_URL			0x0004
+#define CONF_URL_INC_URL		0x0008
+#define CONF_SEC_INC_UNSEC		0x0010
+
 
 // used all over - so all the config line fns have an AVP called 'av'
 #define attIs( s )      !strcasecmp( av->att, s )
@@ -30,6 +37,8 @@ struct config_context
 	char					file[512];
 	char					section[512];
 	int						lineno;
+	int						is_url;
+	int						is_ssl;
 };
 
 
@@ -48,6 +57,7 @@ struct ministry_control
 	struct timespec			init_time;
 	struct timespec			curr_time;
 
+	unsigned int			conf_flags;
 	unsigned int			run_flags;
 
 	char				*	cfg_file;
@@ -65,7 +75,9 @@ struct ministry_control
 
 int config_bool( AVP *av );
 int config_read( char *path );
+int config_read_env( char **env );
 char *config_relative_path( char *inpath );
-MIN_CTL *config_create( void );
+int config_choose_handler( char *section, AVP *av );
+void config_create( void );
 
 #endif

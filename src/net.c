@@ -760,26 +760,26 @@ int net_config_line( AVP *av )
 			ctl->net->dead_time = (time_t) atoi( av->val );
 			debug( "Dead connection timeout set to %d sec.", ctl->net->dead_time );
 		}
-		else if( attIs( "rcv_tmout" ) )
+		else if( attIs( "rcvTmout" ) )
 		{
 			ctl->net->rcv_tmout = (unsigned int) atoi( av->val );
 			debug( "Receive timeout set to %u sec.", ctl->net->rcv_tmout );
 		}
-		else if( attIs( "reconn_msec" ) )
+		else if( attIs( "reconnMsec" ) )
 		{
 			ctl->net->reconn = 1000 * atoi( av->val );
 			if( ctl->net->reconn <= 0 )
 				ctl->net->reconn = 1000 * NET_RECONN_MSEC;
 			debug( "Reconnect time set to %d usec.", ctl->net->reconn );
 		}
-		else if( attIs( "io_msec" ) )
+		else if( attIs( "ioMsec" ) )
 		{
 			ctl->net->io_usec = 1000 * atoi( av->val );
 			if( ctl->net->io_usec <= 0 )
 				ctl->net->io_usec = 1000 * NET_IO_MSEC;
 			debug( "Io loop time set to %d usec.", ctl->net->io_usec );
 		}
-		else if( attIs( "max_waiting" ) )
+		else if( attIs( "maxWaiting" ) )
 		{
 			warn( "Net config max_waiting is deprecated - use [Target] : max_waiting." );
 			ctl->net->max_bufs = atoi( av->val );
@@ -862,7 +862,7 @@ int net_config_line( AVP *av )
 			ctl->net->iplist->enable = config_bool( av );
 		else if( !strcasecmp( p, "verbose" ) )
 			ctl->net->iplist->verbose = config_bool( av );
-		else if( !strcasecmp( p, "drop_unknown" ) || !strcasecmp( p, "drop" ) )
+		else if( !strcasecmp( p, "dropUnknown" ) || !strcasecmp( p, "drop" ) )
 			ctl->net->iplist->drop = config_bool( av );
 		else if( !strcasecmp( p, "whitelist" ) )
 			return net_add_list_member( av->val, av->vlen, NET_IP_WHITELIST );
