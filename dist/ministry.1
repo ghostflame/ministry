@@ -27,6 +27,9 @@ just test config and exit
 \fB\-c\fR \fI<FILE|URI>\fR
 select config source instead of default file
 .TP
+\fB\-s\fR
+be strict about parsing config
+.TP
 \fB\-F\fR
 disable reading config source (environment only)
 .TP
@@ -39,8 +42,11 @@ disable reading any URI config (even if given with -c)
 \fB\-u\fR
 disable URI config including other URI configs
 .TP
+\fB\-i\fR
+allow insecure URI's
+.TP
 \fB\-I\fR
-allow secure URI's to include non-secure URI's
+allow secure URI's to include insecure URI's
 .TP
 \fB\-D\fR
 run in debug mode

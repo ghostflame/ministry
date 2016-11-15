@@ -16,11 +16,17 @@
 
 
 // config flags
-#define CONF_READ_ENV			0x0001
-#define CONF_READ_FILE			0x0002
-#define CONF_READ_URL			0x0004
-#define CONF_URL_INC_URL		0x0008
-#define CONF_SEC_INC_UNSEC		0x0010
+#define CONF_FLAG_READ_ENV			0x00000001
+#define CONF_FLAG_READ_FILE			0x00000002
+#define CONF_FLAG_READ_URL			0x00000004
+#define CONF_FLAG_URL_INSEC			0x00000100
+#define CONF_FLAG_URL_INC_URL		0x00000200
+#define CONF_FLAG_SEC_INC_INSEC		0x00000400
+#define CONF_FLAG_TEST_ONLY			0x10000000
+
+#define setcfFlag( K )				ctl->conf_flags |= CONF_FLAG_##K
+#define cutcfFlag( K )				ctl->conf_flags &= ~(CONF_FLAG_##K)
+#define chkcfFlag( K )				( ctl->conf_flags & CONF_FLAG_##K )
 
 
 // used all over - so all the config line fns have an AVP called 'av'
@@ -34,7 +40,7 @@ struct config_context
 	CCTXT				*	children;
 	CCTXT				*	parent;
 
-	char					file[512];
+	char					source[4096];
 	char					section[512];
 	int						lineno;
 	int						is_url;
@@ -67,6 +73,8 @@ struct ministry_control
 
 	int						tick_usec;
 	int						loop_count;
+
+	int						strict;
 
 	int64_t					limits[RLIMIT_NLIMITS];
 	int8_t					setlim[RLIMIT_NLIMITS];

@@ -21,12 +21,14 @@ Options:\n\
  -F           Disable reading a config file (env only)\n\
  -U           Disable all reading of URI's\n\
  -u           Disable URI config including other URI's\n\
- -I           Allow https URI's include http URI's.\n\
+ -i           Allow insecure URI's\n\
+ -I           Allow secure URI's to include insecure URI's.\n\
  -d           Daemonize in the background\n\
  -D           Switch on debug output (overrides config)\n\
  -V           Verbose logging to console\n\
  -p <file>    Override configured pidfile\n\
  -v           Print version number and exit\n\
+ -s           Strict config parsing\n\
  -t           Just test the config is valid and exit\n\n\
 Ministry is a statsd-alternative processing engine.  It runs on very\n\
 similiar lines, taking data paths and producing statistics on them.\n\
@@ -137,16 +139,19 @@ int set_limits( void )
 
 int main( int ac, char **av, char **env )
 {
-	int oc, justTest = 0, debug = 0;
+	int oc, debug = 0;
 	char *pidfile = NULL;
 	double diff;
 
 	// make a control structure
 	config_create( );
 
-	while( ( oc = getopt( ac, av, "hHDVEFUIudvtc:p:" ) ) != -1 )
+	while( ( oc = getopt( ac, av, "hHDVEFUIsuidvtc:p:C:" ) ) != -1 )
 		switch( oc )
 		{
+			case 'C':
+				ctl->strict = -1;
+				// fall through intentional
 			case 'c':
 				free( ctl->cfg_file );
 				ctl->cfg_file = strdup( optarg );
@@ -169,22 +174,29 @@ int main( int ac, char **av, char **env )
 				ctl->log->force_stdout = 1;
 				break;
 			case 't':
-				justTest = 1;
+				setcfFlag( TEST_ONLY );
+				break;
+			case 's':
+				ctl->strict = -1;
 				break;
 			case 'U':
-				ctl->conf_flags &= ~(CONF_URL_INC_URL|CONF_READ_URL);
+				cutcfFlag( URL_INC_URL );
+				cutcfFlag( READ_URL );
 				break;
 			case 'u':
-				ctl->conf_flags &= ~CONF_URL_INC_URL;
+				cutcfFlag( URL_INC_URL );
+				break;
+			case 'i':
+				setcfFlag( URL_INSEC );
 				break;
 			case 'I':
-				ctl->conf_flags |= CONF_SEC_INC_UNSEC;
+				setcfFlag( SEC_INC_INSEC );
 				break;
 			case 'E':
-				ctl->conf_flags &= ~CONF_READ_ENV;
+				cutcfFlag( READ_ENV );
 				break;
 			case 'F':
-				ctl->conf_flags &= ~CONF_READ_FILE;
+				cutcfFlag( READ_FILE );
 				break;
 			case 'H':
 			case 'h':
@@ -224,13 +236,13 @@ int main( int ac, char **av, char **env )
 		ctl->pidfile = pidfile;
 	}
 
-	if( justTest )
+	if( chkcfFlag( TEST_ONLY ) )
 	{
 		printf( "Config file '%s' is OK.\n", ctl->cfg_file );
 		return 0;
 	}
 
-	if( !ctl->log->force_stdout )
+	if( !ctl->log->force_stdout && !ctl->log->use_std )
 		debug( "Starting logging - no more logs to stdout." );
 
 	log_start( );

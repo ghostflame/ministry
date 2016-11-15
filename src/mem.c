@@ -626,7 +626,7 @@ int mem_config_line( AVP *av )
 		{
 			// gets converted to KB
 			ctl->mem->stacksize = atoi( av->val );
-			info( "Stack size set to %d KB.", ctl->mem->stacksize );
+			debug( "Stack size set to %d KB.", ctl->mem->stacksize );
 		}
 		else if( attIs( "gc" ) )
 			ctl->mem->gc_enabled = config_bool( av );
@@ -635,7 +635,7 @@ int mem_config_line( AVP *av )
 			t = atoi( av->val );
 			if( !t )
 				t = DEFAULT_GC_THRESH;
-			info( "Garbage collection threshold set to %d stats intervals.", t );
+			debug( "Garbage collection threshold set to %d stats intervals.", t );
 			ctl->mem->gc_thresh = t;
 		}
 		else if( attIs( "gcGaugeThresh" ) )
@@ -643,7 +643,7 @@ int mem_config_line( AVP *av )
 			t = atoi( av->val );
 			if( !t )
 				t = DEFAULT_GC_GG_THRESH;
-			info( "Gauge garbage collection threshold set to %d stats intervals.", t );
+			debug( "Gauge garbage collection threshold set to %d stats intervals.", t );
 			ctl->mem->gc_gg_thresh = t;
 		}
 		else
@@ -673,7 +673,7 @@ int mem_config_line( AVP *av )
 	if( !strcasecmp( d, "block" ) )
 	{
 		mt->alloc_ct = (uint32_t) strtoul( av->val, NULL, 10 );
-		info( "Allocation block for %s set to %u", av->att, mt->alloc_ct );
+		debug( "Allocation block for %s set to %u", av->att, mt->alloc_ct );
 	}
 	else
 		return -1;

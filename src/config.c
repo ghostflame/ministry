@@ -45,7 +45,7 @@ int config_get_line( FILE *f, AVP *av )
 			if( !( e = memchr( __cfg_read_line, ']', n - __cfg_read_line ) ) )
 			{
 				warn( "Bad section heading in file '%s': %s",
-					context->file, __cfg_read_line );
+					context->source, __cfg_read_line );
 				return -1;
 			}
 			*e = '\0';
@@ -53,7 +53,7 @@ int config_get_line( FILE *f, AVP *av )
 			if( ( e - __cfg_read_line ) > 511 )
 			{
 				warn( "Over-long section heading in file '%s': %s",
-					context->file, __cfg_read_line );
+					context->source, __cfg_read_line );
 				return -1;
 			}
 
@@ -112,7 +112,7 @@ CCTXT *config_make_context( char *path, CCTXT *parent )
 	CCTXT *ctx;
 
 	ctx = (CCTXT *) allocz( sizeof( CCTXT ) );
-	strncpy( ctx->file, path, 511 );
+	snprintf( ctx->source, 4096, "%s", path );
 
 	if( parent )
 	{
@@ -144,7 +144,7 @@ int config_source_dupe( CCTXT *c, char *path )
 	if( !c )
 		return 0;
 
-	if( !strcmp( path, c->file ) )
+	if( !strcmp( path, c->source ) )
 		return 1;
 
 	for( ch = c->children; ch; ch = ch->next )
@@ -253,7 +253,7 @@ int __config_read_file( FILE *fh )
 		{
 			if( config_read( av.val ) != 0 )
 			{
-				err( "Included config file '%s' invalid.", av.val );
+				err( "Included config file '%s' is not valid.", av.val );
 				ret = -1;
 				break;
 			}
@@ -266,7 +266,7 @@ int __config_read_file( FILE *fh )
 
 		if( lrv )
 		{
-			err( "Bad config in file '%s', line %d", context->file, context->lineno );
+			err( "Bad config in file '%s', line %d", context->source, context->lineno );
 			break;
 		}
 	}
@@ -274,7 +274,7 @@ int __config_read_file( FILE *fh )
 	if( fh )
 		fclose( fh );
 
-	debug( "Finished with config source '%s': %d", context->file, ret );
+	debug( "Finished with config source '%s': %d", context->source, ret );
 
 	// step our context back
 	context = context->parent;
@@ -293,14 +293,10 @@ int config_read_file( char *path )
 	debug( "Opening config file %s, section %s",
 		path, context->section );
 
-	// is this the first call
-	if( !ctxt_top )
-		ctxt_top = context;
-
 	// die on not reading main config file, warn on others
 	if( !( fh = fopen( path, "r" ) ) )
 	{
-		err("Could not open config file '%s' -- %s", path, Err );
+		err( "Could not open config file '%s' -- %s", path, Err );
 		return -1;
 	}
 
@@ -313,7 +309,7 @@ int config_read_file( char *path )
 #define CErr		curl_easy_strerror( cc )
 
 
-int config_read_url( char *url, int ssl )
+int config_read_url( char *url )
 {
 	int ret = 0;
 	CURLcode cc;
@@ -323,10 +319,6 @@ int config_read_url( char *url, int ssl )
 	debug( "Opening config url '%s', section %s",
 		url, context->section );
 
-	// is this the first call
-	if( !ctxt_top )
-		ctxt_top = context;
-
 	// set up our new context
 	if( !( c = curl_easy_init( ) ) )
 	{
@@ -335,8 +327,10 @@ int config_read_url( char *url, int ssl )
 	}
 
 	curl_easy_setopt( c, CURLOPT_URL, url );
+	curl_easy_setopt( c, CURLOPT_TIMEOUT_MS, 10000 );
+	curl_easy_setopt( c, CURLOPT_CONNECTTIMEOUT_MS, 5000 );
 
-	if( ssl )
+	if( context->is_ssl )
 	{
 		curl_easy_setopt( c, CURLOPT_SSL_VERIFYPEER, 0L );
 		curl_easy_setopt( c, CURLOPT_SSL_VERIFYHOST, 0L );
@@ -379,74 +373,89 @@ CRU_CLEANUP:
 
 int config_read( char *inpath )
 {
-	int ret, is_url, is_ssl;
+	int ret = 0, p_url = 0, p_ssl = 0;
 	char *path;
 
-	is_url = 0;
-	is_ssl = 0;
-
+	// prune the path
 	path = config_relative_path( inpath );
-
-	if( !strncmp( path, "http://", 7 ) )
-		is_url = 1;
-	else if( !strncmp( path, "https://", 8 ) )
-	{
-		is_url = 1;
-		is_ssl = 1;
-	}
 
 	// check this isn't a duplicate
 	if( config_source_dupe( ctxt_top, path ) )
 	{
 		warn( "Skipping duplicate config source '%s'.", path );
-		free( path );
-		return 0;
-	}
-
-	// read checks
-	if( is_url )
-	{
-		// do we allow urls to include urls?
-		if( !( ctl->conf_flags & CONF_READ_URL ) )
-		{
-			debug( "Skipping URL source '%s' due to config flags.", path );
-			return 0;
-		}
-
-		if( context->is_url && !( ctl->conf_flags & CONF_URL_INC_URL ) )
-		{
-			debug( "Skipping URL-included URL '%s' due to config flags.", path );
-			return 0;
-		}
-
-		// do we allow secure urls to include insecure ones?
-		if( !is_ssl && context->is_url && context->is_ssl
-		 && !( ctl->conf_flags & CONF_SEC_INC_UNSEC ) )
-		{
-
-		}
-	}
-	// do we allow files?
-	else if( !( ctl->conf_flags & CONF_READ_FILE ) )
-	{
-		debug( "Skipping file source '%s' due to config flags.", path );
-		return 0;
+		ret = ctl->strict;
+		goto Read_Done;
 	}
 
 	// set up our new context
 	context = config_make_context( path, context );
-	context->is_url = is_url;
-	context->is_ssl = is_ssl;
 
-	if( is_url )
-		ret = config_read_url( path, is_ssl );
+	if( !strncmp( path, "http://", 7 ) )
+		context->is_url = 1;
+	else if( !strncmp( path, "https://", 8 ) )
+	{
+		context->is_url = 1;
+		context->is_ssl = 1;
+	}
+
+	// do we have a parent context?
+	if( context->parent )
+	{
+		p_url = context->parent->is_url;
+		p_ssl = context->parent->is_ssl;
+	}
+
+	// read checks
+	if( context->is_url )
+	{
+		// do we allow urls to include urls?
+		if( !chkcfFlag( READ_URL ) )
+		{
+			warn( "Skipping URL source '%s' due to config flags.", path );
+			ret = ctl->strict;
+			goto Read_Done;
+		}
+
+		if( !context->is_ssl && !chkcfFlag( URL_INSEC ) )
+		{
+			warn( "Skipping insecure URL source '%s' due to config flags", path );
+			ret = ctl->strict;
+			goto Read_Done;
+		}
+
+		if( p_url && !chkcfFlag( URL_INC_URL ) )
+		{
+			warn( "Skipping URL-included URL '%s' due to config flags.", path );
+			ret = ctl->strict;
+			goto Read_Done;
+		}
+
+		// do we allow secure urls to include insecure ones?
+		if( p_ssl && !context->is_ssl && !chkcfFlag( SEC_INC_INSEC ) )
+		{
+			warn( "Skipping insecure URL '%s' included from secure URL.", path );
+			ret = ctl->strict;
+			goto Read_Done;
+		}
+	}
+	// do we allow files?
+	else if( !chkcfFlag( READ_FILE ) )
+	{
+		warn( "Skipping file source '%s' due to config flags.", path );
+		ret = ctl->strict;
+		goto Read_Done;
+	}
+
+	// so go do it
+	if( context->is_url )
+		ret = config_read_url( path );
 	else
 		ret = config_read_file( path );
 
+Read_Done:
 	free( path );
 	return ret;
 }
-
 
 
 #define	secIs( s )		!strcasecmp( section, s )
@@ -539,7 +548,7 @@ int config_read_env( char **env )
 	int l;
 
 	// config flag disables this
-	if( !( ctl->conf_flags & CONF_READ_ENV ) )
+	if( !chkcfFlag( READ_ENV ) )
 	{
 		debug( "No reading environment due to config flags." );
 		return 0;
@@ -595,11 +604,11 @@ void config_create( void )
 	tsdupe( ctl->init_time, ctl->curr_time );
 
 	// initial conf flags
-	ctl->conf_flags |= CONF_READ_FILE;
-	ctl->conf_flags |= CONF_READ_ENV;
-	ctl->conf_flags |= CONF_READ_URL;
-	ctl->conf_flags |= CONF_URL_INC_URL;
-	// but not: sec include non-sec
+	setcfFlag( READ_FILE );
+	setcfFlag( READ_ENV );
+	setcfFlag( READ_URL );
+	setcfFlag( URL_INC_URL );
+	// but not: sec include non-sec, read non-sec
 }
 
 #undef config_set_limit
