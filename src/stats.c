@@ -257,10 +257,6 @@ void stats_report_moments( ST_THR *t, DHASH *d, int64_t ct, double mean )
 	double sdev, skew, kurt, dtmp, stmp, ktmp, diff, prod;
 	int64_t i;
 
-	// are we checking this path?
-	if( regex_list_test( d->path, ctl->stats->mom_rgx ) )
-		return;
-
 	sdev = skew = kurt = 0;
 	dtmp = stmp = ktmp = 0;
 
@@ -417,7 +413,7 @@ void stats_report_one( ST_THR *t, DHASH *d )
 	}
 
 	// are we doing std deviation and friends?
-	if( ctl->stats->mom_min < ct )
+	if( d->mom_check && ctl->stats->mom->min_pts <= ct )
 		stats_report_moments( t, d, ct, mean );
 
 	mem_free_point_list( list );
@@ -815,10 +811,6 @@ void stats_init( void )
 	// we only allow one thread for this, and no data
 	ctl->stats->self->threads = 1;
 	stats_init_control( ctl->stats->self, 0 );
-
-	// and reverse the regex list if there is one
-	if( ctl->stats->mom_rgx )
-		mem_reverse_list( &(ctl->stats->mom_rgx) );
 }
 
 
@@ -873,8 +865,11 @@ STAT_CTL *stats_config_defaults( void )
 	s->self->enable   = 1;
 	stats_prefix( s->stats, DEFAULT_SELF_PREFIX );
 
-	// effectively disable moment checks
-	s->mom_min        = DEFAULT_MOM_MIN;
+	// moment checks are off by default
+	s->mom            = (ST_MOM *) allocz( sizeof( ST_MOM ) );
+	s->mom->min_pts   = DEFAULT_MOM_MIN;
+	s->mom->enabled   = 0;
+	s->mom->rgx       = regex_list_create( 1 );
 
 	return s;
 }
@@ -947,15 +942,6 @@ int stats_config_line( AVP *av )
 
 			debug( "Acquired %d thresholds.", wd.wc );
 		}
-		else if( attIs( "momentMin" ) )
-		{
-			parse_number( av->val, &(s->mom_min), NULL );
-		}
-		else if( attIs( "momentFilter" ) )
-		{
-			if( !regex_list_make( av->val, &(s->mom_rgx) ) )
-				return -1;
-		}
 		else if( attIs( "period" ) )
 		{
 			t = atoi( av->val );
@@ -987,6 +973,36 @@ int stats_config_line( AVP *av )
 		sc = s->gauge;
 	else if( !strncasecmp( av->att, "self.", 5 ) )
 		sc = s->self;
+	else if( !strncasecmp( av->att, "moments.", 8 ) )
+	{
+		if( !strcasecmp( d, "enable" ) )
+		{
+			s->mom->enabled = config_bool( av );
+		}
+		else if( !strcasecmp( d, "minimum" ) )
+		{
+			parse_number( av->val, &(s->mom->min_pts), NULL );
+		}
+		else if( !strcasecmp( d, "fallbackMatch" ) )
+		{
+			t = config_bool( av );
+			regex_list_set_fallback( t, s->mom->rgx );
+		}
+		else if( !strcasecmp( d, "whitelist" ) )
+		{
+			if( !regex_list_add( av->val, 0, s->mom->rgx ) )
+				return -1;
+		}
+		else if( !strcasecmp( d, "blacklist" ) )
+		{
+			if( !regex_list_add( av->val, 1, s->mom->rgx ) )
+				return -1;
+		}
+		else
+			return -1;
+
+		return 0;
+	}
 	else
 		return -1;
 

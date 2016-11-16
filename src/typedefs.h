@@ -25,6 +25,7 @@ typedef struct net_type				NET_TYPE;
 typedef struct stat_config			ST_CFG;
 typedef struct stat_thread_ctl		ST_THR;
 typedef struct stat_threshold		ST_THOLD;
+typedef struct stat_moments			ST_MOM;
 typedef struct config_context		CCTXT;
 typedef struct points_list			PTLIST;
 typedef struct mem_type_blank		MTBLANK;
@@ -57,7 +58,8 @@ typedef struct http_ssl				SSL_CONF;
 typedef struct http_ssl_file		SSL_FILE;
 typedef struct token_data			TOKEN;
 typedef struct token_info			TOKENS;
-typedef struct regex_list			RGX;
+typedef struct regex_entry			RGX;
+typedef struct regex_list			RGXL;
 
 
 // function types

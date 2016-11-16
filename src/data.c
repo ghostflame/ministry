@@ -193,6 +193,13 @@ __attribute__((hot)) static inline DHASH *data_get_dhash( char *path, int len, S
 			c->data[idx] = d;
 
 			d->valid = 1;
+
+			// might we do moment filtering on this?
+			if( c->dtype == DATA_TYPE_STATS && ctl->stats->mom->enabled )
+			{
+				if( regex_list_test( d->path, ctl->stats->mom->rgx ) == 0 )
+					d->mom_check = 1;
+			}
 		}
 
 		unlock_table( idx );

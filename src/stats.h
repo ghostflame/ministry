@@ -51,7 +51,7 @@ enum stats_types
 #define DEFAULT_ADDER_PREFIX		""
 #define DEFAULT_GAUGE_PREFIX		""
 
-#define DEFAULT_MOM_MIN				1000000000000L
+#define DEFAULT_MOM_MIN				30L
 
 
 #define TSBUF_SZ					32
@@ -129,6 +129,14 @@ struct stat_threshold
 };
 
 
+struct stat_moments
+{
+	RGXL			*	rgx;
+	int64_t				min_pts;
+	int					enabled;
+};
+
+
 struct stats_control
 {
 	ST_CFG			*	stats;
@@ -137,9 +145,7 @@ struct stats_control
 	ST_CFG			*	self;
 
 	ST_THOLD		*	thresholds;
-
-	int64_t				mom_min;	// minimum count to trigger moment calc
-	RGX				*	mom_rgx;	// list of regexes to match
+	ST_MOM			*	mom;
 };
 
 

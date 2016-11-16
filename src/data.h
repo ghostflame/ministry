@@ -75,7 +75,7 @@ struct data_hash_entry
 	uint8_t				valid;
 	uint8_t				do_pass;
 	uint8_t				type;
-	uint8_t				_pad;
+	uint8_t				mom_check;
 	int32_t				empty;
 };
 

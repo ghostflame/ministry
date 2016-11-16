@@ -142,14 +142,27 @@ A list of integer percentage values to generate thresholds at.  Must be 0 < x < 
 .TP
 \fBtimestamps\fR
 What format of timestamps should be outputted.  Options are: sec, msec, usec, nsec, dotmsec, dotusec, dotnsec.
+.PP
+In addition to regular thresholds and calculated values, \fBMinistry\fR can produce other sample-moment based
+statistics: standard deviation, skewness and kurtosis.  It does not do this by default, and has a minimum points
+check to avoid producing relatively meaningless stats about a half-dozen data points.  It also can match paths
+against a whitelist/blacklist regex check - a series of expressions defining whether a path is in or out of the
+list of paths receiving moments processing.
 .TP
-\fBmomentMin\fR
-Set the minimum point count in stats to trigger moment calculations (default 1 billion, effectively turning
-it off).  It is further guarded by the regular expressions filter.
+\fBmoments.enable\fR
+Enable or disable moments processing (boolean, defaults to 0)
 .TP
-\fBmomentFilter\fR
-Set a regular expression to match stats paths to trigger moment calculations.  This can appear multiple times,
-and the resulting list is parsed in order.  The default is no regex, effectively matching everything.
+\fBmoments.minimum\fR
+Set the minimum point count in stats to trigger moment calculations (default is 30)
+.TP
+\fBmoments.whitelist\fR, \fBmoments.blacklist\fR
+A set of regular expressions to control moments calculation.  Each can appear multiple times.  The order of the
+list is preserved and paths are checked against it in order, to decide if they should or should not have this
+processing done.  This will have a performance impact on new path creation for stats paths, depending on the
+number and nature of the expressions.
+.TP
+\fBmoments.fallbackMatch\fR
+Set whether matching no regexes results in overall match or no match (default is to match)
 .PP
 The rest of these are of the form stats.XXX, adder.XXX, gauge.XXX or self.XXX, affecting the behaviour of
 stats reporting, adder reporting, gauge reporting or self reporting.
