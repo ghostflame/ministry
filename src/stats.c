@@ -990,13 +990,15 @@ int stats_config_line( AVP *av )
 		}
 		else if( !strcasecmp( d, "whitelist" ) )
 		{
-			if( !regex_list_add( av->val, 0, s->mom->rgx ) )
+			if( regex_list_add( av->val, 0, s->mom->rgx ) )
 				return -1;
+			debug( "Added moments whitelist regex: %s", av->val );
 		}
 		else if( !strcasecmp( d, "blacklist" ) )
 		{
-			if( !regex_list_add( av->val, 1, s->mom->rgx ) )
+			if( regex_list_add( av->val, 1, s->mom->rgx ) )
 				return -1;
+			debug( "Added moments blacklist regex: %s", av->val );
 		}
 		else
 			return -1;

@@ -734,7 +734,10 @@ int regex_list_add( char *str, int negate, RGXL *rl )
 	RGX *rg, *p;
 
 	if( !rl || !str || !*str )
+	{
+		err( "No regex list %p, or invalid string %p", rl, str );
 		return -1;
+	}
 
 	rg    = (RGX *) allocz( sizeof( RGX ) );
 	rg->r = (regex_t *) allocz( sizeof( regex_t ) );
@@ -778,6 +781,7 @@ int regex_list_test( char *str, RGXL *rl )
 	for( r = rl->list; r; r = r->next )
 	{
 		r->tests++;
+		//debug( "Checking '%s' against regex '%s'", str, r->src );
 		if( regexec( r->r, str, 0, NULL, 0 ) == 0 )
 		{
 			r->matched++;

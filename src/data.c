@@ -198,7 +198,12 @@ __attribute__((hot)) static inline DHASH *data_get_dhash( char *path, int len, S
 			if( c->dtype == DATA_TYPE_STATS && ctl->stats->mom->enabled )
 			{
 				if( regex_list_test( d->path, ctl->stats->mom->rgx ) == 0 )
+				{
+				//	debug( "Path %s will get moments processing.", d->path );
 					d->mom_check = 1;
+				}
+				//else
+				//	debug( "Path %s will not get moments processing.", d->path );
 			}
 		}
 
