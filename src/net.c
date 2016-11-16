@@ -296,8 +296,8 @@ int net_start( void )
 	token_init( );
 
 	// reverse the ip net lists
-	ctl->net->iplist->nets = (IPNET *) mtype_reverse_list( ctl->net->iplist->nets );
-	ctl->net->prefix->nets = (IPNET *) mtype_reverse_list( ctl->net->prefix->nets );
+	ctl->net->iplist->nets = (IPNET *) mem_reverse_list( ctl->net->iplist->nets );
+	ctl->net->prefix->nets = (IPNET *) mem_reverse_list( ctl->net->prefix->nets );
 
 	ipc = ctl->net->iplist;
 	if( ipc->enable && ipc->verbose )

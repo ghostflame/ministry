@@ -134,11 +134,22 @@ How many submission cycles a path must lie empty for before it is deleted (defau
 How many submission cycles a gauge must not be updated for before it is deleted (default 25960).
 .SS [Stats]
 .TP
+\fBperiod\fR
+Set all reporting interval types, in msec (defaults are against individual types).
+.TP
 \fBthresholds\fR
 A list of integer percentage values to generate thresholds at.  Must be 0 < x < 100.
 .TP
 \fBtimestamps\fR
 What format of timestamps should be outputted.  Options are: sec, msec, usec, nsec, dotmsec, dotusec, dotnsec.
+.TP
+\fBmomentMin\fR
+Set the minimum point count in stats to trigger moment calculations (default 1 billion, effectively turning
+it off).  It is further guarded by the regular expressions filter.
+.TP
+\fBmomentFilter\fR
+Set a regular expression to match stats paths to trigger moment calculations.  This can appear multiple times,
+and the resulting list is parsed in order.  The default is no regex, effectively matching everything.
 .PP
 The rest of these are of the form stats.XXX, adder.XXX, gauge.XXX or self.XXX, affecting the behaviour of
 stats reporting, adder reporting, gauge reporting or self reporting.

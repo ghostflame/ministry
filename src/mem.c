@@ -10,7 +10,7 @@
 #include "ministry.h"
 
 
-void *mtype_reverse_list( void *list_in )
+void *mem_reverse_list( void *list_in )
 {
 	MTBLANK *one, *list, *ret = NULL;
 

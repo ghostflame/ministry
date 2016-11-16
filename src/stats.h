@@ -51,6 +51,8 @@ enum stats_types
 #define DEFAULT_ADDER_PREFIX		""
 #define DEFAULT_GAUGE_PREFIX		""
 
+#define DEFAULT_MOM_MIN				1000000000000L
+
 
 #define TSBUF_SZ					32
 #define PREFIX_SZ					512
@@ -69,7 +71,7 @@ struct stat_thread_ctl
 	// workspace
 	double			*	wkbuf;
 	double			*	wkspc;
-	int					wkspcsz;
+	int64_t				wkspcsz;
 
 	// output
 	BUF				*	prefix;
@@ -135,6 +137,9 @@ struct stats_control
 	ST_CFG			*	self;
 
 	ST_THOLD		*	thresholds;
+
+	int64_t				mom_min;	// minimum count to trigger moment calc
+	RGX				*	mom_rgx;	// list of regexes to match
 };
 
 

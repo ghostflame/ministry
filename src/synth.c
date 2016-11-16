@@ -245,7 +245,7 @@ void synth_init( void )
 
 	// reverse the list to preserve the order in config
 	// this means synths can reference each other!
-	ctl->synth->list = (SYNTH *) mtype_reverse_list( ctl->synth->list );
+	ctl->synth->list = (SYNTH *) mem_reverse_list( ctl->synth->list );
 
 	// then light them up
 	for( s = ctl->synth->list; s; s = s->next )

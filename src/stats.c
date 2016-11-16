@@ -26,7 +26,7 @@ static inline int cmp_floats( const void *p1, const void *p2 )
 	d1 = (double *) p1;
 	d2 = (double *) p2;
 
-	return ( *d1 > *d2 ) ? 1  :
+	return ( *d1 > *d2 ) ?  1 :
 	       ( *d2 < *d1 ) ? -1 : 0;
 }
 
@@ -223,13 +223,106 @@ void stats_thread_report( ST_THR *t )
 
 
 
+// an implementation of Kaham Summation
+// https://en.wikipedia.org/wiki/Kahan_summation_algorithm
+// useful to avoid floating point errors
+static inline void kahan_sum( double val, double *sum, double *low )
+{
+    double y, t;
+
+    y = val - *low;     // low starts off small
+    t = *sum + y;       // sum is big, y small, lo-order y is lost
+
+    *low = ( t - *sum ) - y;// (t-sum) is hi-order y, -y recovers lo-order
+    *sum = t;       // low is algebraically always 0
+}
+
+void kahan_summation( double *list, int len, double *sum )
+{
+    double low = 0;
+    int i;
+
+    for( *sum = 0, i = 0; i < len; i++ )
+        kahan_sum( list[i], sum, &low );
+
+    *sum += low;
+}
+
+
+// https://en.wikipedia.org/wiki/Standard_deviation#Estimation
+// https://en.wikipedia.org/wiki/Skewness#Sample_skewness
+// https://en.wikipedia.org/wiki/Kurtosis#Sample_kurtosis
+void stats_report_moments( ST_THR *t, DHASH *d, int64_t ct, double mean )
+{
+	double sdev, skew, kurt, dtmp, stmp, ktmp, diff, prod;
+	int64_t i;
+
+	// are we checking this path?
+	if( regex_list_test( d->path, ctl->stats->mom_rgx ) )
+		return;
+
+	sdev = skew = kurt = 0;
+	dtmp = stmp = ktmp = 0;
+
+	for( i = 0; i < ct; i++ )
+	{
+		// diff from mean
+		diff = t->wkspc[i] - mean;
+		prod = diff * diff;
+
+		// stddev needs sum of squares of diffs
+		kahan_sum( prod, &sdev, &dtmp );
+
+		// skewness needs third moment
+		prod *= diff;
+		kahan_sum( prod, &skew, &stmp );
+
+		// kurtosis needs fourth moment
+		prod *= diff;
+		kahan_sum( prod, &kurt, &ktmp );
+	}
+
+	// complete the kahan sum
+	sdev += dtmp;
+	skew += stmp;
+	kurt += ktmp;
+
+	// we don't need corrected - we have the whole population
+	sdev /= (double) ct;
+	kurt /= (double) ct;
+
+	// using Fisher-Pearson standardized moment with any decent count size
+	// http://www.statisticshowto.com/skewness/
+	if( ct > 5 )
+	{
+		skew *= (double) ct;
+		skew /= (double) ( ct - 1 ) * ( ct - 2 );
+	}
+	else
+		skew /= (double) ct;
+
+	// and sqrt the variance to get the std deviation
+	sdev = sqrt( sdev );
+
+	// normalize against the variance
+	skew /= sdev * sdev * sdev;
+	kurt /= sdev * sdev * sdev * sdev;
+	// and subtract 3 from kurtosis
+	kurt -= 3;
+
+	bprintf( t, "%s.stddev %f",   d->path, sdev );
+	bprintf( t, "%s.skewness %f", d->path, skew );
+	bprintf( t, "%s.kurtosis %f", d->path, kurt );
+}
+
+
 
 void stats_report_one( ST_THR *t, DHASH *d )
 {
+	int64_t i, ct, idx;
+	double sum, mean;
 	PTLIST *list, *p;
-	int i, ct, idx;
 	ST_THOLD *thr;
-	double sum;
 
 	// grab the points list
 	list = d->proc.points;
@@ -246,7 +339,7 @@ void stats_report_one( ST_THR *t, DHASH *d )
 #endif
 
 	// anything to do?
-	if( ( ct = (int) d->proc.count ) == 0 )
+	if( ( ct = d->proc.count ) == 0 )
 	{
 		if( list )
 			mem_free_point_list( list );
@@ -303,11 +396,14 @@ void stats_report_one( ST_THR *t, DHASH *d )
 	// median offset
 	idx = ct / 2;
 
+	// and the mean
+	mean = sum / (double) ct;
+
 	// and sort them
 	qsort( t->wkspc, ct, sizeof( double ), cmp_floats );
 
 	bprintf( t, "%s.count %d",  d->path, ct );
-	bprintf( t, "%s.mean %f",   d->path, sum / (double) ct );
+	bprintf( t, "%s.mean %f",   d->path, mean );
 	bprintf( t, "%s.upper %f",  d->path, t->wkspc[ct-1] );
 	bprintf( t, "%s.lower %f",  d->path, t->wkspc[0] );
 	bprintf( t, "%s.median %f", d->path, t->wkspc[idx] );
@@ -319,6 +415,10 @@ void stats_report_one( ST_THR *t, DHASH *d )
 		idx = ( thr->val * ct ) / thr->max;
 		bprintf( t, "%s.%s %f", d->path, thr->label, t->wkspc[idx] );
 	}
+
+	// are we doing std deviation and friends?
+	if( ctl->stats->mom_min < ct )
+		stats_report_moments( t, d, ct, mean );
 
 	mem_free_point_list( list );
 
@@ -715,6 +815,10 @@ void stats_init( void )
 	// we only allow one thread for this, and no data
 	ctl->stats->self->threads = 1;
 	stats_init_control( ctl->stats->self, 0 );
+
+	// and reverse the regex list if there is one
+	if( ctl->stats->mom_rgx )
+		mem_reverse_list( &(ctl->stats->mom_rgx) );
 }
 
 
@@ -768,6 +872,9 @@ STAT_CTL *stats_config_defaults( void )
 	s->self->name     = stats_type_names[STATS_TYPE_SELF];
 	s->self->enable   = 1;
 	stats_prefix( s->stats, DEFAULT_SELF_PREFIX );
+
+	// effectively disable moment checks
+	s->mom_min        = DEFAULT_MOM_MIN;
 
 	return s;
 }
@@ -839,6 +946,29 @@ int stats_config_line( AVP *av )
 			}
 
 			debug( "Acquired %d thresholds.", wd.wc );
+		}
+		else if( attIs( "momentMin" ) )
+		{
+			parse_number( av->val, &(s->mom_min), NULL );
+		}
+		else if( attIs( "momentFilter" ) )
+		{
+			if( !regex_list_make( av->val, &(s->mom_rgx) ) )
+				return -1;
+		}
+		else if( attIs( "period" ) )
+		{
+			t = atoi( av->val );
+			if( t > 0 )
+			{
+				s->stats->period = t;
+				s->adder->period = t;
+				s->gauge->period = t;
+				s->self->period  = t;
+				debug( "All stats periods set to %d msec.", t );
+			}
+			else
+				warn( "Stats period must be > 0, value %d given.", t );
 		}
 		else
 			return -1;

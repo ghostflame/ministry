@@ -57,6 +57,7 @@ typedef struct http_ssl				SSL_CONF;
 typedef struct http_ssl_file		SSL_FILE;
 typedef struct token_data			TOKEN;
 typedef struct token_info			TOKENS;
+typedef struct regex_list			RGX;
 
 
 // function types

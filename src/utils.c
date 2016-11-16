@@ -491,31 +491,6 @@ void pidfile_remove( void )
 }
 
 
-// an implementation of Kaham Summation
-// https://en.wikipedia.org/wiki/Kahan_summation_algorithm
-// useful to avoid floating point errors
-static inline void kahan_sum( double val, double *sum, double *low )
-{
-	double y, t;
-
-	y = val - *low;		// low starts off small
-	t = *sum + y;		// sum is big, y small, lo-order y is lost
-
-	*low = ( t - *sum ) - y;// (t-sum) is hi-order y, -y recovers lo-order
-	*sum = t;		// low is algebraically always 0
-}
-
-void kahan_summation( double *list, int len, double *sum )
-{
-	double low = 0;
-	int i;
-
-	for( *sum = 0, i = 0; i < len; i++ )
-		kahan_sum( list[i], sum, &low );
-
-	*sum += low;
-}
-
 
 
 double ts_diff( struct timespec to, struct timespec from, double *store )
@@ -732,6 +707,55 @@ int hash_size( char *str )
 	}
 
 	return (int) v;
+}
+
+
+int regex_list_make( char *str, RGX **list )
+{
+	RGX *rg;
+
+	if( !list || !str || !*str )
+		return -1;
+
+	rg    = (RGX *) allocz( sizeof( RGX ) );
+	rg->r = (regex_t *) allocz( sizeof( regex_t ) );
+
+	if( regcomp( rg->r, str, REG_EXTENDED|REG_NOSUB ) )
+	{
+		err( "Could not compile regex string: %s", str );
+		regfree( rg->r );
+		free( rg );
+		return -2;
+	}
+
+	rg->slen = strlen( str );
+	rg->src  = str_dup( str, rg->slen );
+
+	rg->next = *list;
+	*list    = rg;
+
+	return 0;
+}
+
+int regex_list_test( char *str, RGX *list )
+{
+	RGX *r;
+
+	// no list means MATCH
+	if( !list )
+		return 0;
+
+	for( r = list; r; r = r->next )
+	{
+		r->tests++;
+		if( regexec( r->r, str, 0, NULL, 0 ) == 0 )
+		{
+			r->matched++;
+			return 0;
+		}
+	}
+
+	return 1;
 }
 
 

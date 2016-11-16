@@ -13,6 +13,7 @@
 #define _GNU_SOURCE
 
 // here's what we need in addition
+#include <math.h>
 #include <poll.h>
 #include <time.h>
 #include <ctype.h>

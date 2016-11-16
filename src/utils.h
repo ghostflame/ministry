@@ -99,6 +99,18 @@ struct av_pair
 	int						status;
 };
 
+struct regex_list
+{
+	RGX					*	next;
+	regex_t				*	r;
+	char				*	src;
+	int						slen;
+	int64_t					tests;
+	int64_t					matched;
+};
+
+
+
 
 // FUNCTIONS
 
@@ -132,9 +144,6 @@ int strwords( WORDS *w, char *src, int len, char sep );
 void pidfile_write( void );
 void pidfile_remove( void );
 
-// proper float summation
-void kahan_summation( double *list, int len, double *sum );
-
 // timespec difference as a double
 double ts_diff( struct timespec to, struct timespec from, double *store );
 
@@ -153,5 +162,11 @@ int parse_number( char *str, int64_t *iv, double *dv );
 
 // hash size lookup
 int hash_size( char *str );
+
+// make a regex and add it to the list
+int regex_list_make( char *str, RGX **list );
+
+// test a string against a regex list
+int regex_list_test( char *str, RGX *list );
 
 #endif
