@@ -155,6 +155,8 @@ int main( int ac, char **av, char **env )
 			case 'c':
 				free( ctl->cfg_file );
 				ctl->cfg_file = strdup( optarg );
+				// this wins against env
+				setcfFlag( FILE_OPT );
 				break;
 			case 'v':
 				printf( "Ministry version: %s\n", ctl->version );

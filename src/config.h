@@ -23,6 +23,7 @@
 #define CONF_FLAG_URL_INC_URL		0x00000200
 #define CONF_FLAG_SEC_INC_INSEC		0x00000400
 #define CONF_FLAG_TEST_ONLY			0x10000000
+#define CONF_FLAG_FILE_OPT			0x20000000
 
 #define setcfFlag( K )				ctl->conf_flags |= CONF_FLAG_##K
 #define cutcfFlag( K )				ctl->conf_flags &= ~(CONF_FLAG_##K)

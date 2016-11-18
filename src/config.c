@@ -489,6 +489,28 @@ int config_env_path( char *path, int len )
 	char *sec, *pth, *us, *p;
 	AVP av;
 
+	// catch the config file entry - not part of the
+	// regular env processing
+	if( !strncasecmp( path, "FILE=", 5 ) )
+	{
+		if( var_val( path, len, &av, CFG_VV_FLAGS ) )
+		{
+			err( "Could not process env path." );
+			return -1;
+		}
+
+		// command line file beats environment setting
+		if( chkcfFlag( FILE_OPT ) )
+			info( "Environment-set config flag ignored in favour of run option." );
+		else
+		{
+			free( ctl->cfg_file );
+			ctl->cfg_file = strdup( av.val );
+		}
+		return 0;
+	}
+
+
 	if( path[0] == '_' )
 	{
 		// 'main' section
