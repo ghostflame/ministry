@@ -62,6 +62,7 @@
 #include "run.h"
 #include "loop.h"
 #include "thread.h"
+#include "regexp.h"
 
 // in order
 #include "utils.h"
