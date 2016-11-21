@@ -19,6 +19,7 @@ const DTYPE data_type_defns[DATA_TYPE_MAX] =
 		.lf   = &data_line_ministry,
 		.pf   = &data_line_min_prefix,
 		.af   = &data_point_stats,
+		.tokn = TOKEN_TYPE_STATS,
 		.port = DEFAULT_STATS_PORT,
 		.lock = DSTATS_SLOCK_COUNT,
 		.sock = "ministry stats socket"
@@ -29,6 +30,7 @@ const DTYPE data_type_defns[DATA_TYPE_MAX] =
 		.lf   = &data_line_ministry,
 		.pf   = &data_line_min_prefix,
 		.af   = &data_point_adder,
+		.tokn = TOKEN_TYPE_ADDER,
 		.port = DEFAULT_ADDER_PORT,
 		.lock = DADDER_SLOCK_COUNT,
 		.sock = "ministry adder socket"
@@ -39,6 +41,7 @@ const DTYPE data_type_defns[DATA_TYPE_MAX] =
 		.lf   = &data_line_ministry,
 		.pf   = &data_line_min_prefix,
 		.af   = &data_point_gauge,
+		.tokn = TOKEN_TYPE_GAUGE,
 		.port = DEFAULT_GAUGE_PORT,
 		.lock = DGAUGE_SLOCK_COUNT,
 		.sock = "ministry gauge socket"
@@ -49,6 +52,7 @@ const DTYPE data_type_defns[DATA_TYPE_MAX] =
 		.lf   = &data_line_compat,
 		.pf   = &data_line_com_prefix,
 		.af   = NULL,
+		.tokn = 0,
 		.port = DEFAULT_COMPAT_PORT,
 		.sock = "statsd compat socket"
 	},
@@ -189,6 +193,18 @@ __attribute__((hot)) static inline DHASH *data_get_dhash( char *path, int len, S
 			c->data[idx] = d;
 
 			d->valid = 1;
+
+			// might we do moment filtering on this?
+			if( c->dtype == DATA_TYPE_STATS && ctl->stats->mom->enabled )
+			{
+				if( regex_list_test( d->path, ctl->stats->mom->rgx ) == 0 )
+				{
+				//	debug( "Path %s will get moments processing.", d->path );
+					d->mom_check = 1;
+				}
+				//else
+				//	debug( "Path %s will not get moments processing.", d->path );
+			}
 		}
 
 		unlock_table( idx );
@@ -490,6 +506,41 @@ __attribute__((hot)) void data_line_ministry( HOST *h, char *line, int len )
 
 	// and put that in
 	(*(h->type->handler))( line, plen, ep );
+}
+
+
+
+
+__attribute__((hot)) void data_line_token( HOST *h, char *line, int len )
+{
+	int64_t tval;
+	TOKEN *t;
+
+	// have we flagged them already?
+	if( h->net->flags & HOST_CLOSE )
+	{
+		debug( "Host already flagged as closed - ignoring line: %s", line );
+		return;
+	}
+
+	// read the token
+	tval = strtoll( line, NULL, 10 );
+
+	// look up a token based on that information
+	if( !( t = token_find( h->peer->sin_addr.s_addr, h->type->token_type, tval ) ) )
+	{
+		debug( "Found no token: %p", t );
+
+		// we were expecting a token, so, no.
+		h->net->flags |= HOST_CLOSE;
+		return;
+	}
+
+	// burn that token
+	token_burn( t );
+
+	// reset the handler function
+	net_set_host_parser( h, 0, 1 );
 }
 
 

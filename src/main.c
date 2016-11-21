@@ -13,15 +13,22 @@ void usage( void )
 {
 	char *help_str = "\
 Usage\tministry -h\n\
-\tministry [OPTIONS] -c <config file>\n\n\
+\tministry [OPTIONS] [-c <config file>]\n\n\
 Options:\n\
  -h           Print this help\n\
- -c <file>    Select config file to use\n\
+ -c <path>    Select config file or URI to use\n\
+ -E           Disable reading environment variables\n\
+ -F           Disable reading a config file (env only)\n\
+ -U           Disable all reading of URI's\n\
+ -u           Disable URI config including other URI's\n\
+ -i           Allow insecure URI's\n\
+ -I           Allow secure URI's to include insecure URI's.\n\
  -d           Daemonize in the background\n\
  -D           Switch on debug output (overrides config)\n\
  -V           Verbose logging to console\n\
  -p <file>    Override configured pidfile\n\
  -v           Print version number and exit\n\
+ -s           Strict config parsing\n\
  -t           Just test the config is valid and exit\n\n\
 Ministry is a statsd-alternative processing engine.  It runs on very\n\
 similiar lines, taking data paths and producing statistics on them.\n\
@@ -130,21 +137,26 @@ int set_limits( void )
 
 
 
-int main( int ac, char **av )
+int main( int ac, char **av, char **env )
 {
-	int oc, justTest = 0, debug = 0;
+	int oc, debug = 0;
 	char *pidfile = NULL;
 	double diff;
 
 	// make a control structure
-	ctl = config_create( );
+	config_create( );
 
-	while( ( oc = getopt( ac, av, "hHDVdvtc:p:" ) ) != -1 )
+	while( ( oc = getopt( ac, av, "hHDVEFUIsuidvtc:p:C:" ) ) != -1 )
 		switch( oc )
 		{
+			case 'C':
+				ctl->strict = -1;
+				// fall through intentional
 			case 'c':
 				free( ctl->cfg_file );
 				ctl->cfg_file = strdup( optarg );
+				// this wins against env
+				setcfFlag( FILE_OPT );
 				break;
 			case 'v':
 				printf( "Ministry version: %s\n", ctl->version );
@@ -164,7 +176,29 @@ int main( int ac, char **av )
 				ctl->log->force_stdout = 1;
 				break;
 			case 't':
-				justTest = 1;
+				setcfFlag( TEST_ONLY );
+				break;
+			case 's':
+				ctl->strict = -1;
+				break;
+			case 'U':
+				cutcfFlag( URL_INC_URL );
+				cutcfFlag( READ_URL );
+				break;
+			case 'u':
+				cutcfFlag( URL_INC_URL );
+				break;
+			case 'i':
+				setcfFlag( URL_INSEC );
+				break;
+			case 'I':
+				setcfFlag( SEC_INC_INSEC );
+				break;
+			case 'E':
+				cutcfFlag( READ_ENV );
+				break;
+			case 'F':
+				cutcfFlag( READ_FILE );
 				break;
 			case 'H':
 			case 'h':
@@ -175,9 +209,22 @@ int main( int ac, char **av )
 				return 1;
 		}
 
+	// read our environment
+	// has to happen after parsing args
+	config_read_env( env );
+
+	// set up curl
+	curl_global_init( CURL_GLOBAL_SSL );
+
 	// try to read the config
 	if( config_read( ctl->cfg_file ) )
-		fatal( "Unable to read config file '%s'", ctl->cfg_file );
+	{
+		printf( "Config file '%s' is invalid.\n", ctl->cfg_file );
+		return 1;
+	}
+
+	// tidy up curl
+	curl_global_cleanup( );
 
 	// enforce what we got in arguments
 	if( debug )
@@ -191,13 +238,13 @@ int main( int ac, char **av )
 		ctl->pidfile = pidfile;
 	}
 
-	if( justTest )
+	if( chkcfFlag( TEST_ONLY ) )
 	{
-		printf( "Config is OK.\n" );
+		printf( "Config file '%s' is OK.\n", ctl->cfg_file );
 		return 0;
 	}
 
-	if( !ctl->log->force_stdout )
+	if( !ctl->log->force_stdout && !ctl->log->use_std )
 		debug( "Starting logging - no more logs to stdout." );
 
 	log_start( );

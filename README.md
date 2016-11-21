@@ -41,10 +41,10 @@ are several design principles at work:
 Shared resources (like the data on a path) are controlled with spinlocks or mutexes.
 
 In straight-line testing, ie:  cat file-full-of-lines | nc localhost 9225, ministry
-can achieve about 5.9M lines/sec into one path on a 2.7Ghz AMD chip.  Interestingly,
+can achieve about 5.7M lines/sec into one path on a 2.7Ghz AMD chip.  Interestingly,
 running a second input sees only about 6.3M lines/sec - suggesting a limit in how
-fast the kernel can do pthread_spin_lock.  More work around GCC's atomic built-in's
-may improve that.
+fast the kernel can do pthread_spin_lock.  Running points into a stats buffer runs
+at 1.9M lines/sec.
 
 Reporting on stats is the biggest CPU task, and this is done by separate threads to
 prevent it interfering with data reception.  The number of these is configurable
@@ -91,6 +91,8 @@ And then conf/log.conf
 level = info
 ```
 
-Strings such as log level, yes/no, are case insensitive.
+Ministry ships with a self-documenting config file with every option mentioned and
+explained in it, as well as a manual page for its config file.
 
+Ministry can take HTTP URI's as config sources, even for includes.
 

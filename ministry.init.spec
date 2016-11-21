@@ -1,5 +1,5 @@
 Name:		ministry
-Version:	0.4.0
+Version:	0.4.1
 Release:	1%{?dist}
 Summary:	A statsd implementation in threaded C.
 
@@ -8,8 +8,8 @@ License:	ASL 2.0
 URL:		https://github.com/ghostflame/ministry
 Source:		https://github.com/ghostflame/ministry/archive/%{version}.tar.gz
 
-BuildRequires: gcc libmicrohttpd-devel openldap-devel
-Requires(pre): shadow-utils libmicrohttpd openldap
+BuildRequires: gcc libcurl-devel libmicrohttpd-devel openldap-devel
+Requires(pre): shadow-utils libcurl libmicrohttpd openldap
 
 %description
 A drop-in replacement for Etsy's statsd, written in threaded C.  Designed to

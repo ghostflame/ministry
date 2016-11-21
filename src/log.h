@@ -14,7 +14,9 @@
 #define	Err		strerror( errno )
 #endif
 
-#define	DEFAULT_LOG_FILE	"/var/log/ministry/ministry.log"
+#define	DEFAULT_LOG_FILE	"-"   // log to stdout by default
+#define DEFAULT_LOG_FAC		LOG_LOCAL4
+#define DEFAULT_LOG_IDENT	"ministry"
 #define LOG_LINE_MAX		8192
 
 
@@ -30,11 +32,25 @@ enum log_levels
 };
 
 
+struct log_facility
+{
+	int					facility;
+	char			*	name;
+};
+
+
+
 struct log_control
 {
 	char			*	filename;
 	int					level;
-	int					fd;
+	char			*	identifier;
+	int					facility;
+	int					ok_fd;
+	int					err_fd;
+	int					use_std;
+	int					use_syslog;
+	int					write_level;
 	int					force_stdout;
 	int					notify_re;
 };
@@ -88,6 +104,12 @@ int log_config_line( AVP *av );
 #define debug_loop( ... )		LLFLF( DEBUG, ## __VA_ARGS__ )
 #else
 #define debug_loop( ... )		
+#endif
+
+#ifdef DEBUG_ENV
+#define debug_env( ... )		LLFLF( DEBUG, ## __VA_ARGS__ )
+#else
+#define debug_env( ... )		
 #endif
 
 #ifdef DEBUG_GC

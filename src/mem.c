@@ -10,7 +10,7 @@
 #include "ministry.h"
 
 
-void *mtype_reverse_list( void *list_in )
+void *mem_reverse_list( void *list_in )
 {
 	MTBLANK *one, *list, *ret = NULL;
 
@@ -398,7 +398,7 @@ void mem_free_dhash_list( DHASH *list )
 
 IOLIST *mem_new_iolist( void )
 {
-	return __mtype_new( ctl->mem->iolist );
+	return (IOLIST *) __mtype_new( ctl->mem->iolist );
 }
 
 void mem_free_iolist( IOLIST **l )
@@ -535,6 +535,52 @@ void mem_free_buf_list( IOBUF *list )
 }
 
 
+TOKEN *mem_new_token( void )
+{
+	return (TOKEN *) __mtype_new( ctl->mem->token );
+}
+
+
+void mem_free_token( TOKEN **t )
+{
+	TOKEN *tp;
+
+	tp = *t;
+	*t = NULL;
+
+	memset( tp, 0, sizeof( TOKEN ) );
+	__mtype_free( ctl->mem->token, tp );
+}
+
+void mem_free_token_list( TOKEN *list )
+{
+	TOKEN *t, *freed, *end;
+	int j = 0;
+
+	freed = end = NULL;
+
+	while( list )
+	{
+		t    = list;
+		list = t->next;
+
+		memset( t, 0, sizeof( TOKEN ) );
+
+		t->next = freed;
+		freed   = t;
+
+		if( !end )
+			end = t;
+
+		j++;
+	}
+
+	__mtype_free_list( ctl->mem->token, j, freed, end );
+}
+
+
+
+
 
 void mem_check( int64_t tval, void *arg )
 {
@@ -568,36 +614,36 @@ int mem_config_line( AVP *av )
 	if( !( d = strchr( av->att, '.' ) ) )
 	{
 		// just the singles
-		if( attIs( "max_mb" ) || attIs( "max_size" ) )
+		if( attIs( "maxMb" ) || attIs( "maxSize" ) )
 			ctl->mem->max_kb = 1024 * atoi( av->val );
-		else if( attIs( "max_kb" ) )
+		else if( attIs( "maxKb") )
 			ctl->mem->max_kb = atoi( av->val );
 		else if( attIs( "interval" ) || attIs( "msec" ) )
 			ctl->mem->interval = atoi( av->val );
-		else if( attIs( "hashsize" ) )
+		else if( attIs( "hashSize" ) )
 			ctl->mem->hashsize = atoi( av->val );
-		else if( attIs( "stacksize" ) )
+		else if( attIs( "stackSize" ) )
 		{
 			// gets converted to KB
 			ctl->mem->stacksize = atoi( av->val );
-			info( "Stack size set to %d KB.", ctl->mem->stacksize );
+			debug( "Stack size set to %d KB.", ctl->mem->stacksize );
 		}
 		else if( attIs( "gc" ) )
 			ctl->mem->gc_enabled = config_bool( av );
-		else if( attIs( "gc_thresh" ) )
+		else if( attIs( "gcThresh" ) )
 		{
 			t = atoi( av->val );
 			if( !t )
 				t = DEFAULT_GC_THRESH;
-			info( "Garbage collection threshold set to %d stats intervals.", t );
+			debug( "Garbage collection threshold set to %d stats intervals.", t );
 			ctl->mem->gc_thresh = t;
 		}
-		else if( attIs( "gc_gauge_thresh" ) )
+		else if( attIs( "gcGaugeThresh" ) )
 		{
 			t = atoi( av->val );
 			if( !t )
 				t = DEFAULT_GC_GG_THRESH;
-			info( "Gauge garbage collection threshold set to %d stats intervals.", t );
+			debug( "Gauge garbage collection threshold set to %d stats intervals.", t );
 			ctl->mem->gc_gg_thresh = t;
 		}
 		else
@@ -619,13 +665,15 @@ int mem_config_line( AVP *av )
 		mt = ctl->mem->dhash;
 	else if( !strncasecmp( av->att, "iolist.", 7 ) )
 		mt = ctl->mem->iolist;
+	else if( !strncasecmp( av->att, "token.", 6 ) )
+		mt = ctl->mem->token;
 	else
 		return -1;
 
 	if( !strcasecmp( d, "block" ) )
 	{
 		mt->alloc_ct = (uint32_t) strtoul( av->val, NULL, 10 );
-		info( "Allocation block for %s set to %u", av->att, mt->alloc_ct );
+		debug( "Allocation block for %s set to %u", av->att, mt->alloc_ct );
 	}
 	else
 		return -1;
@@ -647,6 +695,7 @@ void mem_shutdown( void )
 	pthread_mutex_destroy( &(m->iobufs->lock) );
 	pthread_mutex_destroy( &(m->dhash->lock)  );
 	pthread_mutex_destroy( &(m->iolist->lock) );
+	pthread_mutex_destroy( &(m->token->lock)  );
 }
 
 
@@ -681,6 +730,7 @@ MEM_CTL *mem_config_defaults( void )
 	m->points = __mem_type_ctl( sizeof( PTLIST ), MEM_ALLOCSZ_POINTS, 0 );
 	m->dhash  = __mem_type_ctl( sizeof( DHASH ),  MEM_ALLOCSZ_DHASH,  64 ); // guess on path length
 	m->iolist = __mem_type_ctl( sizeof( IOLIST ), MEM_ALLOCSZ_IOLIST, 0 );
+	m->token  = __mem_type_ctl( sizeof( TOKEN ),  MEM_ALLOCSZ_TOKEN,  0 );
 
 	m->max_kb       = DEFAULT_MEM_MAX_KB;
 	m->interval     = DEFAULT_MEM_CHECK_INTV;

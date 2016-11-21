@@ -26,7 +26,7 @@ static inline int cmp_floats( const void *p1, const void *p2 )
 	d1 = (double *) p1;
 	d2 = (double *) p2;
 
-	return ( *d1 > *d2 ) ? 1  :
+	return ( *d1 > *d2 ) ?  1 :
 	       ( *d2 < *d1 ) ? -1 : 0;
 }
 
@@ -223,13 +223,102 @@ void stats_thread_report( ST_THR *t )
 
 
 
+// an implementation of Kaham Summation
+// https://en.wikipedia.org/wiki/Kahan_summation_algorithm
+// useful to avoid floating point errors
+static inline void kahan_sum( double val, double *sum, double *low )
+{
+    double y, t;
+
+    y = val - *low;     // low starts off small
+    t = *sum + y;       // sum is big, y small, lo-order y is lost
+
+    *low = ( t - *sum ) - y;// (t-sum) is hi-order y, -y recovers lo-order
+    *sum = t;       // low is algebraically always 0
+}
+
+void kahan_summation( double *list, int len, double *sum )
+{
+    double low = 0;
+    int i;
+
+    for( *sum = 0, i = 0; i < len; i++ )
+        kahan_sum( list[i], sum, &low );
+
+    *sum += low;
+}
+
+
+// https://en.wikipedia.org/wiki/Standard_deviation#Estimation
+// https://en.wikipedia.org/wiki/Skewness#Sample_skewness
+// https://en.wikipedia.org/wiki/Kurtosis#Sample_kurtosis
+void stats_report_moments( ST_THR *t, DHASH *d, int64_t ct, double mean )
+{
+	double sdev, skew, kurt, dtmp, stmp, ktmp, diff, prod;
+	int64_t i;
+
+	sdev = skew = kurt = 0;
+	dtmp = stmp = ktmp = 0;
+
+	for( i = 0; i < ct; i++ )
+	{
+		// diff from mean
+		diff = t->wkspc[i] - mean;
+		prod = diff * diff;
+
+		// stddev needs sum of squares of diffs
+		kahan_sum( prod, &sdev, &dtmp );
+
+		// skewness needs third moment
+		prod *= diff;
+		kahan_sum( prod, &skew, &stmp );
+
+		// kurtosis needs fourth moment
+		prod *= diff;
+		kahan_sum( prod, &kurt, &ktmp );
+	}
+
+	// complete the kahan sum
+	sdev += dtmp;
+	skew += stmp;
+	kurt += ktmp;
+
+	// we don't need corrected - we have the whole population
+	sdev /= (double) ct;
+	kurt /= (double) ct;
+
+	// using Fisher-Pearson standardized moment with any decent count size
+	// http://www.statisticshowto.com/skewness/
+	if( ct > 5 )
+	{
+		skew *= (double) ct;
+		skew /= (double) ( ct - 1 ) * ( ct - 2 );
+	}
+	else
+		skew /= (double) ct;
+
+	// and sqrt the variance to get the std deviation
+	sdev = sqrt( sdev );
+
+	// normalize against the variance
+	skew /= sdev * sdev * sdev;
+	kurt /= sdev * sdev * sdev * sdev;
+	// and subtract 3 from kurtosis
+	kurt -= 3;
+
+	bprintf( t, "%s.stddev %f",   d->path, sdev );
+	bprintf( t, "%s.skewness %f", d->path, skew );
+	bprintf( t, "%s.kurtosis %f", d->path, kurt );
+}
+
+
 
 void stats_report_one( ST_THR *t, DHASH *d )
 {
+	int64_t i, ct, idx;
+	double sum, mean;
 	PTLIST *list, *p;
-	int i, ct, idx;
 	ST_THOLD *thr;
-	double sum;
 
 	// grab the points list
 	list = d->proc.points;
@@ -246,7 +335,7 @@ void stats_report_one( ST_THR *t, DHASH *d )
 #endif
 
 	// anything to do?
-	if( ( ct = (int) d->proc.count ) == 0 )
+	if( ( ct = d->proc.count ) == 0 )
 	{
 		if( list )
 			mem_free_point_list( list );
@@ -303,11 +392,14 @@ void stats_report_one( ST_THR *t, DHASH *d )
 	// median offset
 	idx = ct / 2;
 
+	// and the mean
+	mean = sum / (double) ct;
+
 	// and sort them
 	qsort( t->wkspc, ct, sizeof( double ), cmp_floats );
 
 	bprintf( t, "%s.count %d",  d->path, ct );
-	bprintf( t, "%s.mean %f",   d->path, sum / (double) ct );
+	bprintf( t, "%s.mean %f",   d->path, mean );
 	bprintf( t, "%s.upper %f",  d->path, t->wkspc[ct-1] );
 	bprintf( t, "%s.lower %f",  d->path, t->wkspc[0] );
 	bprintf( t, "%s.median %f", d->path, t->wkspc[idx] );
@@ -319,6 +411,10 @@ void stats_report_one( ST_THR *t, DHASH *d )
 		idx = ( thr->val * ct ) / thr->max;
 		bprintf( t, "%s.%s %f", d->path, thr->label, t->wkspc[idx] );
 	}
+
+	// are we doing std deviation and friends?
+	if( d->mom_check && ctl->stats->mom->min_pts <= ct )
+		stats_report_moments( t, d, ct, mean );
 
 	mem_free_point_list( list );
 
@@ -643,7 +739,7 @@ void stats_init_control( ST_CFG *c, int alloc_data )
 	ST_THR *t;
 
 	// maybe fall back to default hash size
-	if( c->hsize < 0 )
+	if( c->hsize == 0 )
 		c->hsize = ctl->mem->hashsize;
 
 	debug( "Hash size set to %d for %s", c->hsize, c->name );
@@ -769,6 +865,12 @@ STAT_CTL *stats_config_defaults( void )
 	s->self->enable   = 1;
 	stats_prefix( s->stats, DEFAULT_SELF_PREFIX );
 
+	// moment checks are off by default
+	s->mom            = (ST_MOM *) allocz( sizeof( ST_MOM ) );
+	s->mom->min_pts   = DEFAULT_MOM_MIN;
+	s->mom->enabled   = 0;
+	s->mom->rgx       = regex_list_create( 1 );
+
 	return s;
 }
 
@@ -840,6 +942,20 @@ int stats_config_line( AVP *av )
 
 			debug( "Acquired %d thresholds.", wd.wc );
 		}
+		else if( attIs( "period" ) )
+		{
+			t = atoi( av->val );
+			if( t > 0 )
+			{
+				s->stats->period = t;
+				s->adder->period = t;
+				s->gauge->period = t;
+				s->self->period  = t;
+				debug( "All stats periods set to %d msec.", t );
+			}
+			else
+				warn( "Stats period must be > 0, value %d given.", t );
+		}
 		else
 			return -1;
 
@@ -857,6 +973,38 @@ int stats_config_line( AVP *av )
 		sc = s->gauge;
 	else if( !strncasecmp( av->att, "self.", 5 ) )
 		sc = s->self;
+	else if( !strncasecmp( av->att, "moments.", 8 ) )
+	{
+		if( !strcasecmp( d, "enable" ) )
+		{
+			s->mom->enabled = config_bool( av );
+		}
+		else if( !strcasecmp( d, "minimum" ) )
+		{
+			parse_number( av->val, &(s->mom->min_pts), NULL );
+		}
+		else if( !strcasecmp( d, "fallbackMatch" ) )
+		{
+			t = config_bool( av );
+			regex_list_set_fallback( t, s->mom->rgx );
+		}
+		else if( !strcasecmp( d, "whitelist" ) )
+		{
+			if( regex_list_add( av->val, 0, s->mom->rgx ) )
+				return -1;
+			debug( "Added moments whitelist regex: %s", av->val );
+		}
+		else if( !strcasecmp( d, "blacklist" ) )
+		{
+			if( regex_list_add( av->val, 1, s->mom->rgx ) )
+				return -1;
+			debug( "Added moments blacklist regex: %s", av->val );
+		}
+		else
+			return -1;
+
+		return 0;
+	}
 	else
 		return -1;
 
@@ -894,36 +1042,11 @@ int stats_config_line( AVP *av )
 		else
 			warn( "Stats offset must be > 0, value %d given.", t );
 	}
-	else if( !strcasecmp( d, "size" ) || !strcasecmp( d, "hashsize" ) )
+	else if( !strcasecmp( d, "size" ) || !strcasecmp( d, "hashSize" ) )
 	{
-		if( valIs( "tiny" ) )
-			sc->hsize = MEM_HSZ_TINY;
-		else if( valIs( "small" ) )
-			sc->hsize = MEM_HSZ_SMALL;
-		else if( valIs( "medium" ) )
-			sc->hsize = MEM_HSZ_MEDIUM;
-		else if( valIs( "large" ) )
-			sc->hsize = MEM_HSZ_LARGE;
-		else if( valIs( "xlarge" ) )
-			sc->hsize = MEM_HSZ_XLARGE;
-		else if( valIs( "x2large" ) )
-			sc->hsize = MEM_HSZ_X2LARGE;
-		else
-		{
-			if( !isdigit( av->val[0] ) )
-			{
-				warn( "Unrecognised hash table size '%s'", av->val );
-				return -1;
-			}
-			t = atoi( av->val );
-			if( t == 0 )
-			{
-				warn( "Cannot set zero size hash table." );
-				return -1;
-			}
-			// < 0 means default
-			sc->hsize = t;
-		}
+		// 0 means default
+		if( ( sc->hsize = hash_size( av->val ) ) < 0 )
+			return -1;
 	}
 	else
 		return -1;

@@ -248,7 +248,7 @@ int strwords( WORDS *w, char *src, int len, char sep )
 #define	VV_NO_CHECKS	0x07
 int var_val( char *line, int len, AVP *av, int flags )
 {
-	char *p, *q, *r, *s;
+	char *a, *v, *p, *q, *r, *s;
 
 	if( !line || !av )
 		return 1;
@@ -296,17 +296,17 @@ int var_val( char *line, int len, AVP *av, int flags )
 	// if we are ignoring values, what we have is an attribute
 	if( ( flags & VV_NO_VALS ) )
 	{
-		av->att = p;
+		a = p;
 		av->alen = len;
 
 		// if we're automatically setting vals, set 1
 		if( flags & VV_AUTO_VAL )
 		{
-			av->val  = "1";
+			v  = "1";
 			av->vlen = 1;
 		}
 		else
-			av->val = "";
+			v = "";
 	}
 	else
 	{
@@ -325,9 +325,9 @@ int var_val( char *line, int len, AVP *av, int flags )
 			if( flags & VV_AUTO_VAL )
 			{
 				// then we have an attribute and an auto value
-				av->att  = p;
+				a        = p;
 				av->alen = s - p;
-				av->val  = "1";
+				v        = "1";
 				av->vlen = 1;
 				goto vv_finish;
 			}
@@ -351,9 +351,9 @@ int var_val( char *line, int len, AVP *av, int flags )
 			*--q = '\0';
 
 		// OK, let's record those
-		av->att = p;
+		a        = p;
 		av->alen = q - p;
-		av->val = r;
+		v        = r;
 		av->vlen = s - r;
 	}
 
@@ -365,6 +365,48 @@ int var_val( char *line, int len, AVP *av, int flags )
 	}
 
 vv_finish:
+
+	if( av->alen >= AVP_MAX_ATT )
+	{
+		av->status = VV_LINE_AOVERLEN;
+		return 1;
+	}
+	if( av->vlen >= AVP_MAX_VAL )
+	{
+		av->status = VV_LINE_VOVERLEN;
+		return 1;
+	}
+
+	// were we squashing underscores in attrs?
+	if( flags && VV_REMOVE_UDRSCR )
+	{
+		// we are deprecating key names with _ in them, to enable
+		// supporting environment names where we will need to
+		// replace _ with . to support the hierarchical keys
+		// so warn about any key with _ in it.
+
+		if( memchr( a, '_', av->alen ) )
+			warn( "Key %s contains an underscore _, this is deprecated in favour of camelCase.", a );
+
+		// copy without underscores
+		for( p = a, q = av->att; *p; p++ )
+			if( *p != '_' )
+				*q++ = *p;
+
+		// cap it
+		*q = '\0';
+
+		// and recalculate the length
+		av->alen = q - av->att;
+	}
+	else
+	{
+		memcpy( av->att, a, av->alen );
+		av->att[av->alen] = '\0';
+	}
+
+	memcpy( av->val, v, av->vlen );
+	av->val[av->vlen] = '\0';
 
 	// are were lower-casing the attributes?
 	if( flags && VV_LOWER_ATT )
@@ -448,31 +490,6 @@ void pidfile_remove( void )
 			ctl->pidfile, Err );
 }
 
-
-// an implementation of Kaham Summation
-// https://en.wikipedia.org/wiki/Kahan_summation_algorithm
-// useful to avoid floating point errors
-static inline void kahan_sum( double val, double *sum, double *low )
-{
-	double y, t;
-
-	y = val - *low;		// low starts off small
-	t = *sum + y;		// sum is big, y small, lo-order y is lost
-
-	*low = ( t - *sum ) - y;// (t-sum) is hi-order y, -y recovers lo-order
-	*sum = t;		// low is algebraically always 0
-}
-
-void kahan_summation( double *list, int len, double *sum )
-{
-	double low = 0;
-	int i;
-
-	for( *sum = 0, i = 0; i < len; i++ )
-		kahan_sum( list[i], sum, &low );
-
-	*sum += low;
-}
 
 
 
@@ -622,5 +639,167 @@ int rand_val( int size )
 	d *= (double) size;
 
 	return (int) floor( d );
+}
+
+int parse_number( char *str, int64_t *iv, double *dv )
+{
+	if( iv )
+		*iv = 0;
+	if( dv )
+		*dv = 0;
+
+	if( !strncmp( str, "0x", 2 ) )
+	{
+		if( iv )
+			*iv = strtoll( str, NULL, 16 );
+		return NUM_HEX;
+	}
+
+	while( *str == '+' )
+		str++;
+
+	if( !isdigit( *str ) )
+		return NUM_INVALID;
+
+	if( strchr( str, '.' ) )
+	{
+		if( dv )
+			*dv = strtod( str, NULL );
+		return NUM_FLOAT;
+	}
+
+	if( strlen( str ) > 1 && *str == '0' )
+	{
+		if( iv )
+			*iv = strtoll( str, NULL, 8 );
+		return NUM_OCTAL;
+	}
+
+	if( iv )
+		*iv = strtoll( str, NULL, 10 );
+
+	return NUM_NORMAL;
+}
+
+
+
+int hash_size( char *str )
+{
+	int64_t v;
+
+	if( !str || !strlen( str ) )
+	{
+		warn( "Invalid hashtable size string." );
+		return -1;
+	}
+
+	if( !strcasecmp( str, "tiny" ) )
+		return MEM_HSZ_TINY;
+
+	if( !strcasecmp( str, "small" ) )
+		return MEM_HSZ_SMALL;
+
+	if( !strcasecmp( str, "medium" ) )
+		return MEM_HSZ_MEDIUM;
+
+	if( !strcasecmp( str, "large" ) )
+		return MEM_HSZ_LARGE;
+
+	if( !strcasecmp( str, "xlarge" ) )
+		return MEM_HSZ_XLARGE;
+
+	if( !strcasecmp( str, "x2large" ) )
+		return MEM_HSZ_X2LARGE;
+
+	if( parse_number( str, &v, NULL ) == NUM_INVALID )
+	{
+		warn( "Unrecognised hash table size '%s'", str );
+		return -1;
+	}
+
+	return (int) v;
+}
+
+
+
+void regex_list_set_fallback( int fallback_match, RGXL *list )
+{
+	if( list )
+		list->fb = ( fallback_match ) ? 0 : 1;
+}
+
+
+RGXL *regex_list_create( int fallback_match )
+{
+	RGXL *rl;
+
+	rl = (RGXL *) allocz( sizeof( RGXL ) );
+	regex_list_set_fallback( fallback_match, rl );
+	return rl;
+}
+
+
+
+int regex_list_add( char *str, int negate, RGXL *rl )
+{
+	RGX *rg, *p;
+
+	if( !rl || !str || !*str )
+	{
+		err( "No regex list %p, or invalid string %p", rl, str );
+		return -1;
+	}
+
+	rg    = (RGX *) allocz( sizeof( RGX ) );
+	rg->r = (regex_t *) allocz( sizeof( regex_t ) );
+
+	if( regcomp( rg->r, str, REG_EXTENDED|REG_NOSUB ) )
+	{
+		err( "Could not compile regex string: %s", str );
+		regfree( rg->r );
+		free( rg );
+		return -2;
+	}
+
+	rg->slen = strlen( str );
+	rg->src  = str_dup( str, rg->slen );
+	rg->ret  = ( negate ) ? 1 : 0;
+
+	rl->count++;
+
+	// first one?
+	if( !rl->list )
+	{
+		rl->list = rg;
+		return 0;
+	}
+
+	// append to list
+	for( p = rl->list; p->next; p = p->next );
+
+	p->next = rg;
+	return 0;
+}
+
+int regex_list_test( char *str, RGXL *rl )
+{
+	RGX *r;
+
+	// no list means MATCH
+	if( !rl )
+		return 0;
+
+	for( r = rl->list; r; r = r->next )
+	{
+		r->tests++;
+		//debug( "Checking '%s' against regex '%s'", str, r->src );
+		if( regexec( r->r, str, 0, NULL, 0 ) == 0 )
+		{
+			r->matched++;
+			return r->ret;
+		}
+	}
+
+	return rl->fb;
 }
 

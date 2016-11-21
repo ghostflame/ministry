@@ -29,6 +29,11 @@ subdirs:
 code:
 	@cd src && $(MAKE) $(MFLAGS) $(TARGET)
 
+
+docker:
+	dist/docker.sh
+
+
 install:
 	@echo "Making installation directories"
 	@mkdir -p $(CFGDIR) $(SSLDIR) $(LRTDIR) $(MANDIR)/man1 $(MANDIR)/man5 $(DOCDIR)
@@ -72,4 +77,5 @@ clean:
 	@rm -f logs/* core*
 	@echo "done."
 
+.PHONY:  docker
 

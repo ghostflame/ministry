@@ -1,7 +1,7 @@
 CC     = /usr/bin/gcc -std=gnu99 $(WFLAGS)
 
-FILES  = utils log loop thread mem gc net tcp udp io target data synth stats selfstats http auth_ldap config main
-HEADS  = config data gc io log loop mem ministry target net tcp udp run stats selfstats http auth_ldap synth thread typedefs utils
+FILES  = utils log loop thread mem gc net tcp udp io target data token synth stats selfstats http auth_ldap config main
+HEADS  = config data gc io log loop mem ministry target net tcp udp token run stats selfstats http auth_ldap synth thread typedefs utils
 VERS   = $(shell sed -rn 's/^Version:\t(.*)/\1/p' ../ministry.spec)
 
 OBJS   = $(FILES:%=%.o)
@@ -9,10 +9,10 @@ HDRS   = $(HEADS:%=%.h)
 
 WFLAGS = -Wall -Wshadow
 IFLAGS = -I. 
-DFLAGS = -g -pg -ggdb3 -DDEBUG -DDEBUG_LOOPS -DDEBUG_SYNTH -DDEBUG_IO
+DFLAGS = -g -pg -ggdb3 -DDEBUG -DDEBUG_LOOPS -DDEBUG_SYNTH -DDEBUG_IO -DDEBUG_ENV
 TFLAGS = -pthread
 CFLAGS = $(TFLAGS) $(IFLAGS) -DMINISTRY_VERSION='"$(VERS)"'
-LFLAGS = $(TFLAGS) $(IFLAGS) -lm -lmicrohttpd -lldap
+LFLAGS = $(TFLAGS) $(IFLAGS) -lm -lcurl -lmicrohttpd -lldap
 
 BINDIR = $(DESTDIR)/usr/bin
 BIN    = ministry
@@ -33,7 +33,7 @@ with_old_gcc:  $(BIN)
 
 
 $(BIN): $(HDRS) $(OBJS)
-	$(CC) -o $(BIN) $(LFLAGS) $(OBJS)
+	$(CC) -o $(BIN) $(OBJS) $(LFLAGS)
 	@echo "Ministry constructed.  Submit your forms, citizen!"
 
 install: $(BIN)

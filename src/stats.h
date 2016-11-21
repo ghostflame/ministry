@@ -51,6 +51,8 @@ enum stats_types
 #define DEFAULT_ADDER_PREFIX		""
 #define DEFAULT_GAUGE_PREFIX		""
 
+#define DEFAULT_MOM_MIN				30L
+
 
 #define TSBUF_SZ					32
 #define PREFIX_SZ					512
@@ -69,7 +71,7 @@ struct stat_thread_ctl
 	// workspace
 	double			*	wkbuf;
 	double			*	wkspc;
-	int					wkspcsz;
+	int64_t				wkspcsz;
 
 	// output
 	BUF				*	prefix;
@@ -127,6 +129,14 @@ struct stat_threshold
 };
 
 
+struct stat_moments
+{
+	RGXL			*	rgx;
+	int64_t				min_pts;
+	int					enabled;
+};
+
+
 struct stats_control
 {
 	ST_CFG			*	stats;
@@ -135,6 +145,7 @@ struct stats_control
 	ST_CFG			*	self;
 
 	ST_THOLD		*	thresholds;
+	ST_MOM			*	mom;
 };
 
 

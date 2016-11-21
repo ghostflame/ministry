@@ -68,6 +68,9 @@
 #define lock_ldap( s )			pthread_mutex_lock(   &(s->lock) )
 #define unlock_ldap( s )		pthread_mutex_unlock( &(s->lock) )
 
+#define lock_tokens( )			pthread_mutex_lock(   &(ctl->locks->tokens) )
+#define unlock_tokens( )		pthread_mutex_unlock( &(ctl->locks->tokens) )
+
 
 struct dhash_locks
 {
@@ -81,12 +84,7 @@ struct dhash_locks
 
 struct lock_control
 {
-	pthread_mutex_t			hostalloc;					// mem hosts
-	pthread_mutex_t			hashalloc;					// control of dhash allocation
-	pthread_mutex_t			pointalloc;					// point list structures
-	pthread_mutex_t			bufalloc;					// buffer structures
-	pthread_mutex_t			listalloc;					// buflist structures
-
+	pthread_mutex_t			tokens;						// token control
 	pthread_mutex_t			hashstats;					// used for counters
 	pthread_mutex_t			loop;						// thread startup/shutdown
 	pthread_mutex_t			synth;						// synthetics control

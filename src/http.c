@@ -49,7 +49,12 @@ void http_server_panic( void *cls, const char *file, unsigned int line, const ch
 
 void http_log_request( void *cls, const char *uri, HTTP_CONN *conn )
 {
-	info( "[HTTP] Request: %s", uri );
+	union MHD_ConnectionInfo *ci;
+
+	// see who we are talking to
+	ci = (union MHD_ConnectionInfo *) MHD_get_connection_info( conn, MHD_CONNECTION_INFO_CLIENT_ADDRESS );
+
+	info( "[HTTP] Request {%s}: %s", inet_ntoa( ((struct sockaddr_in *) (ci->client_addr))->sin_addr ), uri );
 }
 
 
@@ -65,13 +70,32 @@ void http_log( void *arg, const char *fm, va_list ap )
 
 
 
-int http_handler_tokens( char *buf, int max )
+int http_handler_tokens( uint32_t ip, char *buf, int max )
 {
-	int len;
+	int types, len, i, count;
+	TOKEN *t, *tlist[8];
 
-	len = snprintf( buf, max,
-			"{\"adder\":%d,\"stats\":%d,\"gauge\":%d}\r\n",
-			1234567890, 1357908642, 1029384756 );
+	types = TOKEN_TYPE_STATS|TOKEN_TYPE_ADDER|TOKEN_TYPE_GAUGE;
+	token_generate( ip, types, tlist, 8, &count );
+
+	len = snprintf( buf, max, "{" );
+
+	// run down the tokens
+	for( i = 0; i < count; i++ )
+	{
+		t = tlist[i];
+
+		len += snprintf( buf + len, max - len, "\"%s\": %ld,",
+			t->name, t->nonce );
+	}
+
+	// chop off the trailing ,
+	// hand-crafting json is such a pain but all the C libs to
+	// do it really, really suck.
+	if( buf[len-1] == ',' )
+		len--;
+
+	len += snprintf( buf + len, max - len, "}" );
 
 	return len;
 }
@@ -86,13 +110,13 @@ struct url_map_help
 const struct url_map_help url_mapping[] = {
 	{ "/",               "View URL Map"                   },
 	{ "/stats",          "Ministry internal stats"        },
-	{ "/metrics",        "Prometheus metrics endpoint"    },
+//	{ "/metrics",        "Prometheus metrics endpoint"    },
 	{ "/tokens",         "Connection tokens endpoint"     },
 	{ NULL,              NULL                             }
 };
 
 
-int http_handler_usage( char *buf, int max )
+int http_handler_usage( uint32_t ip, char *buf, int max )
 {
 	const struct url_map_help *umh;
 	int len = 0;
@@ -127,13 +151,18 @@ int http_request_handler( void *cls, HTTP_CONN *conn,
 	const char *upload_data, size_t *upload_data_size,
 	void **con_cls )
 {
+	union MHD_ConnectionInfo *ci;
 	int len, rlen, code;
 	char buf[1024];
-
+	uint32_t ip;
 
 	// we only support GET right now
 	if( strcasecmp( method, "GET" ) )
 		return http_send_response( "Only GET is supported.", 0, conn, MHD_HTTP_METHOD_NOT_ALLOWED );
+
+	// see who we are talking to
+	ci = (union MHD_ConnectionInfo *) MHD_get_connection_info( conn, MHD_CONNECTION_INFO_CLIENT_ADDRESS );
+	ip = ((struct sockaddr_in *) (ci->client_addr))->sin_addr.s_addr;
 
 	code = MHD_HTTP_OK;
 	rlen = strlen( url );
@@ -143,7 +172,7 @@ int http_request_handler( void *cls, HTTP_CONN *conn,
 	{
 		case 1:
 			if( !strcmp( url, "/" ) )
-				len = http_handler_usage( buf, 1024 );
+				len = http_handler_usage( ip, buf, 1024 );
 			break;
 		case 6:
 			if( !strcmp( url, "/stats" ) )
@@ -151,12 +180,12 @@ int http_request_handler( void *cls, HTTP_CONN *conn,
 			break;
 		case 7:
 			if( !strcmp( url, "/tokens" ) )
-				len = http_handler_tokens( buf, 1024 );
+				len = http_handler_tokens( ip, buf, 1024 );
 			break;
-		case 8:
-			if( !strcmp( url, "/metrics" ) )
-				len = snprintf( buf, 1024, "Prometheus metrics!\r\n" );
-			break;
+//		case 8:
+//			if( !strcmp( url, "/metrics" ) )
+//				len = snprintf( buf, 1024, "# Prometheus metrics!\r\n" );
+//			break;
 	}
 
 	// don't recognise that url

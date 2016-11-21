@@ -240,23 +240,12 @@ void *synth_loop( void *arg )
 
 void synth_init( void )
 {
-	SYNTH *s, *list;
+	SYNTH *s;
 	int l;
 
 	// reverse the list to preserve the order in config
 	// this means synths can reference each other!
-	list = ctl->synth->list;
-	ctl->synth->list = NULL;
-
-	while( list )
-	{
-		s = list;
-		list = s->next;
-
-		s->next = ctl->synth->list;
-		ctl->synth->list = s;
-	}
-
+	ctl->synth->list = (SYNTH *) mem_reverse_list( ctl->synth->list );
 
 	// then light them up
 	for( s = ctl->synth->list; s; s = s->next )

@@ -85,13 +85,6 @@ LOCK_CTL *lock_config_defaults( void )
 
 	// and init all the mutexes
 
-	// used in mem.c
-	pthread_mutex_init( &(l->hostalloc), NULL );
-	pthread_mutex_init( &(l->hashalloc), NULL );
-	pthread_mutex_init( &(l->pointalloc), NULL );
-	pthread_mutex_init( &(l->bufalloc), NULL );
-	pthread_mutex_init( &(l->listalloc), NULL );
-
 	// used to keep counters
 	pthread_mutex_init( &(l->hashstats), NULL );
 
@@ -103,6 +96,9 @@ LOCK_CTL *lock_config_defaults( void )
 
 	// used to control io buffer expiry
 	pthread_mutex_init( &(l->bufref), NULL );
+
+	// used to control network tokens
+	pthread_mutex_init( &(l->tokens), NULL );
 
 	// used to lock table positions
 	for( i = 0; i < HASHT_MUTEX_COUNT; i++ )
@@ -121,13 +117,6 @@ void lock_shutdown( void )
 	if( !l || !l->init_done )
 		return;
 
-	// used in mem.c
-	pthread_mutex_destroy( &(l->hostalloc) );
-	pthread_mutex_destroy( &(l->hashalloc) );
-	pthread_mutex_destroy( &(l->pointalloc) );
-	pthread_mutex_destroy( &(l->bufalloc) );
-	pthread_mutex_destroy( &(l->listalloc) );
-
 	// used to keep counters
 	pthread_mutex_destroy( &(l->hashstats) );
 
@@ -139,6 +128,9 @@ void lock_shutdown( void )
 
 	// used in buffer refs
 	pthread_mutex_destroy( &(l->bufref) );
+
+	// used to control network tokens
+	pthread_mutex_destroy( &(l->tokens) );
 
 	// used to lock table positions
 	for( i = 0; i < HASHT_MUTEX_COUNT; i++ )

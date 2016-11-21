@@ -28,6 +28,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <syslog.h>
 #include <unistd.h>
 #include <pthread.h>
 #include <sys/ipc.h>
@@ -36,6 +37,7 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <arpa/inet.h>
+#include <curl/curl.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -68,6 +70,7 @@
 #include "udp.h"
 #include "tcp.h"
 #include "io.h"
+#include "token.h"
 #include "target.h"
 #include "log.h"
 #include "data.h"

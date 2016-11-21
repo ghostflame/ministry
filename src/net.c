@@ -81,13 +81,13 @@ int net_ip_check( struct sockaddr_in *sin )
 
 HPRFX *net_prefix_check( struct sockaddr_in *sin )
 {
-	IPNET *i;
+	IPNET *i = NULL;
 
-	if( ctl->net->prefix->total
-     && ( i = net_ip_lookup( sin->sin_addr.s_addr, ctl->net->prefix ) ) )
-		return i->prefix;
+	if( ctl->net->prefix->enable
+	 && ctl->net->prefix->total )
+		i = net_ip_lookup( sin->sin_addr.s_addr, ctl->net->prefix );
 
-	return NULL;
+	return ( i ) ? i->prefix : NULL;
 }
 
 
@@ -115,19 +115,46 @@ int net_set_host_prefix( HOST *h, HPRFX *pr )
 
 	// and make a copy of the prefix for this host
 	memcpy( h->workbuf, pr->pstr, pr->plen );
+	h->workbuf[pr->plen] = '\0';
 	h->plen = pr->plen;
 
 	// set the max line we like and the target to copy to
 	h->lmax = HPRFX_BUFSZ - h->plen - 1;
 	h->ltarget = h->workbuf + h->plen;
 
-	info( "Connection from %s:%hu gets prefix %s",
+	// report on that?
+	if( ctl->net->prefix->verbose )
+		info( "Connection from %s:%hu gets prefix %s",
 			inet_ntoa( h->peer->sin_addr ), ntohs( h->peer->sin_port ),
 			h->workbuf );
 
 	return 0;
 }
 
+
+// set the line parser on a host.  We prefer the flat parser, but if
+// tokens are on for that type, set the token handler.
+int net_set_host_parser( HOST *h, int token_check, int prefix_check )
+{
+	// this is the default
+	h->parser = h->type->flat_parser;
+
+	// are we doing a token check?
+	if(   token_check
+	 &&   ctl->net->tokens->enable
+	 && ( ctl->net->tokens->mask & h->type->token_type ) )
+	{
+		// token handler is the same for all types
+		h->parser = &data_line_token;
+		return 0;
+	}
+
+	// do we have a prefix for this host?
+	if( prefix_check )
+		return net_set_host_prefix( h, net_prefix_check( h->peer ) );
+
+	return 0;
+}
 
 
 
@@ -244,7 +271,7 @@ int net_startup( NET_TYPE *nt )
 }
 
 
-void __net_rule_explain_list( IPNET *list )
+void __net_rule_explain_list( IPNET *list, int show_prfx )
 {
 	struct in_addr ina;
 	IPNET *ip;
@@ -252,9 +279,10 @@ void __net_rule_explain_list( IPNET *list )
 	for( ip = list; ip; ip = ip->next )
 	{
 		ina.s_addr = ip->ipnet;
-		info( "   %-6s    %s/%hu",
-			( ip->act == NET_IP_WHITELIST ) ? "Allow" : "Deny",
-			inet_ntoa( ina ), ip->bits );
+		info( "   %-6s    %s/%hu    %s",
+			( ip->act == NET_IP_WHITELIST ) ? ( ( show_prfx ) ? "Prefix" : "Allow" ) : "Deny",
+			inet_ntoa( ina ), ip->bits,
+			( show_prfx ) ? ip->prefix->pstr : "" );
 	}
 }
 
@@ -264,9 +292,12 @@ int net_start( void )
 	IPCHK *ipc;
 	int i;
 
+	// create our token hash table
+	token_init( );
+
 	// reverse the ip net lists
-	ctl->net->iplist->nets = (IPNET *) mtype_reverse_list( ctl->net->iplist->nets );
-	ctl->net->prefix->nets = (IPNET *) mtype_reverse_list( ctl->net->prefix->nets );
+	ctl->net->iplist->nets = (IPNET *) mem_reverse_list( ctl->net->iplist->nets );
+	ctl->net->prefix->nets = (IPNET *) mem_reverse_list( ctl->net->prefix->nets );
 
 	ipc = ctl->net->iplist;
 	if( ipc->enable && ipc->verbose )
@@ -274,11 +305,22 @@ int net_start( void )
 		info( "Network ipcheck config order:" );
 
 		for( i = 0; i < ipc->hashsz; i++ )
-			__net_rule_explain_list( ipc->ips[i] );
+			__net_rule_explain_list( ipc->ips[i], 0 );
 
-		__net_rule_explain_list( ipc->nets );
+		__net_rule_explain_list( ipc->nets, 0 );
 
 		info( "   %-6s    %s", ( ipc->drop ) ? "Deny" : "Allow", "Default" );
+	}
+
+	ipc = ctl->net->prefix;
+	if( ipc->enable && ipc->verbose )
+	{
+		info( "Prefixing config order:" );
+
+		for( i = 0; i < ipc->hashsz; i++ )
+			__net_rule_explain_list( ipc->ips[i], 1 );
+
+		__net_rule_explain_list( ipc->nets, 1 );
 	}
 
 	notice( "Starting networking." );
@@ -349,6 +391,7 @@ NET_TYPE *net_type_defaults( int type )
 	nt->label       = strdup( d->sock );
 	nt->name        = strdup( d->name );
 	nt->flags       = NTYPE_ENABLED|NTYPE_TCP_ENABLED|NTYPE_UDP_ENABLED;
+	nt->token_type  = d->tokn;
 
 	return nt;
 }
@@ -402,6 +445,9 @@ NET_CTL *net_config_defaults( void )
 
 	if( !( net->prefix = __net_get_ipcheck( NET_IP_HASHSZ, "prefix" ) ) )
 		return NULL;
+
+	// create our tokens structure
+	net->tokens = token_setup( );
 
 	// can't add default target, it's a linked list
 
@@ -665,7 +711,10 @@ int net_config_prefix( char *line, int len )
 	// copy the string, add a dot if necessary
 	h->pstr = str_copy( prfx, plen + adddot );
 	if( adddot )
-		h->pstr[plen] = '.';
+	{
+		h->pstr[plen]   = '.';
+		h->pstr[plen+1] = '\0';
+	}
 	h->plen = plen + adddot;
 
 	// copy the host config
@@ -711,26 +760,26 @@ int net_config_line( AVP *av )
 			ctl->net->dead_time = (time_t) atoi( av->val );
 			debug( "Dead connection timeout set to %d sec.", ctl->net->dead_time );
 		}
-		else if( attIs( "rcv_tmout" ) )
+		else if( attIs( "rcvTmout" ) )
 		{
 			ctl->net->rcv_tmout = (unsigned int) atoi( av->val );
 			debug( "Receive timeout set to %u sec.", ctl->net->rcv_tmout );
 		}
-		else if( attIs( "reconn_msec" ) )
+		else if( attIs( "reconnMsec" ) )
 		{
 			ctl->net->reconn = 1000 * atoi( av->val );
 			if( ctl->net->reconn <= 0 )
 				ctl->net->reconn = 1000 * NET_RECONN_MSEC;
 			debug( "Reconnect time set to %d usec.", ctl->net->reconn );
 		}
-		else if( attIs( "io_msec" ) )
+		else if( attIs( "ioMsec" ) )
 		{
 			ctl->net->io_usec = 1000 * atoi( av->val );
 			if( ctl->net->io_usec <= 0 )
 				ctl->net->io_usec = 1000 * NET_IO_MSEC;
 			debug( "Io loop time set to %d usec.", ctl->net->io_usec );
 		}
-		else if( attIs( "max_waiting" ) )
+		else if( attIs( "maxWaiting" ) )
 		{
 			warn( "Net config max_waiting is deprecated - use [Target] : max_waiting." );
 			ctl->net->max_bufs = atoi( av->val );
@@ -739,8 +788,7 @@ int net_config_line( AVP *av )
 		}
 		else if( attIs( "prefix" ) )
 		{
-			// this is messy
-			return net_config_prefix( av->val, av->vlen );
+			err( "Prefix singleton is deprecated: use prefix.set." );
 		}
 		else if( attIs( "target" ) || attIs( "targets" ) )
 		{
@@ -792,18 +840,62 @@ int net_config_line( AVP *av )
 		nt = ctl->net->gauge;
 	else if( !strncasecmp( av->att, "compat.", 7 ) || !strncasecmp( av->att, "statsd.", 7 ) )
 		nt = ctl->net->compat;
+	else if( !strncasecmp( av->att, "prefix.", 7 ) )
+	{
+		if( !strcasecmp( p, "enable" ) )
+			ctl->net->prefix->enable = config_bool( av );
+		else if( !strcasecmp( p, "verbose" ) )
+			ctl->net->prefix->verbose = config_bool( av );
+		else if( !strcasecmp( p, "set" ) || !strcasecmp( p, "add" ) )
+		{
+			// this is messy
+			return net_config_prefix( av->val, av->vlen );
+		}
+		else
+			return -1;
+
+		return 0;
+	}
 	else if( !strncasecmp( av->att, "ipcheck.", 8 ) )
 	{
 		if( !strcasecmp( p, "enable" ) )
 			ctl->net->iplist->enable = config_bool( av );
 		else if( !strcasecmp( p, "verbose" ) )
 			ctl->net->iplist->verbose = config_bool( av );
-		else if( !strcasecmp( p, "drop_unknown" ) || !strcasecmp( p, "drop" ) )
+		else if( !strcasecmp( p, "dropUnknown" ) || !strcasecmp( p, "drop" ) )
 			ctl->net->iplist->drop = config_bool( av );
 		else if( !strcasecmp( p, "whitelist" ) )
 			return net_add_list_member( av->val, av->vlen, NET_IP_WHITELIST );
 		else if( !strcasecmp( p, "blacklist" ) )
 			return net_add_list_member( av->val, av->vlen, NET_IP_BLACKLIST );
+		else
+			return -1;
+
+		return 0;
+	}
+	else if( !strncasecmp( av->att, "tokens.", 7 ) )
+	{
+		if( !strcasecmp( p, "enable" ) )
+			ctl->net->tokens->enable = config_bool( av );
+		else if( !strcasecmp( p, "msec" ) || !strcasecmp( p, "lifetime" ) )
+		{
+			i = atoi( av->val );
+			if( i < 10 )
+			{
+				i = DEFAULT_TOKEN_LIFETIME;
+				warn( "Minimum token lifetime is 10msec - setting to %d", i );
+			}
+			ctl->net->tokens->lifetime = i;
+		}
+		else if( !strcasecmp( p, "hashsize" ) )
+		{
+			if( ( ctl->net->tokens->hsize = hash_size( av->val ) ) < 0 )
+				return -1;
+		}
+		else if( !strcasecmp( p, "mask" ) )
+		{
+			parse_number( av->val, &(ctl->net->tokens->mask), NULL );
+		}
 		else
 			return -1;
 
