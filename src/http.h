@@ -16,8 +16,11 @@ typedef struct MHD_Connection           HTTP_CONN;
 typedef enum MHD_RequestTerminationCode HTTP_CODE;
 typedef enum MHD_ValueKind              HTTP_VAL;
 typedef struct MHD_Response             HTTP_RESP;
+typedef struct MDH_PostProcessor        HTTP_POST;
 
 typedef void (*cb_RequestLogger) ( void *cls, const char *uri, HTTP_CONN *conn );
+
+
 
 
 #define DEFAULT_HTTP_CONN_LIMIT			256
@@ -25,6 +28,8 @@ typedef void (*cb_RequestLogger) ( void *cls, const char *uri, HTTP_CONN *conn )
 #define DEFAULT_HTTP_CONN_TMOUT			10
 
 #define MAX_SSL_FILE_SIZE				65536
+
+#define DEFAULT_HTTP_MAX_RESP			1024
 
 
 struct http_ssl_file
@@ -45,6 +50,56 @@ struct http_ssl
 
 	uint16_t					port;
 };
+
+struct url_map_data
+{
+	int							id;
+	url_fn					*	fp;
+	int							post;
+	int							len;
+	char					*	url;
+	char					*	desc;
+};
+
+
+struct http_response
+{
+	RESP					*	next;
+	URL						*	url;
+	BUF						*	buf;
+	const char				*	data;
+	size_t						dlen;
+	uint32_t					ip;
+	int16_t						code;
+	int8_t						meth;
+	int8_t						_pad;
+};
+
+
+enum url_method_map
+{
+	METHOD_UNKNOWN = 0,
+	METHOD_GET,
+	METHOD_POST,
+	METHOD_MAX
+};
+
+
+enum url_map_id
+{
+	URL_ID_DISALLOWED = 0,
+	URL_ID_UNKNOWN,
+	URL_ID_SLASH,
+	URL_ID_STATUS,
+	URL_ID_TOKENS,
+	URL_ID_STATS,
+	URL_ID_ADDER,
+	URL_ID_GAUGE,
+	URL_ID_COMPAT,
+//	URL_ID_METRICS,
+	URL_ID_MAX
+};
+
 
 
 struct http_callbacks
@@ -73,6 +128,11 @@ struct http_control
 	HTTP_CB				*	calls;
 	SSL_CONF			*	ssl;
 
+	URL					*	map;
+	URL					*	disallowed;
+	URL					*	unknown;
+
+
 	unsigned int			flags;
 	unsigned int			conns_max;
 	unsigned int			conns_max_ip;
@@ -85,8 +145,21 @@ struct http_control
 	char				*	proto;
 
 	int						enabled;
-	int						stats;
+	int						status;
+
+	int32_t					max_resp;
 };
+
+
+url_fn http_handler_disallowed;
+url_fn http_handler_unknown;
+url_fn http_handler_usage;
+url_fn http_handler_tokens;
+url_fn http_handler_status;
+url_fn http_handler_data_stats;
+url_fn http_handler_data_adder;
+url_fn http_handler_data_gauge;
+url_fn http_handler_data_compat;
 
 
 

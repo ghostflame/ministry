@@ -11,23 +11,174 @@
 #include "ministry.h"
 
 
+
+// URL HANDLERS
+
+
+
+void http_handler_disallowed( RESP *r )
+{
+	strbuf_copy( r->buf, "Only GET and POST are supported.\r\n", 0 );
+	r->code = MHD_HTTP_METHOD_NOT_ALLOWED;
+}
+
+void http_handler_unknown( RESP *r )
+{
+	strbuf_copy( r->buf, "That url is not recognised.\r\n", 0 );
+	r->code = MHD_HTTP_NOT_FOUND;
+}
+
+
+void http_handler_tokens( RESP *r )
+{
+	int types, i, count;
+	TOKEN *t, *tlist[8];
+
+	types = TOKEN_TYPE_STATS|TOKEN_TYPE_ADDER|TOKEN_TYPE_GAUGE;
+	token_generate( r->ip, types, tlist, 8, &count );
+
+	strbuf_copy( r->buf, "{", 1 );
+
+	// run down the tokens
+	for( i = 0; i < count; i++ )
+	{
+		t = tlist[i];
+		strbuf_aprintf( r->buf, "\"%s\": %ld,", t->name, t->nonce );
+	}
+
+	// chop off the trailing ,
+	// hand-crafting json is such a pain but all the C libs to
+	// do it really, really suck.
+	if( strbuf_lastchar( r->buf ) == ',' )
+		strbuf_chop( r->buf );
+
+	strbuf_add( r->buf, "}", 1 );
+}
+
+
+void http_handler_usage( RESP *r )
+{
+	HTTP_CTL *h = ctl->http;
+	int i;
+
+	for( i = URL_ID_SLASH; i < URL_ID_MAX; i++ )
+		strbuf_aprintf( r->buf, "%-16s %s\r\n", h->map[i].url, h->map[i].desc );
+}
+
+
+void http_handler_status( RESP *r )
+{
+	strbuf_copy( r->buf, "Ministry internal stats.\r\n", 0 );
+}
+
+
+
+void http_copy_lines( BUF *b, const char *ptr, size_t len )
+{
+	const char *p;
+
+	if( len < ( b->sz - 2 ) )
+	{
+		memcpy( b->buf, ptr, len );
+		b->len = len;
+	}
+	else if( ( p = memrchr( ptr, '\n', b->sz ) ) )
+	{
+		p++;
+		b->len = p - ptr;
+		memcpy( b->buf, ptr, b->len );
+	}
+	else
+	{
+		// we need to add a newline
+		b->len = len;
+		memcpy( b->buf, ptr, len );
+		b->buf[b->len++] = '\n';
+	}
+
+	b->buf[b->len] = '\0';
+}
+
+
+int http_handle_buffer( RESP *r, int type )
+{
+	const char *ptr;
+	size_t len;
+
+	ptr = r->data;
+	len = r->dlen;
+
+	while( len > 0 )
+	{
+		http_copy_lines( r->buf, ptr, len );
+		len -= r->buf->len;
+		ptr += r->buf->len;
+
+		// handle the buffer
+		notice( r->buf->buf );
+	}
+
+	return 0;
+}
+
+
+
+void http_handler_data_stats( RESP *r )
+{
+	if( http_handle_buffer( r, DATA_TYPE_STATS ) )
+		r->code = MHD_HTTP_INTERNAL_SERVER_ERROR;
+	strbuf_copy( r->buf, "You submitted stats.\r\n", 0 );
+}
+
+void http_handler_data_adder( RESP *r )
+{
+	if( http_handle_buffer( r, DATA_TYPE_ADDER ) )
+		r->code = MHD_HTTP_INTERNAL_SERVER_ERROR;
+	strbuf_copy( r->buf, "You submitted adder.\r\n", 0 );
+}
+
+void http_handler_data_gauge( RESP *r )
+{
+	if( http_handle_buffer( r, DATA_TYPE_GAUGE ) )
+		r->code = MHD_HTTP_INTERNAL_SERVER_ERROR;
+	strbuf_copy( r->buf, "You submitted gauge.\r\n", 0 );
+}
+
+void http_handler_data_compat( RESP *r )
+{
+	if( http_handle_buffer( r, DATA_TYPE_COMPAT ) )
+		r->code = MHD_HTTP_INTERNAL_SERVER_ERROR;
+	strbuf_copy( r->buf, "You submitted compat.\r\n", 0 );
+}
+
+
+
+
+// OTHER FNS
+
+
 int http_unused_policy( void *cls, const struct sockaddr *addr, socklen_t addrlen )
 {
+	// replace with IP host check?
+	notice( "Connection from %s", inet_ntoa( ((const struct sockaddr_in *) addr)->sin_addr ) );
 	return MHD_YES;
 }
 
 ssize_t http_unused_reader( void *cls, uint64_t pos, char *buf, size_t max )
 {
+	notice( "Unused reader." );
 	return -1;
 }
 
 void http_unused_reader_free( void *cls )
 {
+	notice( "Unused reader free." );
 	return;
 }
 
 int http_unused_kv( void *cls, HTTP_VAL kind, const char *key, const char *value )
 {
+	notice( "Unused KV" );
 	return MHD_NO;
 }
 
@@ -35,6 +186,7 @@ int http_unused_post( void *cls, HTTP_VAL kind, const char *key, const char *fil
                     const char *content_type, const char *transfer_encoding, const char *data,
                     uint64_t off, size_t size )
 {
+	notice( "Unused POST" );
 	return MHD_NO;
 }
 
@@ -70,76 +222,18 @@ void http_log( void *arg, const char *fm, va_list ap )
 
 
 
-int http_handler_tokens( uint32_t ip, char *buf, int max )
-{
-	int types, len, i, count;
-	TOKEN *t, *tlist[8];
-
-	types = TOKEN_TYPE_STATS|TOKEN_TYPE_ADDER|TOKEN_TYPE_GAUGE;
-	token_generate( ip, types, tlist, 8, &count );
-
-	len = snprintf( buf, max, "{" );
-
-	// run down the tokens
-	for( i = 0; i < count; i++ )
-	{
-		t = tlist[i];
-
-		len += snprintf( buf + len, max - len, "\"%s\": %ld,",
-			t->name, t->nonce );
-	}
-
-	// chop off the trailing ,
-	// hand-crafting json is such a pain but all the C libs to
-	// do it really, really suck.
-	if( buf[len-1] == ',' )
-		len--;
-
-	len += snprintf( buf + len, max - len, "}" );
-
-	return len;
-}
 
 
-struct url_map_help
-{
-	char		*	url;
-	char		*	desc;
-};
-
-const struct url_map_help url_mapping[] = {
-	{ "/",               "View URL Map"                   },
-	{ "/stats",          "Ministry internal stats"        },
-//	{ "/metrics",        "Prometheus metrics endpoint"    },
-	{ "/tokens",         "Connection tokens endpoint"     },
-	{ NULL,              NULL                             }
-};
-
-
-int http_handler_usage( uint32_t ip, char *buf, int max )
-{
-	const struct url_map_help *umh;
-	int len = 0;
-
-	for( umh = url_mapping; umh->url; umh++ )
-		len += snprintf( buf + len, max - len, "%-16s %s\n",
-		                 umh->url, umh->desc );
-
-	return len;
-}
-
-
-int http_send_response( char *buf, int len, HTTP_CONN *conn, unsigned int code )
+int http_do_response( HTTP_CONN *conn, RESP *r )
 {
 	HTTP_RESP *resp;
 	int ret;
 
-	if( !len )
-		len = strlen( buf );
-
-	resp = MHD_create_response_from_buffer( len, (void *) buf, MHD_RESPMEM_MUST_COPY );
-	ret  = MHD_queue_response( conn, code, resp );
+	resp = MHD_create_response_from_buffer( r->buf->len, (void *) r->buf->buf, MHD_RESPMEM_MUST_COPY );
+	ret  = MHD_queue_response( conn, r->code, resp );
 	MHD_destroy_response( resp );
+
+	mem_free_resp( &r );
 
 	return ret;
 }
@@ -151,51 +245,66 @@ int http_request_handler( void *cls, HTTP_CONN *conn,
 	const char *upload_data, size_t *upload_data_size,
 	void **con_cls )
 {
-	union MHD_ConnectionInfo *ci;
-	int len, rlen, code;
-	char buf[1024];
-	uint32_t ip;
+	union MHD_ConnectionInfo *cinfo;
+	HTTP_CTL *h = ctl->http;
+	int rlen, j, m;
+	RESP *r;
+	URL *u;
 
-	// we only support GET right now
-	if( strcasecmp( method, "GET" ) )
-		return http_send_response( "Only GET is supported.", 0, conn, MHD_HTTP_METHOD_NOT_ALLOWED );
+
+	// work out the method
+	if( !strcasecmp( method, MHD_HTTP_METHOD_POST ) )
+	{
+		// not yet
+		if( !upload_data )
+			return MHD_YES;
+
+		m = METHOD_POST;
+	}
+	else if( !strcasecmp( method, MHD_HTTP_METHOD_GET ) )
+		m = METHOD_GET;
+	else
+		m = METHOD_UNKNOWN;
+
+
+	// get a response structure
+	r = mem_new_resp( h->max_resp );
+	r->code = MHD_HTTP_OK;
+	r->url  = h->disallowed;
+	r->meth = m;
 
 	// see who we are talking to
-	ci = (union MHD_ConnectionInfo *) MHD_get_connection_info( conn, MHD_CONNECTION_INFO_CLIENT_ADDRESS );
-	ip = ((struct sockaddr_in *) (ci->client_addr))->sin_addr.s_addr;
+	cinfo = (union MHD_ConnectionInfo *) MHD_get_connection_info( conn, MHD_CONNECTION_INFO_CLIENT_ADDRESS );
+	r->ip = ((struct sockaddr_in *) (cinfo->client_addr))->sin_addr.s_addr;
 
-	code = MHD_HTTP_OK;
-	rlen = strlen( url );
-	len  = 0;
+	// do we have data
+	r->data = upload_data;
+	r->dlen = *upload_data_size;
 
-	switch( rlen )
+	// we only support post and get for now
+	if( m == METHOD_POST || m == METHOD_GET )
 	{
-		case 1:
-			if( !strcmp( url, "/" ) )
-				len = http_handler_usage( ip, buf, 1024 );
-			break;
-		case 6:
-			if( !strcmp( url, "/stats" ) )
-				len = snprintf( buf, 1024, "Ministry internal stats.\r\n" );
-			break;
-		case 7:
-			if( !strcmp( url, "/tokens" ) )
-				len = http_handler_tokens( ip, buf, 1024 );
-			break;
-//		case 8:
-//			if( !strcmp( url, "/metrics" ) )
-//				len = snprintf( buf, 1024, "# Prometheus metrics!\r\n" );
-//			break;
+		// switch to 404
+		r->url = h->unknown;
+
+		// go find the url
+		rlen = strlen( url );
+		for( u = h->map, j = URL_ID_SLASH; j < URL_ID_MAX; j++, u++ )
+			if( rlen == u->len && !memcmp( url, u->url, rlen ) )
+			{
+				r->url = u;
+				debug( "Url: %s", u->url );
+				break;
+			}
 	}
 
-	// don't recognise that url
-	if( !len )
-	{
-		len  = snprintf( buf, 1024, "That url is not recognised.\r\n" );
-		code = MHD_HTTP_NOT_FOUND;
-	}
+	debug( "%ld %s", (long int) r->dlen, r->data );
 
-	return http_send_response( buf, len, conn, code );
+	// call the handler
+	(*(r->url->fp))( r );
+
+	// make a response and send that
+	return http_do_response( conn, r );
 }
 
 
@@ -260,15 +369,15 @@ int http_start( void )
 
 	h->sin->sin_port = htons( port );
 
-
 	MHD_set_panic_func( h->calls->panic, (void *) h );
 
 	h->server = MHD_start_daemon( h->flags, 0,
-			NULL, NULL,
-			h->calls->handler, (void *) h,
+			h->calls->policy, NULL,
+			h->calls->handler, NULL,
 			mop( CONNECTION_LIMIT ),         h->conns_max,
 			mop( PER_IP_CONNECTION_LIMIT ),  h->conns_max_ip,
 			mop( CONNECTION_TIMEOUT ),       h->conns_tmout,
+			mop( NOTIFY_COMPLETED ),         h->calls->complete, NULL,
 			mop( SOCK_ADDR ),                (struct sockaddr *) h->sin,
 			mop( URI_LOG_CALLBACK ),         h->calls->reqlog, NULL,
 			mop( HTTPS_MEM_KEY ),            (const char *) h->ssl->key.content,
@@ -293,7 +402,6 @@ int http_start( void )
 void http_stop( void )
 {
 	HTTP_CTL *h = ctl->http;
-
 	if( h->server )
 	{
 		MHD_stop_daemon( h->server );
@@ -302,12 +410,27 @@ void http_stop( void )
 }
 
 
+URL url_mapping[URL_ID_MAX] = {
+	// these
+	{ URL_ID_DISALLOWED, &http_handler_disallowed,  0, 0,  "",                "Disallowed"                     },
+	{ URL_ID_UNKNOWN,    &http_handler_unknown,     0, 0,  "",                "404 Handler"                    },
+	// should come before this
+	{ URL_ID_SLASH,      &http_handler_usage,       0, 0,  "/",               "View URL Map"                   },
+	{ URL_ID_STATUS,     &http_handler_status,      0, 0,  "/status",         "Ministry internal status"       },
+	{ URL_ID_TOKENS,     &http_handler_tokens,      0, 0,  "/tokens",         "Connection tokens endpoint"     },
+	{ URL_ID_STATS,      &http_handler_data_stats,  1, 0,  "/stats",          "Stats submission endpoint"      },
+	{ URL_ID_ADDER,      &http_handler_data_adder,  1, 0,  "/adder",          "Adder submission endpoint"      },
+	{ URL_ID_GAUGE,      &http_handler_data_gauge,  1, 0,  "/gauge",          "Gauge submission endpoint"      },
+	{ URL_ID_COMPAT,     &http_handler_data_compat, 1, 0,  "/compat",         "Statsd submission endpoint"     }
+//	{ URL_ID_METRICS,    &http_handler_metrics,     0, 0,  "/metrics",        "Prometheus metrics endpoint"    }
+};
 
 
 HTTP_CTL *http_config_defaults( void )
 {
 	struct sockaddr_in *sin;
 	HTTP_CTL *h;
+	int i;
 
 	h                  = (HTTP_CTL *) allocz( sizeof( HTTP_CTL ) );
 	h->ssl             = (SSL_CONF *) allocz( sizeof( SSL_CONF ) );
@@ -318,8 +441,11 @@ HTTP_CTL *http_config_defaults( void )
 	h->conns_tmout     = DEFAULT_HTTP_CONN_TMOUT;
 	h->port            = DEFAULT_HTTP_PORT;
 	h->addr            = NULL;
-	h->stats           = 1;
+	h->status          = 1;
 	h->flags           = MHD_USE_THREAD_PER_CONNECTION|MHD_USE_POLL|MHD_USE_DEBUG;
+	h->max_resp        = DEFAULT_HTTP_MAX_RESP;
+
+	h->map             = url_mapping;
 
 	h->enabled         = 0;
 	h->ssl->enabled    = 0;
@@ -344,6 +470,21 @@ HTTP_CTL *http_config_defaults( void )
 	sin->sin_addr.s_addr = INADDR_ANY;
 	h->sin               = sin;
 
+	// fix the lengths on the url mappings
+	// and pick some out
+	for( i = 0; i < URL_ID_MAX; i++ )
+		switch( h->map[i].id )
+		{
+			case URL_ID_DISALLOWED:
+				h->disallowed = h->map + i;
+				break;
+			case URL_ID_UNKNOWN:
+				h->unknown = h->map + i;
+				break;
+			default:
+				h->map[i].len = strlen( h->map[i].url );
+		}
+
 	return h;
 }
 
@@ -353,6 +494,7 @@ HTTP_CTL *http_config_defaults( void )
 int http_config_line( AVP *av )
 {
 	HTTP_CTL *h = ctl->http;
+	int64_t v;
 	char *d;
 
 	if( !( d = strchr( av->att, '.' ) ) )
@@ -381,11 +523,20 @@ int http_config_line( AVP *av )
 			h->enabled = config_bool( av );
 			debug( "Http server is %sabled.", ( h->enabled ) ? "en" : "dis" );
 		}
-		else if( attIs( "stats" ) || attIs( "exposeStats" ) )
+		else if( attIs( "status" ) || attIs( "exposeStatus" ) )
 		{
-			h->stats = config_bool( av );
-			debug( "Http exposure of internal stats is %sabled.",
-				( h->stats ) ? "en" : "dis" );
+			h->status = config_bool( av );
+			debug( "Http exposure of internal status is %sabled.",
+				( h->status ) ? "en" : "dis" );
+		}
+		else if( attIs( "maxResponse" ) )
+		{
+			if( parse_number( av->val, &v, NULL ) || v > INT32_MAX )
+			{
+				err( "Invalid http server max response size '%s'.", av->val );
+				return -1;
+			}
+			h->max_resp = (int32_t) v;
 		}
 		else
 			return -1;

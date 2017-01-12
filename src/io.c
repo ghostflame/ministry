@@ -181,9 +181,9 @@ int io_connect( TARGET *t )
 
 	if( connect( s->sock, (struct sockaddr *) &(s->peer), sizeof( struct sockaddr_in ) ) < 0 )
 	{
-		err( "Unable to connect to %s:%hu -- %s",
-			inet_ntoa( s->peer.sin_addr ), ntohs( s->peer.sin_port ),
-			Err );
+//		err( "Unable to connect to %s:%hu -- %s",
+//			inet_ntoa( s->peer.sin_addr ), ntohs( s->peer.sin_port ),
+//			Err );
 		close( s->sock );
 		s->sock = -1;
 		return -1;

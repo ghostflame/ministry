@@ -21,6 +21,7 @@
 #define MEM_ALLOCSZ_IOBUF			128
 #define MEM_ALLOCSZ_IOLIST			512
 #define MEM_ALLOCSZ_TOKEN			128
+#define MEM_ALLOCSZ_RESPS			128
 
 #define DEFAULT_GC_THRESH			8640		// 1 day @ 10s
 #define DEFAULT_GC_GG_THRESH		25920		// 3 days @ 10s
@@ -68,6 +69,7 @@ struct mem_control
 	MTYPE			*	iobufs;
 	MTYPE			*	iolist;
 	MTYPE			*	token;
+	MTYPE			*	resps;
 
 	int					curr_kb;
 	int					max_kb;
@@ -105,6 +107,10 @@ void mem_free_buf_list( IOBUF *list );
 TOKEN *mem_new_token( void );
 void mem_free_token( TOKEN **t );
 void mem_free_token_list( TOKEN *list );
+
+RESP *mem_new_resp( uint32_t sz );
+void mem_free_resp( RESP **r );
+void mem_free_resp_list( RESP *list );
 
 loop_call_fn mem_check;
 throw_fn mem_loop;

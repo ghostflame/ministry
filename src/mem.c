@@ -579,6 +579,64 @@ void mem_free_token_list( TOKEN *list )
 }
 
 
+RESP *mem_new_resp( uint32_t sz )
+{
+	RESP *r = __mtype_new( ctl->mem->resps );
+
+	if( !r->buf )
+		r->buf = strbuf( sz );
+
+	return r;
+}
+
+
+void mem_free_resp( RESP **r )
+{
+	RESP *rp;
+	BUF *b;
+
+	rp = *r;
+	*r = NULL;
+
+	b = rp->buf;
+	memset( rp, 0, sizeof( RESP ) );
+	strbuf_empty( b );
+	rp->buf = b;
+
+	__mtype_free( ctl->mem->resps, rp );
+}
+
+
+void mem_free_resp_list( RESP *list )
+{
+	RESP *r, *freed, *end;
+	int j = 0;
+	BUF *b;
+
+	freed = end = NULL;
+	j = 0;
+
+	while( list )
+	{
+		r    = list;
+		list = r->next;
+
+		b = r->buf;
+		memset( r, 0, sizeof( RESP ) );
+		strbuf_empty( b );
+		r->buf = b;
+
+		r->next = freed;
+		freed   = r;
+
+		if( !end )
+			end = r;
+
+		j++;
+	}
+
+	__mtype_free_list( ctl->mem->resps, j, freed, end );
+}
 
 
 
@@ -603,6 +661,69 @@ void *mem_loop( void *arg )
 	return NULL;
 }
 
+
+
+// shut down memory locks
+void mem_shutdown( void )
+{
+	MEM_CTL *m;
+
+	m = ctl->mem;
+
+	pthread_mutex_destroy( &(m->hosts->lock)  );
+	pthread_mutex_destroy( &(m->points->lock) );
+	pthread_mutex_destroy( &(m->iobufs->lock) );
+	pthread_mutex_destroy( &(m->dhash->lock)  );
+	pthread_mutex_destroy( &(m->iolist->lock) );
+	pthread_mutex_destroy( &(m->token->lock)  );
+	pthread_mutex_destroy( &(m->resps->lock)  );
+}
+
+
+MTYPE *__mem_type_ctl( int sz, int ct, int extra )
+{
+	MTYPE *mt;
+
+	mt           = (MTYPE *) allocz( sizeof( MTYPE ) );
+	mt->alloc_sz = sz;
+	mt->alloc_ct = ct;
+	mt->stats_sz = sz + extra;
+
+	// and alloc some already
+	__mtype_alloc_free( mt, mt->alloc_ct );
+
+	// init the mutex
+	pthread_mutex_init( &(mt->lock), NULL );
+
+	return mt;
+}
+
+
+
+MEM_CTL *mem_config_defaults( void )
+{
+	MEM_CTL *m;
+
+	m = (MEM_CTL *) allocz( sizeof( MEM_CTL ) );
+
+	m->hosts  = __mem_type_ctl( sizeof( HOST ),   MEM_ALLOCSZ_HOSTS,  0 );
+	m->iobufs = __mem_type_ctl( sizeof( IOBUF ),  MEM_ALLOCSZ_IOBUF,  ( MIN_NETBUF_SZ + IO_BUF_SZ ) / 2 );
+	m->points = __mem_type_ctl( sizeof( PTLIST ), MEM_ALLOCSZ_POINTS, 0 );
+	m->dhash  = __mem_type_ctl( sizeof( DHASH ),  MEM_ALLOCSZ_DHASH,  128 ); // guess on path length
+	m->iolist = __mem_type_ctl( sizeof( IOLIST ), MEM_ALLOCSZ_IOLIST, 0 );
+	m->token  = __mem_type_ctl( sizeof( TOKEN ),  MEM_ALLOCSZ_TOKEN,  0 );
+	m->resps  = __mem_type_ctl( sizeof( RESP ),   MEM_ALLOCSZ_RESPS,  DEFAULT_HTTP_MAX_RESP );
+
+	m->max_kb       = DEFAULT_MEM_MAX_KB;
+	m->interval     = DEFAULT_MEM_CHECK_INTV;
+	m->gc_enabled   = 1;
+	m->gc_thresh    = DEFAULT_GC_THRESH;
+	m->gc_gg_thresh = DEFAULT_GC_GG_THRESH;
+	m->hashsize     = MEM_HSZ_LARGE;
+	m->stacksize    = DEFAULT_MEM_STACK_SIZE;
+
+	return m;
+}
 
 
 int mem_config_line( AVP *av )
@@ -667,6 +788,8 @@ int mem_config_line( AVP *av )
 		mt = ctl->mem->iolist;
 	else if( !strncasecmp( av->att, "token.", 6 ) )
 		mt = ctl->mem->token;
+	else if( !strncasecmp( av->att, "resps.", 6 ) )
+		mt = ctl->mem->resps;
 	else
 		return -1;
 
@@ -681,65 +804,5 @@ int mem_config_line( AVP *av )
 	// done this way because GC might become a thing
 
 	return 0;
-}
-
-// shut down memory locks
-void mem_shutdown( void )
-{
-	MEM_CTL *m;
-
-	m = ctl->mem;
-
-	pthread_mutex_destroy( &(m->hosts->lock)  );
-	pthread_mutex_destroy( &(m->points->lock) );
-	pthread_mutex_destroy( &(m->iobufs->lock) );
-	pthread_mutex_destroy( &(m->dhash->lock)  );
-	pthread_mutex_destroy( &(m->iolist->lock) );
-	pthread_mutex_destroy( &(m->token->lock)  );
-}
-
-
-MTYPE *__mem_type_ctl( int sz, int ct, int extra )
-{
-	MTYPE *mt;
-
-	mt           = (MTYPE *) allocz( sizeof( MTYPE ) );
-	mt->alloc_sz = sz;
-	mt->alloc_ct = ct;
-	mt->stats_sz = sz + extra;
-
-	// and alloc some already
-	__mtype_alloc_free( mt, mt->alloc_ct );
-
-	// init the mutex
-	pthread_mutex_init( &(mt->lock), NULL );
-
-	return mt;
-}
-
-
-
-MEM_CTL *mem_config_defaults( void )
-{
-	MEM_CTL *m;
-
-	m = (MEM_CTL *) allocz( sizeof( MEM_CTL ) );
-
-	m->hosts  = __mem_type_ctl( sizeof( HOST ),   MEM_ALLOCSZ_HOSTS,  0 );
-	m->iobufs = __mem_type_ctl( sizeof( IOBUF ),  MEM_ALLOCSZ_IOBUF,  ( MIN_NETBUF_SZ + IO_BUF_SZ ) / 2 );
-	m->points = __mem_type_ctl( sizeof( PTLIST ), MEM_ALLOCSZ_POINTS, 0 );
-	m->dhash  = __mem_type_ctl( sizeof( DHASH ),  MEM_ALLOCSZ_DHASH,  64 ); // guess on path length
-	m->iolist = __mem_type_ctl( sizeof( IOLIST ), MEM_ALLOCSZ_IOLIST, 0 );
-	m->token  = __mem_type_ctl( sizeof( TOKEN ),  MEM_ALLOCSZ_TOKEN,  0 );
-
-	m->max_kb       = DEFAULT_MEM_MAX_KB;
-	m->interval     = DEFAULT_MEM_CHECK_INTV;
-	m->gc_enabled   = 1;
-	m->gc_thresh    = DEFAULT_GC_THRESH;
-	m->gc_gg_thresh = DEFAULT_GC_GG_THRESH;
-	m->hashsize     = MEM_HSZ_LARGE;
-	m->stacksize    = DEFAULT_MEM_STACK_SIZE;
-
-	return m;
 }
 

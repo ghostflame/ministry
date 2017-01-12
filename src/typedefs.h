@@ -60,6 +60,8 @@ typedef struct token_data			TOKEN;
 typedef struct token_info			TOKENS;
 typedef struct regex_entry			RGX;
 typedef struct regex_list			RGXL;
+typedef struct url_map_data			URL;
+typedef struct http_response		RESP;
 
 
 // function types
@@ -72,5 +74,6 @@ typedef void * throw_fn ( void * );
 typedef void add_fn ( char *, int, char * );
 typedef void line_fn ( HOST *, char *, int );
 typedef void synth_fn( SYNTH * );
+typedef void url_fn( RESP * );
 
 #endif

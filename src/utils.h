@@ -63,6 +63,7 @@ enum num_types
 #define tvalns( _t )		( _t % 1000000000 )
 
 
+
 struct words_data
 {
 	char				*	wd[STRWORDS_MAX];
@@ -119,6 +120,13 @@ char *str_copy( char *src, int len );
 BUF *strbuf( uint32_t size );
 int strbuf_copy( BUF *b, char *str, int len );
 int strbuf_add( BUF *b, char *str, int len );
+
+// these work as macros
+#define strbuf_printf( b, ... )			b->len = snprintf( b->buf, b->sz, ##__VA_ARGS__ )
+#define strbuf_aprintf( b, ... )		b->len += snprintf( b->buf + b->len, b->sz - b->len, ##__VA_ARGS__ )
+#define strbuf_empty( b )				b->len = 0; b->buf[0] = '\0'
+#define strbuf_chop( b )				if( b->len > 0 ) { b->len--; b->buf[b->len] = '\0'; }
+#define strbuf_lastchar( b )			( ( b->len ) ? b->buf[b->len - 1] : '\0' )
 
 // get string length, up to a maximum
 int str_nlen( char *src, int max );
