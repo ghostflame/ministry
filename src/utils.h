@@ -144,6 +144,9 @@ void pidfile_remove( void );
 // timespec difference as a double
 double ts_diff( struct timespec to, struct timespec from, double *store );
 
+// get our uptime
+double get_uptime( void );
+
 // set an rlimit
 int setlimit( int res, int64_t val );
 

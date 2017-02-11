@@ -271,7 +271,7 @@ void log_reopen( int sig )
 		__log_open( );
 
 	if( l->notify_re )
-		info( "Log file re-opened (version %s).", ctl->version );
+		info( "Log file re-opened (version %s, uptime %.0f sec).", ctl->version, get_uptime( ) );
 }
 
 
