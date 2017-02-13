@@ -35,7 +35,7 @@ void http_handler_tokens( RESP *r )
 	TOKEN *t, *tlist[8];
 
 	types = TOKEN_TYPE_STATS|TOKEN_TYPE_ADDER|TOKEN_TYPE_GAUGE;
-	token_generate( r->ip, types, tlist, 8, &count );
+	token_generate( r->peer.sin_addr.s_addr, types, tlist, 8, &count );
 
 	strbuf_copy( r->buf, "{", 1 );
 
@@ -100,10 +100,37 @@ void http_copy_lines( BUF *b, const char *ptr, size_t len )
 }
 
 
-int http_handle_buffer( RESP *r, int type )
+int http_handle_buffer( RESP *r, NET_TYPE *ntype )
 {
 	const char *ptr;
-	size_t len;
+	int len;
+	HOST *h;
+
+	if( net_ip_check( &(r->peer) ) != 0 )
+	{
+		notice( "Denying HTTP submission from %s:%hu based on ip check.",
+			inet_ntoa( r->peer.sin_addr ), ntohs( r->peer.sin_port ) );
+
+		r->code = MHD_HTTP_FORBIDDEN;
+		strbuf_copy( r->buf, "This IP is not permitted.\r\n", 0 );
+		return 1;
+	}
+
+	if( !( h = mem_new_host( &(r->peer), MIN_NETBUF_SZ ) ) )
+	{
+		err( "Could not allocate new host." );
+		r->code = MHD_HTTP_INTERNAL_SERVER_ERROR;
+		return 1;
+	}
+
+	h->type = ntype;
+
+	if( net_set_host_parser( h, 1, 1 ) )
+	{
+		err( "Could not set host parser." );
+		r->code = MHD_HTTP_INTERNAL_SERVER_ERROR;
+		return 1;
+	}
 
 	ptr = r->data;
 	len = r->dlen;
@@ -114,9 +141,13 @@ int http_handle_buffer( RESP *r, int type )
 		len -= r->buf->len;
 		ptr += r->buf->len;
 
-		// handle the buffer
-		notice( r->buf->buf );
+		data_parse_buf( h, r->buf->buf, r->buf->len );
 	}
+
+	strbuf_printf( r->buf, "You submitted %lu points to %s\r\n",
+		h->points, r->url->url );
+
+	mem_free_host( &h );
 
 	return 0;
 }
@@ -125,30 +156,22 @@ int http_handle_buffer( RESP *r, int type )
 
 void http_handler_data_stats( RESP *r )
 {
-	if( http_handle_buffer( r, DATA_TYPE_STATS ) )
-		r->code = MHD_HTTP_INTERNAL_SERVER_ERROR;
-	strbuf_copy( r->buf, "You submitted stats.\r\n", 0 );
+	http_handle_buffer( r, ctl->net->stats );
 }
 
 void http_handler_data_adder( RESP *r )
 {
-	if( http_handle_buffer( r, DATA_TYPE_ADDER ) )
-		r->code = MHD_HTTP_INTERNAL_SERVER_ERROR;
-	strbuf_copy( r->buf, "You submitted adder.\r\n", 0 );
+	http_handle_buffer( r, ctl->net->adder );
 }
 
 void http_handler_data_gauge( RESP *r )
 {
-	if( http_handle_buffer( r, DATA_TYPE_GAUGE ) )
-		r->code = MHD_HTTP_INTERNAL_SERVER_ERROR;
-	strbuf_copy( r->buf, "You submitted gauge.\r\n", 0 );
+	http_handle_buffer( r, ctl->net->gauge );
 }
 
 void http_handler_data_compat( RESP *r )
 {
-	if( http_handle_buffer( r, DATA_TYPE_COMPAT ) )
-		r->code = MHD_HTTP_INTERNAL_SERVER_ERROR;
-	strbuf_copy( r->buf, "You submitted compat.\r\n", 0 );
+	http_handle_buffer( r, ctl->net->compat );
 }
 
 
@@ -246,18 +269,21 @@ int http_request_handler( void *cls, HTTP_CONN *conn,
 	void **con_cls )
 {
 	union MHD_ConnectionInfo *cinfo;
+	struct sockaddr_in *sin;
 	HTTP_CTL *h = ctl->http;
 	int rlen, j, m;
 	RESP *r;
 	URL *u;
-
 
 	// work out the method
 	if( !strcasecmp( method, MHD_HTTP_METHOD_POST ) )
 	{
 		// not yet
 		if( !upload_data )
+		{
+			usleep( 200 );
 			return MHD_YES;
+		}
 
 		m = METHOD_POST;
 	}
@@ -273,9 +299,15 @@ int http_request_handler( void *cls, HTTP_CONN *conn,
 	r->url  = h->disallowed;
 	r->meth = m;
 
+	// and use it as the connection closure
+	*con_cls = r;
+
 	// see who we are talking to
 	cinfo = (union MHD_ConnectionInfo *) MHD_get_connection_info( conn, MHD_CONNECTION_INFO_CLIENT_ADDRESS );
-	r->ip = ((struct sockaddr_in *) (cinfo->client_addr))->sin_addr.s_addr;
+	sin   = (struct sockaddr_in *) (cinfo->client_addr);
+
+	r->peer.sin_addr.s_addr = sin->sin_addr.s_addr;
+	r->peer.sin_port        = sin->sin_port;
 
 	// do we have data
 	r->data = upload_data;
@@ -293,12 +325,10 @@ int http_request_handler( void *cls, HTTP_CONN *conn,
 			if( rlen == u->len && !memcmp( url, u->url, rlen ) )
 			{
 				r->url = u;
-				debug( "Url: %s", u->url );
+				//debug( "Url: %s", u->url );
 				break;
 			}
 	}
-
-	debug( "%ld %s", (long int) r->dlen, r->data );
 
 	// call the handler
 	(*(r->url->fp))( r );

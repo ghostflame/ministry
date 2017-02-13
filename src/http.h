@@ -67,9 +67,13 @@ struct http_response
 	RESP					*	next;
 	URL						*	url;
 	BUF						*	buf;
+
 	const char				*	data;
+	struct sockaddr_in			peer;
+
+	HOST						host;
 	size_t						dlen;
-	uint32_t					ip;
+
 	int16_t						code;
 	int8_t						meth;
 	int8_t						_pad;
@@ -166,6 +170,7 @@ url_fn http_handler_data_compat;
 int http_start( void );
 void http_stop( void );
 
+void http_log( void *arg, const char *fm, va_list ap );
 
 HTTP_CTL *http_config_defaults( void );
 int http_config_line( AVP *av );
