@@ -74,9 +74,10 @@ struct http_response
 	HOST						host;
 	size_t						dlen;
 
-	int16_t						code;
+	HTTP_CODE					code;
+
 	int8_t						meth;
-	int8_t						_pad;
+	int8_t						had_post;
 };
 
 

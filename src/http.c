@@ -52,7 +52,7 @@ void http_handler_tokens( RESP *r )
 	if( strbuf_lastchar( r->buf ) == ',' )
 		strbuf_chop( r->buf );
 
-	strbuf_add( r->buf, "}", 1 );
+	strbuf_add( r->buf, "}\r\n", 1 );
 }
 
 
@@ -73,37 +73,44 @@ void http_handler_status( RESP *r )
 
 
 
-void http_copy_lines( BUF *b, const char *ptr, size_t len )
+int http_copy_lines( IOBUF *b, const char *ptr, size_t len )
 {
 	const char *p;
+	size_t l, max;
 
-	if( len < ( b->sz - 2 ) )
+	max = b->sz - b->len - 2;
+
+	if( len < max )
 	{
-		memcpy( b->buf, ptr, len );
-		b->len = len;
+		memcpy( b->buf + b->len, ptr, len );
+		b->len += len;
 	}
-	else if( ( p = memrchr( ptr, '\n', b->sz ) ) )
+	else if( ( p = memrchr( ptr, '\n', max ) ) )
 	{
 		p++;
-		b->len = p - ptr;
-		memcpy( b->buf, ptr, b->len );
+		l = p - ptr;
+		memcpy( b->buf + b->len, ptr, l );
+		b->len += l;
+		len = l;
 	}
 	else
 	{
 		// we need to add a newline
-		b->len = len;
-		memcpy( b->buf, ptr, len );
+		memcpy( b->buf + b->len, ptr, max );
+		b->len += max;
 		b->buf[b->len++] = '\n';
+		len = max;
 	}
 
 	b->buf[b->len] = '\0';
+	return (int) len;
 }
 
 
-int http_handle_buffer( RESP *r, NET_TYPE *ntype )
+void http_handle_buffer( RESP *r, NET_TYPE *ntype )
 {
 	const char *ptr;
-	int len;
+	int len, l;
 	HOST *h;
 
 	if( net_ip_check( &(r->peer) ) != 0 )
@@ -113,14 +120,14 @@ int http_handle_buffer( RESP *r, NET_TYPE *ntype )
 
 		r->code = MHD_HTTP_FORBIDDEN;
 		strbuf_copy( r->buf, "This IP is not permitted.\r\n", 0 );
-		return 1;
+		return;
 	}
 
 	if( !( h = mem_new_host( &(r->peer), MIN_NETBUF_SZ ) ) )
 	{
 		err( "Could not allocate new host." );
 		r->code = MHD_HTTP_INTERNAL_SERVER_ERROR;
-		return 1;
+		return;
 	}
 
 	h->type = ntype;
@@ -129,7 +136,7 @@ int http_handle_buffer( RESP *r, NET_TYPE *ntype )
 	{
 		err( "Could not set host parser." );
 		r->code = MHD_HTTP_INTERNAL_SERVER_ERROR;
-		return 1;
+		return;
 	}
 
 	ptr = r->data;
@@ -137,19 +144,19 @@ int http_handle_buffer( RESP *r, NET_TYPE *ntype )
 
 	while( len > 0 )
 	{
-		http_copy_lines( r->buf, ptr, len );
-		len -= r->buf->len;
-		ptr += r->buf->len;
+		l = http_copy_lines( h->net->in, ptr, len );
+		len -= l;
+		ptr += l;
+		info( "Copied %d bytes, %d remaining.", l, len );
 
-		data_parse_buf( h, r->buf->buf, r->buf->len );
+		data_parse_buf( h, h->net->in );
 	}
 
+	info( "[HTTP] Handler %lu points to %s", h->points, r->url->url );
 	strbuf_printf( r->buf, "You submitted %lu points to %s\r\n",
 		h->points, r->url->url );
 
 	mem_free_host( &h );
-
-	return 0;
 }
 
 
@@ -253,95 +260,138 @@ int http_do_response( HTTP_CONN *conn, RESP *r )
 	int ret;
 
 	resp = MHD_create_response_from_buffer( r->buf->len, (void *) r->buf->buf, MHD_RESPMEM_MUST_COPY );
+	info( "Resp: %p", resp );
 	ret  = MHD_queue_response( conn, r->code, resp );
+	info( "Ret: (%d) %d", r->code, ret );
 	MHD_destroy_response( resp );
 
-	mem_free_resp( &r );
+	if( ret == MHD_YES )
+		info( "Returning successful." );
+	else
+		info( "Returning failure." );
 
 	return ret;
 }
 
 
 
-int http_request_handler( void *cls, HTTP_CONN *conn,
-	const char *url, const char *method, const char *version,
-	const char *upload_data, size_t *upload_data_size,
-	void **con_cls )
+int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
+	const char *method, const char *version, const char *up_data,
+	size_t *up_size, void **req )
 {
 	union MHD_ConnectionInfo *cinfo;
 	struct sockaddr_in *sin;
 	HTTP_CTL *h = ctl->http;
-	int rlen, j, m;
+	int rlen, j;
 	RESP *r;
 	URL *u;
 
-	// work out the method
-	if( !strcasecmp( method, MHD_HTTP_METHOD_POST ) )
+	// first call?
+	// for some reason, req is showing up with 0x47/0x48 (G/H) in it
+	// wtf
+	if( !( ((long unsigned int) *req) & 0xffff0000 ) )
 	{
-		// not yet
-		if( !upload_data )
+		// get a response structure
+		r = mem_new_resp( h->max_resp );
+		r->code = MHD_HTTP_OK;
+		r->url  = h->disallowed;
+
+		// see who we are talking to
+		cinfo = (union MHD_ConnectionInfo *) MHD_get_connection_info( conn, MHD_CONNECTION_INFO_CLIENT_ADDRESS );
+		sin   = (struct sockaddr_in *) (cinfo->client_addr);
+
+		r->peer.sin_addr.s_addr = sin->sin_addr.s_addr;
+		r->peer.sin_port        = sin->sin_port;
+
+		// work out the method
+		if( !strcasecmp( method, MHD_HTTP_METHOD_POST ) )
+			r->meth = METHOD_POST;
+		else if( !strcasecmp( method, MHD_HTTP_METHOD_GET ) )
+			r->meth = METHOD_GET;
+		else
+			r->meth = METHOD_UNKNOWN;
+
+		// we only support post and get for now
+		if( r->meth == METHOD_POST || r->meth == METHOD_GET )
 		{
-			usleep( 200 );
-			return MHD_YES;
+			// switch to 404
+			r->url = h->unknown;
+
+			// go find the url
+			rlen = strlen( url );
+			for( u = h->map, j = URL_ID_SLASH; j < URL_ID_MAX; j++, u++ )
+				if( rlen == u->len && !memcmp( url, u->url, rlen ) )
+				{
+					r->url = u;
+					//debug( "Url: %s", u->url );
+					break;
+				}
 		}
 
-		m = METHOD_POST;
+		// and use it as the closure
+		info( "Setting *req" );
+		*req = r;
 	}
-	else if( !strcasecmp( method, MHD_HTTP_METHOD_GET ) )
-		m = METHOD_GET;
 	else
-		m = METHOD_UNKNOWN;
+		r = *((RESP **) req);
 
-
-	// get a response structure
-	r = mem_new_resp( h->max_resp );
-	r->code = MHD_HTTP_OK;
-	r->url  = h->disallowed;
-	r->meth = m;
-
-	// and use it as the connection closure
-	*con_cls = r;
-
-	// see who we are talking to
-	cinfo = (union MHD_ConnectionInfo *) MHD_get_connection_info( conn, MHD_CONNECTION_INFO_CLIENT_ADDRESS );
-	sin   = (struct sockaddr_in *) (cinfo->client_addr);
-
-	r->peer.sin_addr.s_addr = sin->sin_addr.s_addr;
-	r->peer.sin_port        = sin->sin_port;
-
-	// do we have data
-	r->data = upload_data;
-	r->dlen = *upload_data_size;
-
-	// we only support post and get for now
-	if( m == METHOD_POST || m == METHOD_GET )
+	// OK, so post will get some data, then no data
+	if( r->meth == METHOD_POST )
 	{
-		// switch to 404
-		r->url = h->unknown;
+		// do we have data
+		r->data = up_data;
+		r->dlen = *up_size;
 
-		// go find the url
-		rlen = strlen( url );
-		for( u = h->map, j = URL_ID_SLASH; j < URL_ID_MAX; j++, u++ )
-			if( rlen == u->len && !memcmp( url, u->url, rlen ) )
+		info( "It's a post!" );
+
+		// got data
+		if( !r->dlen )
+		{
+			if( !r->had_post )
 			{
-				r->url = u;
-				//debug( "Url: %s", u->url );
-				break;
+				info( "Waiting for post data... next time." );
+				return MHD_YES;
 			}
-	}
 
-	// call the handler
-	(*(r->url->fp))( r );
+			info( "Called with no data." );
+		}
+		else
+		{
+			// then call the handler
+			(*(r->url->fp))( r );
+
+			// and say we've had some post data
+			r->had_post = 1;
+
+			info( "Handled incoming data (%ld).", *up_size );
+		}
+	}
+	// otherwise we just call the handler
+	else
+		(*(r->url->fp))( r );
+
+	return MHD_YES;
 
 	// make a response and send that
-	return http_do_response( conn, r );
+	//return http_do_response( conn, r );
 }
 
 
 void http_request_complete( void *cls, HTTP_CONN *conn,
-	void **con_cls, HTTP_CODE toe )
+	void **req, HTTP_CODE toe )
 {
-	return;
+	RESP *r;
+
+	if( ( r = *((RESP **) req) ) )
+	{
+		http_do_response( conn, r );
+
+
+		info( "Request complete called - freeing memory." );
+		mem_free_resp( &r );
+	}
+	else
+		info( "Request complete called without a request object." );
 }
 
 
