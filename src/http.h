@@ -71,13 +71,15 @@ struct http_response
 	const char				*	data;
 	struct sockaddr_in			peer;
 
-	HOST						host;
+	HOST					*	host;
 	size_t						dlen;
 
 	HTTP_CODE					code;
 
 	int8_t						meth;
 	int8_t						had_post;
+
+	int							id;
 };
 
 

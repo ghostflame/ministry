@@ -123,20 +123,26 @@ void http_handle_buffer( RESP *r, NET_TYPE *ntype )
 		return;
 	}
 
-	if( !( h = mem_new_host( &(r->peer), MIN_NETBUF_SZ ) ) )
+	if( !( h = r->host ) )
 	{
-		err( "Could not allocate new host." );
-		r->code = MHD_HTTP_INTERNAL_SERVER_ERROR;
-		return;
-	}
+		if( !( h = mem_new_host( &(r->peer), MIN_NETBUF_SZ ) ) )
+		{
+			err( "Could not allocate new host." );
+			r->code = MHD_HTTP_INTERNAL_SERVER_ERROR;
+			return;
+		}
 
-	h->type = ntype;
+		h->type = ntype;
 
-	if( net_set_host_parser( h, 1, 1 ) )
-	{
-		err( "Could not set host parser." );
-		r->code = MHD_HTTP_INTERNAL_SERVER_ERROR;
-		return;
+		if( net_set_host_parser( h, 1, 1 ) )
+		{
+			err( "Could not set host parser." );
+			r->code = MHD_HTTP_INTERNAL_SERVER_ERROR;
+			mem_free_host( &h );
+			return;
+		}
+
+		r->host = h;
 	}
 
 	ptr = r->data;
@@ -155,8 +161,6 @@ void http_handle_buffer( RESP *r, NET_TYPE *ntype )
 	info( "[HTTP] Handler %lu points to %s", h->points, r->url->url );
 	strbuf_printf( r->buf, "You submitted %lu points to %s\r\n",
 		h->points, r->url->url );
-
-	mem_free_host( &h );
 }
 
 
@@ -265,6 +269,8 @@ int http_do_response( HTTP_CONN *conn, RESP *r )
 	info( "Ret: (%d) %d", r->code, ret );
 	MHD_destroy_response( resp );
 
+	mem_free_host( &(r->host) );
+
 	if( ret == MHD_YES )
 		info( "Returning successful." );
 	else
@@ -274,27 +280,31 @@ int http_do_response( HTTP_CONN *conn, RESP *r )
 }
 
 
+static int http_request_id = 0;
 
 int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
 	const char *method, const char *version, const char *up_data,
 	size_t *up_size, void **req )
 {
 	union MHD_ConnectionInfo *cinfo;
+	//struct MHD_Post_Processor *pp;
 	struct sockaddr_in *sin;
 	HTTP_CTL *h = ctl->http;
 	int rlen, j;
 	RESP *r;
 	URL *u;
 
+	debug( "HTTP Request Handler called: %s %p", method, *req );
+
 	// first call?
 	// for some reason, req is showing up with 0x47/0x48 (G/H) in it
 	// wtf
 	if( !( ((long unsigned int) *req) & 0xffff0000 ) )
 	{
-		// get a response structure
 		r = mem_new_resp( h->max_resp );
 		r->code = MHD_HTTP_OK;
 		r->url  = h->disallowed;
+		r->id   = ++http_request_id;
 
 		// see who we are talking to
 		cinfo = (union MHD_ConnectionInfo *) MHD_get_connection_info( conn, MHD_CONNECTION_INFO_CLIENT_ADDRESS );
@@ -329,11 +339,19 @@ int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
 		}
 
 		// and use it as the closure
-		info( "Setting *req" );
+		info( "Setting *req for request %d", r->id );
+
+		//pp = MHD_create_post_processor( conn, 32768, 
 		*req = r;
+
+
+		// get a response structure
 	}
 	else
+	{
 		r = *((RESP **) req);
+		info( "Called again for request %d", r->id );
+	}
 
 	// OK, so post will get some data, then no data
 	if( r->meth == METHOD_POST )
@@ -350,10 +368,9 @@ int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
 			if( !r->had_post )
 			{
 				info( "Waiting for post data... next time." );
-				return MHD_YES;
 			}
-
-			info( "Called with no data." );
+			else
+				info( "Called with no data." );
 		}
 		else
 		{
@@ -368,12 +385,12 @@ int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
 	}
 	// otherwise we just call the handler
 	else
+	{
+		info( "Just calling the handler." );
 		(*(r->url->fp))( r );
+	}
 
 	return MHD_YES;
-
-	// make a response and send that
-	//return http_do_response( conn, r );
 }
 
 
@@ -385,7 +402,6 @@ void http_request_complete( void *cls, HTTP_CONN *conn,
 	if( ( r = *((RESP **) req) ) )
 	{
 		http_do_response( conn, r );
-
 
 		info( "Request complete called - freeing memory." );
 		mem_free_resp( &r );
