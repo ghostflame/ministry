@@ -82,3 +82,5 @@ req.setHeader( 'Content-Length', str.length );
 req.write( str, 'utf8' );
 req.end( );
 
+console.log( "Sent " + data.length + " lines, " + str.length + " bytes." );
+
