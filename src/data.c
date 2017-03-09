@@ -549,7 +549,7 @@ __attribute__((hot)) void data_line_token( HOST *h, char *line, int len )
 // parse the lines
 // put any partial lines back at the start of the buffer
 // and return the length, if any
-__attribute__((hot)) void data_parse_buf( HOST *h, BUF *b )
+__attribute__((hot)) void data_parse_buf( HOST *h, IOBUF *b )
 {
 	register char *s = b->buf;
 	register char *q;

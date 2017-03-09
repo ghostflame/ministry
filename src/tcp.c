@@ -183,7 +183,7 @@ __attribute__((hot)) void *tcp_connection( void *arg )
 			n->flags &= ~HOST_CLOSE_EMPTY;
 
 			// and parse that buffer
-			n->in->len = data_parse_buf( h, n->in );
+			data_parse_buf( h, n->in );
 		}
 
 		// did we get something?  or are we done?

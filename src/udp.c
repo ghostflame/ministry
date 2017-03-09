@@ -252,7 +252,7 @@ void *udp_loop_flat( void *arg )
 		b->buf[b->len] = '\0';
 
 		// and try to parse that log
-		data_parse_buf( h, b->buf, b->len );
+		data_parse_buf( h, b );
 	}
 
 	loop_mark_done( "udp", 0, 0 );
