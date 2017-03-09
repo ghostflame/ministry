@@ -165,6 +165,9 @@ void synth_generate( SYNTH *s )
 		{
 			debug_synth( "Generating synthetic %s", s->target_path );
 			(s->fn)( s );
+
+			// and mark it for reporting
+			s->target->do_pass = 1;
 		}
 	}
 }
