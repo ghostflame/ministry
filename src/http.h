@@ -16,7 +16,7 @@ typedef struct MHD_Connection           HTTP_CONN;
 typedef enum MHD_RequestTerminationCode HTTP_CODE;
 typedef enum MHD_ValueKind              HTTP_VAL;
 typedef struct MHD_Response             HTTP_RESP;
-typedef struct MDH_PostProcessor        HTTP_POST;
+typedef struct MHD_PostProcessor        HTTP_POST;
 
 typedef void (*cb_RequestLogger) ( void *cls, const char *uri, HTTP_CONN *conn );
 
@@ -68,6 +68,8 @@ struct http_response
 	URL						*	url;
 	BUF						*	buf;
 
+	HTTP_POST				*	post;
+
 	const char				*	data;
 	struct sockaddr_in			peer;
 
@@ -77,7 +79,6 @@ struct http_response
 	HTTP_CODE					code;
 
 	int8_t						meth;
-	int8_t						had_post;
 
 	int							id;
 };

@@ -5,11 +5,13 @@ function plain( )
 	A=$1
 	B=$2
 	C=$3
+	D=$4
 
 	echo "\
 lamp.requests $A
 lamp.timings.bet.total.mean $B
-this.that.theother $C
+tx.bets $C
+this.that.theother $D
 foo.bar $RANDOM"
 }
 
@@ -18,6 +20,7 @@ function statsd( )
 	A=$1
 	B=$2
 	C=$3
+	D=$4
 
 	echo "\
 lamp.requests:$A|ms
@@ -32,9 +35,12 @@ foo.bar:$RANDOM|ms"
 	a=$(($RANDOM / 20))
 	b=$((1000 + ( $RANDOM / 100)))
 	c=$((1000 - ( $RANDOM / 32)))
+	d=$((100 - ( $RANDOM / 200 )))
 
-	statsd $a $b $c
-done ) | nc -u 127.0.0.1 8125
+	plain $a $b $c $d
+
+	sleep 0.2
+done ) | nc 127.0.0.1 9225
 
 
 

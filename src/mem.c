@@ -593,15 +593,20 @@ RESP *mem_new_resp( uint32_t sz )
 void mem_free_resp( RESP **r )
 {
 	RESP *rp;
+	HOST *h;
 	BUF *b;
 
 	rp = *r;
 	*r = NULL;
 
 	b = rp->buf;
+	h = rp->host;
+
 	memset( rp, 0, sizeof( RESP ) );
 	strbuf_empty( b );
-	rp->buf = b;
+
+	rp->buf  = b;
+	rp->host = h;
 
 	__mtype_free( ctl->mem->resps, rp );
 }
@@ -611,6 +616,7 @@ void mem_free_resp_list( RESP *list )
 {
 	RESP *r, *freed, *end;
 	int j = 0;
+	HOST *h;
 	BUF *b;
 
 	freed = end = NULL;
@@ -622,9 +628,13 @@ void mem_free_resp_list( RESP *list )
 		list = r->next;
 
 		b = r->buf;
+		h = r->host;
+
 		memset( r, 0, sizeof( RESP ) );
 		strbuf_empty( b );
-		r->buf = b;
+
+		r->buf  = b;
+		r->host = h;
 
 		r->next = freed;
 		freed   = r;

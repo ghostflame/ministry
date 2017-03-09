@@ -216,12 +216,12 @@ int http_unused_kv( void *cls, HTTP_VAL kind, const char *key, const char *value
 	return MHD_NO;
 }
 
-int http_unused_post( void *cls, HTTP_VAL kind, const char *key, const char *filename,
+int http_post_iterator( void *cls, HTTP_VAL kind, const char *key, const char *filename,
                     const char *content_type, const char *transfer_encoding, const char *data,
                     uint64_t off, size_t size )
 {
-	notice( "Unused POST" );
-	return MHD_NO;
+	notice( "Unused POST: %ld", (long) size );
+	return MHD_YES;
 }
 
 
@@ -269,7 +269,7 @@ int http_do_response( HTTP_CONN *conn, RESP *r )
 	info( "Ret: (%d) %d", r->code, ret );
 	MHD_destroy_response( resp );
 
-	mem_free_host( &(r->host) );
+	mem_free_resp( &r );
 
 	if( ret == MHD_YES )
 		info( "Returning successful." );
@@ -287,14 +287,13 @@ int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
 	size_t *up_size, void **req )
 {
 	union MHD_ConnectionInfo *cinfo;
-	//struct MHD_Post_Processor *pp;
 	struct sockaddr_in *sin;
 	HTTP_CTL *h = ctl->http;
 	int rlen, j;
 	RESP *r;
 	URL *u;
 
-	debug( "HTTP Request Handler called: %s %p", method, *req );
+	notice( "HTTP Request Handler called: %s %p", method, *req );
 
 	// first call?
 	// for some reason, req is showing up with 0x47/0x48 (G/H) in it
@@ -338,76 +337,40 @@ int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
 				}
 		}
 
+		r->post = MHD_create_post_processor( conn, 65536, h->calls->post, r );
+
 		// and use it as the closure
 		info( "Setting *req for request %d", r->id );
-
-		//pp = MHD_create_post_processor( conn, 32768, 
 		*req = r;
 
-
-		// get a response structure
+		// posts are done here
+		if( r->meth == METHOD_POST )
+			return MHD_YES;
 	}
 	else
-	{
 		r = *((RESP **) req);
-		info( "Called again for request %d", r->id );
-	}
 
-	// OK, so post will get some data, then no data
+
 	if( r->meth == METHOD_POST )
 	{
-		// do we have data
-		r->data = up_data;
-		r->dlen = *up_size;
-
-		info( "It's a post!" );
-
-		// got data
-		if( !r->dlen )
+		if( *up_size > 0 )
 		{
-			if( !r->had_post )
-			{
-				info( "Waiting for post data... next time." );
-			}
-			else
-				info( "Called with no data." );
+			MHD_post_process( r->post, up_data, *up_size );
+			*up_size = 0;
 		}
 		else
 		{
-			// then call the handler
-			(*(r->url->fp))( r );
-
-			// and say we've had some post data
-			r->had_post = 1;
-
-			info( "Handled incoming data (%ld).", *up_size );
+			info( "Destroying post processor." );
+			MHD_destroy_post_processor( r->post );
+			return http_do_response( conn, r );
 		}
 	}
-	// otherwise we just call the handler
 	else
 	{
-		info( "Just calling the handler." );
 		(*(r->url->fp))( r );
 	}
 
 	return MHD_YES;
-}
-
-
-void http_request_complete( void *cls, HTTP_CONN *conn,
-	void **req, HTTP_CODE toe )
-{
-	RESP *r;
-
-	if( ( r = *((RESP **) req) ) )
-	{
-		http_do_response( conn, r );
-
-		info( "Request complete called - freeing memory." );
-		mem_free_resp( &r );
-	}
-	else
-		info( "Request complete called without a request object." );
 }
 
 
@@ -473,7 +436,7 @@ int http_start( void )
 			mop( CONNECTION_LIMIT ),         h->conns_max,
 			mop( PER_IP_CONNECTION_LIMIT ),  h->conns_max_ip,
 			mop( CONNECTION_TIMEOUT ),       h->conns_tmout,
-			mop( NOTIFY_COMPLETED ),         h->calls->complete, NULL,
+//			mop( NOTIFY_COMPLETED ),         h->calls->complete, NULL,
 			mop( SOCK_ADDR ),                (struct sockaddr *) h->sin,
 			mop( URI_LOG_CALLBACK ),         h->calls->reqlog, NULL,
 			mop( HTTPS_MEM_KEY ),            (const char *) h->ssl->key.content,
@@ -550,11 +513,10 @@ HTTP_CTL *http_config_defaults( void )
 	h->calls->panic    = &http_server_panic;
 	h->calls->policy   = &http_unused_policy;
 	h->calls->reader   = &http_unused_reader;
-	h->calls->complete = &http_request_complete;
 	h->calls->rfree    = &http_unused_reader_free;
 
 	h->calls->kv       = &http_unused_kv;
-	h->calls->post     = &http_unused_post;
+	h->calls->post     = &http_post_iterator;
 
 	h->calls->log      = &http_log;
 	h->calls->reqlog   = &http_log_request;
