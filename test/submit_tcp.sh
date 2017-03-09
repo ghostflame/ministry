@@ -2,7 +2,7 @@
 
 PORT=9125
 
-function submit_plain( )
+function submit_ministry( )
 {
 	echo "Sending plain to $PORT"
 	( while true; do
@@ -22,7 +22,7 @@ foo.bar $RANDOM"
 	done ) | nc 127.0.0.1 $PORT
 }
 
-function submit_stats( )
+function submit_compat( )
 {
 	echo "Sending stats to 9125."
 	( while true; do
@@ -41,12 +41,17 @@ foo.bar:$RANDOM|ms"
 	done ) | nc -u 127.0.0.1 8125
 }
 
-if [ "$1" == "stats" ]; then
-	submit_stats
-else
-	if [ "$1" == "paths" ]; then
-		PORT=9225
-	fi
-	submit_plain
-fi
+
+case $1 in
+    stats)  PORT=9125
+            submit_ministry
+            ;;
+    paths)  PORT=9225
+            submit_ministry
+            ;;
+    compat) submit_stats
+            ;;
+    *)      echo "$0 <stats|paths|compat>"
+            ;;
+esac
 

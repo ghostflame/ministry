@@ -157,7 +157,7 @@ void target_buf_send( TSET *s, IOBUF *buf )
 	// it does contain something, right?
 	if( !buf->len )
 	{
-		debug( "Empty buffer passed to target_buf_send." );
+		//debug( "Empty buffer passed to target_buf_send." );
 		mem_free_buf( &buf );
 		return;
 	}

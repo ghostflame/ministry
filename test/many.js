@@ -56,6 +56,6 @@ path.connect( 9225, '127.0.0.1', function( ) {
 	setInterval( sendSet, 500, path );
 });
 
-stat.connect( 9125, '127.0.0.1', function( ) {
-	setInterval( sendSet, 200, stat );
-});
+//stat.connect( 9125, '127.0.0.1', function( ) {
+//	setInterval( sendSet, 200, stat );
+//});
