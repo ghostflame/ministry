@@ -175,9 +175,9 @@ void *udp_loop_checks( void *arg )
 
 		// do a prefix check on that
 		if( ( pr = net_prefix_check( h->peer ) ) )
-			data_parse_buf( udp_get_phost( n, pr ), b->buf, b->len );
+			data_parse_buf( udp_get_phost( n, pr ), b );
 		else
-			data_parse_buf( h, b->buf, b->len );
+			data_parse_buf( h, b );
 	}
 
 	loop_mark_done( "udp", 0, 0 );

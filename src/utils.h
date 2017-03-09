@@ -120,6 +120,13 @@ BUF *strbuf( uint32_t size );
 int strbuf_copy( BUF *b, char *str, int len );
 int strbuf_add( BUF *b, char *str, int len );
 
+// these work as macros
+#define strbuf_printf( b, ... )			b->len = snprintf( b->buf, b->sz, ##__VA_ARGS__ )
+#define strbuf_aprintf( b, ... )		b->len += snprintf( b->buf + b->len, b->sz - b->len, ##__VA_ARGS__ )
+#define strbuf_empty( b )				b->len = 0; b->buf[0] = '\0'
+#define strbuf_chop( b )				if( b->len > 0 ) { b->len--; b->buf[b->len] = '\0'; }
+#define strbuf_lastchar( b )			( ( b->len ) ? b->buf[b->len - 1] : '\0' )
+
 // get string length, up to a maximum
 int str_nlen( char *src, int max );
 
@@ -135,6 +142,9 @@ void pidfile_remove( void );
 
 // timespec difference as a double
 double ts_diff( struct timespec to, struct timespec from, double *store );
+
+// get our uptime
+double get_uptime( void );
 
 // set an rlimit
 int setlimit( int res, int64_t val );

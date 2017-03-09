@@ -508,6 +508,18 @@ double ts_diff( struct timespec to, struct timespec from, double *store )
 }
 
 
+double get_uptime( void )
+{
+	double diff;
+
+	get_time( );
+	ts_diff( ctl->curr_time, ctl->init_time, &diff );
+
+	return diff;
+}
+
+
+
 int setlimit( int res, int64_t val )
 {
 	char *which = "unknown";

@@ -94,7 +94,7 @@ line_fn data_line_compat;
 line_fn data_line_min_prefix;
 line_fn data_line_com_prefix;
 
-int data_parse_buf( HOST *h, char *buf, int len );
+int data_parse_buf( HOST *h, BUF *b );
 void data_start( NET_TYPE *nt );
 
 #endif

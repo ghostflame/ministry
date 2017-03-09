@@ -41,14 +41,9 @@ It submits data using a graphite format.\n\n";
 
 void shut_down( int exval )
 {
-	double diff;
 	int i;
 
-	get_time( );
-
-	ts_diff( ctl->curr_time, ctl->init_time, &diff );
-
-	info( "Ministry shutting down after %.3fs", diff );
+	info( "Ministry shutting down after %.3fs", get_uptime( ) );
 
 	// shut down ports
 	net_stop( );
