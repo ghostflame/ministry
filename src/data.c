@@ -549,17 +549,19 @@ __attribute__((hot)) void data_line_token( HOST *h, char *line, int len )
 // parse the lines
 // put any partial lines back at the start of the buffer
 // and return the length, if any
-__attribute__((hot)) int data_parse_buf( HOST *h, char *buf, int len )
+__attribute__((hot)) void data_parse_buf( HOST *h, IOBUF *b )
 {
-	register char *s = buf;
+	register char *s = b->buf;
 	register char *q;
+	int len, l;
 	char *r;
-	int l;
 
 	// can't parse without a handler function
 	// and those live on the host object
 	if( !h )
-		return 0;
+		return;
+
+	len = b->len;
 
 	while( len > 0 )
 	{
@@ -567,16 +569,16 @@ __attribute__((hot)) int data_parse_buf( HOST *h, char *buf, int len )
 		if( !( q = memchr( s, LINE_SEPARATOR, len ) ) )
 		{
 			// partial last line
-			l = s - buf;
+			l = s - b->buf;
 
 			if( len < l )
 			{
-				memcpy( buf, s, len );
-				*(buf + len) = '\0';
+				memcpy( b->buf, s, len );
+				*(b->buf + len) = '\0';
 			}
 			else
 			{
-				q = buf;
+				q = b->buf;
 				l = len;
 
 				while( l-- > 0 )
@@ -623,7 +625,8 @@ __attribute__((hot)) int data_parse_buf( HOST *h, char *buf, int len )
 		s = q;
 	}
 
-	return len;
+	// and update the buffer length
+	b->len = len;
 }
 
 
