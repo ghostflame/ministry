@@ -303,6 +303,13 @@ DHASH *mem_new_dhash( char *str, int len, int type )
 		d->path = (char *) allocz( d->sz );
 	}
 
+	// give it a lock. dhashes love locks
+	if( !d->lock )
+	{
+		d->lock = (pthread_spinlock_t *) allocz( sizeof( pthread_spinlock_t ) );
+		pthread_spin_init( d->lock, PTHREAD_PROCESS_SHARED );
+	}
+
 	// copy the string
 	memcpy( d->path, str, len );
 	d->path[len] = '\0';
@@ -580,6 +587,46 @@ void mem_free_token_list( TOKEN *list )
 
 
 
+void mem_prealloc_one( MTYPE *mt )
+{
+	double act, fct;
+	int add, tot;
+
+	if( !mt->prealloc )
+		return;
+
+	act = (double) mt->total;
+	fct = (double) mt->fcount;
+
+	add = 2 * mt->alloc_ct;
+	tot = 0;
+
+	while( ( fct / act ) < mt->threshold )
+	{
+		lock_mem( mt );
+		__mtype_alloc_free( mt, add );
+		unlock_mem( mt );
+		tot += add;
+
+		act = (double) mt->total;
+		fct = (double) mt->fcount;
+	}
+
+	if( tot > 0 )
+		debug( "Pre-allocated %d slots for %s", tot, mt->name );
+}
+
+
+
+void mem_prealloc( int64_t tval, void *arg )
+{
+	mem_prealloc_one( ctl->mem->hosts );
+	mem_prealloc_one( ctl->mem->points );
+	mem_prealloc_one( ctl->mem->dhash );
+	mem_prealloc_one( ctl->mem->iobufs );
+	mem_prealloc_one( ctl->mem->iolist );
+	mem_prealloc_one( ctl->mem->token );
+}
 
 
 void mem_check( int64_t tval, void *arg )
@@ -595,7 +642,15 @@ void mem_check( int64_t tval, void *arg )
 }
 
 
-void *mem_loop( void *arg )
+void *mem_prealloc_loop( void *arg )
+{
+	loop_control( "memory pre-alloc", mem_prealloc, NULL, 1000 * ctl->mem->prealloc, LOOP_TRIM, 0 );
+
+	free( (THRD *) arg );
+	return NULL;
+}
+
+void *mem_check_loop( void *arg )
 {
 	loop_control( "memory control", mem_check, NULL, 1000 * ctl->mem->interval, LOOP_TRIM, 0 );
 
@@ -607,44 +662,50 @@ void *mem_loop( void *arg )
 
 int mem_config_line( AVP *av )
 {
+	MEM_CTL *m = ctl->mem;
 	MTYPE *mt;
+	int64_t t;
 	char *d;
-	int t;
 
 	if( !( d = strchr( av->att, '.' ) ) )
 	{
 		// just the singles
 		if( attIs( "maxMb" ) || attIs( "maxSize" ) )
-			ctl->mem->max_kb = 1024 * atoi( av->val );
+		{
+			av_int( m->max_kb );
+			m->max_kb <<= 10;
+		}
 		else if( attIs( "maxKb") )
-			ctl->mem->max_kb = atoi( av->val );
+			av_int( m->max_kb );
 		else if( attIs( "interval" ) || attIs( "msec" ) )
-			ctl->mem->interval = atoi( av->val );
+			av_int( m->interval );
+		else if( attIs( "prealloc" ) || attIs( "preallocInterval" ) )
+			av_int( m->prealloc );
 		else if( attIs( "hashSize" ) )
-			ctl->mem->hashsize = atoi( av->val );
+			av_int( m->hashsize );
 		else if( attIs( "stackSize" ) )
 		{
 			// gets converted to KB
-			ctl->mem->stacksize = atoi( av->val );
-			debug( "Stack size set to %d KB.", ctl->mem->stacksize );
+			av_int( m->stacksize );
+			debug( "Stack size set to %d KB.", m->stacksize );
 		}
 		else if( attIs( "gc" ) )
-			ctl->mem->gc_enabled = config_bool( av );
+			m->gc_enabled = config_bool( av );
 		else if( attIs( "gcThresh" ) )
 		{
-			t = atoi( av->val );
+			av_int( t );
 			if( !t )
 				t = DEFAULT_GC_THRESH;
 			debug( "Garbage collection threshold set to %d stats intervals.", t );
-			ctl->mem->gc_thresh = t;
+			m->gc_thresh = t;
 		}
 		else if( attIs( "gcGaugeThresh" ) )
 		{
-			t = atoi( av->val );
+			av_int( t );
 			if( !t )
 				t = DEFAULT_GC_GG_THRESH;
 			debug( "Gauge garbage collection threshold set to %d stats intervals.", t );
-			ctl->mem->gc_gg_thresh = t;
+			m->gc_gg_thresh = t;
 		}
 		else
 			return -1;
@@ -655,25 +716,47 @@ int mem_config_line( AVP *av )
 	*d++ = '\0';
 
 	// after this, it's per-type control
-	if( !strncasecmp( av->att, "hosts.", 6 ) )
-		mt = ctl->mem->hosts;
-	else if( !strncasecmp( av->att, "iobufs.", 7 ) )
-		mt = ctl->mem->iobufs;
-	else if( !strncasecmp( av->att, "points.", 7 ) )
-		mt = ctl->mem->points;
-	else if( !strncasecmp( av->att, "dhash.", 6 ) )
-		mt = ctl->mem->dhash;
-	else if( !strncasecmp( av->att, "iolist.", 7 ) )
-		mt = ctl->mem->iolist;
-	else if( !strncasecmp( av->att, "token.", 6 ) )
-		mt = ctl->mem->token;
+	if( attIs( "hosts" ) )
+		mt = m->hosts;
+	else if( attIs( "iobufs" ) )
+		mt = m->iobufs;
+	else if( attIs( "points" ) )
+		mt = m->points;
+	else if( attIs( "dhash" ) )
+		mt = m->dhash;
+	else if( attIs( "iolist" ) )
+		mt = m->iolist;
+	else if( attIs( "token" ) )
+		mt = m->token;
 	else
 		return -1;
 
 	if( !strcasecmp( d, "block" ) )
 	{
-		mt->alloc_ct = (uint32_t) strtoul( av->val, NULL, 10 );
-		debug( "Allocation block for %s set to %u", av->att, mt->alloc_ct );
+		av_int( t );
+		if( t > 0 )
+		{
+			mt->alloc_ct = (uint32_t) t;
+			debug( "Allocation block for %s set to %u", mt->name, mt->alloc_ct );
+		}
+	}
+	else if( !strcasecmp( d, "prealloc" ) )
+	{
+		mt->prealloc = 0;
+		debug( "Preallocation disabled for %s", mt->name );
+	}
+	else if( !strcasecmp( d, "threshold" ) )
+	{
+		av_dbl( mt->threshold );
+		if( mt->threshold < 0 || mt->threshold >= 1 )
+		{
+			warn( "Invalid memory type threshold %f for %s - resetting to default.", mt->threshold, mt->name );
+			mt->threshold = DEFAULT_MEM_PRE_THRESH;
+		}
+		else if( mt->threshold > 0.5 )
+			warn( "Memory type threshold for %s is %f - that's quite high!", mt->name, mt->threshold );
+
+		debug( "Mem prealloc threshold for %s is now %f", mt->name, mt->threshold );
 	}
 	else
 		return -1;
@@ -699,17 +782,22 @@ void mem_shutdown( void )
 }
 
 
-MTYPE *__mem_type_ctl( int sz, int ct, int extra )
+MTYPE *__mem_type_ctl( char *name, int sz, int ct, int extra )
 {
 	MTYPE *mt;
 
-	mt           = (MTYPE *) allocz( sizeof( MTYPE ) );
-	mt->alloc_sz = sz;
-	mt->alloc_ct = ct;
-	mt->stats_sz = sz + extra;
+	mt            = (MTYPE *) allocz( sizeof( MTYPE ) );
+	mt->alloc_sz  = sz;
+	mt->alloc_ct  = ct;
+	mt->stats_sz  = sz + extra;
+	mt->name      = str_dup( name, 0 );
+	mt->threshold = DEFAULT_MEM_PRE_THRESH;
+
+	// prealloc all types by default
+	mt->prealloc = 1;
 
 	// and alloc some already
-	__mtype_alloc_free( mt, mt->alloc_ct );
+	__mtype_alloc_free( mt, 4 * mt->alloc_ct );
 
 	// init the mutex
 	pthread_mutex_init( &(mt->lock), NULL );
@@ -725,12 +813,12 @@ MEM_CTL *mem_config_defaults( void )
 
 	m = (MEM_CTL *) allocz( sizeof( MEM_CTL ) );
 
-	m->hosts  = __mem_type_ctl( sizeof( HOST ),   MEM_ALLOCSZ_HOSTS,  0 );
-	m->iobufs = __mem_type_ctl( sizeof( IOBUF ),  MEM_ALLOCSZ_IOBUF,  ( MIN_NETBUF_SZ + IO_BUF_SZ ) / 2 );
-	m->points = __mem_type_ctl( sizeof( PTLIST ), MEM_ALLOCSZ_POINTS, 0 );
-	m->dhash  = __mem_type_ctl( sizeof( DHASH ),  MEM_ALLOCSZ_DHASH,  64 ); // guess on path length
-	m->iolist = __mem_type_ctl( sizeof( IOLIST ), MEM_ALLOCSZ_IOLIST, 0 );
-	m->token  = __mem_type_ctl( sizeof( TOKEN ),  MEM_ALLOCSZ_TOKEN,  0 );
+	m->hosts  = __mem_type_ctl( "hosts",  sizeof( HOST ),   MEM_ALLOCSZ_HOSTS,  0 );
+	m->iobufs = __mem_type_ctl( "iobufs", sizeof( IOBUF ),  MEM_ALLOCSZ_IOBUF,  ( MIN_NETBUF_SZ + IO_BUF_SZ ) / 2 );
+	m->points = __mem_type_ctl( "points", sizeof( PTLIST ), MEM_ALLOCSZ_POINTS, 0 );
+	m->dhash  = __mem_type_ctl( "dhashs", sizeof( DHASH ),  MEM_ALLOCSZ_DHASH,  64 ); // guess on path length
+	m->iolist = __mem_type_ctl( "iolist", sizeof( IOLIST ), MEM_ALLOCSZ_IOLIST, 0 );
+	m->token  = __mem_type_ctl( "tokens", sizeof( TOKEN ),  MEM_ALLOCSZ_TOKEN,  0 );
 
 	m->max_kb       = DEFAULT_MEM_MAX_KB;
 	m->interval     = DEFAULT_MEM_CHECK_INTV;
@@ -739,6 +827,7 @@ MEM_CTL *mem_config_defaults( void )
 	m->gc_gg_thresh = DEFAULT_GC_GG_THRESH;
 	m->hashsize     = MEM_HSZ_LARGE;
 	m->stacksize    = DEFAULT_MEM_STACK_SIZE;
+	m->prealloc     = DEFAULT_MEM_PRE_INTV;
 
 	return m;
 }

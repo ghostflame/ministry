@@ -169,11 +169,12 @@ DHASH *data_locate( char *path, int len, int type )
 
 __attribute__((hot)) static inline DHASH *data_get_dhash( char *path, int len, ST_CFG *c )
 {
-	uint32_t hval, idx;
+	uint32_t hval, idx, crt;
 	DHASH *d;
 
 	hval = data_path_cksum( path, len );
 	idx  = hval % c->hsize;
+	crt  = 0;
 
 	if( !( d = data_find_path( c->data[idx], hval, path, len ) ) )
 	{
@@ -194,6 +195,9 @@ __attribute__((hot)) static inline DHASH *data_get_dhash( char *path, int len, S
 
 			d->valid = 1;
 
+			// mark this newly created
+			crt = 1;
+
 			// might we do moment filtering on this?
 			if( c->dtype == DATA_TYPE_STATS && ctl->stats->mom->enabled )
 			{
@@ -209,7 +213,8 @@ __attribute__((hot)) static inline DHASH *data_get_dhash( char *path, int len, S
 
 		unlock_table( idx );
 
-		d->id = data_get_id( c );
+		if( crt )
+			d->id = data_get_id( c );
 	}
 
 	return d;

@@ -881,6 +881,7 @@ int stats_config_line( AVP *av )
 	ST_THOLD *th;
 	STAT_CTL *s;
 	ST_CFG *sc;
+	int64_t v;
 	WORDS wd;
 
 	s = ctl->stats;
@@ -944,17 +945,17 @@ int stats_config_line( AVP *av )
 		}
 		else if( attIs( "period" ) )
 		{
-			t = atoi( av->val );
-			if( t > 0 )
+			av_int( v );
+			if( v > 0 )
 			{
-				s->stats->period = t;
-				s->adder->period = t;
-				s->gauge->period = t;
-				s->self->period  = t;
-				debug( "All stats periods set to %d msec.", t );
+				s->stats->period = v;
+				s->adder->period = v;
+				s->gauge->period = v;
+				s->self->period  = v;
+				debug( "All stats periods set to %d msec.", v );
 			}
 			else
-				warn( "Stats period must be > 0, value %d given.", t );
+				warn( "Stats period must be > 0, value %d given.", v );
 		}
 		else
 			return -1;
@@ -981,7 +982,7 @@ int stats_config_line( AVP *av )
 		}
 		else if( !strcasecmp( d, "minimum" ) )
 		{
-			parse_number( av->val, &(s->mom->min_pts), NULL );
+			av_int( s->mom->min_pts );
 		}
 		else if( !strcasecmp( d, "fallbackMatch" ) )
 		{
@@ -1010,11 +1011,11 @@ int stats_config_line( AVP *av )
 
 	if( !strcasecmp( d, "threads" ) )
 	{
-		t = atoi( av->val );
-		if( t > 0 )
-			sc->threads = t;
+		av_int( v );
+		if( v > 0 )
+			sc->threads = v;
 		else
-			warn( "Stats threads must be > 0, value %d given.", t );
+			warn( "Stats threads must be > 0, value %d given.", v );
 	}
 	else if( !strcasecmp( d, "enable" ) )
 	{
@@ -1028,19 +1029,19 @@ int stats_config_line( AVP *av )
 	}
 	else if( !strcasecmp( d, "period" ) )
 	{
-		t = atoi( av->val );
-		if( t > 0 )
-			sc->period = t;
+		av_int( v );
+		if( v > 0 )
+			sc->period = v;
 		else
-			warn( "Stats period must be > 0, value %d given.", t );
+			warn( "Stats period must be > 0, value %d given.", v );
 	}
 	else if( !strcasecmp( d, "offset" ) || !strcasecmp( d, "delay" ) )
 	{
-		t = atoi( av->val );
-		if( t > 0 )
-			sc->offset = t;
+		av_int( v );
+		if( v > 0 )
+			sc->offset = v;
 		else
-			warn( "Stats offset must be > 0, value %d given.", t );
+			warn( "Stats offset must be > 0, value %d given.", v );
 	}
 	else if( !strcasecmp( d, "size" ) || !strcasecmp( d, "hashSize" ) )
 	{

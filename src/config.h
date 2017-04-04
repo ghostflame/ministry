@@ -72,8 +72,8 @@ struct ministry_control
 	char				*	version;
 	char				*	basedir;
 
-	int						tick_usec;
-	int						loop_count;
+	int64_t					tick_usec;
+	int64_t					loop_count;
 
 	int						strict;
 

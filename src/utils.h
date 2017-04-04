@@ -159,6 +159,13 @@ int read_file( char *path, char **buf, int *len, size_t max, int perm, char *des
 // returns the type it thought it was
 int parse_number( char *str, int64_t *iv, double *dv );
 
+// easier av reads
+#define av_int( _v )		parse_number( av->val, &(_v), NULL )
+#define av_dbl( _v )		parse_number( av->val, NULL, &(_v) )
+
+#define av_intk( _v )		av_int( _v ); _v *= 1000
+#define av_intK( _v )		av_int( _v ); _v <<= 10
+
 // hash size lookup
 int hash_size( char *str );
 

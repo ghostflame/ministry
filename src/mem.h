@@ -13,7 +13,10 @@
 
 #define DEFAULT_MEM_MAX_KB			( 10 * 1024 * 1024 )
 #define DEFAULT_MEM_CHECK_INTV		5000		// msec
+#define DEFAULT_MEM_PRE_INTV		50			// msec
 #define DEFAULT_MEM_STACK_SIZE		128			// gets converted to KB
+
+#define DEFAULT_MEM_PRE_THRESH		0.33
 
 #define MEM_ALLOCSZ_HOSTS			128
 #define MEM_ALLOCSZ_POINTS			512
@@ -47,6 +50,7 @@ struct mem_type_blank
 struct mem_type_control
 {
 	MTBLANK			*	flist;
+	char			*	name;
 
 	uint32_t			fcount;
 	uint32_t			total;
@@ -55,6 +59,9 @@ struct mem_type_control
 	uint32_t			alloc_ct;
 
 	uint32_t			stats_sz;
+	uint32_t			prealloc;
+
+	double				threshold;
 
 	pthread_mutex_t		lock;
 };
@@ -69,15 +76,16 @@ struct mem_control
 	MTYPE			*	iolist;
 	MTYPE			*	token;
 
-	int					curr_kb;
-	int					max_kb;
-	int					hashsize;
-	int					stacksize;
-	int					interval;	// msec
+	int64_t				curr_kb;
+	int64_t				max_kb;
+	int64_t				hashsize;
+	int64_t				stacksize;
+	int64_t				interval;	// msec
+	int64_t				prealloc;	// msec
 
-	int					gc_enabled;
-	int					gc_thresh;
-	int					gc_gg_thresh;
+	int64_t				gc_enabled;
+	int64_t				gc_thresh;
+	int64_t				gc_gg_thresh;
 };
 
 
@@ -106,8 +114,11 @@ TOKEN *mem_new_token( void );
 void mem_free_token( TOKEN **t );
 void mem_free_token_list( TOKEN *list );
 
+loop_call_fn mem_prealloc;
+throw_fn mem_prealloc_loop;
+
 loop_call_fn mem_check;
-throw_fn mem_loop;
+throw_fn mem_check_loop;
 
 void mem_shutdown( void );
 int mem_config_line( AVP *av );
