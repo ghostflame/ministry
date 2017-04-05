@@ -59,7 +59,7 @@ struct data_hash_vals
 	uint64_t			count;
 };
 
-typedef pthread_spinlock_t * dlock_t;
+#define dlock_t pthread_spinlock_t
 
 struct data_hash_entry
 {
@@ -69,7 +69,7 @@ struct data_hash_entry
 	DVAL				in;
 	DVAL				proc;
 
-	dlock_t				lock;
+	dlock_t			*	lock;
 
 	uint16_t			len;
 	uint16_t			sz;
