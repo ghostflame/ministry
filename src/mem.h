@@ -102,7 +102,7 @@ IOLIST *mem_new_iolist( void );
 void mem_free_iolist( IOLIST **l );
 void mem_free_iolist_list( IOLIST *list );
 
-DHASH *mem_new_dhash( char *str, int len, int type );
+DHASH *mem_new_dhash( char *str, int len );
 void mem_free_dhash( DHASH **d );
 void mem_free_dhash_list( DHASH *list );
 

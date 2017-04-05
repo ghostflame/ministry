@@ -35,7 +35,7 @@ var net  = require( 'net' );
 var path = new net.Socket( );
 var stat = new net.Socket( );
 
-function sendSet( sk ) {
+function sendSet( sk, base, rval ) {
 
 	var x, y, z, i, k = 0;
 
@@ -48,14 +48,18 @@ function sendSet( sk ) {
 			}
 		}
 	}
+
+    var next = base + ( rval * Math.random( ) );
+    setTimeout( sendSet, next, sk, base, rval );
 }
 
 
 
 path.connect( 9225, '127.0.0.1', function( ) {
-	setInterval( sendSet, 500, path );
+    sendSet( path, 9900, 200 );
 });
 
-//stat.connect( 9125, '127.0.0.1', function( ) {
-//	setInterval( sendSet, 200, stat );
-//});
+stat.connect( 9125, '127.0.0.1', function( ) {
+    sendSet( stat, 100, 500 );
+});
+

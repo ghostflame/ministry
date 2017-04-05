@@ -9,7 +9,8 @@ HDRS   = $(HEADS:%=%.h)
 
 WFLAGS = -Wall -Wshadow
 IFLAGS = -I. 
-DFLAGS = -g -pg -ggdb3 -DDEBUG -DDEBUG_LOOPS -DDEBUG_SYNTH -DDEBUG_IO -DDEBUG_ENV
+#DFLAGS = -g -pg -ggdb3 -DDEBUG -DDEBUG_LOOPS -DDEBUG_SYNTH -DDEBUG_IO -DDEBUG_ENV
+DFLAGS = -g -pg -ggdb3 -DDEBUG
 TFLAGS = -pthread
 CFLAGS = $(TFLAGS) $(IFLAGS) -DMINISTRY_VERSION='"$(VERS)"'
 LFLAGS = $(TFLAGS) $(IFLAGS) -lm -lcurl -lmicrohttpd

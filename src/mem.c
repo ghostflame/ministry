@@ -289,11 +289,9 @@ void mem_free_point_list( PTLIST *list )
 
 
 
-DHASH *mem_new_dhash( char *str, int len, int type )
+DHASH *mem_new_dhash( char *str, int len )
 {
 	DHASH *d = __mtype_new( ctl->mem->dhash );
-
-	d->type = type;
 
 	if( len >= d->sz )
 	{
@@ -303,7 +301,7 @@ DHASH *mem_new_dhash( char *str, int len, int type )
 		d->path = (char *) allocz( d->sz );
 	}
 
-	// give it a lock. dhashes love locks
+	// give that dhash a lock. dhashes love locks
 	if( !d->lock )
 	{
 		d->lock = (pthread_spinlock_t *) allocz( sizeof( pthread_spinlock_t ) );

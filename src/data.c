@@ -119,7 +119,7 @@ uint32_t data_get_id( ST_CFG *st )
 
 __attribute__((hot)) static inline DHASH *data_find_path( DHASH *list, uint32_t hval, char *path, int len )
 {
-	DHASH *h;
+	register DHASH *h;
 
 	for( h = list; h; h = h->next )
 		if( h->sum == hval
@@ -134,9 +134,9 @@ __attribute__((hot)) static inline DHASH *data_find_path( DHASH *list, uint32_t 
 
 DHASH *data_locate( char *path, int len, int type )
 {
+	register DHASH *d;
 	uint32_t hval;
 	ST_CFG *c;
-	DHASH *d;
 
 	hval = data_path_cksum( path, len );
 
@@ -182,14 +182,14 @@ __attribute__((hot)) static inline DHASH *data_get_dhash( char *path, int len, S
 
 		if( !( d = data_find_path( c->data[idx], hval, path, len ) ) )
 		{
-			if( !( d = mem_new_dhash( path, len, c->dtype ) ) )
+			if( !( d = mem_new_dhash( path, len ) ) )
 			{
 				fatal( "Could not allocate dhash for %s.", c->name );
 				return NULL;
 			}
 
-			d->sum = hval;
-
+			d->sum  = hval;
+			d->type = c->dtype;
 			d->next = c->data[idx];
 			c->data[idx] = d;
 
@@ -197,6 +197,13 @@ __attribute__((hot)) static inline DHASH *data_get_dhash( char *path, int len, S
 
 			// mark this newly created
 			crt = 1;
+		}
+
+		unlock_table( idx );
+
+		if( crt )
+		{
+			d->id = data_get_id( c );
 
 			// might we do moment filtering on this?
 			if( c->dtype == DATA_TYPE_STATS && ctl->stats->mom->enabled )
@@ -210,11 +217,6 @@ __attribute__((hot)) static inline DHASH *data_get_dhash( char *path, int len, S
 				//	debug( "Path %s will not get moments processing.", d->path );
 			}
 		}
-
-		unlock_table( idx );
-
-		if( crt )
-			d->id = data_get_id( c );
 	}
 
 	return d;
@@ -275,7 +277,7 @@ __attribute__((hot)) void data_point_adder( char *path, int len, char *dat )
 	double val;
 	DHASH *d;
 
-	val  = strtod( dat, NULL );
+	val = strtod( dat, NULL );
 
 	d = data_get_dhash( path, len, ctl->stats->adder );
 
