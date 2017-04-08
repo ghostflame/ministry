@@ -133,8 +133,9 @@ void stats_set_bufs( ST_THR *t, ST_CFG *c, int64_t tval )
 		llts( tval, t->now );
 
 		// and reset counters
-		t->active = 0;
-		t->points = 0;
+		t->active  = 0;
+		t->points  = 0;
+		t->highest = 0;
 	}
 
 	// default to our own config
@@ -182,7 +183,10 @@ void stats_thread_report( ST_THR *t )
 	bprintf( t, "%s.points %d", t->wkrstr, t->points );
 
 	if( t->conf->type == STATS_TYPE_STATS )
+	{
 		bprintf( t, "%s.workspace %d", t->wkrstr, t->wkspcsz );
+		bprintf( t, "%s.highest %d",   t->wkrstr, t->highest );
+	}
 
 	tsteal = tsll( t->steal );
 	twait  = tsll( t->wait );
@@ -420,6 +424,9 @@ void stats_report_one( ST_THR *t, DHASH *d )
 
 	// keep count
 	t->points += ct;
+	// and keep highest
+	if( ct > t->highest )
+		t->highest = ct;
 }
 
 

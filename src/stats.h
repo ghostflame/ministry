@@ -85,6 +85,7 @@ struct stat_thread_ctl
 	// counters
 	int64_t				active;
 	int64_t				points;
+	int64_t				highest;
 
 	// timings
 	struct timespec		now;
