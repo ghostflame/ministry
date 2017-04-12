@@ -10,6 +10,29 @@
 #include "ministry.h"
 
 
+uint32_t mem_alloc_size( int len )
+{
+	uint32_t l, v = 1;
+	int k, h = 0;
+
+	l = (uint32_t) len;
+
+	// find the highest bit set
+	for( h = 0, k = 0; k < 32; k++ )
+	{
+		if( l & v )
+			h = k;
+
+		v <<= 1;
+	}
+
+	if( h > 15 )
+		return len + 1;
+
+	return 2 << h;
+}
+
+
 void *mem_reverse_list( void *list_in )
 {
 	MTBLANK *one, *list, *ret = NULL;
@@ -297,7 +320,7 @@ DHASH *mem_new_dhash( char *str, int len )
 	{
 		if( d->path )
 			free( d->path );
-		d->sz   = len + 1;
+		d->sz   = mem_alloc_size( len );
 		d->path = (char *) allocz( d->sz );
 	}
 

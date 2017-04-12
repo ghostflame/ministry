@@ -893,7 +893,7 @@ int net_config_line( AVP *av )
 		}
 		else if( !strcasecmp( p, "hashsize" ) )
 		{
-			if( ( n->tokens->hsize = hash_size( av->val ) ) < 0 )
+			if( !( n->tokens->hsize = hash_size( av->val ) ) )
 				return -1;
 		}
 		else if( !strcasecmp( p, "mask" ) )

@@ -10,9 +10,9 @@ var dict = {
 		'mysql',
 		'couchbase',
 		'hornetq',
-		'rabbitmq',
-		'sendmail',
-		'syslog',
+//		'rabbitmq',
+//		'sendmail',
+//		'syslog',
 	],
 	second: [
 		'uptime',
@@ -20,8 +20,8 @@ var dict = {
 		'connections',
 		'errors',
 		'times',
-		'locks',
-		'requests',
+//		'locks',
+//		'requests',
 	],
 	third: [
 		'webhost',
@@ -34,7 +34,7 @@ var net  = require( 'net' );
 var path = new net.Socket( );
 var stat = new net.Socket( );
 
-function sendSet( sk ) {
+function sendSet( sk, base, rval ) {
 
 	var x, y, z, i, k = 0;
 
@@ -45,14 +45,17 @@ function sendSet( sk ) {
 			}
 		}
 	}
+
+    var next = base + ( rval * Math.random( ) );
+    setTimeout( sendSet, next, sk, base, rval );
 }
 
 
 
 path.connect( 9225, '127.0.0.1', function( ) {
-	setInterval( sendSet, 3, path );
+    sendSet( path, 9900, 200 );
 });
 
 stat.connect( 9125, '127.0.0.1', function( ) {
-	setInterval( sendSet, 2, stat );
+    sendSet( stat, 10, 20 );
 });

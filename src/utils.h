@@ -167,7 +167,7 @@ int parse_number( char *str, int64_t *iv, double *dv );
 #define av_intK( _v )		av_int( _v ); _v <<= 10
 
 // hash size lookup
-int hash_size( char *str );
+uint64_t hash_size( char *str );
 
 
 #endif

@@ -64,7 +64,7 @@ struct stat_thread_ctl
 	ST_THR			*	next;
 	ST_CFG			*	conf;
 	char			*	wkrstr;
-	int					id;
+	uint64_t			id;
 	int					max;
 	pthread_mutex_t		lock;
 
@@ -114,7 +114,7 @@ struct stat_config
 
 	// and the data
 	DHASH			**	data;
-	int					hsize;
+	uint64_t			hsize;
 	int					dcurr;
 	LLCT				gc_count;
 	uint32_t			did;

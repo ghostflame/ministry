@@ -684,14 +684,14 @@ int parse_number( char *str, int64_t *iv, double *dv )
 
 
 
-int hash_size( char *str )
+uint64_t hash_size( char *str )
 {
-	int64_t v;
+	int64_t v = 0;
 
 	if( !str || !strlen( str ) )
 	{
 		warn( "Invalid hashtable size string." );
-		return -1;
+		return 0;
 	}
 
 	if( !strcasecmp( str, "tiny" ) )
@@ -718,7 +718,7 @@ int hash_size( char *str )
 		return -1;
 	}
 
-	return (int) v;
+	return (uint64_t) v;
 }
 
 

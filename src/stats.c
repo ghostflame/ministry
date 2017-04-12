@@ -435,8 +435,8 @@ void stats_report_one( ST_THR *t, DHASH *d )
 
 void stats_stats_pass( ST_THR *t )
 {
+	uint64_t i;
 	DHASH *d;
-	int i;
 
 #ifdef DEBUG
 	debug( "[%02d] Stats claim", t->id );
@@ -493,8 +493,8 @@ void stats_stats_pass( ST_THR *t )
 
 void stats_adder_pass( ST_THR *t )
 {
+	uint64_t i;
 	DHASH *d;
-	int i;
 
 #ifdef DEBUG
 	debug( "[%02d] Adder claim", t->id );
@@ -578,8 +578,8 @@ void stats_adder_pass( ST_THR *t )
 
 void stats_gauge_pass( ST_THR *t )
 {
+	uint64_t i;
 	DHASH *d;
-	int i;
 
 #ifdef DEBUG
 	debug( "[%02d] Gauge claim", t->id );
@@ -773,7 +773,7 @@ void stats_init_control( ST_CFG *c, int alloc_data )
 		t->max    = c->threads;
 
 		// worker path
-		l = snprintf( wkrstrbuf, 128, "workers.%s.%d", c->name, t->id );
+		l = snprintf( wkrstrbuf, 128, "workers.%s.%lu", c->name, t->id );
 		t->wkrstr = str_dup( wkrstrbuf, l );
 
 		// timestamp buffers
@@ -836,7 +836,7 @@ STAT_CTL *stats_config_defaults( void )
 	s->stats->type    = STATS_TYPE_STATS;
 	s->stats->dtype   = DATA_TYPE_STATS;
 	s->stats->name    = stats_type_names[STATS_TYPE_STATS];
-	s->stats->hsize   = -1;
+	s->stats->hsize   = 0;
 	s->stats->enable  = 1;
 	stats_prefix( s->stats, DEFAULT_STATS_PREFIX );
 
@@ -847,7 +847,7 @@ STAT_CTL *stats_config_defaults( void )
 	s->adder->type    = STATS_TYPE_ADDER;
 	s->adder->dtype   = DATA_TYPE_ADDER;
 	s->adder->name    = stats_type_names[STATS_TYPE_ADDER];
-	s->adder->hsize   = -1;
+	s->adder->hsize   = 0;
 	s->adder->enable  = 1;
 	stats_prefix( s->stats, DEFAULT_ADDER_PREFIX );
 
@@ -858,7 +858,7 @@ STAT_CTL *stats_config_defaults( void )
 	s->gauge->type    = STATS_TYPE_GAUGE;
 	s->gauge->dtype   = DATA_TYPE_GAUGE;
 	s->gauge->name    = stats_type_names[STATS_TYPE_GAUGE];
-	s->gauge->hsize   = -1;
+	s->gauge->hsize   = 0;
 	s->gauge->enable  = 1;
 	stats_prefix( s->stats, DEFAULT_GAUGE_PREFIX );
 
@@ -1053,7 +1053,7 @@ int stats_config_line( AVP *av )
 	else if( !strcasecmp( d, "size" ) || !strcasecmp( d, "hashSize" ) )
 	{
 		// 0 means default
-		if( ( sc->hsize = hash_size( av->val ) ) < 0 )
+		if( !( sc->hsize = hash_size( av->val ) ) )
 			return -1;
 	}
 	else

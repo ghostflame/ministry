@@ -33,14 +33,14 @@ void token_burn( TOKEN *t )
 }
 
 
-int64_t token_hashval( uint32_t ip, int16_t type )
+uint64_t token_hashval( uint32_t ip, int16_t type )
 {
-	int64_t hval;
+	uint64_t hval;
 
 	// hash on IP address and type
-	hval  = (int64_t) type;
+	hval  = (uint64_t) type;
 	hval  = hval << 33;
-	hval += (int64_t) ip; 
+	hval += (uint64_t) ip; 
 
 	// and hashed on token hashsize
 	return hval % ctl->net->tokens->hsize;
@@ -51,7 +51,7 @@ TOKEN *token_find( uint32_t ip, int16_t type, int64_t val )
 {
 	TOKENS *ts = ctl->net->tokens;
 	TOKEN *t;
-	int hval;
+	uint64_t hval;
 
 	// zero is never, ever valid
 	if( !val )
@@ -96,7 +96,7 @@ static char *token_type_names[4] = {
 TOKEN *__token_generate_type( uint32_t ip, int16_t type )
 {
 	TOKENS *ts = ctl->net->tokens;
-	int64_t hval;
+	uint64_t hval;
 	TOKEN *t;
 
 
@@ -172,7 +172,7 @@ void token_generate( uint32_t ip, int16_t types, TOKEN **ptrs, int max, int *cou
 
 
 
-void token_table_purge( int64_t now, int pos, TOKEN **flist )
+void token_table_purge( int64_t now, uint64_t pos, TOKEN **flist )
 {
 	TOKEN *t, *prev, *next;
 	TOKENS *ts;
@@ -222,7 +222,7 @@ void token_purge( int64_t tval, void *arg )
 {
 	TOKENS *ts = ctl->net->tokens;
 	TOKEN *free = NULL;
-	int i;
+	uint64_t i;
 
 	for( i = 0; i < ts->hsize; i++ )
 		token_table_purge( tval, i, &free );

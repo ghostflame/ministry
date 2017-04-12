@@ -74,7 +74,9 @@ struct data_hash_entry
 	uint16_t			len;
 	uint16_t			sz;
 	uint32_t			id;
-	uint32_t			sum;
+
+	uint64_t			sum;
+
 	uint8_t				valid;
 	uint8_t				do_pass;
 	uint8_t				type;

@@ -60,32 +60,48 @@ const DTYPE data_type_defns[DATA_TYPE_MAX] =
 
 
 
-static const uint32_t data_cksum_primes[8] =
+static const uint64_t data_cksum_primes[8] =
 {
 	2909, 3001, 3083, 3187, 3259, 3343, 3517, 3581
 };
 
-__attribute__((hot)) static inline uint32_t data_path_cksum( char *str, int len )
+__attribute__((hot)) static inline uint64_t data_path_cksum( char *str, int len )
 {
-	register uint32_t *p, sum = 0xbeef;
-	int rem;
+	register uint64_t *p, sum = 0xdeadbeef;
+	register int ctr, rem;
 
-	rem = len & 0x3;
-	len = len >> 2;
-	p   = (uint32_t *) str;
+	rem = len & 0x7;
+	ctr = len >> 3;
+	p   = (uint64_t *) str;
+
+	/*
+	 * Performance
+	 *
+	 * I've tried this with unrolled loops of 2, 4 and 8
+	 *
+	 * Loops of 8 don't happen enough - the strings aren't
+	 * long enough.
+	 *
+	 * Loops of 4 work very well.
+	 *
+	 * Loops of 2 aren't enough improvement.
+	 *
+	 * Strangely, loops of 8 then 4 then 2 then 1 are slower
+	 * than just 4 then 1, so this is pretty optimized as is.
+	 */
 
 	// a little unrolling for good measure
-	while( len > 4 )
+	while( ctr > 4 )
 	{
 		sum ^= *p++;
 		sum ^= *p++;
 		sum ^= *p++;
 		sum ^= *p++;
-		len -= 4;
+		ctr -= 4;
 	}
 
 	// and the rest
-	while( len-- > 0 )
+	while( ctr-- > 0 )
 		sum ^= *p++;
 
 	// and capture the rest
@@ -117,7 +133,7 @@ uint32_t data_get_id( ST_CFG *st )
 
 
 
-__attribute__((hot)) static inline DHASH *data_find_path( DHASH *list, uint32_t hval, char *path, int len )
+__attribute__((hot)) static inline DHASH *data_find_path( DHASH *list, uint64_t hval, char *path, int len )
 {
 	register DHASH *h;
 
@@ -135,7 +151,7 @@ __attribute__((hot)) static inline DHASH *data_find_path( DHASH *list, uint32_t 
 DHASH *data_locate( char *path, int len, int type )
 {
 	register DHASH *d;
-	uint32_t hval;
+	uint64_t hval;
 	ST_CFG *c;
 
 	hval = data_path_cksum( path, len );
@@ -169,7 +185,7 @@ DHASH *data_locate( char *path, int len, int type )
 
 __attribute__((hot)) static inline DHASH *data_get_dhash( char *path, int len, ST_CFG *c )
 {
-	uint32_t hval, idx, crt;
+	uint64_t hval, idx, crt;
 	DHASH *d;
 
 	hval = data_path_cksum( path, len );
@@ -226,7 +242,7 @@ __attribute__((hot)) static inline DHASH *data_get_dhash( char *path, int len, S
 
 
 
-void data_point_gauge( char *path, int len, char *dat )
+__attribute__((hot)) void data_point_gauge( char *path, int len, char *dat )
 {
 	double val;
 	DHASH *d;

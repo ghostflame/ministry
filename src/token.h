@@ -40,10 +40,10 @@ struct token_data
 struct token_info
 {
 	TOKEN			**	hash;
-	int					hsize;
-	int					enable;
+	uint64_t			hsize;
 	int64_t				lifetime;
 	int64_t				mask;
+	int					enable;
 };
 
 void token_burn( TOKEN *t );
