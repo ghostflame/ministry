@@ -194,8 +194,8 @@ __attribute__((hot)) void *tcp_connection( void *arg )
 		}
 	}
 
-	info( "Closing connection to host %s after %lu data points.",
-			n->name, h->points );
+	info( "Closing connection to host %s after %lu data point%s.",
+			n->name, h->points, ( h->points == 1 ) ? "" : "s" );
 
 	// mark closing a connection
 	lock_ntype( h->type );
