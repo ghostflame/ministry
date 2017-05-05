@@ -60,19 +60,26 @@ const DTYPE data_type_defns[DATA_TYPE_MAX] =
 
 
 
-static const uint64_t data_cksum_primes[8] =
+static const uint64_t data_path_hash_primes[8] =
 {
 	2909, 3001, 3083, 3187, 3259, 3343, 3517, 3581
 };
 
-__attribute__((hot)) static inline uint64_t data_path_cksum( char *str, int len )
+/*
+ * This is loosely based on DJ Bernsteins per-character hash, but with
+ * significant speedup from the 32-bit in pointer cast.
+ *
+ * It replaces an xor based hash that showed too many collisions.
+ */
+__attribute__((hot)) static inline uint64_t data_path_hash( char *str, int len )
 {
-	register uint64_t *p, sum = 0xdeadbeef;
+	register uint64_t sum = 5381;
 	register int ctr, rem;
+	register uint32_t *p;
 
-	rem = len & 0x7;
-	ctr = len >> 3;
-	p   = (uint64_t *) str;
+	rem = len & 0x3;
+	ctr = len >> 2;
+	p   = (uint32_t *) str;
 
 	/*
 	 * Performance
@@ -93,21 +100,21 @@ __attribute__((hot)) static inline uint64_t data_path_cksum( char *str, int len 
 	// a little unrolling for good measure
 	while( ctr > 4 )
 	{
-		sum ^= *p++;
-		sum ^= *p++;
-		sum ^= *p++;
-		sum ^= *p++;
+		sum += ( sum << 5 ) + *p++;
+		sum += ( sum << 5 ) + *p++;
+		sum += ( sum << 5 ) + *p++;
+		sum += ( sum << 5 ) + *p++;
 		ctr -= 4;
 	}
 
 	// and the rest
 	while( ctr-- > 0 )
-		sum ^= *p++;
+		sum += ( sum << 5 ) + *p++;
 
 	// and capture the rest
 	str = (char *) p;
 	while( rem-- > 0 )
-		sum += *str++ * data_cksum_primes[rem];
+		sum += *str++ * data_path_hash_primes[rem];
 
 	return sum;
 }
@@ -138,8 +145,9 @@ __attribute__((hot)) static inline DHASH *data_find_path( DHASH *list, uint64_t 
 	register DHASH *h;
 
 	for( h = list; h; h = h->next )
-		if( h->sum == hval
-		 && h->len == len	// h->len is set to 0 by gc
+		if( h->valid
+		 && h->sum == hval
+		 && h->len == len
 		 && !memcmp( h->path, path, len ) )
 			break;
 
@@ -154,7 +162,7 @@ DHASH *data_locate( char *path, int len, int type )
 	uint64_t hval;
 	ST_CFG *c;
 
-	hval = data_path_cksum( path, len );
+	hval = data_path_hash( path, len );
 
 	switch( type )
 	{
@@ -188,7 +196,7 @@ __attribute__((hot)) static inline DHASH *data_get_dhash( char *path, int len, S
 	uint64_t hval, idx, crt;
 	DHASH *d;
 
-	hval = data_path_cksum( path, len );
+	hval = data_path_hash( path, len );
 	idx  = hval % c->hsize;
 	crt  = 0;
 
@@ -448,6 +456,7 @@ __attribute__((hot)) void data_line_com_prefix( HOST *h, char *line, int len )
 	// copy the line next to the prefix
 	memcpy( h->ltarget, line, plen );
 	plen += h->plen;
+	h->ltarget[plen] = '\0';
 
 	if( __data_line_compat_dispatch( h->workbuf, plen, data, *type ) < 0 )
 		h->invalid++;

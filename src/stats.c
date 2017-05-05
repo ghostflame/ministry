@@ -424,9 +424,13 @@ void stats_report_one( ST_THR *t, DHASH *d )
 
 	// keep count
 	t->points += ct;
+
 	// and keep highest
 	if( ct > t->highest )
 		t->highest = ct;
+
+	// and keep track of active
+	t->active++;
 }
 
 
@@ -568,6 +572,8 @@ void stats_adder_pass( ST_THR *t )
 
 					// and remove the pass marker
 					d->do_pass = 0;
+
+					t->active++;
 				}
 
 
@@ -629,6 +635,8 @@ void stats_gauge_pass( ST_THR *t )
 					// keep count and zero the counter
 					t->points += d->proc.count;
 					d->proc.count = 0;
+
+					t->active++;
 				}
 			}
 
