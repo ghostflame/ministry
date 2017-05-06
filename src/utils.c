@@ -627,7 +627,10 @@ int read_file( char *path, char **buf, int *len, size_t max, int perm, char *des
 	}
 
 	if( !*buf )
-		*buf = ( perm ) ? perm_str( l ) : (char *) allocz( l + 1 );
+	{
+		*buf = ( perm ) ? perm_str( l + 1 ) : (char *) allocz( l + 1 );
+		debug( "Creating buffer of %d bytes for %s.", 1 + *len, desc );
+	}
 
 	if( !fread( *buf, l, 1, h ) || ferror( h ) )
 	{
@@ -684,14 +687,14 @@ int parse_number( char *str, int64_t *iv, double *dv )
 
 
 
-int hash_size( char *str )
+uint64_t hash_size( char *str )
 {
-	int64_t v;
+	int64_t v = 0;
 
 	if( !str || !strlen( str ) )
 	{
 		warn( "Invalid hashtable size string." );
-		return -1;
+		return 0;
 	}
 
 	if( !strcasecmp( str, "tiny" ) )
@@ -718,7 +721,7 @@ int hash_size( char *str )
 		return -1;
 	}
 
-	return (int) v;
+	return (uint64_t) v;
 }
 
 

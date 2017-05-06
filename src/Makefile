@@ -1,4 +1,4 @@
-CC     = /usr/bin/gcc -std=gnu99 $(WFLAGS)
+CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
 FILES  = utils regexp log loop thread mem gc net tcp udp io target data token synth stats selfstats http config main
 HEADS  = config data gc io log loop mem ministry target net tcp udp token run stats selfstats http synth thread typedefs regexp utils
@@ -9,7 +9,8 @@ HDRS   = $(HEADS:%=%.h)
 
 WFLAGS = -Wall -Wshadow
 IFLAGS = -I. 
-DFLAGS = -g -pg -ggdb3 -DDEBUG -DDEBUG_LOOPS -DDEBUG_SYNTH -DDEBUG_IO -DDEBUG_ENV
+#DFLAGS = -g -pg -ggdb3 -DDEBUG -DDEBUG_LOOPS -DDEBUG_SYNTH -DDEBUG_IO -DDEBUG_ENV
+DFLAGS = -g -pg -ggdb3 -DDEBUG
 TFLAGS = -pthread
 CFLAGS = $(TFLAGS) $(IFLAGS) -DMINISTRY_VERSION='"$(VERS)"'
 LFLAGS = $(TFLAGS) $(IFLAGS) -lm -lcurl -lmicrohttpd

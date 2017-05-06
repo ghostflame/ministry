@@ -23,7 +23,7 @@
 #define DGAUGE_SLOCK_MASK		0x3f
 
 
-
+/*
 #ifdef KEEP_LOCK_STATS
 
 #define lock_adder( d )			pthread_spin_lock( &(ctl->locks->dadder->locks[d->id & DADDER_SLOCK_MASK]) ); \
@@ -37,15 +37,33 @@
 
 #else
 
+*/
+
+#ifdef LOCK_COMMON
+
 #define lock_adder( d )			pthread_spin_lock( &(ctl->locks->dadder->locks[d->id & DADDER_SLOCK_MASK]) )
 #define lock_stats( d )			pthread_spin_lock( &(ctl->locks->dstats->locks[d->id & DSTATS_SLOCK_MASK]) )
 #define lock_gauge( d )			pthread_spin_lock( &(ctl->locks->dgauge->locks[d->id & DGAUGE_SLOCK_MASK]) )
 
-#endif
-
 #define unlock_stats( d )		pthread_spin_unlock( &(ctl->locks->dstats->locks[d->id & DSTATS_SLOCK_MASK]) )
 #define unlock_adder( d )		pthread_spin_unlock( &(ctl->locks->dadder->locks[d->id & DADDER_SLOCK_MASK]) )
 #define unlock_gauge( d )		pthread_spin_unlock( &(ctl->locks->dgauge->locks[d->id & DGAUGE_SLOCK_MASK]) )
+
+#else
+
+#define lock_dhash( d )			pthread_spin_lock( d->lock )
+#define unlock_dhash( d )		pthread_spin_unlock( d->lock )
+
+#define lock_adder( d )			lock_dhash( d )
+#define lock_stats( d )			lock_dhash( d )
+#define lock_gauge( d )			lock_dhash( d )
+
+#define unlock_adder( d )		unlock_dhash( d )
+#define unlock_stats( d )		unlock_dhash( d )
+#define unlock_gauge( d )		unlock_dhash( d )
+
+#endif
+
 
 #define lock_table( idx )		pthread_mutex_lock(   &(ctl->locks->table[idx & HASHT_MUTEX_MASK]) )
 #define unlock_table( idx )		pthread_mutex_unlock( &(ctl->locks->table[idx & HASHT_MUTEX_MASK]) )

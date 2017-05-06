@@ -214,6 +214,7 @@ int http_ssl_load_file( SSL_FILE *sf, char *type )
 	sf->type = str_dup( type, 0 );
 
 	snprintf( desc, 32, "SSL %s file", sf->type );
+
 	return read_file( sf->path, &(sf->content), &(sf->len), MAX_SSL_FILE_SIZE, 1, desc );
 }
 
@@ -224,8 +225,6 @@ int http_ssl_setup( SSL_CONF *s )
 	if( http_ssl_load_file( &(s->cert), "cert" )
 	 || http_ssl_load_file( &(s->key),  "key"  ) )
 		return -1;
-
-	// do things here
 
 	return 0;
 }
@@ -260,27 +259,26 @@ int http_start( void )
 
 	h->sin->sin_port = htons( port );
 
-
 	MHD_set_panic_func( h->calls->panic, (void *) h );
 
 	h->server = MHD_start_daemon( h->flags, 0,
 			NULL, NULL,
-			h->calls->handler, (void *) h,
+			h->calls->handler,               (void *) h,
+			mop( SOCK_ADDR ),                (struct sockaddr *) h->sin,
+			mop( URI_LOG_CALLBACK ),         h->calls->reqlog, NULL,
+			mop( EXTERNAL_LOGGER ),          h->calls->log, (void *) h,
 			mop( CONNECTION_LIMIT ),         h->conns_max,
 			mop( PER_IP_CONNECTION_LIMIT ),  h->conns_max_ip,
 			mop( CONNECTION_TIMEOUT ),       h->conns_tmout,
-			mop( SOCK_ADDR ),                (struct sockaddr *) h->sin,
-			mop( URI_LOG_CALLBACK ),         h->calls->reqlog, NULL,
 			mop( HTTPS_MEM_KEY ),            (const char *) h->ssl->key.content,
 			mop( HTTPS_KEY_PASSWORD ),       (const char *) h->ssl->password,
 			mop( HTTPS_MEM_CERT ),           (const char *) h->ssl->cert.content,
-			mop( EXTERNAL_LOGGER ),          h->calls->log, (void *) h,
 			mop( END )
 		);
 
 	if( !h->server )
 	{
-		err( "Failed to start %s server.", h->proto );
+		err( "Failed to start %s server on %hu: %s", h->proto, port, Err );
 		return -1;
 	}
 
@@ -319,7 +317,8 @@ HTTP_CTL *http_config_defaults( void )
 	h->port            = DEFAULT_HTTP_PORT;
 	h->addr            = NULL;
 	h->stats           = 1;
-	h->flags           = MHD_USE_THREAD_PER_CONNECTION|MHD_USE_POLL|MHD_USE_DEBUG;
+	//h->flags           = MHD_USE_THREAD_PER_CONNECTION|MHD_USE_POLL|MHD_USE_DEBUG|MHD_USE_ERROR_LOG;
+	h->flags           = MHD_USE_THREAD_PER_CONNECTION|MHD_USE_POLL;
 
 	h->enabled         = 0;
 	h->ssl->enabled    = 0;

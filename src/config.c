@@ -188,7 +188,10 @@ int config_line( AVP *av )
 	}
 
 	if( attIs( "tickMsec" ) )
-		ctl->tick_usec = 1000 * atoi( av->val );
+	{
+		av_int( ctl->tick_usec );
+		ctl->tick_usec *= 1000;
+	}
 	else if( attIs( "daemon" ) )
 	{
 		if( config_bool( av ) )

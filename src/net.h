@@ -209,10 +209,10 @@ struct network_control
 
 	time_t					dead_time;
 	unsigned int			rcv_tmout;
-	int						reconn;
-	int						io_usec;
-	int						max_bufs;
-	int						tcount;
+	int64_t					reconn;
+	int64_t					io_usec;
+	int64_t					max_bufs;
+	int64_t					tcount;
 };
 
 

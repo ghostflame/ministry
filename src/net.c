@@ -745,10 +745,12 @@ int net_add_list_member( char *str, int len, uint16_t act )
 
 int net_config_line( AVP *av )
 {
+	NET_CTL *n = ctl->net;
 	struct in_addr ina;
 	char *d, *p, *cp;
 	NET_TYPE *nt;
 	int i, tcp;
+	int64_t v;
 	TARGET *t;
 	WORDS *w;
 
@@ -757,34 +759,36 @@ int net_config_line( AVP *av )
 	{
 		if( attIs( "timeout" ) )
 		{
-			ctl->net->dead_time = (time_t) atoi( av->val );
-			debug( "Dead connection timeout set to %d sec.", ctl->net->dead_time );
+			av_int( v );
+			n->dead_time = (time_t) v;
+			debug( "Dead connection timeout set to %d sec.", n->dead_time );
 		}
 		else if( attIs( "rcvTmout" ) )
 		{
-			ctl->net->rcv_tmout = (unsigned int) atoi( av->val );
-			debug( "Receive timeout set to %u sec.", ctl->net->rcv_tmout );
+			av_int( v );
+			n->rcv_tmout = (unsigned int) v;
+			debug( "Receive timeout set to %u sec.", n->rcv_tmout );
 		}
 		else if( attIs( "reconnMsec" ) )
 		{
-			ctl->net->reconn = 1000 * atoi( av->val );
-			if( ctl->net->reconn <= 0 )
-				ctl->net->reconn = 1000 * NET_RECONN_MSEC;
-			debug( "Reconnect time set to %d usec.", ctl->net->reconn );
+			av_intk( n->reconn );
+			if( n->reconn <= 0 )
+				n->reconn = 1000 * NET_RECONN_MSEC;
+			debug( "Reconnect time set to %d usec.", n->reconn );
 		}
 		else if( attIs( "ioMsec" ) )
 		{
-			ctl->net->io_usec = 1000 * atoi( av->val );
-			if( ctl->net->io_usec <= 0 )
-				ctl->net->io_usec = 1000 * NET_IO_MSEC;
-			debug( "Io loop time set to %d usec.", ctl->net->io_usec );
+			av_intk( n->io_usec );
+			if( n->io_usec <= 0 )
+				n->io_usec = 1000 * NET_IO_MSEC;
+			debug( "Io loop time set to %d usec.", n->io_usec );
 		}
 		else if( attIs( "maxWaiting" ) )
 		{
 			warn( "Net config max_waiting is deprecated - use [Target] : max_waiting." );
-			ctl->net->max_bufs = atoi( av->val );
-			if( ctl->net->max_bufs <= 0 )
-				ctl->net->max_bufs = IO_MAX_WAITING;
+			av_int( n->max_bufs );
+			if( n->max_bufs <= 0 )
+				n->max_bufs = IO_MAX_WAITING;
 		}
 		else if( attIs( "prefix" ) )
 		{
@@ -814,9 +818,9 @@ int net_config_line( AVP *av )
 					t->port = DEFAULT_TARGET_PORT;
 				}
 
-				t->next = ctl->net->targets;
-				ctl->net->targets = t;
-				ctl->net->tcount++;
+				t->next = n->targets;
+				n->targets = t;
+				n->tcount++;
 			}
 
 			free( cp );
@@ -833,19 +837,19 @@ int net_config_line( AVP *av )
 
 	// the names changed, so support both
 	if( !strncasecmp( av->att, "stats.", 6 ) || !strncasecmp( av->att, "data.", 5 ) )
-		nt = ctl->net->stats;
+		nt = n->stats;
 	else if( !strncasecmp( av->att, "adder.", 6 ) )
-		nt = ctl->net->adder;
+		nt = n->adder;
 	else if( !strncasecmp( av->att, "gauge.", 6 ) || !strncasecmp( av->att, "guage.", 6 ) )
-		nt = ctl->net->gauge;
+		nt = n->gauge;
 	else if( !strncasecmp( av->att, "compat.", 7 ) || !strncasecmp( av->att, "statsd.", 7 ) )
-		nt = ctl->net->compat;
+		nt = n->compat;
 	else if( !strncasecmp( av->att, "prefix.", 7 ) )
 	{
 		if( !strcasecmp( p, "enable" ) )
-			ctl->net->prefix->enable = config_bool( av );
+			n->prefix->enable = config_bool( av );
 		else if( !strcasecmp( p, "verbose" ) )
-			ctl->net->prefix->verbose = config_bool( av );
+			n->prefix->verbose = config_bool( av );
 		else if( !strcasecmp( p, "set" ) || !strcasecmp( p, "add" ) )
 		{
 			// this is messy
@@ -859,11 +863,11 @@ int net_config_line( AVP *av )
 	else if( !strncasecmp( av->att, "ipcheck.", 8 ) )
 	{
 		if( !strcasecmp( p, "enable" ) )
-			ctl->net->iplist->enable = config_bool( av );
+			n->iplist->enable = config_bool( av );
 		else if( !strcasecmp( p, "verbose" ) )
-			ctl->net->iplist->verbose = config_bool( av );
+			n->iplist->verbose = config_bool( av );
 		else if( !strcasecmp( p, "dropUnknown" ) || !strcasecmp( p, "drop" ) )
-			ctl->net->iplist->drop = config_bool( av );
+			n->iplist->drop = config_bool( av );
 		else if( !strcasecmp( p, "whitelist" ) )
 			return net_add_list_member( av->val, av->vlen, NET_IP_WHITELIST );
 		else if( !strcasecmp( p, "blacklist" ) )
@@ -876,7 +880,7 @@ int net_config_line( AVP *av )
 	else if( !strncasecmp( av->att, "tokens.", 7 ) )
 	{
 		if( !strcasecmp( p, "enable" ) )
-			ctl->net->tokens->enable = config_bool( av );
+			n->tokens->enable = config_bool( av );
 		else if( !strcasecmp( p, "msec" ) || !strcasecmp( p, "lifetime" ) )
 		{
 			i = atoi( av->val );
@@ -885,16 +889,16 @@ int net_config_line( AVP *av )
 				i = DEFAULT_TOKEN_LIFETIME;
 				warn( "Minimum token lifetime is 10msec - setting to %d", i );
 			}
-			ctl->net->tokens->lifetime = i;
+			n->tokens->lifetime = i;
 		}
 		else if( !strcasecmp( p, "hashsize" ) )
 		{
-			if( ( ctl->net->tokens->hsize = hash_size( av->val ) ) < 0 )
+			if( !( n->tokens->hsize = hash_size( av->val ) ) )
 				return -1;
 		}
 		else if( !strcasecmp( p, "mask" ) )
 		{
-			parse_number( av->val, &(ctl->net->tokens->mask), NULL );
+			av_int( n->tokens->mask );
 		}
 		else
 			return -1;
@@ -964,14 +968,20 @@ int net_config_line( AVP *av )
 	else if( !strcasecmp( d, "backlog" ) )
 	{
 		if( tcp )
-			nt->tcp->back = (unsigned short) strtoul( av->val, NULL, 10 );
+		{
+			av_int( v );
+			nt->tcp->back = (unsigned short) v;
+		}
 		else
 			warn( "Cannot set a backlog for a udp connection." );
 	}
 	else if( !strcasecmp( d, "port" ) || !strcasecmp( d, "ports" ) )
 	{
 		if( tcp )
-			nt->tcp->port = (unsigned short) strtoul( av->val, NULL, 10 );
+		{
+			av_int( v );
+			nt->tcp->port = (unsigned short) v;
+		}
 		else
 		{
 			// work out how many ports we have

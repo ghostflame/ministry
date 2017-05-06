@@ -77,7 +77,8 @@ __attribute__((hot)) int gc_hash_list( DHASH **list, DHASH **flist, unsigned int
 
 void gc_one_set( ST_CFG *c, DHASH **flist, int thresh )
 {
-	int i, hits = 0;
+	int hits = 0;
+	uint64_t i;
 
 	for( i = 0; i < c->hsize; i++ )
 		hits += gc_hash_list( &(c->data[i]), flist, i, thresh );

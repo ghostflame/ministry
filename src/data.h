@@ -59,6 +59,7 @@ struct data_hash_vals
 	uint64_t			count;
 };
 
+#define dlock_t pthread_spinlock_t
 
 struct data_hash_entry
 {
@@ -68,10 +69,14 @@ struct data_hash_entry
 	DVAL				in;
 	DVAL				proc;
 
+	dlock_t			*	lock;
+
 	uint16_t			len;
 	uint16_t			sz;
 	uint32_t			id;
-	uint32_t			sum;
+
+	uint64_t			sum;
+
 	uint8_t				valid;
 	uint8_t				do_pass;
 	uint8_t				type;

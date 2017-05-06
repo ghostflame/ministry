@@ -208,8 +208,9 @@ void loop_start( void )
 	// and a synthetics loop
 	thread_throw( &synth_loop, NULL );
 
-	// throw the memory control loop
-	thread_throw( &mem_loop, NULL );
+	// throw the memory loops
+	thread_throw( &mem_check_loop, NULL );
+	thread_throw( &mem_prealloc_loop, NULL );
 
 	// and gc
 	thread_throw( &gc_loop, NULL );
