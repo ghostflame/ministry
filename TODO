@@ -1,8 +1,13 @@
 Refactor
 	none
 
+HTTP
+	Accept submissions via HTTP
+	Prometheus metrics (requires significant memory)
+
 Network
-	none
+	More granular token control
+		Allow a token / non-token port on one type
 
 Data types
 	none

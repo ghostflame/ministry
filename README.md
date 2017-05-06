@@ -41,10 +41,10 @@ are several design principles at work:
 Shared resources (like the data on a path) are controlled with spinlocks or mutexes.
 
 In straight-line testing, ie:  cat file-full-of-lines | nc localhost 9225, ministry
-can achieve about 5.7M lines/sec into one path on a 2.7Ghz AMD chip.  Interestingly,
-running a second input sees only about 6.3M lines/sec - suggesting a limit in how
-fast the kernel can do pthread_spin_lock.  Running points into a stats buffer runs
-at 1.9M lines/sec.
+can achieve about 8.3M lines/sec into one path on a 3.4GHz Intel desktop chip (and
+a local SSD drive).  A second input on the same path increases it to around 13.8M
+lines/sec, but with 4 simultaneous inputs on separate paths, a full 32.5M lines/
+sec was seen.  This was on an adder path - the simplest type.
 
 Reporting on stats is the biggest CPU task, and this is done by separate threads to
 prevent it interfering with data reception.  The number of these is configurable
