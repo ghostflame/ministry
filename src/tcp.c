@@ -100,7 +100,7 @@ HOST *tcp_get_host( int sock, NET_PORT *np )
 //  to push back to the start of the buffer.
 //
 
-__attribute__((hot)) void *tcp_connection( void *arg )
+__attribute__((hot)) void *tcp_watcher( void *arg )
 {
 	int rv, quiet, quietmax;
 	struct pollfd p;
@@ -244,7 +244,7 @@ void *tcp_loop( void *arg )
 		if( p.revents & POLL_EVENTS )
 		{
 			if( ( h = tcp_get_host( p.fd, n ) ) )
-				thread_throw( tcp_connection, h );
+				thread_throw( tcp_watcher, h );
 		}
 	}
 

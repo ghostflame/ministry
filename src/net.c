@@ -198,13 +198,32 @@ NSOCK *net_make_sock( int insz, int outsz, struct sockaddr_in *peer )
 void net_start_type( NET_TYPE *nt )
 {
 	throw_fn *fp;
+	TCPTH *th;
 	int i;
 
 	if( !( nt->flags & NTYPE_ENABLED ) )
 		return;
 
 	if( nt->flags & NTYPE_TCP_ENABLED )
+	{
+		// start up our handler threads
+		nt->tcp->threads = (TCPTH **) allocz( nt->threads * sizeof( TCPTH * ) );
+		for( i = 0; i < nt->threads; i++ )
+		{
+			th = (TCPTH *) allocz( sizeof( TCPTH ) );
+
+			th->type  = nt;
+			th->polls = (struct pollfd *) allocz( nt->pollmax * sizeof( struct pollfd ) );
+			pthread_mutex_init( &(th->lock), NULL );
+
+			nt->tcp->threads[i] = th;
+
+			thread_throw( tcp_loop, th, i );
+		}
+
+		// and start watching the socket
 		thread_throw( tcp_loop, nt->tcp );
+	}
 
 	if( nt->flags & NTYPE_UDP_ENABLED )
 	{
@@ -233,11 +252,12 @@ int net_startup( NET_TYPE *nt )
 
 	if( nt->flags & NTYPE_TCP_ENABLED )
 	{
+		// listen on the port
 		nt->tcp->sock = tcp_listen( nt->tcp->port, nt->tcp->ip, nt->tcp->back );
 		if( nt->tcp->sock < 0 )
 			return -1;
 
-		// and the lock for keeping track of current connections
+		// init the lock for keeping track of current connections
 		pthread_mutex_init( &(nt->lock), NULL );
 	}
 
@@ -388,6 +408,8 @@ NET_TYPE *net_type_defaults( int type )
 	nt->prfx_parser = d->pf;
 	nt->handler     = d->af;
 	nt->udp_bind    = INADDR_ANY;
+	nt->threads     = d->thrd;
+	nt->pollmax     = TCP_MAX_POLLS;
 	nt->label       = strdup( d->sock );
 	nt->name        = strdup( d->name );
 	nt->flags       = NTYPE_ENABLED|NTYPE_TCP_ENABLED|NTYPE_UDP_ENABLED;
@@ -946,6 +968,46 @@ int net_config_line( AVP *av )
 		else
 		{
 			ntflag( UDP_ENABLED );
+		}
+	}
+	else if( !strcasecmp( d, "threads" ) )
+	{
+		if( !tcp )
+			warn( "Threads is only for TCP connections - there is one thread per UDP port." );
+		else
+		{
+			if( parse_number( av->val, &v, NULL ) == NUM_INVALID )
+			{
+				err( "Invalid TCP thread count: %s", av->val );
+				return -1;
+			}
+			if( v < 1 || v > 1024 )
+			{
+				err( "TCP thread count must be 1 <= X <= 1024." );
+				return -1;
+			}
+
+			n->threads = v;
+		}
+	}
+	else if( !strcasecmp( d, "pollMax" ) )
+	{
+		if( !tcp )
+			warn( "Pollmax is only for TCP connections." );
+		else
+		{
+			if( parse_number( av->val, &v, NULL ) == NUM_INVALID )
+			{
+				err( "Invalid TCP pollmax count: %s", av->val );
+				return -1;
+			}
+			if( v < 1 || v > 1024 )
+			{
+				err( "TCP pollmax must be 1 <= X <= 1024." );
+				return -1;
+			}
+
+			n->pollmax = v;
 		}
 	}
 	else if( !strcasecmp( d, "checks" ) )

@@ -22,6 +22,7 @@ const DTYPE data_type_defns[DATA_TYPE_MAX] =
 		.tokn = TOKEN_TYPE_STATS,
 		.port = DEFAULT_STATS_PORT,
 		.lock = DSTATS_SLOCK_COUNT,
+		.thrd = TCP_THRD_DSTATS,
 		.sock = "ministry stats socket"
 	},
 	{
@@ -33,6 +34,7 @@ const DTYPE data_type_defns[DATA_TYPE_MAX] =
 		.tokn = TOKEN_TYPE_ADDER,
 		.port = DEFAULT_ADDER_PORT,
 		.lock = DADDER_SLOCK_COUNT,
+		.thrd = TCP_THRD_DADDER,
 		.sock = "ministry adder socket"
 	},
 	{
@@ -44,6 +46,7 @@ const DTYPE data_type_defns[DATA_TYPE_MAX] =
 		.tokn = TOKEN_TYPE_GAUGE,
 		.port = DEFAULT_GAUGE_PORT,
 		.lock = DGAUGE_SLOCK_COUNT,
+		.thrd = TCP_THRD_DGAUGE,
 		.sock = "ministry gauge socket"
 	},
 	{
@@ -54,6 +57,7 @@ const DTYPE data_type_defns[DATA_TYPE_MAX] =
 		.af   = NULL,
 		.tokn = 0,
 		.port = DEFAULT_COMPAT_PORT,
+		.thrd = TCP_THRD_DCOMPAT,
 		.sock = "statsd compat socket"
 	},
 };

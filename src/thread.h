@@ -121,11 +121,12 @@ struct thread_data
 	THRD				*	next;
 	pthread_t				id;
 	void				*	arg;
+	int64_t					num;
 };
 
 
 
-pthread_t thread_throw( void *(*fp) (void *), void *arg );
+pthread_t thread_throw( void *(*fp) (void *), void *arg, int64_t num );
 
 LOCK_CTL *lock_config_defaults( void );
 void lock_shutdown( void );

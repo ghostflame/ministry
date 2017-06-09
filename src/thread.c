@@ -26,7 +26,7 @@ void thread_throw_init_attr( void )
 }
 
 
-pthread_t thread_throw( void *(*fp) (void *), void *arg )
+pthread_t thread_throw( void *(*fp) (void *), void *arg, int64_t num )
 {
 	THRD *t;
 
@@ -35,6 +35,7 @@ pthread_t thread_throw( void *(*fp) (void *), void *arg )
 
 	t = (THRD *) allocz( sizeof( THRD ) );
 	t->arg = arg;
+    t->num = num;
 	pthread_create( &(t->id), tt_attr, fp, t );
 
 	return t->id;

@@ -193,7 +193,7 @@ void loop_start( void )
 	get_time( );
 
 	// start a timing circuit
-	thread_throw( &loop_timer, NULL );
+	thread_throw( &loop_timer, NULL, 0 );
 
 	// and the tset/target loops
 	// must happen before stats_start
@@ -206,17 +206,17 @@ void loop_start( void )
 	stats_start( ctl->stats->self );
 
 	// and a synthetics loop
-	thread_throw( &synth_loop, NULL );
+	thread_throw( &synth_loop, NULL, 0 );
 
 	// throw the memory loops
-	thread_throw( &mem_check_loop, NULL );
-	thread_throw( &mem_prealloc_loop, NULL );
+	thread_throw( &mem_check_loop, NULL, 0 );
+	thread_throw( &mem_prealloc_loop, NULL, 0 );
 
 	// and gc
-	thread_throw( &gc_loop, NULL );
+	thread_throw( &gc_loop, NULL, 0 );
 
 	// and token cleanup
-	thread_throw( &token_loop, NULL );
+	thread_throw( &token_loop, NULL, 0 );
 
 	// throw the data listener loop
 	net_start_type( ctl->net->stats );

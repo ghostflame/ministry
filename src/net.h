@@ -136,6 +136,8 @@ struct net_in_port
 	uint16_t				back;
 	uint32_t				ip;
 
+	TCPTH				**	threads;
+
 	LLCT					errors;
 	LLCT					drops;
 	LLCT					accepts;
@@ -158,7 +160,9 @@ struct net_type
 	char				*	name;
 
 	pthread_mutex_t			lock;
-	int32_t					conns;
+	int64_t					threads;
+	int64_t					pollmax;
+	int64_t					conns;
 
 	uint16_t				flags;
 	uint16_t				udp_count;

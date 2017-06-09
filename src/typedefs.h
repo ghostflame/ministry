@@ -60,6 +60,8 @@ typedef struct token_data			TOKEN;
 typedef struct token_info			TOKENS;
 typedef struct regex_entry			RGX;
 typedef struct regex_list			RGXL;
+typedef struct tcp_thread			TCPTH;
+typedef struct tcp_conn				TCPCN;
 
 
 // function types

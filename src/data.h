@@ -37,6 +37,7 @@ struct data_type_params
 	int16_t				tokn;
 	uint16_t			port;
 	uint32_t			lock;
+	int64_t				thrd;
 	char			*	sock;
 };
 
