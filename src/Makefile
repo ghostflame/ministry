@@ -12,8 +12,9 @@ IFLAGS = -I.
 #DFLAGS = -g -pg -ggdb3 -DDEBUG -DDEBUG_LOOPS -DDEBUG_SYNTH -DDEBUG_IO -DDEBUG_ENV
 DFLAGS = -g -pg -ggdb3 -DDEBUG
 TFLAGS = -pthread
-CFLAGS = $(TFLAGS) $(IFLAGS) -DMINISTRY_VERSION='"$(VERS)"'
-LFLAGS = $(TFLAGS) $(IFLAGS) -lm -lcurl -lmicrohttpd
+SFLAGS = -fstack-check -pie -fPIE -Wformat-security -Werror
+CFLAGS = $(TFLAGS) $(IFLAGS) $(SFLAGS) -DMINISTRY_VERSION='"$(VERS)"'
+LFLAGS = $(TFLAGS) $(IFLAGS) $(SFLAGS) -Wl,-z,relro,-z,now -lm -lcurl -lmicrohttpd
 
 BINDIR = $(DESTDIR)/usr/bin
 BIN    = ministry
