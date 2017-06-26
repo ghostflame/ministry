@@ -27,20 +27,22 @@ struct tcp_conn
 struct tcp_thread
 {
     struct pollfd           *   polls;
-    int64_t                     pmax;
-    int64_t                     pmin;
-    int64_t                     curr;
+    int64_t                     pmax;   // highest in-use poll slot
+    int64_t                     pmin;   // lowest free poll slot
+    int64_t                     curr;   // how many current connections
 
-    HOST                    *   hosts;
+    HOST                    **  hosts;
     HOST                    *   waiting;
 
+    NET_PORT                *   port;
     NET_TYPE                *   type;
 
-    pthread_mutex_lock          lock;
+    pthread_mutex_t             lock;
+    pthread_t                   tid;
+    int64_t                     num;
 };
 
 
-throw_fn tcp_handler;
 throw_fn tcp_watcher;
 throw_fn tcp_loop;
 

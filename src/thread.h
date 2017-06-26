@@ -86,6 +86,9 @@
 #define lock_tokens( )			pthread_mutex_lock(   &(ctl->locks->tokens) )
 #define unlock_tokens( )		pthread_mutex_unlock( &(ctl->locks->tokens) )
 
+#define lock_tcp( th )          pthread_mutex_lock(   &(th->lock) )
+#define unlock_tcp( th )        pthread_mutex_unlock( &(th->lock) )
+
 
 struct dhash_locks
 {

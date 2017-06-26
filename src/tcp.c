@@ -29,8 +29,22 @@ void tcp_close_host( HOST *h )
 	debug( "Closed connection from host %s.", h->net->name );
 
 	// give us a moment
-	usleep( 10000 );
+    usleep( 1000 );
+
 	mem_free_host( &h );
+}
+
+void tcp_close_active_host( HOST *h )
+{
+    info( "Closing connection to host %s after %lu data point%s.",
+	    h->net->name, h->points, ( h->points == 1 ) ? "" : "s" );
+
+    // mark closing a connection
+    lock_ntype( h->type );
+    h->type->conns--;
+	unlock_ntype( h->type );
+
+    tcp_close_host( h );
 }
 
 
@@ -74,6 +88,9 @@ HOST *tcp_get_host( int sock, NET_PORT *np )
 	h->net->sock = d;
 	h->type      = np->type;
 
+    // set the last time to now
+    h->last = ctl->curr_time.tv_sec;
+
 	// assume type-based handler functions
 	// and maybe set a profile
 	if( net_set_host_parser( h, 1, 1 ) )
@@ -86,6 +103,115 @@ HOST *tcp_get_host( int sock, NET_PORT *np )
 	return h;
 }
 
+
+#define terr( fmt, ... )        err( "[TCP:%03d] " fmt, th->num, ##__VA_ARGS__ )
+#define twarn( fmt, ... )       warn( "[TCP:%03d] " fmt, th->num, ##__VA_ARGS__ )
+#define tnotice( fmt, ... )     notice( "[TCP:%03d] " fmt, th->num, ##__VA_ARGS__ )
+#define tinfo( fmt, ... )       info( "[TCP:%03d] " fmt, th->num, ##__VA_ARGS__ )
+#define tdebug( fmt, ... )      debug( "[TCP:%03d] " fmt, th->num, ##__VA_ARGS__ )
+
+
+
+__attribute__((hot)) void tcp_find_slot( TCPTH *th, HOST *h )
+{
+    int64_t i;
+
+    // are we full?
+    if( th->curr == th->type->pollmax )
+    {
+        twarn( "Closing socket to host %s because we cannot take on any more.",
+                th->num, h->net->name );
+        tcp_close_host( h );
+        return;
+    }
+
+    tinfo( "Accepted %s connection from host %s into slot %ld.", h->type->label, h->net->name, th->pmin );
+
+    // find the first free slot
+    i = th->pmin;
+
+    // is this the new highest?
+    if( i >= th->pmax )
+        th->pmax = i + 1;
+
+    // set this host up in the poll structure
+    th->polls[i].fd = h->net->sock;
+    th->hosts[i]    = h;
+
+    // count it
+    th->curr++;
+
+    // and keep score against the type
+    lock_ntype( h->type );
+    h->type->conns++;
+    unlock_ntype( h->type );
+
+    // find the next free slot
+    for( i += 1; i < th->type->pollmax; i++ )
+        if( th->polls[i].fd < 0 )
+        {
+            th->pmin = i;
+            break;
+        }
+
+    // this will bark if we ever screw up
+    if( i == th->type->pollmax )
+        th->pmin = -1;
+}
+
+
+
+__attribute__((hot)) void tcp_handler( TCPTH *th, struct pollfd *p, HOST *h )
+{
+    NSOCK *n = h->net;
+
+    if( !( p->revents & POLL_EVENTS ) )
+    {
+        if( (ctl->curr_time.tv_sec - h->last) > ctl->net->dead_time )
+        {
+            tnotice( "Connection from host %s timed out.", n->name );
+            n->flags |= HOST_CLOSE;
+        }
+        return;
+    }
+
+    if( p->revents & POLLHUP )
+    {
+        tdebug( "Received pollhup event from %s", n->name );
+
+        // close host
+        n->flags |= HOST_CLOSE;
+        return;
+    }
+
+    // host has data
+    h->last = ctl->curr_time.tv_sec;
+    n->flags |= HOST_CLOSE_EMPTY;
+
+	// we need to loop until there's nothing left to read
+	while( io_read_data( n ) > 0 )
+	{
+		// data_parse_buf can set this, so let's not carry
+		// on reading from a spammy source if we don't like them
+    	if( n->flags & HOST_CLOSE )
+	    	break;
+
+	    // do we have anything
+	    if( !n->in->len )
+	    {
+		    tdebug( "No incoming data from %s", n->name );
+			break;
+		}
+
+	    // remove the close-empty flag
+	    // we only want to close if our first
+	    // read finds nothing
+	    n->flags &= ~HOST_CLOSE_EMPTY;
+
+	    // and parse that buffer
+	    data_parse_buf( h, n->in );
+    }
+}
 
 
 
@@ -102,112 +228,120 @@ HOST *tcp_get_host( int sock, NET_PORT *np )
 
 __attribute__((hot)) void *tcp_watcher( void *arg )
 {
-	int rv, quiet, quietmax;
-	struct pollfd p;
-	NSOCK *n;
-	THRD *t;
+    struct pollfd *pf;
+    int64_t i, max;
+    TCPTH *th;
+	THRD *td;
 	HOST *h;
+	int rv;
 
-	t = (THRD *) arg;
-	h = (HOST *) t->arg;
-	n = h->net;
+	td = (THRD *) arg;
+	th = (TCPTH *) td->arg;
 
-	info( "Accepted %s connection from host %s.", h->type->label, n->name );
-
-	// mark having a connection
-	lock_ntype( h->type );
-	h->type->conns++;
-	unlock_ntype( h->type );
-
-	p.fd     = n->sock;
-	p.events = POLL_EVENTS;
-	quiet    = 0;
-	quietmax = ctl->net->dead_time;
+    // grab our thread id and number
+    th->tid = td->id;
+    th->num = td->num;
 
 	while( ctl->run_flags & RUN_LOOP )
 	{
-		if( ( rv = poll( &p, 1, 1000 ) ) < 0 )
+        // take on any any new sockets
+        while( th->waiting )
+        {
+            h = th->waiting;
+            th->waiting = h->next;
+
+            tcp_find_slot( th, h );
+        }
+
+        if( !th->curr )
+        {
+            // sleep a little
+            // check again
+            usleep( 50000 );
+            continue;
+        }
+
+        // poll all active connections
+		if( ( rv = poll( th->polls, th->pmax, 500 ) ) < 0 )
 		{
 			// don't sweat interruptions
 			if( errno == EINTR )
 				continue;
 
-			warn( "Poll error talk to host %s -- %s",
-				n->name, Err );
+			twarn( "Poll error -- %s", Err );
 			break;
 		}
 
-		if( !rv )
-		{
-			// timeout?
-			if( ++quiet > quietmax )
-			{
-				notice( "Connection from host %s timed out.",
-					n->name );
-				break;
-			}
-			continue;
-		}
+        // run through the answers
+        for( i = 0, pf = th->polls; i < th->pmax; i++, pf++ )
+            if( pf->fd >= 0 )
+                tcp_handler( th, pf, th->hosts[i] );
 
-		// they went away?
-		if( p.revents & POLLHUP )
-		{
-			debug( "Received pollhup event from %s", n->name );
-			break;
-		}
+        // and run through looking for connections to close
+        max = 0;
+        for( i = 0; i < th->pmax; i++ )
+        {
+            // look for valid hosts structures
+            if( !( h = th->hosts[i] ) )
+                continue;
 
-		// mark us as having data
-		quiet = 0;
+		    // are we done?  If not, track max
+		    if( !( h->net->flags & HOST_CLOSE ) )
+		    {
+                max = i;
+			    continue;
+		    }
 
-		// and start reading
-		n->flags |= HOST_CLOSE_EMPTY;
+		    tdebug( "Host %s flagged as closed.", h->net->name );
 
-		// we need to loop until there's nothing left to read
-		while( io_read_data( n ) > 0 )
-		{
-			// data_parse_buf can set this, so let's not carry
-			// on reading from a spammy source if we don't like them
-			if( n->flags & HOST_CLOSE )
-				break;
+	        tcp_close_active_host( h );
 
-			// do we have anything
-			if( !n->in->len )
-			{
-				debug( "No incoming data from %s", n->name );
-				break;
-			}
+            // and update our structs
+            th->hosts[i] = NULL;
+            th->polls[i].fd = -1;
 
-			// remove the close-empty flag
-			// we only want to close if our first
-			// read finds nothing
-			n->flags &= ~HOST_CLOSE_EMPTY;
+            // is this a new first-available-slot?
+            if( i < th->pmin )
+                th->pmin = i;
+        }
 
-			// and parse that buffer
-			data_parse_buf( h, n->in );
-		}
-
-		// did we get something?  or are we done?
-		if( n->flags & HOST_CLOSE )
-		{
-			debug( "Host %s flagged as closed.", n->name );
-			break;
-		}
+        // have we reduced the max?
+        if( ( max + 1 ) < th->pmax )
+            th->pmax = max + 1;
 	}
 
-	info( "Closing connection to host %s after %lu data point%s.",
-			n->name, h->points, ( h->points == 1 ) ? "" : "s" );
+    // close everything!
+    for( i = 0; i < th->pmax; i++ )
+    {
+        if( ( h = th->hosts[i] ) )
+            tcp_close_active_host( h );
+    }
 
-	// mark closing a connection
-	lock_ntype( h->type );
-	h->type->conns--;
-	unlock_ntype( h->type );
-
-	tcp_close_host( h );
-
-	free( t );
+	free( td );
 	return NULL;
 }
 
+
+
+void tcp_choose_thread( NET_PORT *n, HOST *h )
+{
+    uint64_t v;
+    TCPTH *t;
+
+    // choose thread based on host and port
+    v = h->peer->sin_addr.s_addr;
+    v = ( v << 16 ) + h->peer->sin_port;
+
+    t = n->threads[v % h->type->threads];
+
+    // put it in the waiting queue
+    lock_tcp( t );
+
+    h->next = t->waiting;
+    t->waiting = h;
+
+    unlock_tcp( t );
+}
 
 
 void *tcp_loop( void *arg )
@@ -244,7 +378,7 @@ void *tcp_loop( void *arg )
 		if( p.revents & POLL_EVENTS )
 		{
 			if( ( h = tcp_get_host( p.fd, n ) ) )
-				thread_throw( tcp_watcher, h );
+                tcp_choose_thread( n, h );
 		}
 	}
 

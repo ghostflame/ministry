@@ -176,13 +176,14 @@ void *target_set_loop( void *arg )
 	IOBUF *b;
 	TSET *s;
 	THRD *t;
+    int i;
 
 	t = (THRD *) arg;
 	s = (TSET *) t->arg;
 
 	// throw the individual target loops
-	for( tg = s->targets; tg; tg = tg->next )
-		thread_throw( io_loop, tg );
+	for( i = 0, tg = s->targets; tg; tg = tg->next, i++ )
+		thread_throw( io_loop, tg, i );
 
 	// and start watching and posting buffers to targets
 	while( ctl->run_flags & RUN_LOOP )
@@ -242,7 +243,7 @@ int target_start( void )
 	for( i = 0, s = c->sets; s; s = s->next, i++ )
 	{
 		c->setarr[i] = s;
-		thread_throw( target_set_loop, s );
+		thread_throw( target_set_loop, s, i );
 	}
 
 	return 0;

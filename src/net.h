@@ -118,11 +118,14 @@ struct host_data
 	uint64_t				points;
 	uint64_t				invalid;
 
+    time_t                  last;       // last timestamp sec
+
 	HPRFX				*	prefix;		// may well be null
 	char				*	workbuf;	// gets set to fixed size
 	char				*	ltarget;
 	int						plen;
 	int						lmax;
+    int                     quiet;
 };
 
 

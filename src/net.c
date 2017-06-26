@@ -199,7 +199,7 @@ void net_start_type( NET_TYPE *nt )
 {
 	throw_fn *fp;
 	TCPTH *th;
-	int i;
+	int i, j;
 
 	if( !( nt->flags & NTYPE_ENABLED ) )
 		return;
@@ -213,16 +213,22 @@ void net_start_type( NET_TYPE *nt )
 			th = (TCPTH *) allocz( sizeof( TCPTH ) );
 
 			th->type  = nt;
+            th->hosts = (HOST **) allocz( nt->pollmax * sizeof( HOST * ) );
 			th->polls = (struct pollfd *) allocz( nt->pollmax * sizeof( struct pollfd ) );
-			pthread_mutex_init( &(th->lock), NULL );
+            for( j = 0; j < nt->pollmax; j++ )
+            {
+                th->polls[j].fd     = -1;  // makes poll ignore this one
+                th->polls[j].events = POLL_EVENTS;
+            }
 
+			pthread_mutex_init( &(th->lock), NULL );
 			nt->tcp->threads[i] = th;
 
-			thread_throw( tcp_loop, th, i );
+			thread_throw( tcp_watcher, th, i );
 		}
 
 		// and start watching the socket
-		thread_throw( tcp_loop, nt->tcp );
+		thread_throw( tcp_loop, nt->tcp, 0 );
 	}
 
 	if( nt->flags & NTYPE_UDP_ENABLED )
@@ -233,7 +239,7 @@ void net_start_type( NET_TYPE *nt )
 			fp = &udp_loop_flat;
 
 		for( i = 0; i < nt->udp_count; i++ )
-			thread_throw( fp, nt->udp[i] );
+			thread_throw( fp, nt->udp[i], i );
 	}
 
 	info( "Started listening for data on %s", nt->label );
@@ -259,7 +265,12 @@ int net_startup( NET_TYPE *nt )
 
 		// init the lock for keeping track of current connections
 		pthread_mutex_init( &(nt->lock), NULL );
+
+        info( "Type %s can handle at most %ld connections.", nt->name, ( nt->threads * nt->pollmax ) );
 	}
+
+
+    notice( "TCP dead time is %d seconds.", ctl->net->dead_time );
 
 	if( nt->flags & NTYPE_UDP_ENABLED )
 		for( i = 0; i < nt->udp_count; i++ )
@@ -987,7 +998,7 @@ int net_config_line( AVP *av )
 				return -1;
 			}
 
-			n->threads = v;
+			nt->threads = v;
 		}
 	}
 	else if( !strcasecmp( d, "pollMax" ) )
@@ -1007,7 +1018,7 @@ int net_config_line( AVP *av )
 				return -1;
 			}
 
-			n->pollmax = v;
+			nt->pollmax = v;
 		}
 	}
 	else if( !strcasecmp( d, "checks" ) )
