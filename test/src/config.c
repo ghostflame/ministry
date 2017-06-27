@@ -463,12 +463,8 @@ int config_choose_handler( char *section, AVP *av )
 	// hand some sections off to different config fns
 	if( secIs( "logging" ) )
 		return log_config_line( av );
-	else if( secIs( "network" ) )
-	  	return net_config_line( av );
 	else if( secIs( "memory" ) )
 		return mem_config_line( av );
-	else if( secIs( "stats" ) )
-		return stats_config_line( av );
 	else if( secIs( "target" ) )
 		return target_config_line( av );
 
@@ -594,17 +590,15 @@ int config_read_env( char **env )
 
 void config_create( void )
 {
-	ctl             = (MIN_CTL *) allocz( sizeof( MIN_CTL ) );
+	ctl             = (MTEST_CTL *) allocz( sizeof( MTEST_CTL ) );
 
-	ctl->http       = http_config_defaults( );
+	ctl->locks      = lock_config_defaults( );
 	ctl->log        = log_config_defaults( );
 	ctl->mem        = mem_config_defaults( );
-	ctl->net        = net_config_defaults( );
-	ctl->stats      = stats_config_defaults( );
 	ctl->tgt        = target_config_defaults( );
 
 	ctl->cfg_file   = strdup( DEFAULT_CONFIG_FILE );
-	ctl->version    = strdup( MINISTRY_VERSION );
+	ctl->version    = strdup( MINISTRY_TEST_VERSION );
 	ctl->basedir    = strdup( DEFAULT_BASE_DIR );
 
 	ctl->tick_usec  = 1000 * DEFAULT_TICK_MSEC;

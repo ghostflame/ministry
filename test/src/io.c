@@ -10,42 +10,16 @@
 #include "ministry_test.h"
 
 
-// does not have it's own config, runs off mem.c config
+// does not have it's own config, runs off net.c config
 
-
-__attribute__((hot)) int io_read_data( NSOCK *s )
+void io_disconnect( int *sock, char *name )
 {
-	int i;
+	if( shutdown( *sock, SHUT_RDWR ) )
+		err( "Shutdown error on connection with %s -- %s",
+			name, Err );
 
-	if( !( i = recv( s->sock, s->in->buf + s->in->len, s->in->sz - ( s->in->len + 2 ), MSG_DONTWAIT ) ) )
-	{
-		if( s->flags & HOST_CLOSE_EMPTY )
-		{
-			// that would be the fin, then
-			debug( "Received a FIN, perhaps, from %s", s->name );
-			s->flags |= HOST_CLOSE;
-		}
-		return 0;
-	}
-	else if( i < 0 )
-	{
-		if( errno != EAGAIN
-		 && errno != EWOULDBLOCK )
-		{
-			err( "Recv error for host %s -- %s",
-				s->name, Err );
-			s->flags |= HOST_CLOSE;
-			return i;
-		}
-		return 0;
-	}
-
-	// got some data then
-	s->in->len += i;
-
-	//debug( "Received %d bytes on socket %d/%s", i, s->sock, s->name );
-
-	return i;
+	close( *sock );
+	*sock = -1;
 }
 
 
@@ -76,13 +50,13 @@ int io_write_data( NSOCK *s, int off )
 		{
 			if( errno == EINTR )
 			{
-				debug_io( "Poll call to %s was interrupted.", s->name );
+				debug( "Poll call to %s was interrupted.", s->name );
 				continue;
 			}
 
 			warn( "Poll error writing to host %s -- %s",
 				s->name, Err );
-			s->flags |= HOST_CLOSE;
+			s->flags |= IO_CLOSE;
 			return sent;
 		}
 
@@ -93,7 +67,7 @@ int io_write_data( NSOCK *s, int off )
 				continue;
 
 			// we cannot write just yet
-			debug_io( "Poll timed out try to write to %s", s->name );
+			debug( "Poll timed out try to write to %s", s->name );
 			return sent;
 		}
 
@@ -101,7 +75,7 @@ int io_write_data( NSOCK *s, int off )
 		{
 			warn( "Error writing to host %s -- %s",
 				s->name, Err );
-			s->flags |= HOST_CLOSE;
+			s->flags |= IO_CLOSE;
 			return sent;
 		}
 
@@ -122,7 +96,7 @@ int io_connected( NSOCK *s )
 
 	if( s->sock < 0 )
 	{
-		debug_io( "Socket is -1, so not connected." );
+		debug( "Socket is -1, so not connected." );
 		return -1;
 	}
 
@@ -201,79 +175,50 @@ int io_connect( TARGET *t )
 
 
 
-void io_decr_buf( IOBUF *buf )
-{
-	int free_it = 0;
-
-	pthread_mutex_lock(   &(ctl->locks->bufref) );
-	if( ! --(buf->refs) )
-		free_it = 1;
-	pthread_mutex_unlock( &(ctl->locks->bufref) );
-
-	// only one of them should do this
-	if( free_it )
-		mem_free_buf( &buf );
-}
-
-
 // add a buffer under lock
-void io_post_buffer( TGTIO *t, IOBUF *buf )
+void io_post_buffer( IOLIST *l, IOBUF *buf )
 {
-	IOLIST *l;
+	// attach it
+	lock_iolist( l );
 
-	// create the iolist structure
-	// and hand it off into the queue
-	l = mem_new_iolist( );
-	l->buf = buf;
-
-	// and attach it
-	lock_tgtio( t );
-
-	if( !t->end )
-		t->end = t->head = l;
+	if( !l->tail )
+		l->tail = l->head = buf;
 	else
 	{
 		// make the doubly-linked list
-		l->next       = t->head;
-		t->head->prev = l;
-		t->head       = l;
+		buf->next     = l->head;
+		l->head->prev = buf;
+		l->head       = buf;
 	}
 
-	t->bufs++;
+	l->bufs++;
 
-	unlock_tgtio( t );
+	unlock_iolist( l );
 }
 
 
 // retrive a buffer under lock
-IOBUF *io_fetch_buffer( TGTIO *t )
+IOBUF *io_fetch_buffer( IOLIST *l )
 {
-	IOLIST *l = NULL;
 	IOBUF *b = NULL;
 
-	lock_tgtio( t );
+	lock_iolist( l );
 
-	if( t->end )
+	if( l->tail )
 	{
 		// take one off the end
-		l = t->end;
-		t->end = l->prev;
-		t->bufs--;
+		b = l->tail;
+		l->tail = b->prev;
+		l->bufs--;
 
 		// was that the last one?
-		if( t->end )
-			t->end->next = NULL;
+		if( l->tail )
+			l->tail->next = NULL;
 		else
-			t->head = NULL;
+			l->head = NULL;
 	}
 
-	unlock_tgtio( t );
-
-	if( l )
-	{
-		b = l->buf;
-		mem_free_iolist( &l );
-	}
+	unlock_iolist( l );
 
 	return b;
 }
@@ -293,7 +238,7 @@ void io_grab_buffer( TARGET *t )
 	t->sock->out = b;
 	t->curr_len  = b->len;
 
-	debug_io( "Target %s:%hu has buffer %p (%d)",
+	debug( "Target %s:%hu has buffer %p (%d)",
 		t->host, t->port, b, b->len );
 }
 
@@ -316,7 +261,7 @@ int64_t io_send_stdout( TARGET *t )
 
 		if( t->curr_off >= t->curr_len )
 		{
-			io_decr_buf( s->out );
+			mem_free_buf( &(s->out) );
 			io_grab_buffer( t );
 		}
 	}
@@ -360,12 +305,12 @@ int64_t io_send_net( TARGET *t )
 		f++;
 
 		// did we have problems?
-		if( s->flags & HOST_CLOSE )
+		if( s->flags & IO_CLOSE )
 		{
-			debug_io( "Disconnecting from target %s:%hu",
+			debug( "Disconnecting from target %s:%hu",
 				t->host, t->port );
-			tcp_disconnect( &(s->sock), "send target" );
-			s->flags &= ~HOST_CLOSE;
+			io_disconnect( &(s->sock), "send target" );
+			s->flags &= ~IO_CLOSE;
 			// try again later
 			break;
 		}
@@ -374,22 +319,20 @@ int64_t io_send_net( TARGET *t )
 		if( t->curr_off >= t->curr_len )
 		{
 			// drop that buffer and get a new one
-			io_decr_buf( s->out );
+			mem_free_buf( &(s->out) );
 			io_grab_buffer( t );
 		}
 		else
 		{
-			debug_io( "Target %s:%hu finishing with %d bytes to go.",
+			debug( "Target %s:%hu finishing with %d bytes to go.",
 				t->host, t->port, t->curr_len - t->curr_off );
 			// try again later
 			break;
 		}
 	}
 
-#ifdef DEBUG_IO
 	if( f > 0 )
-		debug_io( "Made %d writes to %s:%hu", f, t->host, t->port );
-#endif
+		debug( "Made %d writes to %s:%hu", f, t->host, t->port );
 
 	return f;
 }
@@ -399,8 +342,8 @@ int64_t io_send_net( TARGET *t )
 
 void *io_loop( void *arg )
 {
+	int64_t fires = 0, usec;
 	struct sockaddr_in sa;
-	int64_t fires = 0;
 	TARGET *d;
 	THRD *t;
 
@@ -420,10 +363,11 @@ void *io_loop( void *arg )
 
 	// make a socket
 	d->sock = net_make_sock( 0, 0, &sa );
+	usec = 1000 * NET_IO_MSEC;
 
 	// how long do we count down after 
-	d->reconn_ct = ctl->net->reconn / ctl->net->io_usec;
-	if( ctl->net->reconn % ctl->net->io_usec )
+	d->reconn_ct = NET_RECONN_MSEC / NET_IO_MSEC;
+	if( NET_RECONN_MSEC % NET_IO_MSEC )
 		d->reconn_ct++;
 
 	// init it's mutex
@@ -434,12 +378,12 @@ void *io_loop( void *arg )
 	// now loop around sending
 	while( ctl->run_flags & RUN_LOOP )
 	{
-		usleep( ctl->net->io_usec );
+		usleep( usec );
 
 		// call the right io fn - stdout is different from network
 		fires += (*(d->iofp))( d );
 
-		debug_io( "Target %s:%hu bufs %d", d->host, d->port, d->iolist->bufs );
+		debug( "Target %s:%hu bufs %d", d->host, d->port, d->iolist->bufs );
 	}
 
 	loop_mark_done( "io", 0, fires );

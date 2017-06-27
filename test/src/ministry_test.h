@@ -2,7 +2,7 @@
 * This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
 *                                                                         *
-* ministry.h - main includes and global config                            *
+* ministry_test.h - main includes and global config                       *
 *                                                                         *
 * Updates:                                                                *
 **************************************************************************/
@@ -64,19 +64,11 @@
 // in order
 #include "utils.h"
 #include "net.h"
-#include "udp.h"
-#include "tcp.h"
 #include "io.h"
-#include "token.h"
 #include "target.h"
 #include "log.h"
 #include "data.h"
-#include "gc.h"
 #include "mem.h"
-#include "synth.h"
-#include "stats.h"
-#include "http.h"
-#include "selfstats.h"
 
 // last
 #include "config.h"

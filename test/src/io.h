@@ -16,29 +16,39 @@
 #define IO_MAX_WAITING			1024		// makes for 1024 * 256k = 256M
 
 
+#define IO_CLOSE				0x0001
+
+
+
 struct io_buffer
 {
-	IOBUF		*	next;
-	char		*	ptr;		// holds memory even if not requested
-	char		*	buf;
-	char		*	hwmk;
-	int				len;
-	int				sz;
-	int				refs;		// how many outstanding to send?
+	IOBUF			*	next;
+	IOBUF			*	prev;
+	char			*	ptr;		// holds memory even if not requested
+	char			*	buf;
+	char			*	hwmk;
+	int					len;
+	int					sz;
+	int					inited;
 };
 
 struct io_buffer_list
 {
-	IOLIST		*	next;
-	IOLIST		*	prev;
-	IOBUF		*	buf;
+	IOLIST			*	next;
+
+	IOBUF			*	head;
+	IOBUF			*	tail;
+
+	int					bufs;
+
+	int					inited;
+
+	pthread_mutex_t		lock;
 };
 
 
 
 // r/w
-int io_read_data( NSOCK *s );
-int io_read_lines( HOST *h );
 int io_write_data( NSOCK *s, int off );
 
 int io_connected( NSOCK *s );
@@ -46,8 +56,8 @@ int io_connect( TARGET *t );
 
 void io_decr_buf( IOBUF *buf );
 
-void io_post_buffer( TGTIO *t, IOBUF *buf );
-IOBUF *io_fetch_buffer( TGTIO *t );
+void io_post_buffer( IOLIST *t, IOBUF *buf );
+IOBUF *io_fetch_buffer( IOLIST *t );
 
 io_fn io_send_net;
 io_fn io_send_stdout;

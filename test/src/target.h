@@ -36,10 +36,14 @@ struct target_conf
 {
 	TARGET				*	next;
 	NSOCK				*	sock;
-	TGTIO				*	iolist;
+	IOLIST				*	iolist;
 	io_fn				*	iofp;
 	char				*	host;
 	char				*	name;
+	char				*	type;
+
+	uint32_t				rc_usec;
+	uint32_t				io_usec;
 
 	uint32_t				reconn_ct;
 	uint32_t				countdown;
@@ -52,6 +56,7 @@ struct target_conf
 
 	// stdout flag
 	int						to_stdout;
+	int						active;
 
 	pthread_mutex_t			lock;
 };
@@ -60,10 +65,10 @@ struct target_conf
 
 struct target_control
 {
-    TARGET              *   stats;
-    TARGET              *   adder;
-    TARGET              *   gauge;
-    TARGET              *   compat;
+	TARGET				*	stats;
+	TARGET				*	adder;
+	TARGET				*	gauge;
+	TARGET				*	compat;
 };
 
 

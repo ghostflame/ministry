@@ -41,4 +41,28 @@ pthread_t thread_throw( void *(*fp) (void *), void *arg, int64_t num )
 	return t->id;
 }
 
+LOCK_CTL *lock_config_defaults( void )
+{
+	LOCK_CTL *l;
 
+	l = (LOCK_CTL *) allocz( sizeof( LOCK_CTL ) );
+
+	// used in loop control
+	pthread_mutex_init( &(l->loop), NULL );
+
+	l->init_done = 1;
+	return l;
+}
+
+void lock_shutdown( void )
+{
+	LOCK_CTL *l = ctl->locks;
+
+	if( !l || !l->init_done )
+		return;
+
+	// used in loop control
+	pthread_mutex_destroy( &(l->loop) );
+
+	l->init_done = 0;
+}

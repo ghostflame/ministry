@@ -38,5 +38,6 @@
 # directories
 logs/*
 
-# binary
+# binaries
 src/ministry
+test/src/ministry_test

@@ -50,12 +50,11 @@ struct config_context
 
 
 // main control structure
-struct ministry_control
+struct mintest_control
 {
+	LOCK_CTL			*	locks;
 	LOG_CTL				*	log;
 	MEM_CTL				*	mem;
-	NET_CTL				*	net;
-	STAT_CTL			*	stats;
 	TGT_CTL				*	tgt;
 
 	struct timespec			init_time;
