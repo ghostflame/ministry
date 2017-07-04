@@ -196,30 +196,6 @@ static inline void __mtype_free_list( MTYPE *mt, int count, void *first, void *l
 
 
 
-CTLR *mem_new_ctlr( void )
-{
-    CTLR *c;
-
-    c = (CTLR *) __mtype_new( ctl->mem->ctlrs );
-
-    return c;
-}
-
-void mem_free_ctlr( CTLR **c )
-{
-	CTLR *ch;
-
-	if( !c || !*c )
-		return;
-
-	ch = *c;
-	*c = NULL;
-
-	__mtype_free( ctl->mem->ctlrs, ch );
-}
-
-
-
 
 IOLIST *mem_new_iolist( void )
 {
@@ -408,7 +384,6 @@ void mem_prealloc_one( MTYPE *mt )
 
 void mem_prealloc( int64_t tval, void *arg )
 {
-	mem_prealloc_one( ctl->mem->ctlrs );
 	mem_prealloc_one( ctl->mem->iobufs );
 	mem_prealloc_one( ctl->mem->iolist );
 }
@@ -483,9 +458,7 @@ int mem_config_line( AVP *av )
 	*d++ = '\0';
 
 	// after this, it's per-type control
-	if( attIs( "ctlrs" ) )
-		mt = m->ctlrs;
-	else if( attIs( "iobufs" ) )
+	if( attIs( "iobufs" ) )
 		mt = m->iobufs;
 	else if( attIs( "iolist" ) )
 		mt = m->iolist;
@@ -534,7 +507,6 @@ void mem_shutdown( void )
 
 	m = ctl->mem;
 
-	pthread_mutex_destroy( &(m->ctlrs->lock)  );
 	pthread_mutex_destroy( &(m->iobufs->lock) );
 	pthread_mutex_destroy( &(m->iolist->lock) );
 }
@@ -571,7 +543,6 @@ MEM_CTL *mem_config_defaults( void )
 
 	m = (MEM_CTL *) allocz( sizeof( MEM_CTL ) );
 
-	m->ctlrs  = __mem_type_ctl( "ctlrs",  sizeof( CTLR ),   MEM_ALLOCSZ_CTLRS,  0 );
 	m->iobufs = __mem_type_ctl( "iobufs", sizeof( IOBUF ),  MEM_ALLOCSZ_IOBUF,  ( MIN_NETBUF_SZ + IO_BUF_SZ ) / 2 );
 	m->iolist = __mem_type_ctl( "iolist", sizeof( IOLIST ), MEM_ALLOCSZ_IOLIST, 0 );
 

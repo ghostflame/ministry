@@ -51,6 +51,10 @@ enum num_types
 #define AVP_MAX_ATT			1024
 #define	AVP_MAX_VAL			8192
 
+// avoid typos
+#define MILLION				1000000
+#define BILLION				1000000000
+
 
 #define tsll( a )			( ( 1000000000 * (int64_t) a.tv_sec ) + (int64_t) a.tv_nsec )
 #define llts( a, _s )		_s.tv_sec = (time_t) ( a / 1000000000 ); _s.tv_nsec = (long) ( a % 1000000000 )

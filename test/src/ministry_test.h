@@ -67,7 +67,7 @@
 #include "io.h"
 #include "target.h"
 #include "log.h"
-#include "data.h"
+#include "metric.h"
 #include "mem.h"
 
 // last

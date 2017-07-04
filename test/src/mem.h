@@ -18,7 +18,6 @@
 
 #define DEFAULT_MEM_PRE_THRESH		0.33
 
-#define MEM_ALLOCSZ_CTLRS			128
 #define MEM_ALLOCSZ_IOBUF			128
 #define MEM_ALLOCSZ_IOLIST			512
 
@@ -63,7 +62,6 @@ struct mem_type_control
 
 struct mem_control
 {
-	MTYPE			*	ctlrs;
 	MTYPE			*	iobufs;
 	MTYPE			*	iolist;
 
@@ -77,10 +75,6 @@ struct mem_control
 
 
 void *mem_reverse_list( void *list_in );
-
-CTLR *mem_new_ctlr( void );
-void mem_free_ctlr( CTLR **c );
-void mem_free_ctlr_list( CTLR *list );
 
 IOLIST *mem_new_iolist( void );
 void mem_free_iolist( IOLIST **l );

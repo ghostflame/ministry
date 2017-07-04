@@ -1,7 +1,7 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-FILES  = utils regexp log loop thread mem net io target config main
-HEADS  = config net io log loop mem target run thread typedefs regexp utils ministry_test
+FILES  = utils regexp log loop thread mem net io metric target config main
+HEADS  = config net io log loop mem target run thread metric typedefs regexp utils ministry_test
 VERS   = $(shell sed -rn 's/^Version:\t(.*)/\1/p' ../../ministry.spec)
 
 OBJS   = $(FILES:%=%.o)

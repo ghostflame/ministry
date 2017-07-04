@@ -53,12 +53,14 @@ struct config_context
 struct mintest_control
 {
 	LOCK_CTL			*	locks;
+	MTRC_CTL			*	metric;
 	LOG_CTL				*	log;
 	MEM_CTL				*	mem;
 	TGT_CTL				*	tgt;
 
 	struct timespec			init_time;
 	struct timespec			curr_time;
+	int64_t					curr_tval;
 
 	unsigned int			conf_flags;
 	unsigned int			run_flags;

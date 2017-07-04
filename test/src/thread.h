@@ -17,6 +17,10 @@
 #define lock_mem( mt )			pthread_mutex_lock(   &(mt->lock) )
 #define unlock_mem( mt )		pthread_mutex_unlock( &(mt->lock) )
 
+#define lock_mgrp( g )			pthread_mutex_lock(   &(g->lock) )
+#define unlock_mgrp( g )		pthread_mutex_unlock( &(g->lock) )
+
+
 
 struct lock_control
 {

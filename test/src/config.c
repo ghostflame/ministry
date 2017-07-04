@@ -465,6 +465,8 @@ int config_choose_handler( char *section, AVP *av )
 		return log_config_line( av );
 	else if( secIs( "memory" ) )
 		return mem_config_line( av );
+	else if( secIs( "metric" ) )
+		return metric_config_line( av );
 	else if( secIs( "target" ) )
 		return target_config_line( av );
 
@@ -595,6 +597,7 @@ void config_create( void )
 	ctl->locks      = lock_config_defaults( );
 	ctl->log        = log_config_defaults( );
 	ctl->mem        = mem_config_defaults( );
+	ctl->metric     = metric_config_defaults( );
 	ctl->tgt        = target_config_defaults( );
 
 	ctl->cfg_file   = strdup( DEFAULT_CONFIG_FILE );

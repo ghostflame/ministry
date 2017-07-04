@@ -30,7 +30,8 @@ void loop_mark_start( const char *tag )
 	pthread_mutex_lock( &(ctl->locks->loop) );
 	ctl->loop_count++;
 	pthread_mutex_unlock( &(ctl->locks->loop) );
-	debug( "Some %s loop thread has started.", tag );
+	if( tag )
+		debug( "Some %s loop thread has started.", tag );
 }
 
 void loop_mark_done( const char *tag, int64_t skips, int64_t fires )
@@ -38,7 +39,8 @@ void loop_mark_done( const char *tag, int64_t skips, int64_t fires )
 	pthread_mutex_lock( &(ctl->locks->loop) );
 	ctl->loop_count--;
 	pthread_mutex_unlock( &(ctl->locks->loop) );
-	debug( "Some %s loop thread has ended.  [%ld/%ld]", tag, fires, skips );
+	if( tag )
+		debug( "Some %s loop thread has ended.  [%ld/%ld]", tag, fires, skips );
 }
 
 
@@ -47,6 +49,7 @@ void loop_mark_done( const char *tag, int64_t skips, int64_t fires )
 void loop_set_time( int64_t tval, void *arg )
 {
 	llts( tval, ctl->curr_time );
+	ctl->curr_tval = tval;
 }
 
 
@@ -198,6 +201,12 @@ void loop_start( void )
 	// throw the memory loops
 	thread_throw( &mem_check_loop, NULL, 0 );
 	thread_throw( &mem_prealloc_loop, NULL, 0 );
+
+	// start the targets
+	target_start( );
+
+	// and start the metrics
+	metric_start_all( );
 
 	// and now we wait for the signal to end
 	while( ctl->run_flags & RUN_LOOP )

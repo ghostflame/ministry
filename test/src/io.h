@@ -27,6 +27,7 @@ struct io_buffer
 	char			*	ptr;		// holds memory even if not requested
 	char			*	buf;
 	char			*	hwmk;
+	int64_t				expires;
 	int					len;
 	int					sz;
 	int					inited;
@@ -40,7 +41,6 @@ struct io_buffer_list
 	IOBUF			*	tail;
 
 	int					bufs;
-
 	int					inited;
 
 	pthread_mutex_t		lock;

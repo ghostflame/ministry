@@ -107,8 +107,6 @@ int target_start( void )
 
 
 
-
-
 TARGET *__target_config_one( uint16_t port, char *str )
 {
 	TARGET *t;
@@ -134,10 +132,10 @@ TGT_CTL *target_config_defaults( void )
 
 	t = (TGT_CTL *) allocz( sizeof( TGT_CTL ) );
 
-	t->adder = __target_config_one( DEFAULT_ADDER_PORT,  "adder" );
-	t->adder = __target_config_one( DEFAULT_STATS_PORT,  "stats" );
-	t->adder = __target_config_one( DEFAULT_GAUGE_PORT,  "gauge" );
-	t->adder = __target_config_one( DEFAULT_COMPAT_PORT, "compat" );
+	t->adder  = __target_config_one( DEFAULT_ADDER_PORT,  "adder" );
+	t->stats  = __target_config_one( DEFAULT_STATS_PORT,  "stats" );
+	t->gauge  = __target_config_one( DEFAULT_GAUGE_PORT,  "gauge" );
+	t->compat = __target_config_one( DEFAULT_COMPAT_PORT, "compat" );
 
 	return t;
 }
@@ -151,7 +149,7 @@ int target_config_line( AVP *av )
 	TARGET *t;
 	char *d;
 
-	if( !( d = memchr( av->val, '.', av->vlen ) ) )
+	if( !( d = memchr( av->att, '.', av->alen ) ) )
 		return -1;
 	*d++ = '\0';
 
@@ -165,7 +163,7 @@ int target_config_line( AVP *av )
 		t = ctl->tgt->compat;
 	else
 	{
-		err( "Unrecognised target type: %s", av->val );
+		err( "Unrecognised target type: %s", av->att );
 		return -1;
 	}
 
@@ -173,12 +171,6 @@ int target_config_line( AVP *av )
 
 	if( !strcasecmp( d, "host" ) )
 	{
-		if( t->host )
-		{
-			err( "Target already has host %s", t->host );
-			return -1;
-		}
-
 		if( strchr( av->val, ' ' ) )
 		{
 			err( "Target hosts may not have spaces in them (%s)", av->val );
@@ -199,6 +191,9 @@ int target_config_line( AVP *av )
 
 			debug( "Target writing to stdout." );
 		}
+
+		if( t->host )
+			free( t->host );
 
 		t->host = str_dup( av->val, av->vlen );
 	}
