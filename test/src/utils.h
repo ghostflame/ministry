@@ -114,11 +114,14 @@ void get_time( void );
 char *perm_str( int len );
 char *str_dup( char *src, int len );
 
+#define dup_val( )						str_dup( av->val, av->vlen )
+
 // this can be freed
 char *str_copy( char *src, int len );
 
 // get a buffer
 BUF *strbuf( uint32_t size );
+BUF *strbuf_create( char *str, int len );
 int strbuf_copy( BUF *b, char *str, int len );
 int strbuf_add( BUF *b, char *str, int len );
 

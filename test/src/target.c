@@ -171,6 +171,12 @@ int target_config_line( AVP *av )
 
 	if( !strcasecmp( d, "host" ) )
 	{
+		if( t->host )
+		{
+			err( "Target %s already has a hostname.", t->host );
+			return -1;
+		}
+
 		if( strchr( av->val, ' ' ) )
 		{
 			err( "Target hosts may not have spaces in them (%s)", av->val );
@@ -192,10 +198,7 @@ int target_config_line( AVP *av )
 			debug( "Target writing to stdout." );
 		}
 
-		if( t->host )
-			free( t->host );
-
-		t->host = str_dup( av->val, av->vlen );
+		t->host = dup_val( );
 	}
 	else if( !strcasecmp( d, "port" ) )
 	{

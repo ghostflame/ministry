@@ -13,6 +13,31 @@
 #define metrand( )		( (double) random( ) / ( 1.0 * RAND_MAX ) )
 #define metrandM( )		( -0.5 + metrand( ) )
 
+
+const struct metric_types_data metric_types[METRIC_TYPE_MAX] =
+{
+	{
+		.name    = "track_mean",
+		.updater = &metric_update_track_mean,
+		.setup   = &metric_setup_track_mean,
+		.type    = METRIC_TYPE_TRACK_MEAN,
+	},
+	{
+		.name    = "floor_up",
+		.updater = &metric_update_floor_up,
+		.setup   = NULL,
+		.type    = METRIC_TYPE_FLOOR_UP,
+	},
+	{
+		.name    = "sometimes_track",
+		.updater = &metric_update_sometimes_track,
+		.setup   = &metric_setup_track_mean,
+		.type    = METRIC_TYPE_SMTS_TRACK,
+	}
+};
+
+
+
 /*
  * Oscillate around a mean
  *
@@ -65,18 +90,45 @@ void metric_update_floor_up( METRIC *m )
 
 
 
+/*
+ * Gauge; uses track mean for occasional updates
+ *
+ * Variables
+ * d1 - mean
+ * d2 - variation
+ * d3 - unused
+ * d4 - probability of change per interval
+ *
+ * Setup:
+ * d3 = d2/2
+ *
+ * Calls metric_update_track_mean for updates
+ * decides for itself if it does anything
+ */
+void metric_update_sometimes_track( METRIC *m )
+{
+	if( m->d3 <= metrand( ) )
+		metric_update_track_mean( m );
+}
+
+
+
+
 
 void metric_update( int64_t tval, void *arg )
 {
 	METRIC *m = (METRIC *) arg;
 	char mbuf[32];
+	BUF *pb;
 	int k, l;
 	IOBUF *b;
 
-	(*(m->fp))( m );
+	(*(m->ufp))( m );
+
+	pb = m->grp->prefix;
 
 	l = snprintf( mbuf, 32, "%0.6f\n", m->curr );
-	k = l + m->grp->prefix->len + m->path->len + 1;
+	k = l + ( ( pb ) ? pb->len : 0 ) + m->path->len + 1;
 
 	// do we have to lock for this?
 	if( m->use_lock )
@@ -95,8 +147,11 @@ void metric_update( int64_t tval, void *arg )
 	}
 
 	// add the prefix
-	memcpy( b->buf + b->len, m->grp->prefix->buf, m->grp->prefix->len );
-	b->len += m->grp->prefix->len;
+	if( pb )
+	{
+		memcpy( b->buf + b->len, pb->buf, pb->len );
+		b->len += pb->len;
+	}
 
 	// copy the path
 	memcpy( b->buf + b->len, m->path->buf, m->path->len );
@@ -166,8 +221,18 @@ void *metric_group_loop( void *arg )
 }
 
 
+int metric_setup_generic( METRIC *m )
+{
+	return 0;
+}
 
 
+int metric_setup_track_mean( METRIC *m )
+{
+	m->d3 = m->d2 / 2;
+
+	return metric_setup_generic( m );
+}
 
 
 void metric_start_all( void )
@@ -199,6 +264,28 @@ void metric_start_all( void )
 
 
 
+int metric_add_group( MGRP *g )
+{
+	return 0;
+}
+
+
+int metric_add( MGRP *g, const struct metric_types_data *t, char *str, int len )
+{
+	//METRIC *m;
+	WORDS w;
+
+	if( strwords( &w, str, len, ' ' ) != METRIC_FLD_MAX )
+	{
+		err( "Invalid config for %s metric: expected %d fields.", t->name, METRIC_FLD_MAX );
+		return -1;
+	}
+
+	return 0;
+}
+
+
+
 MTRC_CTL *metric_config_defaults( void )
 {
 	MTRC_CTL *m = (MTRC_CTL *) allocz( sizeof( MTRC_CTL ) );
@@ -209,54 +296,154 @@ MTRC_CTL *metric_config_defaults( void )
 }
 
 
+/* we organise these as follows:
+ *
+ * All metrics are declared in groups.  Use 'done' to end a group.
+ *
+ * Some metrics are in a thread by themselves, pumping out as much as
+ * we want them to.  These are best for stats or gauges, but paths
+ * could run this way.  These are declared by the group listing them
+ * as together 0.
+ *
+ * Some things produce something once per interval, and we run through
+ * and recalculate them each interval, then submit them.  They run in
+ * one thread.  These are declared by listing the group as together 1.
+ *
+ * There's no reasonable limit to the groups.  Each group has one
+ * configured target, which must match up with a listed target.  That
+ * validation is done at start time.
+ *
+ * Each group has one prefix which is prepended to all paths.
+ */
+
+
 static MGRP __mcl_grp_tmp;
 static int __mcl_grp_state = 0;
 
 int metric_config_line( AVP *av )
 {
-	MGRP *g = &__mcl_grp_tmp;
-	int64_t v;
-	char *d;
+	const struct metric_types_data *mtd;
+	MGRP *ng, *g = &__mcl_grp_tmp;
+	int64_t v, i;
 
 	if( !__mcl_grp_state )
 		memset( g, 0, sizeof( MGRP ) );
 
-	if( !( d = memchr( av->att, '.', av->alen ) ) )
+	if( attIs( "max_age" ) )
 	{
-		if( attIs( "max_age" ) )
-		{
-			if( parse_number( av->val, &v, NULL ) == NUM_INVALID )
-				return -1;
-			ctl->metric->max_age = v;
-		}
-		else
+		if( parse_number( av->val, &v, NULL ) == NUM_INVALID )
 			return -1;
-
-		return 0;
+		ctl->metric->max_age = v;
 	}
-
-
-	// how is all this organised?
-
-	if( attIs( "type"
-
-
-	if( attIs( d, "path" ) )
-		g->target = ctl->tgt->adder;
-	else if( attIs( d, "stats" ) )
-		g->target = ctl->metric->stats;
-	else if( attIs( d, "gauge" ) )
-		g = ctl->metric->gauge;
-	else
-		return -1;
-
-	if( !strcasecmp( d, "prefix" ) )
+	else if( attIs( "group" ) )
 	{
+		if( g->name )
+		{
+			err( "We are already processing group %s.", g->name );
+			return -1;
+		}
+
+		g->name = dup_val( );
+		debug( "Started group %s.", g->name );
+		__mcl_grp_state = 1;
+	}
+	else if( attIs( "prefix" ) )
+	{
+		if( !g->name )
+		{
+			err( "Declare a group by name first.", g->name );
+			return -1;
+		}
+
 		if( g->prefix )
 		{
-			free( g->prefix )
-	}
+			err( "Group %s already has prefix: %s", g->name, g->prefix->buf );
+			return -1;
+		}
 
+		g->prefix = strbuf_create( av->val, av->vlen );
+	}
+	else if( attIs( "target" ) )
+	{
+		if( !g->name )
+		{
+			err( "Declare a group by name first.", g->name );
+			return -1;
+		}
+
+		if( g->target )
+		{
+			err( "Group %s already has target: %s", g->name, g->tgtstr );
+			return -1;
+		}
+
+		g->tgtstr = dup_val( );
+	}
+	else if( attIs( "interval" ) )
+	{
+		if( !g->name )
+		{
+			err( "Declare a group by name first.", g->name );
+			return -1;
+		}
+
+		if( parse_number( av->val, &v, NULL ) == NUM_INVALID )
+		{
+			err( "Invalid reporting interval for group %s: %s", g->name, av->val );
+			return -1;
+		}
+
+		g->intv = v;
+	}
+	else if( attIs( "together" ) )
+	{
+		if( !g->name )
+		{
+			err( "Declare a group by name first.", g->name );
+			return -1;
+		}
+
+		g->as_group = config_bool( av );
+	}
+	else if( attIs( "done" ) )
+	{
+		if( !g->name )
+		{
+			err( "Declare a group by name first.", g->name );
+			return -1;
+		}
+		if( !g->target )
+		{
+			err( "Group %s has no target configured.", g->name );
+			return -1;
+		}
+		// prefix *is* optional
+
+		// copy the group
+		ng = (MGRP *) allocz( sizeof( MGRP ) );
+		memcpy( ng, g, sizeof( MGRP ) );
+
+		// ready for another
+		__mcl_grp_state = 0;
+
+		// add add it
+		return metric_add_group( ng );
+	}
+	else
+	{
+		// we allow metric update types as keywords
+		for( i = 0; i < METRIC_TYPE_MAX; i++ )
+		{
+			mtd = metric_types + i;
+
+			// try the name
+			if( attIs( mtd->name ) )
+				return metric_add( g, mtd, av->val, av->vlen );
+		}
+
+		// didn't recognise it hmm?
+		return -1;
+	}
 
 	return 0;
 }

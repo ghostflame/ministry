@@ -221,7 +221,7 @@ int main( int ac, char **av, char **env )
 		debug( "Starting logging - no more logs to stdout." );
 
 	log_start( );
-	notice( "Ministry v%s starting up.", ctl->version );
+	notice( "Ministry_test v%s starting up.", ctl->version );
 
 	if( chdir( ctl->basedir ) )
 		fatal( "Could not chdir to base dir %s -- %s", ctl->basedir, Err );

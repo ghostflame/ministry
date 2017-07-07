@@ -117,6 +117,7 @@ char *str_copy( char *src, int len );
 
 // get a buffer
 BUF *strbuf( uint32_t size );
+BUF *strbuf_create( char *str, int len );
 int strbuf_copy( BUF *b, char *str, int len );
 int strbuf_add( BUF *b, char *str, int len );
 

@@ -167,6 +167,23 @@ int strbuf_add( BUF *b, char *str, int len )
 	return len;
 }
 
+BUF *strbuf_create( char *str, int len )
+{
+	int k, l;
+	BUF *b;
+
+	if( !len )
+		l = strlen( str );
+
+	for( k = 0, l = len; l > 0; k++ )
+		l = l >> 1;
+
+	b = strbuf( 1 << k );
+	strbuf_add( b, str, len );
+
+	return b;
+}
+
 
 // a capped version of strlen
 int str_nlen( char *src, int max )
