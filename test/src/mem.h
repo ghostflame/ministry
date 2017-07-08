@@ -80,7 +80,7 @@ IOLIST *mem_new_iolist( void );
 void mem_free_iolist( IOLIST **l );
 void mem_free_iolist_list( IOLIST *list );
 
-IOBUF *mem_new_buf( int sz );
+IOBUF *mem_new_buf( int sz, int64_t lifetime );
 void mem_free_buf( IOBUF **b );
 void mem_free_buf_list( IOBUF *list );
 

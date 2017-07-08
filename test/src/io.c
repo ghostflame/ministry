@@ -238,8 +238,9 @@ void io_grab_buffer( TARGET *t )
 	t->sock->out = b;
 	t->curr_len  = b->len;
 
-	debug( "Target %s:%hu has buffer %p (%d)",
-		t->host, t->port, b, b->len );
+	//if( b->len )
+	//	debug( "Target %s:%hu has buffer %p (%d)",
+	//		t->host, t->port, b, b->len );
 }
 
 
@@ -383,7 +384,7 @@ void *io_loop( void *arg )
 		// call the right io fn - stdout is different from network
 		fires += (*(d->iofp))( d );
 
-		debug( "Target %s:%hu bufs %d", d->host, d->port, d->iolist->bufs );
+		//debug( "Target %s:%hu bufs %d", d->host, d->port, d->iolist->bufs );
 	}
 
 	loop_mark_done( "io", 0, fires );

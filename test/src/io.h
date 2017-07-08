@@ -26,8 +26,8 @@ struct io_buffer
 	IOBUF			*	prev;
 	char			*	ptr;		// holds memory even if not requested
 	char			*	buf;
-	char			*	hwmk;
 	int64_t				expires;
+	int64_t				lifetime;
 	int					len;
 	int					sz;
 	int					inited;

@@ -263,7 +263,7 @@ void mem_free_iolist_list( IOLIST *list )
 }
 
 
-IOBUF *mem_new_buf( int sz )
+IOBUF *mem_new_buf( int sz, int64_t lifetime )
 {
 	IOBUF *b;
 
@@ -282,15 +282,12 @@ IOBUF *mem_new_buf( int sz )
 	}
 
 	if( b->sz == 0 )
-	{
-		b->buf  = NULL;
-		b->hwmk = NULL;
-	}
+		b->buf = NULL;
 	else
-	{
-		b->buf  = b->ptr;
-		b->hwmk = b->buf + ( ( 5 * b->sz ) / 6 );
-	}
+		b->buf = b->ptr;
+
+	b->lifetime = lifetime;
+	b->expires  = ctl->curr_tval + b->lifetime;
 
 	return b;
 }
@@ -310,8 +307,8 @@ void mem_free_buf( IOBUF **b )
 	if( sb->sz )
 		sb->ptr[0] = '\0';
 
+	sb->prev = NULL;
 	sb->buf  = NULL;
-	sb->hwmk = NULL;
 	sb->len  = 0;
 
 	__mtype_free( ctl->mem->iobufs, sb );
@@ -333,8 +330,8 @@ void mem_free_buf_list( IOBUF *list )
 		if( b->sz )
 			b->ptr[0] = '\0';
 
+		b->prev = NULL;
 		b->buf  = NULL;
-		b->hwmk = NULL;
 		b->len  = 0;
 		b->next = freed;
 		freed   = b;

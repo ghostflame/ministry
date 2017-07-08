@@ -40,7 +40,7 @@ struct target_conf
 	io_fn				*	iofp;
 	char				*	host;
 	char				*	name;
-	char				*	type;
+	char				*	label;
 
 	uint32_t				rc_usec;
 	uint32_t				io_usec;
@@ -48,6 +48,7 @@ struct target_conf
 	uint32_t				reconn_ct;
 	uint32_t				countdown;
 	uint16_t				port;
+	int8_t					type;
 
 	// offsets into the current buffer
 	int						curr_off;

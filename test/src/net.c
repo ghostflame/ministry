@@ -36,10 +36,10 @@ NSOCK *net_make_sock( int insz, int outsz, struct sockaddr_in *peer )
 	ns->peer = *peer;
 
 	if( insz )
-		ns->in = mem_new_buf( insz );
+		ns->in = mem_new_buf( insz, 0 );
 
 	if( outsz )
-		ns->out = mem_new_buf( outsz );
+		ns->out = mem_new_buf( outsz, 0 );
 
 	// no socket yet
 	ns->sock = -1;

@@ -53,9 +53,9 @@ struct config_context
 struct mintest_control
 {
 	LOCK_CTL			*	locks;
-	MTRC_CTL			*	metric;
 	LOG_CTL				*	log;
 	MEM_CTL				*	mem;
+	MTRC_CTL			*	metric;
 	TGT_CTL				*	tgt;
 
 	struct timespec			init_time;

@@ -60,7 +60,10 @@ void *allocz( size_t size )
 void get_time( void )
 {
 	if( ctl )
+	{
 		clock_gettime( CLOCK_REALTIME, &(ctl->curr_time) );
+		ctl->curr_tval = tsll( ctl->curr_time );
+	}
 }
 
 
@@ -129,6 +132,8 @@ BUF *strbuf( uint32_t size )
 
 	if( size )
 	{
+		// make a little room
+		size    += 24;
 		b->space = (char *) allocz( size );
 		b->sz    = size;
 	}
@@ -173,7 +178,9 @@ BUF *strbuf_create( char *str, int len )
 	BUF *b;
 
 	if( !len )
-		l = strlen( str );
+		len = strlen( str );
+	if( !len )
+		len = 1;
 
 	for( k = 0, l = len; l > 0; k++ )
 		l = l >> 1;
@@ -626,6 +633,8 @@ int parse_number( char *str, int64_t *iv, double *dv )
 
 	if( iv )
 		*iv = strtoll( str, NULL, 10 );
+	if( dv )
+		*dv = strtod( str, NULL );
 
 	return NUM_NORMAL;
 }

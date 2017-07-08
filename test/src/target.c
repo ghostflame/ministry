@@ -37,6 +37,10 @@ void target_buf_send( TARGET *s, IOBUF *buf )
 }
 
 
+const char *target_type_names[METRIC_TYPE_MAX] = 
+{
+	"adder", "stats", "gauge", "compat"
+};
 
 int target_start_one( TARGET *t )
 {
@@ -51,7 +55,7 @@ int target_start_one( TARGET *t )
 	if( t->to_stdout )
 	{
 		memset( &sa, 0, sizeof( struct sockaddr_in ) );
-		l = snprintf( namebuf, 1024, "%s - stdout", t->type );
+		l = snprintf( namebuf, 1024, "%s - stdout", t->label );
 		t->iofp = &io_send_stdout;
 	}
 	else if( net_lookup_host( t->host, &sa ) )
@@ -61,7 +65,7 @@ int target_start_one( TARGET *t )
 	}
 	else
 	{
-		l = snprintf( namebuf, 1024, "%s - %s:%hu", t->type, t->host, t->port );
+		l = snprintf( namebuf, 1024, "%s - %s:%hu", t->label, t->host, t->port );
 		t->iofp = &io_send_net;
 	}
 
@@ -107,15 +111,16 @@ int target_start( void )
 
 
 
-TARGET *__target_config_one( uint16_t port, char *str )
+TARGET *__target_config_one( int8_t type, uint16_t port, char *str )
 {
 	TARGET *t;
 
 	t          = (TARGET *) allocz( sizeof( TARGET ) );
 	t->iolist  = mem_new_iolist( );
-	t->type    = str_dup( str, 0 );
+	t->label   = str_dup( str, 0 );
 	t->port    = port;
 	t->host    = strdup( "127.0.0.1" );
+	t->type    = type;
 
 	t->io_usec = 1000 * NET_IO_MSEC;
 	t->rc_usec = 1000 * NET_RECONN_MSEC;
@@ -132,10 +137,10 @@ TGT_CTL *target_config_defaults( void )
 
 	t = (TGT_CTL *) allocz( sizeof( TGT_CTL ) );
 
-	t->adder  = __target_config_one( DEFAULT_ADDER_PORT,  "adder" );
-	t->stats  = __target_config_one( DEFAULT_STATS_PORT,  "stats" );
-	t->gauge  = __target_config_one( DEFAULT_GAUGE_PORT,  "gauge" );
-	t->compat = __target_config_one( DEFAULT_COMPAT_PORT, "compat" );
+	t->adder  = __target_config_one( METRIC_TYPE_ADDER,  DEFAULT_ADDER_PORT,  "adder" );
+	t->stats  = __target_config_one( METRIC_TYPE_STATS,  DEFAULT_STATS_PORT,  "stats" );
+	t->gauge  = __target_config_one( METRIC_TYPE_GAUGE,  DEFAULT_GAUGE_PORT,  "gauge" );
+	t->compat = __target_config_one( METRIC_TYPE_COMPAT, DEFAULT_COMPAT_PORT, "compat" );
 
 	return t;
 }
@@ -171,12 +176,6 @@ int target_config_line( AVP *av )
 
 	if( !strcasecmp( d, "host" ) )
 	{
-		if( t->host )
-		{
-			err( "Target %s already has a hostname.", t->host );
-			return -1;
-		}
-
 		if( strchr( av->val, ' ' ) )
 		{
 			err( "Target hosts may not have spaces in them (%s)", av->val );
@@ -197,6 +196,9 @@ int target_config_line( AVP *av )
 
 			debug( "Target writing to stdout." );
 		}
+
+		if( t->host )
+			free( t->host );
 
 		t->host = dup_val( );
 	}
