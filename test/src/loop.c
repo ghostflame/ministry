@@ -202,10 +202,10 @@ void loop_start( void )
 	thread_throw( &mem_check_loop, NULL, 0 );
 	thread_throw( &mem_prealloc_loop, NULL, 0 );
 
-	// start the targets
-	target_start( );
+	// init our targets
+	target_init( );
 
-	// and start the metrics
+	// and start the metrics (which start the targets)
 	metric_start_all( );
 
 	// and now we wait for the signal to end

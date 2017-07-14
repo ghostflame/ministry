@@ -33,48 +33,39 @@ void target_buf_send( TARGET *s, IOBUF *buf )
 	}
 
 	io_post_buffer( s->iolist, buf );
-	debug( "Target %s buf count is now %d", s->name, s->iolist->bufs );
+	debug( "Target %d:%s buf count is now %d", s->id, s->name, s->iolist->bufs );
 }
 
 
-const char *target_type_names[METRIC_TYPE_MAX] = 
-{
-	"adder", "stats", "gauge", "compat"
-};
+static int target_id_counter = 0;
 
-int target_start_one( TARGET *t )
+int target_start( TARGET **tp )
 {
 	struct sockaddr_in sa;
-	char namebuf[1024];
-	int l;
+	TARGET *t, *orig;
 
-	if( !t->active )
+	// null?  do nothing
+	if( !( orig = *tp ) )
 		return 0;
 
-	// don't try to look up -
-	if( t->to_stdout )
+	// do we have any metrics for this one?
+	if( !orig->active )
 	{
-		memset( &sa, 0, sizeof( struct sockaddr_in ) );
-		l = snprintf( namebuf, 1024, "%s - stdout", t->label );
-		t->iofp = &io_send_stdout;
-	}
-	else if( net_lookup_host( t->host, &sa ) )
-	{
-		err( "Cannot look up host %s -- invalid target.", t->host );
-		return -1;
-	}
-	else
-	{
-		l = snprintf( namebuf, 1024, "%s - %s:%hu", t->label, t->host, t->port );
-		t->iofp = &io_send_net;
+		debug( "Target %s was set, but is not enabled.", orig->label );
+		*tp = NULL;
+		return 0;
 	}
 
-	// create its name
-	t->name = str_dup( namebuf, l );
+	// make a new target, a clone of the original
+	t = (TARGET *) allocz( sizeof( TARGET ) );
+	memcpy( t, orig, sizeof( TARGET ) );
 
-	// grab the rest of those params
-	sa.sin_port   = htons( t->port );
-	sa.sin_family = AF_INET;
+	// grab an id
+	t->id = ++target_id_counter;
+
+	// make an io list
+	t->iolist = mem_new_iolist( );
+	pthread_mutex_init( &(t->iolist->lock), NULL );
 
 	// make a socket
 	t->sock = net_make_sock( 0, 0, &sa );
@@ -83,31 +74,75 @@ int target_start_one( TARGET *t )
 	if( t->to_stdout )
 		t->sock->sock = fileno( stdout );
 
-	// how long do we count down after 
-	t->reconn_ct = t->rc_usec / t->io_usec;
-	if( t->rc_usec % t->io_usec )
-		t->reconn_ct++;
-
 	// run an io loop
 	thread_throw( io_loop, t, 0 );
+
+	// and store that in the p2p
+	*tp = t;
 
 	return 0;
 }
 
 
-int target_start( void )
+const char *target_type_names[METRIC_TYPE_MAX] = 
+{
+	"adder", "stats", "gauge", "compat"
+};
+
+
+int target_init_one( TARGET *t )
+{
+	char namebuf[1024];
+	int l;
+
+	// don't try to look up -
+	if( t->to_stdout )
+	{
+		memset( &(t->sa), 0, sizeof( struct sockaddr_in ) );
+		l = snprintf( namebuf, 1024, "%s - stdout", t->label );
+		t->iofp = &io_send_stdout;
+	}
+	else if( net_lookup_host( t->host, &(t->sa) ) )
+	{
+		err( "Cannot look up host %s -- invalid target.", t->host );
+		free( t );
+		return -1;
+	}
+	else
+	{
+		l = snprintf( namebuf, 1024, "%s - %s:%hu", t->label, t->host, t->port );
+		t->iofp = &io_send_net;
+	}
+
+	// grab the rest of those params
+	t->sa.sin_port   = htons( t->port );
+	t->sa.sin_family = AF_INET;
+
+	// create its name
+	t->name = str_dup( namebuf, l );
+
+	// how long do we count down after 
+	t->reconn_ct = t->rc_usec / t->io_usec;
+	if( t->rc_usec % t->io_usec )
+		t->reconn_ct++;
+
+	return 0;
+}
+
+
+
+int target_init( )
 {
 	TGT_CTL *c = ctl->tgt;
 	int ret = 0;
 
-	ret += target_start_one( c->stats );
-	ret += target_start_one( c->adder );
-	ret += target_start_one( c->gauge );
-	ret += target_start_one( c->compat );
+	ret += target_init_one( c->adder );
+	ret += target_init_one( c->stats );
+	ret += target_init_one( c->gauge );
+	ret += target_init_one( c->compat );
 
 	return ret;
 }
-
 
 
 
@@ -116,7 +151,6 @@ TARGET *__target_config_one( int8_t type, uint16_t port, char *str )
 	TARGET *t;
 
 	t          = (TARGET *) allocz( sizeof( TARGET ) );
-	t->iolist  = mem_new_iolist( );
 	t->label   = str_dup( str, 0 );
 	t->port    = port;
 	t->host    = strdup( "127.0.0.1" );
@@ -125,7 +159,6 @@ TARGET *__target_config_one( int8_t type, uint16_t port, char *str )
 	t->io_usec = 1000 * NET_IO_MSEC;
 	t->rc_usec = 1000 * NET_RECONN_MSEC;
 
-	pthread_mutex_init( &(t->iolist->lock), NULL );
 
 	return t;
 }
@@ -172,8 +205,6 @@ int target_config_line( AVP *av )
 		return -1;
 	}
 
-	t->active = 1;
-
 	if( !strcasecmp( d, "host" ) )
 	{
 		if( strchr( av->val, ' ' ) )
@@ -201,6 +232,10 @@ int target_config_line( AVP *av )
 			free( t->host );
 
 		t->host = dup_val( );
+	}
+	else if( !strcasecmp( d, "enabled" ) )
+	{
+		t->active = config_bool( av );
 	}
 	else if( !strcasecmp( d, "port" ) )
 	{

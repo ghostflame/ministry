@@ -81,9 +81,6 @@ int config_get_line( FILE *f, AVP *av )
 
 
 
-
-
-
 // step over one section
 int config_ignore_section( FILE *fh )
 {
@@ -137,19 +134,17 @@ CCTXT *config_make_context( char *path, CCTXT *parent )
 
 
 
-int config_source_dupe( CCTXT *c, char *path )
+int config_source_dupe( char *path )
 {
-	CCTXT *ch;
+	CCTXT *c = context;
 
-	if( !c )
-		return 0;
-
-	if( !strcmp( path, c->source ) )
-		return 1;
-
-	for( ch = c->children; ch; ch = ch->next )
-		if( config_source_dupe( ch, path ) )
+	while( c )
+	{
+		if( !strcmp( path, c->source ) )
 			return 1;
+
+		c = c->parent;
+	}
 
 	return 0;
 }
@@ -378,7 +373,7 @@ int config_read( char *inpath )
 	path = config_relative_path( inpath );
 
 	// check this isn't a duplicate
-	if( config_source_dupe( ctxt_top, path ) )
+	if( config_source_dupe( path ) )
 	{
 		warn( "Skipping duplicate config source '%s'.", path );
 		ret = ctl->strict;

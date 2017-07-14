@@ -128,70 +128,9 @@ void metric_update_sometimes_track( METRIC *m )
 
 
 
-/*
- * Output functions
- */
-void metric_line_ministry( char *rbuf, int rlen, METRIC *m )
-{
-	IOBUF *b = m->grp->buf;
-
-	// add a space
-	b->buf[b->len++] = ' ';
-
-	// and the current value (and newline)
-	memcpy( b->buf + b->len, rbuf, rlen );
-	b->len += rlen;
-
-	// write a timestamp for now
-	b->len += snprintf( b->buf + b->len, 1000, " %ld", ctl->curr_time.tv_sec );
-
-	// and a newline
-	b->buf[b->len++] = '\n';
-}
-
-
-void metric_line_compat_var( char *rbuf, int rlen, char *type, int tlen, METRIC *m )
-{
-	IOBUF *b = m->grp->buf;
-
-	// add a colon
-	b->buf[b->len++] = ':';
-
-	// then the value
-	memcpy( b->buf + b->len, rbuf, rlen );
-	b->len += rlen;
-
-	// then the pipe
-	b->buf[b->len++] = '|';
-
-	// then the type
-	memcpy( b->buf + b->len, type, tlen );
-	b->len += tlen;
-
-	// and a newline
-	b->buf[b->len++] = '\n';
-}
-
-void metric_line_compat_stats( char *rbuf, int rlen, METRIC *m )
-{
-	metric_line_compat_var( rbuf, rlen, "ms", 2, m );
-}
-
-void metric_line_compat_adder( char *rbuf, int rlen, METRIC *m )
-{
-	metric_line_compat_var( rbuf, rlen, "c", 1, m );
-}
-
-void metric_line_compat_gauge( char *rbuf, int rlen, METRIC *m )
-{
-	metric_line_compat_var( rbuf, rlen, "g", 1, m );
-}
-
-
 void metric_update( int64_t tval, void *arg )
 {
 	METRIC *m = (METRIC *) arg;
-	IOBUF *tgtbuf = NULL;
 	MGRP *g = m->grp;
 	char rbuf[32];
 	int l;
@@ -207,7 +146,8 @@ void metric_update( int64_t tval, void *arg )
 	// check buffer rollover
 	if( ( g->buf->len + l + m->path->len + 100 ) > IO_BUF_SZ )
 	{
-		tgtbuf = g->buf;
+		debug( "Posting group %s buffer %p (size).", g->name, g->buf );
+		target_buf_send( g->target, g->buf );
 		g->buf = mem_new_buf( IO_BUF_SZ, ctl->metric->max_age );
 	}
 
@@ -215,17 +155,24 @@ void metric_update( int64_t tval, void *arg )
 	memcpy( g->buf->buf + g->buf->len, m->path->buf, m->path->len );
 	g->buf->len += m->path->len;
 
-	// add to buffer
-	(*(m->lfp))( rbuf, l,  m );
+	// then a separator
+	g->buf->buf[g->buf->len++] = m->sep;
+
+	// then the reading
+	memcpy( g->buf->buf + g->buf->len, rbuf, l );
+	g->buf->len += l;
+
+	// do we have a trailer?
+	if( m->tlen )
+	{
+		memcpy( g->buf->buf + g->buf->len, m->trlr, m->tlen );
+		g->buf->len += m->tlen;
+	}
+
+	// and a newline
+	g->buf->buf[g->buf->len++] = '\n';
 
 	unlock_mgrp( g );
-
-	// don't do this inside the group lock to avoid deadlocks
-	if( tgtbuf )
-	{
-		debug( "Posting group %s buffer %p (size).", g->name, tgtbuf );
-		io_post_buffer( g->target->iolist, tgtbuf );
-	}
 }
 
 
@@ -235,6 +182,9 @@ void metric_update_group( int64_t tval, void *arg )
 	MGRP *g = (MGRP *) arg;
 	METRIC *m;
 
+	if( g->intv > 1000000 )
+		debug( "Updating group %s.", g->name );
+
 	for( m = g->list; m; m = m->next )
 		metric_update( tval, m );
 }
@@ -243,7 +193,6 @@ void metric_update_group( int64_t tval, void *arg )
 void metric_group_io( int64_t tval, void *arg )
 {
 	MGRP *g = (MGRP *) arg;
-	IOBUF *tgtbuf = NULL;
 
 	lock_mgrp( g );
 
@@ -252,7 +201,8 @@ void metric_group_io( int64_t tval, void *arg )
 		// got something?  post it and get a new buffer
 		if( g->buf->len > 0 )
 		{
-			tgtbuf = g->buf;
+			//debug( "Posting group %s buffer %p (timer).", g->name, g->buf );
+			target_buf_send( g->target, g->buf );
 			g->buf = mem_new_buf( IO_BUF_SZ, ctl->metric->max_age );
 		}
 		else
@@ -263,32 +213,10 @@ void metric_group_io( int64_t tval, void *arg )
 	}
 
 	unlock_mgrp( g );
-
-	// we don't do this inside the lock to prevent deadlocks
-	if( tgtbuf )
-	{
-		//debug( "Posting group %s buffer %p (timer).", g->name, tgtbuf );
-		io_post_buffer( g->target->iolist, tgtbuf );
-	}
 }
 
 
 
-
-
-void *metric_stat_loop( void *arg )
-{
-	METRIC *m;
-	THRD *t;
-
-	t = (THRD *) arg;
-	m = (METRIC *) t->arg;
-
-	loop_control( "stat", metric_update, m, m->intv, 0, 0 );
-
-	free( t );
-	return NULL;
-}
 
 
 void *metric_group_loop( void *arg )
@@ -323,58 +251,138 @@ void *metric_group_io_loop( void *arg )
 
 
 
-// recreate the metric path with the prefix
-void metric_fix_path( METRIC *m )
+// prepend one buffer to another
+int metric_add_prefix( BUF *parent, BUF *child )
 {
-	BUF *b, *gp = m->grp->prefix;
+	char tmp[METRIC_MAX_PATH];
 
-	b = strbuf( (uint32_t) ( m->path->len + gp->len ) );
+	if( !parent->len )
+		return 0;
 
-	memcpy( b->buf + b->len, gp->buf, gp->len );
-	b->len += gp->len;
+	if( ( parent->len + child->len ) >= METRIC_MAX_PATH )
+	{
+		warn( "Cannot create buffer over max length." );
+		return -1;
+	}
 
-	memcpy( b->buf + b->len, m->path->buf, m->path->len );
-	b->len += m->path->len;
+	memcpy( tmp, parent->buf, parent->len );
+	memcpy( tmp + parent->len, child->buf, child->len );
 
-	b->buf[b->len] = '\0';
+	child->len += parent->len;
+	memcpy( child->buf, tmp, child->len );
+	child->buf[child->len] = '\0';
 
-	free( m->path->space );
-	free( m->path );
-
-	m->path = b;
+	return 0;
 }
 
 
-void metric_set_line_function( METRIC *m )
+void metric_set_target_params( METRIC *m )
 {
 	TARGET *t = m->grp->target;
 
-	// non-compat types get forced to match
+	metric_add_prefix( m->grp->prefix, m->path );
+
 	if( t != ctl->tgt->compat )
 	{
+		// and use ministry format
+		m->sep = ' ';
+
+		// and force a type match
 		if( m->type != t->type )
 		{
 			warn( "Metric %s is type %d but group is type %d - changing metric type.",
 				m->path->buf, m->type, t->type );
 			m->type = t->type;
 		}
+	}
+	else
+	{
+		// right, statsd format
+		m->sep = ':';
 
-		m->lfp = &metric_line_ministry;
+		// and set some parameters for statsd format
+		switch( m->type )
+		{
+			case METRIC_TYPE_ADDER:
+				m->trlr = "|c";
+				m->tlen = 2;
+				break;
+			case METRIC_TYPE_STATS:
+				m->trlr = "|ms";
+				m->tlen = 3;
+				break;
+			case METRIC_TYPE_GAUGE:
+				m->trlr = "|g";
+				m->tlen = 2;
+				break;
+		}
+	}
+}
+
+
+
+void metric_init_group( MGRP *g )
+{
+	METRIC *m;
+
+	// get ourselves a buffer
+	g->buf = mem_new_buf( IO_BUF_SZ, ctl->metric->max_age );
+
+	pthread_mutex_init( &(g->lock), NULL );
+
+	// do we need to merge parents?
+	if( g->parent )
+		metric_add_prefix( g->parent->prefix, g->prefix );
+
+	// inherit interval if we don't have one
+	if( !g->intv )
+		g->intv = ( g->parent ) ? g->parent->intv : METRIC_DEFAULT_INTV;
+
+	// default to adder
+	if( !g->target )
+		g->target = ( g->parent ) ? g->parent->target : ctl->tgt->adder;
+
+	// we're done if there's no metrics on this one
+	if( !g->mcount )
+	{
+		debug( "No metrics to start in group %s.", g->name );
 		return;
 	}
 
-	// compat we care which fn to use
-	switch( m->type )
+	// do some setup on each metric
+	for( m = g->list; m; m = m->next )
+		metric_set_target_params( m );
+
+	// and start up the target - we get a new one
+	target_start( &(g->target) );
+	if( !g->target )
 	{
-		case METRIC_TYPE_ADDER:
-			m->lfp = &metric_line_compat_adder;
-			break;
-		case METRIC_TYPE_STATS:
-			m->lfp = &metric_line_compat_stats;
-			break;
-		case METRIC_TYPE_GAUGE:
-			m->lfp = &metric_line_compat_gauge;
-			break;
+		notice( "Group %s disabled - it's target is not configured.", g->name );
+		return;
+	}
+
+	// start up the group
+	debug( "Starting group %s with interval %ld.", g->name, g->intv );
+	thread_throw( metric_group_loop, g, 0 );
+
+	// and a loop to handle io max_age
+	thread_throw( metric_group_io_loop, g, 0 );
+}
+
+
+
+void metric_start_group_list( MGRP *list )
+{
+	MGRP *g;
+
+	// work out config based on our metrics list
+	for( g = list; g; g = g->next )
+	{
+		metric_init_group( g );
+
+		// depth first
+		if( g->children )
+			metric_start_group_list( g->children );
 	}
 }
 
@@ -382,83 +390,62 @@ void metric_set_line_function( METRIC *m )
 
 void metric_start_all( void )
 {
-	METRIC *m;
-	MGRP *g;
-
 	// convert to nsec
 	ctl->metric->max_age *= MILLION;
-
-	for( g = ctl->metric->groups; g; g = g->next )
-	{
-		// get ourselves a buffer
-		g->buf = mem_new_buf( IO_BUF_SZ, ctl->metric->max_age );
-
-		pthread_mutex_init( &(g->lock), NULL );
-
-		// do some setup
-		for( m = g->list; m; m = m->next )
-		{
-			// set the group
-			// when we created the metrics they were part
-			// of the static group struct used for config
-			// handling.  Now we need to point them at their
-			// real group
-			m->grp = g;
-
-			metric_set_line_function( m );
-
-			if( g->prefix )
-				metric_fix_path( m );
-
-			if( !m->intv )
-				m->intv = g->intv;
-		}
-	}
-
-	// and throw our threads
-	for( g = ctl->metric->groups; g; g = g->next )
-	{
-		// are we doing a group
-		if( g->as_group )
-		{
-			debug( "Starting group %s with interval %ld.", g->name, g->intv );
-			thread_throw( metric_group_loop, g, 0 );
-		}
-		else
-		{
-			for( m = g->list; m; m = m->next )
-				thread_throw( metric_stat_loop, m, 0 );
-		}
-
-		// and a loop to handle io max_age
-		thread_throw( metric_group_io_loop, g, 0 );
-	}
+	metric_start_group_list( ctl->metric->groups );
 }
 
 
+
+
+
+
+
+
+
+MGRP *metric_find_group_parent( char *name, int nlen )
+{
+	MGRP *g;
+
+	for( g = ctl->metric->flat_list; g; g = g->next_flat )
+		if( g->nlen == nlen && !memcmp( g->name, name, nlen ) )
+			return g;
+
+	return NULL;
+}
 
 
 int metric_add_group( MGRP *g )
 {
 	MTRC_CTL *c = ctl->metric;
-	MGRP *gp;
 
-	for( gp = ctl->metric->groups; gp; gp = gp->next )
-		if( g->nlen == gp->nlen && !memcmp( g->name, gp->name, g->nlen ) )
-		{
-			err( "Duplicate metric group name: %s", g->name );
-			return -1;
-		}
-
+	// keep count
 	c->gcount++;
-	g->next    = c->groups;
-	c->groups  = g;
 	c->mcount += g->mcount;
+
+	// put it in the flat list for parent lookups
+	g->next_flat = c->flat_list;
+	c->flat_list = g;
 
 	debug( "Added metric group %s with %ld metrics in.", g->name, g->mcount );
 
+	// is this a top-level group?
+	if( !g->parent )
+	{
+		g->next = c->groups;
+		c->groups = g;
+	}
+	else
+	{
+		g->next = g->parent->children;
+		g->parent->children = g;
+	}
+
 	return 0;
 }
+
+
+
 
 
 // we allow a leading / to indicate this is a per-second count,
@@ -514,7 +501,9 @@ int metric_add( MGRP *g, char *str, int len )
 
 	memset( &nm, 0, sizeof( METRIC ) );
 
-	nm.path = strbuf_create( w.wd[METRIC_FLD_PATH], w.len[METRIC_FLD_PATH] );
+	nm.path = strbuf( METRIC_MAX_PATH );
+	nm.grp  = g;
+	strbuf_copy( nm.path, w.wd[METRIC_FLD_PATH], w.len[METRIC_FLD_PATH] );
 
 	if( w.len[METRIC_FLD_MODEL] )
 		for( i = 0; i < METRIC_MODEL_MAX; i++ )
@@ -542,12 +531,6 @@ int metric_add( MGRP *g, char *str, int len )
 	else
 	{
 		err( "Metric type %s unrecognised.", p );
-		return -1;
-	}
-
-	if( metric_get_interval( w.wd[METRIC_FLD_INTV], &(nm.intv) ) )
-	{
-		err( "Invalid interval parameter." );
 		return -1;
 	}
 
@@ -612,19 +595,12 @@ MTRC_CTL *metric_config_defaults( void )
  */
 
 
-static MGRP __mcl_grp_tmp;
-static int __mcl_grp_state = 0;
+static MGRP *__mcl_grp_tmp = NULL;
 
 int metric_config_line( AVP *av )
 {
-	MGRP *ng, *g = &__mcl_grp_tmp;
+	MGRP *ng, *g = __mcl_grp_tmp;
 	int64_t v;
-
-	if( !__mcl_grp_state )
-	{
-		memset( g, 0, sizeof( MGRP ) );
-		g->intv = METRIC_DEFAULT_INTV;
-	}
 
 	if( attIs( "max_age" ) )
 	{
@@ -634,43 +610,47 @@ int metric_config_line( AVP *av )
 	}
 	else if( attIs( "group" ) )
 	{
-		if( g->name )
-		{
-			err( "We are already processing group %s.", g->name );
-			return -1;
-		}
+		ng = (MGRP *) allocz( sizeof( MGRP ) );
+		ng->intv = METRIC_DEFAULT_INTV;
+		ng->name = dup_val( );
+		ng->nlen = av->vlen;
+		ng->prefix = strbuf( METRIC_MAX_PATH );
 
-		g->name = dup_val( );
-		g->nlen = av->vlen;
-		debug( "Started group %s.", g->name );
-		__mcl_grp_state = 1;
+
+		if( __mcl_grp_tmp )
+			ng->parent = __mcl_grp_tmp;
+
+		__mcl_grp_tmp = ng;
+
+		debug( "Started group %s.", ng->name, ng->parent );
 	}
 	else if( attIs( "prefix" ) )
 	{
-		if( !g->name )
+		if( !g || !g->name )
 		{
 			err( "Declare a group by name first.", g->name );
 			return -1;
 		}
 
-		if( g->prefix )
+		if( g->prefix->len )
 		{
 			err( "Group %s already has prefix: %s", g->name, g->prefix->buf );
 			return -1;
 		}
 
-		g->prefix = strbuf_create( av->val, av->vlen );
-
-		// do we have a trailing .  ?
-		if( g->prefix->buf[g->prefix->len - 1] != '.' )
+		strbuf_copy( g->prefix, av->val, av->vlen );
+	}
+	else if( attIs( "parent" ) )
+	{
+		if( !( g->parent = metric_find_group_parent( av->val, av->vlen ) ) )
 		{
-			g->prefix->buf[g->prefix->len++] = '.';
-			g->prefix->buf[g->prefix->len]   = '\0';
+			err( "Parent %s not found for group %s", av->val, g->name );
+			return -1;
 		}
 	}
 	else if( attIs( "target" ) )
 	{
-		if( !g->name )
+		if( !g || !g->name )
 		{
 			err( "Declare a group by name first.", g->name );
 			return -1;
@@ -698,7 +678,7 @@ int metric_config_line( AVP *av )
 	}
 	else if( attIs( "interval" ) )
 	{
-		if( !g->name )
+		if( !g || !g->name )
 		{
 			err( "Declare a group by name first.", g->name );
 			return -1;
@@ -710,19 +690,9 @@ int metric_config_line( AVP *av )
 			return -1;
 		}
 	}
-	else if( attIs( "together" ) )
-	{
-		if( !g->name )
-		{
-			err( "Declare a group by name first.", g->name );
-			return -1;
-		}
-
-		g->as_group = config_bool( av );
-	}
 	else if( attIs( "metric" ) )
 	{
-		if( !g->name )
+		if( !g || !g->name )
 		{
 			err( "Declare a group by name first.", g->name );
 			return -1;
@@ -732,27 +702,22 @@ int metric_config_line( AVP *av )
 	}
 	else if( attIs( "done" ) )
 	{
-		if( !g->name )
+		if( !g || !g->name )
 		{
 			err( "Declare a group by name first.", g->name );
 			return -1;
 		}
-		if( !g->target )
-		{
-			err( "Group %s has no target configured.", g->name );
-			return -1;
-		}
-		// prefix *is* optional
 
-		// copy the group
-		ng = (MGRP *) allocz( sizeof( MGRP ) );
-		memcpy( ng, g, sizeof( MGRP ) );
+		// close config of this group
+		g->closed = 1;
 
-		// ready for another
-		__mcl_grp_state = 0;
+		// revert to the parent - or lack of
+		if( g->parent && !g->parent->closed )
+			__mcl_grp_tmp = g->parent;
+		else
+			__mcl_grp_tmp = NULL;
 
-		// add add it
-		return metric_add_group( ng );
+		return metric_add_group( g );
 	}
 	else
 		return -1;

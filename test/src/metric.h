@@ -14,6 +14,7 @@
 
 #define METRIC_MAX_AGE				100			// msec
 #define METRIC_DEFAULT_INTV			10000000	// usec
+#define METRIC_MAX_PATH				1024		// bytes
 
 
 struct metric_types_data
@@ -46,7 +47,6 @@ enum metric_fields
 {
 	METRIC_FLD_TYPE = 0,
 	METRIC_FLD_MODEL,
-	METRIC_FLD_INTV,
 	METRIC_FLD_D1,
 	METRIC_FLD_D2,
 	METRIC_FLD_D3,
@@ -63,7 +63,7 @@ struct metric
 	MGRP				*	grp;
 	BUF					*	path;
 	update_fn			*	ufp;
-	line_fn				*	lfp;
+	char				*	trlr;
 
 	double					curr;
 	double					d1;
@@ -75,16 +75,17 @@ struct metric
 
 	int8_t					model;
 	int8_t					type;
+	int8_t					tlen;
+	char					sep;
 };
 
 
 struct metric_group
 {
 	MGRP				*	next;
-	/* do nested groups at some point
+	MGRP				*	next_flat;
 	MGRP				*	parent;
 	MGRP				*	children;
-	*/
 	METRIC				*	list;
 	TARGET				*	target;
 	IOBUF				*	buf;
@@ -95,13 +96,14 @@ struct metric_group
 	int64_t					mcount;
 	int64_t					intv;
 	int16_t					nlen;
-	int8_t					as_group;
+	int8_t					closed;
 };
 
 
 struct metric_control
 {
 	MGRP				*	groups;
+	MGRP				*	flat_list;
 	int64_t					gcount;
 	int64_t					mcount;
 	int64_t					max_age;
@@ -114,16 +116,10 @@ update_fn metric_update_track_mean_pos;
 update_fn metric_update_floor_up;
 update_fn metric_update_sometimes_track;
 
-line_fn metric_line_ministry;
-line_fn metric_line_compat_adder;
-line_fn metric_line_compat_stats;
-line_fn metric_line_compat_gauge;
-
 loop_call_fn metric_update;
 loop_call_fn metric_group_update;
 loop_call_fn metric_group_io;
 
-throw_fn metric_stat_loop;
 throw_fn metric_group_loop;
 throw_fn metric_group_io_loop;
 

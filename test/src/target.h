@@ -42,6 +42,8 @@ struct target_conf
 	char				*	name;
 	char				*	label;
 
+	struct sockaddr_in		sa;
+
 	uint32_t				rc_usec;
 	uint32_t				io_usec;
 
@@ -58,6 +60,7 @@ struct target_conf
 	// stdout flag
 	int						to_stdout;
 	int						active;
+	int						id;
 
 	pthread_mutex_t			lock;
 };
@@ -76,7 +79,9 @@ struct target_control
 throw_fn target_loop;
 
 void target_buf_send( TARGET *t, IOBUF *but );
-int target_start( void );
+
+int target_start( TARGET **tp );
+int target_init( void );
 
 TGT_CTL *target_config_defaults( void );
 int target_config_line( AVP *av );

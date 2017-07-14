@@ -40,6 +40,6 @@ typedef int64_t io_fn( TARGET * );
 typedef void loop_call_fn ( int64_t, void * );
 typedef void * throw_fn ( void * );
 typedef void update_fn ( METRIC * );
-typedef void line_fn ( char *, int, METRIC * );
+typedef void line_fn ( METRIC * );
 
 #endif
