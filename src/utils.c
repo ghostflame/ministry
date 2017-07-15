@@ -679,7 +679,7 @@ int parse_number( char *str, int64_t *iv, double *dv )
 	while( *str == '+' )
 		str++;
 
-	if( !isdigit( *str ) )
+	if( *str != '-' && !isdigit( *str ) )
 		return NUM_INVALID;
 
 	if( strchr( str, '.' ) )
@@ -698,6 +698,8 @@ int parse_number( char *str, int64_t *iv, double *dv )
 
 	if( iv )
 		*iv = strtoll( str, NULL, 10 );
+	if( dv )
+		*dv = strtod( str, NULL );
 
 	return NUM_NORMAL;
 }

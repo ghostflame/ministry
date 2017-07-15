@@ -44,6 +44,7 @@ DOCDIR=%{buildroot}%{_docdir}/ministry \
 MANDIR=%{buildroot}%{_mandir} \
 UNIDIR=%{buildroot}%{_unitdir} \
 SSLDIR=%{buildroot}/etc/ministry/ssl \
+TSTDIR=${buildroot}/etc/ministry/test \
 USER=ministry GROUP=ministry \
 make unitinstall
 
@@ -51,6 +52,7 @@ make unitinstall
 %files
 %doc %{_docdir}/ministry/
 %config(noreplace) /etc/ministry/ministry.conf
+%config(noreplace) /etc/ministry/test/ministry_test.conf
 %config(noreplace) /etc/logrotate.d/ministry
 %config(noreplace) /etc/ministry/ssl/cert.pem
 %config(noreplace) /etc/ministry/ssl/key.pem

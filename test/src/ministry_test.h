@@ -47,8 +47,8 @@
 #define Err strerror( errno )
 #endif
 
-#ifndef MINISTRY_TEST_VERSION
-#define MINISTRY_TEST_VERSION "unknown"
+#ifndef VERSION_STRING
+#define VERSION_STRING "unknown"
 #endif
 
 

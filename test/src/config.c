@@ -372,7 +372,7 @@ int config_read( char *inpath )
 	// prune the path
 	path = config_relative_path( inpath );
 
-	// check this isn't a duplicate
+	// check this isn't a source loop
 	if( config_source_dupe( path ) )
 	{
 		warn( "Skipping duplicate config source '%s'.", path );
@@ -596,7 +596,7 @@ void config_create( void )
 	ctl->tgt        = target_config_defaults( );
 
 	ctl->cfg_file   = strdup( DEFAULT_CONFIG_FILE );
-	ctl->version    = strdup( MINISTRY_TEST_VERSION );
+	ctl->version    = strdup( VERSION_STRING );
 	ctl->basedir    = strdup( DEFAULT_BASE_DIR );
 
 	ctl->tick_usec  = 1000 * DEFAULT_TICK_MSEC;

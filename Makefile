@@ -1,4 +1,4 @@
-DIRS    = src
+DIRS    = src test
 TARGET  = all
 
 VERS    = $(shell sed -rn 's/^Version:\t(.*)/\1/p' ministry.spec)
@@ -12,6 +12,7 @@ DOCDIR ?= $(DESTDIR)/usr/share/doc/ministry
 UNIDIR ?= $(DESTDIR)/usr/lib/systemd/system
 INIDIR ?= $(DESTDIR)/etc/init.d
 SSLDIR ?= $(CFGDIR)/ssl
+TSTDIR ?= $(CFGDIR)/test
 
 
 all:  subdirs
@@ -27,8 +28,7 @@ subdirs:
 	@mkdir -p logs
 
 code:
-	@cd src && $(MAKE) $(MFLAGS) $(TARGET)
-
+	@for d in $(DIRS); do cd $$d; $(MAKE) $(MFLAGS) $(TARGET); cd ..; done
 
 docker:
 	dist/docker.sh
@@ -36,11 +36,12 @@ docker:
 
 install:
 	@echo "Making installation directories"
-	@mkdir -p $(CFGDIR) $(SSLDIR) $(LRTDIR) $(MANDIR)/man1 $(MANDIR)/man5 $(DOCDIR)
-	@cd src && $(MAKE) $(MFLAGS) install
+	@mkdir -p $(CFGDIR) $(SSLDIR) $(TSTDIR) $(LRTDIR) $(MANDIR)/man1 $(MANDIR)/man5 $(DOCDIR)
+	@for d in $(DIRS); do cd $$d; $(MAKE) $(MFLAGS) install; cd ..; done
 	@echo "Creating config and scripts."
 	@install -m644 dist/ministry.logrotate $(LRTDIR)/ministry
 	@install -m644 conf/install.conf $(CFGDIR)/ministry.conf
+	@install -m644 test/conf/install.conf $(TSTDIR)/ministry_test.conf
 	@install -m644 dist/ssl/cert.pem $(SSLDIR)/cert.pem
 	@install -m600 dist/ssl/key.pem $(SSLDIR)/key.pem
 	@echo "Creating manual pages and docs."
@@ -68,12 +69,12 @@ version:
 	@echo $(VERS)
 
 remove:
-	@cd src && $(MAKE) $(MFLAGS) uninstall
+	@for d in $(DIRS); do cd $$dl; $(MAKE) $(MFLAGS) uninstall; cd ..; done
 	@service ministry stop || :
 	@rm -rf $(LOGDIR) $(DOCDIR) $(SSLDIR) $(CFGDIR) $(UNIDIR)/ministry.service $(MANDIR)/man1/ministry.1.gz $(MANDIR)/man5/ministry.conf.5.gz $(LRTDIR)/ministry $(INIDIR)/ministry
 
 clean:
-	@cd src && $(MAKE) $(MFLAGS) clean
+	@for d in $(DIRS); do cd $$d; $(MAKE) $(MFLAGS) clean; cd ..; done
 	@rm -f logs/* core*
 	@echo "done."
 

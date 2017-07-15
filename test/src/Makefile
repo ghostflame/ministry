@@ -11,7 +11,7 @@ WFLAGS = -Wall -Wshadow
 IFLAGS = -I. 
 DFLAGS = -g -pg -ggdb3 -DDEBUG
 TFLAGS = -pthread
-CFLAGS = $(TFLAGS) $(IFLAGS) -DMINISTRY_TEST_VERSION='"$(VERS)"'
+CFLAGS = $(TFLAGS) $(IFLAGS) -DVERSION_STRING='"$(VERS)"'
 LFLAGS = $(TFLAGS) $(IFLAGS) -lm -lcurl
 
 BINDIR = $(DESTDIR)/usr/bin
@@ -34,7 +34,7 @@ with_old_gcc:  $(BIN)
 
 $(BIN): $(HDRS) $(OBJS)
 	$(CC) -o $(BIN) $(OBJS) $(LFLAGS)
-	@echo "Ministry Tester constructed.  Submit your forms, citizen!"
+	@echo "Ministry Tester constructed.  Form generator completed."
 
 install: $(BIN)
 	@mkdir -p $(BINDIR)
