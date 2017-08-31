@@ -599,6 +599,16 @@ int config_read_env( char **env )
 #undef ENV_PREFIX_LEN
 
 
+void config_set_main_file( char *path )
+{
+    free( ctl->cfg_file );
+    ctl->cfg_file = strdup( path );
+
+    // this wins against env
+    setcfFlag( FILE_OPT );
+}
+
+
 void config_create( void )
 {
 	ctl             = (MIN_CTL *) allocz( sizeof( MIN_CTL ) );

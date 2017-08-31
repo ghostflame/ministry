@@ -146,12 +146,10 @@ int main( int ac, char **av, char **env )
 		{
 			case 'C':
 				ctl->strict = -1;
-				// fall through intentional
+				config_set_main_file( optarg );
+				break;
 			case 'c':
-				free( ctl->cfg_file );
-				ctl->cfg_file = strdup( optarg );
-				// this wins against env
-				setcfFlag( FILE_OPT );
+				config_set_main_file( optarg );
 				break;
 			case 'v':
 				printf( "Ministry version: %s\n", ctl->version );

@@ -287,7 +287,7 @@ IOBUF *mem_new_buf( int sz, int64_t lifetime )
 		b->buf = b->ptr;
 
 	b->lifetime = lifetime;
-	b->expires  = ctl->curr_tval + b->lifetime;
+	b->expires  = ctl->proc->curr_tval + b->lifetime;
 
 	return b;
 }

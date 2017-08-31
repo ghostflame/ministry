@@ -214,13 +214,14 @@ int config_source_dupe( char *path )
 
 
 
-#define config_set_limit( _c, _r, _v )	\
-(_c)->limits[_r] = (int64_t) _v;\
-(_c)->setlim[_r] = 0x01
+#define config_set_limit( _p, _r, _v )	\
+(_p)->limits[_r] = (int64_t) _v;\
+(_p)->setlim[_r] = 0x01
 
 
 int config_line( AVP *av )
 {
+    PROC_CTL *p = ctl->proc;
 	char *d;
 	int res;
 
@@ -237,7 +238,7 @@ int config_line( AVP *av )
 			else
 				return -1;
 
-			config_set_limit( ctl, res, atoll( av->val ) );
+			config_set_limit( p, res, atoll( av->val ) );
 		}
 		else
 			return -1;
@@ -247,20 +248,20 @@ int config_line( AVP *av )
 
 	if( attIs( "tickMsec" ) )
 	{
-		av_int( ctl->tick_usec );
-		ctl->tick_usec *= 1000;
+		av_int( p->tick_usec );
+		p->tick_usec *= 1000;
 	}
 	else if( attIs( "daemon" ) )
 	{
 		if( config_bool( av ) )
-			ctl->run_flags |= RUN_DAEMON;
+			p->run_flags |= RUN_DAEMON;
 		else
-			ctl->run_flags &= ~RUN_DAEMON;
+			p->run_flags &= ~RUN_DAEMON;
 	}
 	else if( attIs( "baseDir" ) )
 	{
-		free( ctl->basedir );
-		ctl->basedir = str_copy( av->val, av->vlen );
+		free( p->basedir );
+		p->basedir = str_copy( av->val, av->vlen );
 	}
 	return 0;
 }
@@ -279,15 +280,15 @@ char *config_relative_path( char *inpath )
 	if( *inpath != '~' )
 		return strdup( inpath );
 
-	if( !ctl->basedir )
+	if( !ctl->proc->basedir )
 		// just step over it
 		return strdup( inpath + 1 );
 
 	// add 1 for the /, remove 1 for the ~, add 1 for the \0
-	len = strlen( ctl->basedir ) + strlen( inpath ) + 1;
+	len = strlen( ctl->proc->basedir ) + strlen( inpath ) + 1;
 
 	ret = (char *) malloc( len );
-	snprintf( ret, len, "%s/%s", ctl->basedir, inpath + 1 );
+	snprintf( ret, len, "%s/%s", ctl->proc->basedir, inpath + 1 );
 
 	return ret;
 }
@@ -443,7 +444,7 @@ int config_read( char *inpath, WORDS *w )
 	if( config_source_dupe( path ) )
 	{
 		warn( "Skipping duplicate config source '%s'.", path );
-		ret = ctl->strict;
+		ret = ctl->proc->strict;
 		goto Read_Done;
 	}
 
@@ -472,21 +473,21 @@ int config_read( char *inpath, WORDS *w )
 		if( !chkcfFlag( READ_URL ) )
 		{
 			warn( "Skipping URL source '%s' due to config flags.", path );
-			ret = ctl->strict;
+			ret = ctl->proc->strict;
 			goto Read_Done;
 		}
 
 		if( !context->is_ssl && !chkcfFlag( URL_INSEC ) )
 		{
 			warn( "Skipping insecure URL source '%s' due to config flags", path );
-			ret = ctl->strict;
+			ret = ctl->proc->strict;
 			goto Read_Done;
 		}
 
 		if( p_url && !chkcfFlag( URL_INC_URL ) )
 		{
 			warn( "Skipping URL-included URL '%s' due to config flags.", path );
-			ret = ctl->strict;
+			ret = ctl->proc->strict;
 			goto Read_Done;
 		}
 
@@ -494,7 +495,7 @@ int config_read( char *inpath, WORDS *w )
 		if( p_ssl && !context->is_ssl && !chkcfFlag( SEC_INC_INSEC ) )
 		{
 			warn( "Skipping insecure URL '%s' included from secure URL.", path );
-			ret = ctl->strict;
+			ret = ctl->proc->strict;
 			goto Read_Done;
 		}
 	}
@@ -502,7 +503,7 @@ int config_read( char *inpath, WORDS *w )
 	else if( !chkcfFlag( READ_FILE ) )
 	{
 		warn( "Skipping file source '%s' due to config flags.", path );
-		ret = ctl->strict;
+		ret = ctl->proc->strict;
 		goto Read_Done;
 	}
 
@@ -556,8 +557,8 @@ int config_env_path( char *path, int len )
 			info( "Environment-set config flag ignored in favour of run option." );
 		else
 		{
-			free( ctl->cfg_file );
-			ctl->cfg_file = strdup( av.val );
+			free( ctl->proc->cfg_file );
+			ctl->proc->cfg_file = strdup( av.val );
 		}
 		return 0;
 	}
@@ -655,36 +656,34 @@ int config_read_env( char **env )
 #undef ENV_PREFIX_LEN
 
 
-void config_create( void )
+PROC_CTL *config_defaults( void )
 {
-	ctl             = (MTEST_CTL *) allocz( sizeof( MTEST_CTL ) );
+	PROC_CTL *proc;
 
-	// TODO - how to get this stuff out of here and into main?
-	ctl->locks      = lock_config_defaults( );
-	ctl->log        = log_config_defaults( );
-	ctl->mem        = mem_config_defaults( );
-	ctl->metric     = metric_config_defaults( );
-	ctl->tgt        = target_config_defaults( );
+	proc            = (PROC_CTL *) allocz( sizeof( PROC_CTL ) );
 
-	ctl->cfg_file   = strdup( DEFAULT_CONFIG_FILE );
-	ctl->version    = strdup( VERSION_STRING );
-	ctl->basedir    = strdup( DEFAULT_BASE_DIR );
+	proc->cfg_file  = strdup( DEFAULT_CONFIG_FILE );
+	proc->version   = strdup( VERSION_STRING );
+	proc->pidfile   = strdup( DEFAULT_PID_FILE );
+	proc->basedir   = strdup( DEFAULT_BASE_DIR );
 
-	ctl->tick_usec  = 1000 * DEFAULT_TICK_MSEC;
+	proc->tick_usec = 1000 * DEFAULT_TICK_MSEC;
 
 	// max these two out
-	config_set_limit( ctl, RLIMIT_NOFILE, -1 );
-	config_set_limit( ctl, RLIMIT_NPROC,  -1 );
+	config_set_limit( proc, RLIMIT_NOFILE, -1 );
+	config_set_limit( proc, RLIMIT_NPROC,  -1 );
 
-	clock_gettime( CLOCK_REALTIME, &(ctl->init_time) );
-	tsdupe( ctl->init_time, ctl->curr_time );
+	clock_gettime( CLOCK_REALTIME, &(proc->init_time) );
+	tsdupe( proc->init_time, proc->curr_time );
 
 	// initial conf flags
-	setcfFlag( READ_FILE );
-	setcfFlag( READ_ENV );
-	setcfFlag( READ_URL );
-	setcfFlag( URL_INC_URL );
+	XsetcfFlag( proc, READ_FILE );
+	XsetcfFlag( proc, READ_ENV );
+	XsetcfFlag( proc, READ_URL );
+	XsetcfFlag( proc, URL_INC_URL );
 	// but not: sec include non-sec, read non-sec
+
+	return proc;
 }
 
 #undef config_set_limit

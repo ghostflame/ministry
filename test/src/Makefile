@@ -46,5 +46,6 @@ uninstall:
 	@rm -f $(BINDIR)/$(BIN)
 
 clean:
+	@echo "Tidying up."
 	@rm -f core* *.core $(OBJS) $(BIN)
 

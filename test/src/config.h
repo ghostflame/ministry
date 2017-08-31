@@ -13,6 +13,7 @@
 
 #define DEFAULT_BASE_DIR		"/etc/ministry_test"
 #define DEFAULT_CONFIG_FILE		"/etc/ministry_test/ministry_test.conf"
+#define DEFAULT_PID_FILE		"/var/run/ministry_test.pid"
 
 
 // config flags
@@ -25,9 +26,13 @@
 #define CONF_FLAG_TEST_ONLY			0x10000000
 #define CONF_FLAG_FILE_OPT			0x20000000
 
-#define setcfFlag( K )				ctl->conf_flags |= CONF_FLAG_##K
-#define cutcfFlag( K )				ctl->conf_flags &= ~(CONF_FLAG_##K)
-#define chkcfFlag( K )				( ctl->conf_flags & CONF_FLAG_##K )
+#define XsetcfFlag( p, K )			(p)->conf_flags |= CONF_FLAG_##K
+#define XcutcfFlag( p, K )			(p)->conf_flags &= ~(CONF_FLAG_##K)
+#define XchkcfFlag( p, K )			( (p)->conf_flags & CONF_FLAG_##K )
+
+#define setcfFlag( K )				XsetcfFlag( ctl->proc, K )
+#define cutcfFlag( K )				XcutcfFlag( ctl->proc, K )
+#define chkcfFlag( K )				XchkcfFlag( ctl->proc, K )
 
 
 // used all over - so all the config line fns have an AVP called 'av'
@@ -63,6 +68,29 @@ struct config_context
 
 
 
+// main control structure
+struct process_control
+{
+	struct timespec			init_time;
+	struct timespec			curr_time;
+	int64_t					curr_tval;
+
+	unsigned int			conf_flags;
+	unsigned int			run_flags;
+
+	char				*	cfg_file;
+	char				*	pidfile;
+	char				*	version;
+	char				*	basedir;
+
+	int64_t					tick_usec;
+	int64_t					loop_count;
+
+	int						strict;
+
+	int64_t					limits[RLIMIT_NLIMITS];
+	int8_t					setlim[RLIMIT_NLIMITS];
+};
 
 conf_line_fn config_line;
 
@@ -71,6 +99,7 @@ int config_read( char *path, WORDS *w );
 int config_read_env( char **env );
 char *config_relative_path( char *inpath );
 void config_choose_section( CCTXT *c, char *section );
-void config_create( void );
+
+PROC_CTL *config_defaults( void );
 
 #endif

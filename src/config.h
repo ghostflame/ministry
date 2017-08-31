@@ -88,6 +88,7 @@ int config_read( char *path );
 int config_read_env( char **env );
 char *config_relative_path( char *inpath );
 int config_choose_handler( char *section, AVP *av );
+void config_set_main_file( char *path );
 void config_create( void );
 
 #endif

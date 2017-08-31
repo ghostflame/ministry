@@ -377,7 +377,7 @@ void *io_loop( void *arg )
 	loop_mark_start( "io" );
 
 	// now loop around sending
-	while( ctl->run_flags & RUN_LOOP )
+	while( ctl->proc->run_flags & RUN_LOOP )
 	{
 		usleep( usec );
 

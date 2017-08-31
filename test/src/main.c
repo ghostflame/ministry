@@ -57,14 +57,14 @@ void shut_down( int exval )
 
 	info( "Waiting for all threads to stop." );
 
-	for( i = 0; i < 300 && ctl->loop_count > 0; i++ )
+	for( i = 0; i < 300 && ctl->proc->loop_count > 0; i++ )
 	{
 		usleep( 100000 );
 		if( !( i & 0x1f ) )
 			debug( "Waiting..." );
 	}
 
-	if( ctl->loop_count <= 0 )
+	if( ctl->proc->loop_count <= 0 )
 		info( "All threads have completed." );
 	else
 		warn( "Shutting down without thread completion." );
@@ -72,7 +72,7 @@ void shut_down( int exval )
 	// shut down all those mutex locks
 	lock_shutdown( );
 
-	notice( "Ministry_test v%s exiting.", ctl->version );
+	notice( "Ministry_test v%s exiting.", ctl->proc->version );
 	log_close( );
 	exit( exval );
 }
@@ -126,12 +126,61 @@ int set_limits( void )
 	int i, ret = 0;
 
 	for( i = 0; i < RLIMIT_NLIMITS; i++ )
-		if( ctl->setlim[i] )
-			ret += setlimit( i, ctl->limits[i] );
+		if( ctl->proc->setlim[i] )
+			ret += setlimit( i, ctl->proc->limits[i] );
 
 	return ret;
 }
 
+
+
+void main_create_conf( void )
+{
+	ctl             = (MTEST_CTL *) allocz( sizeof( MTEST_CTL ) );
+
+	ctl->proc       = config_defaults( );
+	ctl->locks      = lock_config_defaults( );
+	ctl->log        = log_config_defaults( );
+	ctl->mem        = mem_config_defaults( );
+	ctl->metric     = metric_config_defaults( );
+	ctl->tgt        = target_config_defaults( );
+}
+
+
+void main_loop( void )
+{
+	// set us going
+	ctl->proc->run_flags |= RUN_LOOP;
+
+	get_time( );
+
+	// start a timing circuit
+	thread_throw( &loop_timer, NULL, 0 );
+
+	// throw the memory loops
+	thread_throw( &mem_check_loop, NULL, 0 );
+	thread_throw( &mem_prealloc_loop, NULL, 0 );
+
+	// init our targets
+	target_init( );
+
+	// and start the metrics (which start the targets)
+	metric_start_all( );
+
+	// and now we wait for the signal to end
+	while( ctl->proc->run_flags & RUN_LOOP )
+		sleep( 1 );
+}
+
+
+void set_config_file( char *arg )
+{
+    free( ctl->proc->cfg_file );
+    ctl->proc->cfg_file = strdup( arg );
+
+    // this wins against env
+    setcfFlag( FILE_OPT );
+}
 
 
 int main( int ac, char **av, char **env )
@@ -140,27 +189,25 @@ int main( int ac, char **av, char **env )
 	double diff;
 
 	// make a control structure
-	config_create( );
+	main_create_conf( );
 
 	while( ( oc = getopt( ac, av, "hHDVEFUIsuivtc:C:" ) ) != -1 )
 		switch( oc )
 		{
 			case 'C':
-				ctl->strict = -1;
-				// fall through intentional
+				ctl->proc->strict = -1;
+                set_config_file( optarg );
+                break;
 			case 'c':
-				free( ctl->cfg_file );
-				ctl->cfg_file = strdup( optarg );
-				// this wins against env
-				setcfFlag( FILE_OPT );
+                set_config_file( optarg );
 				break;
 			case 'v':
-				printf( "Ministry_test version: %s\n", ctl->version );
+				printf( "Ministry_test version: %s\n", ctl->proc->version );
 				return 0;
 			case 'D':
 				debug = 1;
 				ctl->log->level = LOG_LEVEL_DEBUG;
-				ctl->run_flags |= RUN_DEBUG;
+				ctl->proc->run_flags |= RUN_DEBUG;
 				break;
 			case 'V':
 				ctl->log->force_stdout = 1;
@@ -169,7 +216,7 @@ int main( int ac, char **av, char **env )
 				setcfFlag( TEST_ONLY );
 				break;
 			case 's':
-				ctl->strict = -1;
+				ctl->proc->strict = -1;
 				break;
 			case 'U':
 				cutcfFlag( URL_INC_URL );
@@ -207,9 +254,9 @@ int main( int ac, char **av, char **env )
 	curl_global_init( CURL_GLOBAL_SSL );
 
 	// try to read the config
-	if( config_read( ctl->cfg_file, NULL ) )
+	if( config_read( ctl->proc->cfg_file, NULL ) )
 	{
-		printf( "Config file '%s' is invalid.\n", ctl->cfg_file );
+		printf( "Config file '%s' is invalid.\n", ctl->proc->cfg_file );
 		return 1;
 	}
 
@@ -220,12 +267,12 @@ int main( int ac, char **av, char **env )
 	if( debug )
 	{
 		ctl->log->level = LOG_LEVEL_DEBUG;
-		ctl->run_flags |= RUN_DEBUG;
+		ctl->proc->run_flags |= RUN_DEBUG;
 	}
 
 	if( chkcfFlag( TEST_ONLY ) )
 	{
-		printf( "Config file '%s' is OK.\n", ctl->cfg_file );
+		printf( "Config file '%s' is OK.\n", ctl->proc->cfg_file );
 		return 0;
 	}
 
@@ -233,10 +280,10 @@ int main( int ac, char **av, char **env )
 		debug( "Starting logging - no more logs to stdout." );
 
 	log_start( );
-	notice( "Ministry_test v%s starting up.", ctl->version );
+	notice( "Ministry_test v%s starting up.", ctl->proc->version );
 
-	if( chdir( ctl->basedir ) )
-		fatal( "Could not chdir to base dir %s -- %s", ctl->basedir, Err );
+	if( chdir( ctl->proc->basedir ) )
+		fatal( "Could not chdir to base dir %s -- %s", ctl->proc->basedir, Err );
 	else
 		debug( "Working directory now %s", getcwd( NULL, 0 ) );
 
@@ -247,11 +294,11 @@ int main( int ac, char **av, char **env )
 		fatal( "Failed to set signalling." );
 
 	get_time( );
-	ts_diff( ctl->curr_time, ctl->init_time, &diff );
+	ts_diff( ctl->proc->curr_time, ctl->proc->init_time, &diff );
 	info( "Ministry_test started up in %.3fs.", diff );
 
 	// only exits on a signal that removes RUN_LOOP
-	loop_start( );
+	main_loop( );
 
 	// never returns
 	shut_down( 0 );

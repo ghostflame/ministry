@@ -271,7 +271,7 @@ void log_reopen( int sig )
 		__log_open( );
 
 	if( l->notify_re )
-		info( "Log file re-opened (version %s, uptime %.0f sec).", ctl->version, get_uptime( ) );
+		info( "Log file re-opened (version %s, uptime %.0f sec).", ctl->proc->version, get_uptime( ) );
 }
 
 
@@ -348,7 +348,7 @@ int log_config_line( AVP *av )
 	{
 		// get the log level
 		lvl = log_get_level( av->val );
-		if( ctl->run_flags & RUN_DEBUG )
+		if( ctl->proc->run_flags & RUN_DEBUG )
 			lvl = LOG_LEVEL_DEBUG;
 
 		// and set it

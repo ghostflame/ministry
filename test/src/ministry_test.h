@@ -88,30 +88,12 @@ enum conf_section_types
 // main control structure
 struct mintest_control
 {
+	PROC_CTL			*	proc;
 	LOCK_CTL			*	locks;
 	LOG_CTL				*	log;
 	MEM_CTL				*	mem;
 	MTRC_CTL			*	metric;
 	TGT_CTL				*	tgt;
-
-	struct timespec			init_time;
-	struct timespec			curr_time;
-	int64_t					curr_tval;
-
-	unsigned int			conf_flags;
-	unsigned int			run_flags;
-
-	char				*	cfg_file;
-	char				*	version;
-	char				*	basedir;
-
-	int64_t					tick_usec;
-	int64_t					loop_count;
-
-	int						strict;
-
-	int64_t					limits[RLIMIT_NLIMITS];
-	int8_t					setlim[RLIMIT_NLIMITS];
 };
 
 

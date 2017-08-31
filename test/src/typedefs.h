@@ -11,6 +11,7 @@
 #define MINISTRY_TYPEDEFS_H
 
 typedef struct mintest_control		MTEST_CTL;
+typedef struct process_control		PROC_CTL;
 typedef struct metric_control		MTRC_CTL;
 typedef struct lock_control			LOCK_CTL;
 typedef struct log_control			LOG_CTL;

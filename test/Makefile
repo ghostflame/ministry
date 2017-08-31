@@ -8,7 +8,7 @@ DOCDIR ?= $(DESTDIR)/usr/share/doc/ministry
 SSLDIR ?= $(CFGDIR)/ssl
 TSTDIR ?= $(CFGDIR)/test
 
-all:  code
+all: code
 
 with_old_gcc: TARGET = with_old_gcc
 with_old_gcc: code
