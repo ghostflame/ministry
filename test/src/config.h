@@ -100,6 +100,8 @@ int config_read_env( char **env );
 char *config_relative_path( char *inpath );
 void config_choose_section( CCTXT *c, char *section );
 
+void config_set_main_file( char *path );
+
 PROC_CTL *config_defaults( void );
 
 #endif

@@ -656,6 +656,17 @@ int config_read_env( char **env )
 #undef ENV_PREFIX_LEN
 
 
+void config_set_main_file( char *path )
+{
+    free( ctl->proc->cfg_file );
+    ctl->proc->cfg_file = strdup( path );
+
+    // this wins against env
+    setcfFlag( FILE_OPT );
+}
+
+
+
 PROC_CTL *config_defaults( void )
 {
 	PROC_CTL *proc;
