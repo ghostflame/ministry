@@ -74,6 +74,16 @@
 #include "config.h"
 
 
+struct mintest_control
+{
+	PROC_CTL			*	proc;
+	LOCK_CTL			*	locks;
+	LOG_CTL				*	log;
+	MEM_CTL				*	mem;
+	MTRC_CTL			*	metric;
+	TGT_CTL				*	tgt;
+};
+
 
 // global control config
 MTEST_CTL *ctl;

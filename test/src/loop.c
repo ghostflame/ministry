@@ -13,22 +13,22 @@
 void loop_end( char *reason )
 {
 	info( "Shutting down polling: %s", reason );
-	ctl->run_flags |=  RUN_SHUTDOWN;
-	ctl->run_flags &= ~RUN_LOOP;
+	ctl->proc->run_flags |=  RUN_SHUTDOWN;
+	ctl->proc->run_flags &= ~RUN_LOOP;
 }
 
 void loop_kill( int sig )
 {
 	notice( "Received signal %d", sig );
-	ctl->run_flags |=  RUN_SHUTDOWN;
-	ctl->run_flags &= ~RUN_LOOP;
+	ctl->proc->run_flags |=  RUN_SHUTDOWN;
+	ctl->proc->run_flags &= ~RUN_LOOP;
 }
 
 
 void loop_mark_start( const char *tag )
 {
 	pthread_mutex_lock( &(ctl->locks->loop) );
-	ctl->loop_count++;
+	ctl->proc->loop_count++;
 	pthread_mutex_unlock( &(ctl->locks->loop) );
 	if( tag )
 		debug( "Some %s loop thread has started.", tag );
@@ -37,7 +37,7 @@ void loop_mark_start( const char *tag )
 void loop_mark_done( const char *tag, int64_t skips, int64_t fires )
 {
 	pthread_mutex_lock( &(ctl->locks->loop) );
-	ctl->loop_count--;
+	ctl->proc->loop_count--;
 	pthread_mutex_unlock( &(ctl->locks->loop) );
 	if( tag )
 		debug( "Some %s loop thread has ended.  [%ld/%ld]", tag, fires, skips );
@@ -48,8 +48,8 @@ void loop_mark_done( const char *tag, int64_t skips, int64_t fires )
 // every tick, set the time
 void loop_set_time( int64_t tval, void *arg )
 {
-	llts( tval, ctl->curr_time );
-	ctl->curr_tval = tval;
+	llts( tval, ctl->proc->curr_time );
+	ctl->proc->curr_tval = tval;
 }
 
 
@@ -58,7 +58,7 @@ void *loop_timer( void *arg )
 	THRD *t = (THRD *) arg;
 
 	// this just gather sets the time and doesn't exit
-	loop_control( "time set", &loop_set_time, NULL, ctl->tick_usec, LOOP_SYNC|LOOP_SILENT, 0 );
+	loop_control( "time set", &loop_set_time, NULL, ctl->proc->tick_usec, LOOP_SYNC|LOOP_SILENT, 0 );
 
 	free( t );
 	return NULL;
@@ -140,7 +140,7 @@ void loop_control( const char *name, loop_call_fn *fp, void *arg, int usec, int 
 	// say a loop has started
 	loop_mark_start( name );
 
-	while( ctl->run_flags & RUN_LOOP )
+	while( ctl->proc->run_flags & RUN_LOOP )
 	{
 		// decide if we are firing the payload
 		if( ++curr == ticks )
@@ -184,33 +184,6 @@ void loop_control( const char *name, loop_call_fn *fp, void *arg, int usec, int 
 
 	// and say it's finished
 	loop_mark_done( name, skips, fires );
-}
-
-
-
-void loop_start( void )
-{
-	// set us going
-	ctl->run_flags |= RUN_LOOP;
-
-	get_time( );
-
-	// start a timing circuit
-	thread_throw( &loop_timer, NULL, 0 );
-
-	// throw the memory loops
-	thread_throw( &mem_check_loop, NULL, 0 );
-	thread_throw( &mem_prealloc_loop, NULL, 0 );
-
-	// init our targets
-	target_init( );
-
-	// and start the metrics (which start the targets)
-	metric_start_all( );
-
-	// and now we wait for the signal to end
-	while( ctl->run_flags & RUN_LOOP )
-		sleep( 1 );
 }
 
 

@@ -141,6 +141,10 @@ int var_val( char *line, int len, AVP *av, int flags );
 // break up a string by delimiter
 int strwords( WORDS *w, char *src, int len, char sep );
 
+// handle our pidfile
+void pidfile_write( void );
+void pidfile_remove( void );
+
 // timespec difference as a double
 double ts_diff( struct timespec to, struct timespec from, double *store );
 

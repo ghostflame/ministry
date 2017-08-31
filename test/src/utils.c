@@ -61,8 +61,8 @@ void get_time( void )
 {
 	if( ctl )
 	{
-		clock_gettime( CLOCK_REALTIME, &(ctl->curr_time) );
-		ctl->curr_tval = tsll( ctl->curr_time );
+		clock_gettime( CLOCK_REALTIME, &(ctl->proc->curr_time) );
+		ctl->proc->curr_tval = tsll( ctl->proc->curr_time );
 	}
 }
 
@@ -465,7 +465,7 @@ double get_uptime( void )
 	double diff;
 
 	get_time( );
-	ts_diff( ctl->curr_time, ctl->init_time, &diff );
+	ts_diff( ctl->proc->curr_time, ctl->proc->init_time, &diff );
 
 	return diff;
 }

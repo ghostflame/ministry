@@ -216,13 +216,13 @@ int target_config_line( AVP *av )
 		// special value - stdout
 		if( valIs( "-" ) )
 		{
-			if( ctl->run_flags & RUN_TGT_STDOUT )
+			if( ctl->proc->run_flags & RUN_TGT_STDOUT )
 			{
 				err( "Can only have one target writing to stdout." );
 				return -1;
 			}
 
-			ctl->run_flags |= RUN_TGT_STDOUT;
+			ctl->proc->run_flags |= RUN_TGT_STDOUT;
 			t->to_stdout = 1;
 
 			debug( "Target writing to stdout." );
