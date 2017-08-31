@@ -47,6 +47,7 @@ void loop_mark_done( const char *tag, int64_t skips, int64_t fires )
 void loop_set_time( int64_t tval, void *arg )
 {
 	llts( tval, ctl->curr_time );
+	ctl->curr_tval = tval;
 }
 
 

@@ -60,7 +60,10 @@ void *allocz( size_t size )
 void get_time( void )
 {
 	if( ctl )
+	{
 		clock_gettime( CLOCK_REALTIME, &(ctl->curr_time) );
+		ctl->curr_tval = tsll( ctl->curr_time );
+	}
 }
 
 
