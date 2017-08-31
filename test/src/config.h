@@ -88,6 +88,8 @@ int config_read_env( char **env );
 char *config_relative_path( char *inpath );
 int config_choose_handler( char *section, AVP *av );
 
+void config_set_main_file( char *path );
+
 PROC_CTL *config_defaults( void );
 
 #endif

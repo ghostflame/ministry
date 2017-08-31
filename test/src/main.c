@@ -161,15 +161,6 @@ void main_loop( void )
 }
 
 
-void set_config_file( char *arg )
-{
-    free( ctl->proc->cfg_file );
-    ctl->proc->cfg_file = strdup( arg );
-
-    // this wins against env
-    setcfFlag( FILE_OPT );
-}
-
 
 int main( int ac, char **av, char **env )
 {
@@ -184,10 +175,10 @@ int main( int ac, char **av, char **env )
 		{
 			case 'C':
 				ctl->proc->strict = -1;
-                set_config_file( optarg );
+                config_set_main_file( optarg );
                 break;
 			case 'c':
-                set_config_file( optarg );
+                config_set_main_file( optarg );
 				break;
 			case 'v':
 				printf( "Ministry_test version: %s\n", ctl->proc->version );
