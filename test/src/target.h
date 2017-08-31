@@ -84,6 +84,6 @@ int target_start( TARGET **tp );
 int target_init( void );
 
 TGT_CTL *target_config_defaults( void );
-int target_config_line( AVP *av );
+conf_line_fn target_config_line;
 
 #endif

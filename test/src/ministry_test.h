@@ -74,6 +74,46 @@
 #include "config.h"
 
 
+enum conf_section_types
+{
+	CONF_SECT_MAIN = 0,
+	CONF_SECT_LOG,
+	CONF_SECT_MEM,
+	CONF_SECT_METRIC,
+	CONF_SECT_TARGET,
+	CONF_SECT_MAX
+};
+
+
+// main control structure
+struct mintest_control
+{
+	LOCK_CTL			*	locks;
+	LOG_CTL				*	log;
+	MEM_CTL				*	mem;
+	MTRC_CTL			*	metric;
+	TGT_CTL				*	tgt;
+
+	struct timespec			init_time;
+	struct timespec			curr_time;
+	int64_t					curr_tval;
+
+	unsigned int			conf_flags;
+	unsigned int			run_flags;
+
+	char				*	cfg_file;
+	char				*	version;
+	char				*	basedir;
+
+	int64_t					tick_usec;
+	int64_t					loop_count;
+
+	int						strict;
+
+	int64_t					limits[RLIMIT_NLIMITS];
+	int8_t					setlim[RLIMIT_NLIMITS];
+};
+
 
 // global control config
 MTEST_CTL *ctl;

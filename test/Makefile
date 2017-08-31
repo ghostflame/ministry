@@ -11,20 +11,20 @@ TSTDIR ?= $(CFGDIR)/test
 all:  code
 
 with_old_gcc: TARGET = with_old_gcc
-with_old_gcc: all
+with_old_gcc: code
 
 debug: TARGET = debug
-debug: all
+debug: code
 
 install: TARGET = install
-install: all
+install: code
 
 uninstall: TARGET = uninstall
-uninstall: all
+uninstall: code
 
 clean: TARGET = clean
-clean: all
+clean: code
 
 code:
-	@for d in $(DIRS); do cd $$d && $(MAKE) $(MFLAGS) $(TARGET); done
+	@for d in $(DIRS); do cd $$d; $(MAKE) $(MFLAGS) $(TARGET); cd ..; done
 

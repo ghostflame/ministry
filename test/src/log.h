@@ -64,7 +64,7 @@ int log_start( void );
 
 // config
 LOG_CTL *log_config_defaults( void );
-int log_config_line( AVP *av );
+conf_line_fn log_config_line;
 
 
 #define LLFLF( l, ... )			log_line( LOG_LEVEL_##l, __FILE__, __LINE__, __func__, ## __VA_ARGS__ )

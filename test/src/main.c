@@ -37,6 +37,18 @@ It can be configured to point at either ministry or compat format targets.\n\n";
 }
 
 
+// these are used by config.c/conf_read
+CSECT config_sections[CONF_SECT_MAX] =
+{
+	{ "main",    &config_line,        CONF_SECT_MAIN   },
+	{ "logging", &log_config_line,    CONF_SECT_LOG    },
+	{ "memory",  &mem_config_line,    CONF_SECT_MEM    },
+	{ "metric",  &metric_config_line, CONF_SECT_METRIC },
+	{ "target",  &target_config_line, CONF_SECT_TARGET }
+};
+
+
+
 void shut_down( int exval )
 {
 	int i;
@@ -195,7 +207,7 @@ int main( int ac, char **av, char **env )
 	curl_global_init( CURL_GLOBAL_SSL );
 
 	// try to read the config
-	if( config_read( ctl->cfg_file ) )
+	if( config_read( ctl->cfg_file, NULL ) )
 	{
 		printf( "Config file '%s' is invalid.\n", ctl->cfg_file );
 		return 1;

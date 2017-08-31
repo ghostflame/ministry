@@ -17,6 +17,7 @@ typedef struct log_control			LOG_CTL;
 typedef struct mem_control			MEM_CTL;
 typedef struct target_control		TGT_CTL;
 
+typedef struct config_section		CSECT;
 typedef struct config_context		CCTXT;
 typedef struct mem_type_blank		MTBLANK;
 typedef struct mem_type_control		MTYPE;
@@ -36,9 +37,11 @@ typedef struct metric				METRIC;
 typedef struct metric_group			MGRP;
 
 // function types
-typedef int64_t io_fn( TARGET * );
 typedef void loop_call_fn ( int64_t, void * );
 typedef void * throw_fn ( void * );
+typedef int conf_line_fn ( AVP * );
+
+typedef int64_t io_fn( TARGET * );
 typedef void update_fn ( METRIC * );
 typedef void line_fn ( METRIC * );
 

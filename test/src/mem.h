@@ -91,8 +91,8 @@ loop_call_fn mem_check;
 throw_fn mem_check_loop;
 
 void mem_shutdown( void );
-int mem_config_line( AVP *av );
 MEM_CTL *mem_config_defaults( void );
+conf_line_fn mem_config_line;
 
 
 #endif

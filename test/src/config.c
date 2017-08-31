@@ -17,6 +17,39 @@ CCTXT *context  = NULL;
 
 #define CFG_VV_FLAGS	(VV_AUTO_VAL|VV_LOWER_ATT|VV_REMOVE_UDRSCR)
 
+/*
+ * Matches arg substitutions of the form:
+ * %N% where N <= argc
+ */
+void config_args_substitute( char *str, int *len )
+{
+	int i, l;
+
+	l = *len;
+
+	if( !context->argc || l < 3 )
+		return;
+
+	// 1-indexed
+	if( str[0] == '%' && str[l - 1] == '%'
+	 && ( i = atoi( str + 1 ) ) > 0
+     && i <= context->argc )
+	{
+		// it can't be too long, or we could never
+		// have read the include line in the first
+		// place.
+		i--;
+		*len = context->argl[i];
+		memcpy( str, context->argv[i], *len );
+		str[*len] = '\0';
+
+		debug( "Config substitution of arg %d: %s", i + 1, str );
+	}
+}
+
+
+
+
 // read a file until we find a config line
 char __cfg_read_line[1024];
 int config_get_line( FILE *f, AVP *av )
@@ -57,8 +90,8 @@ int config_get_line( FILE *f, AVP *av )
 				return -1;
 			}
 
-			// grab that
-			snprintf( context->section, 512, "%s", __cfg_read_line + 1 );
+			// grab that context
+			config_choose_section( context, __cfg_read_line + 1 );
 
 			// spotted a section
 			return 1;
@@ -70,7 +103,12 @@ int config_get_line( FILE *f, AVP *av )
 
 		// return any useful data
 		if( av->status == VV_LINE_ATTVAL )
+		{
+			// but do args substitution first
+			config_args_substitute( av->val, &(av->vlen) );
+
 			return 0;
+		}
 	}
 
 	return -1;
@@ -104,12 +142,29 @@ int config_bool( AVP *av )
 
 
 
-CCTXT *config_make_context( char *path, CCTXT *parent )
+CCTXT *config_make_context( char *path, WORDS *w )
 {
-	CCTXT *ctx;
+	CCTXT *ctx, *parent = context;
+	char *str;
+	int i;
 
 	ctx = (CCTXT *) allocz( sizeof( CCTXT ) );
 	snprintf( ctx->source, 4096, "%s", path );
+
+	// copy in our arguments
+	if( w && w->wc > 1 )
+	{
+		// when we get a w, the first arg is the path
+		ctx->argc = w->wc - 1;
+		ctx->argl = (int *)   allocz( ctx->argc * sizeof( int ) );
+		ctx->argv = (char **) allocz( ctx->argc * sizeof( char * ) );
+		for( i = 1; i < w->wc; i++ )
+		{
+			str = str_dup( w->wd[i], w->len[i] );
+			ctx->argv[i-1] = str;
+			ctx->argl[i-1] = w->len[i];
+		}
+	}
 
 	if( parent )
 	{
@@ -120,10 +175,18 @@ CCTXT *config_make_context( char *path, CCTXT *parent )
 		parent->children = ctx;
 
 		// inherit the section we were in
-		memcpy( ctx->section, parent->section, 512 );
+		ctx->section = parent->section;
+
+		// and if we don't have any of our own, inherit args
+		if( !ctx->argc && parent->argc )
+		{
+			ctx->argc = parent->argc;
+			ctx->argl = parent->argl;
+			ctx->argv = parent->argv;
+		}
 	}
 	else
-		strncpy( ctx->section, "main", 6 );
+		config_choose_section( ctx, "main" );
 
 	// set the global on the first call
 	if( !ctxt_top )
@@ -233,6 +296,7 @@ char *config_relative_path( char *inpath )
 int __config_read_file( FILE *fh )
 {
 	int rv, lrv, ret = 0;
+	WORDS w;
 	AVP av;
 
 	while( ( rv = config_get_line( fh, &av ) ) != -1 )
@@ -244,17 +308,20 @@ int __config_read_file( FILE *fh )
 		// spot includes - they inherit context
 		if( !strcasecmp( av.att, "include" ) )
 		{
-			if( config_read( av.val ) != 0 )
+			strwords( &w, av.val, av.vlen, ' ' );
+
+			if( config_read( w.wd[0], &w ) != 0 )
 			{
 				err( "Included config file '%s' is not valid.", av.val );
 				ret = -1;
 				break;
 			}
+
 			continue;
 		}
 
 		// and dispatch it
-		lrv = config_choose_handler( context->section, &av );
+		lrv = (*(context->section->fp))( &av );
 		ret += lrv;
 
 		if( lrv )
@@ -284,7 +351,7 @@ int config_read_file( char *path )
 	FILE *fh = NULL;
 
 	debug( "Opening config file %s, section %s",
-		path, context->section );
+		path, context->section->name );
 
 	// die on not reading main config file, warn on others
 	if( !( fh = fopen( path, "r" ) ) )
@@ -310,7 +377,7 @@ int config_read_url( char *url )
 	CURL *c;
 
 	debug( "Opening config url '%s', section %s",
-		url, context->section );
+		url, context->section->name );
 
 	// set up our new context
 	if( !( c = curl_easy_init( ) ) )
@@ -364,7 +431,7 @@ CRU_CLEANUP:
 #undef CErr
 
 
-int config_read( char *inpath )
+int config_read( char *inpath, WORDS *w )
 {
 	int ret = 0, p_url = 0, p_ssl = 0;
 	char *path;
@@ -381,7 +448,7 @@ int config_read( char *inpath )
 	}
 
 	// set up our new context
-	context = config_make_context( path, context );
+	context = config_make_context( path, w );
 
 	if( !strncmp( path, "http://", 7 ) )
 		context->is_url = 1;
@@ -451,24 +518,22 @@ Read_Done:
 }
 
 
-#define	secIs( s )		!strcasecmp( section, s )
 
-int config_choose_handler( char *section, AVP *av )
+void config_choose_section( CCTXT *c, char *section )
 {
-	// hand some sections off to different config fns
-	if( secIs( "logging" ) )
-		return log_config_line( av );
-	else if( secIs( "memory" ) )
-		return mem_config_line( av );
-	else if( secIs( "metric" ) )
-		return metric_config_line( av );
-	else if( secIs( "target" ) )
-		return target_config_line( av );
+	int i;
 
-	return config_line( av );
+	for( i = 0; i < CONF_SECT_MAX; i++ )
+		if( !strcasecmp( config_sections[i].name, section ) )
+		{
+			c->section = &(config_sections[i]);
+			return;
+		}
+
+	// default to main
+	c->section = &(config_sections[CONF_SECT_MAIN]);
 }
 
-#undef secIs
 
 
 int config_env_path( char *path, int len )
@@ -536,8 +601,11 @@ int config_env_path( char *path, int len )
 		return -1;
 	}
 
+	// pick section
+	config_choose_section( context, sec );
+
 	// and try it
-	if( !config_choose_handler( sec, &av ) )
+	if( (*(context->section->fp))( &av ) )
 	{
 		debug( "Found env [%s] %s -> %s", sec, av.att, av.val );
 		return 0;
@@ -562,6 +630,8 @@ int config_read_env( char **env )
 		debug( "No reading environment due to config flags." );
 		return 0;
 	}
+
+	context = config_make_context( "environment", NULL );
 
 	for( ; *env; env++ )
 	{
@@ -589,6 +659,7 @@ void config_create( void )
 {
 	ctl             = (MTEST_CTL *) allocz( sizeof( MTEST_CTL ) );
 
+	// TODO - how to get this stuff out of here and into main?
 	ctl->locks      = lock_config_defaults( );
 	ctl->log        = log_config_defaults( );
 	ctl->mem        = mem_config_defaults( );

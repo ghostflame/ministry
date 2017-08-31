@@ -35,55 +35,42 @@
 #define valIs( s )      !strcasecmp( av->val, s )
 
 
+struct config_section
+{
+	char				*	name;
+	conf_line_fn		*	fp;
+	int						section;
+};
+
+// bring this in from main
+extern CSECT config_sections[];
+
 struct config_context
 {
-  	CCTXT				*	next;
+	CCTXT				*	next;
 	CCTXT				*	children;
 	CCTXT				*	parent;
+	CSECT				*	section;
 
 	char					source[4096];
-	char					section[512];
+	char				**	argv;
 	int						lineno;
 	int						is_url;
 	int						is_ssl;
+	int					*	argl;
+	int						argc;
 };
 
 
-// main control structure
-struct mintest_control
-{
-	LOCK_CTL			*	locks;
-	LOG_CTL				*	log;
-	MEM_CTL				*	mem;
-	MTRC_CTL			*	metric;
-	TGT_CTL				*	tgt;
 
-	struct timespec			init_time;
-	struct timespec			curr_time;
-	int64_t					curr_tval;
 
-	unsigned int			conf_flags;
-	unsigned int			run_flags;
-
-	char				*	cfg_file;
-	char				*	version;
-	char				*	basedir;
-
-	int64_t					tick_usec;
-	int64_t					loop_count;
-
-	int						strict;
-
-	int64_t					limits[RLIMIT_NLIMITS];
-	int8_t					setlim[RLIMIT_NLIMITS];
-};
-
+conf_line_fn config_line;
 
 int config_bool( AVP *av );
-int config_read( char *path );
+int config_read( char *path, WORDS *w );
 int config_read_env( char **env );
 char *config_relative_path( char *inpath );
-int config_choose_handler( char *section, AVP *av );
+void config_choose_section( CCTXT *c, char *section );
 void config_create( void );
 
 #endif

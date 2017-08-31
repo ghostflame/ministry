@@ -126,7 +126,7 @@ throw_fn metric_group_io_loop;
 void metric_start_all( void );
 
 MTRC_CTL *metric_config_defaults( void );
-int metric_config_line( AVP *av );
+conf_line_fn metric_config_line;
 
 
 #endif

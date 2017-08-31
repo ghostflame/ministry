@@ -39,14 +39,14 @@ enum num_types
 
 
 // var_val flags
-#define	VV_NO_EQUAL			0x01	// don't check for equal
-#define	VV_NO_SPACE			0x02	// don't check for space
-#define	VV_NO_TAB			0x04	// don't check for tabs
-#define	VV_NO_VALS			0x08	// there's just attributes
-#define	VV_VAL_WHITESPACE	0x10	// don't clean value whitespace
-#define	VV_AUTO_VAL			0x20	// put "1" as value where none present
-#define VV_LOWER_ATT		0x40	// lowercase the attribute
-#define VV_REMOVE_UDRSCR	0x80	// remove underscores
+#define	VV_NO_EQUAL			0x0001	// don't check for equal
+#define	VV_NO_SPACE			0x0002	// don't check for space
+#define	VV_NO_TAB			0x0004	// don't check for tabs
+#define	VV_NO_VALS			0x0008	// there's just attributes
+#define	VV_VAL_WHITESPACE	0x0010	// don't clean value whitespace
+#define	VV_AUTO_VAL			0x0020	// put "1" as value where none present
+#define VV_LOWER_ATT		0x0040	// lowercase the attribute
+#define VV_REMOVE_UDRSCR	0x0080	// remove underscores
 
 #define AVP_MAX_ATT			1024
 #define	AVP_MAX_VAL			8192
