@@ -1,0 +1,123 @@
+#!/bin/sh
+#
+# ministry    init file for starting up the ministry daemon
+#
+# chkconfig:    - 22 78
+# description:  Starts and stops the ministry daemon.
+
+# Source function library
+. /etc/init.d/functions
+
+EXEC='/usr/bin/carbon-copy'
+USER='root'
+
+CONFIG='/etc/ministry/ministry.conf'
+PIDFILE='/var/run/ministry/ministry.pid'
+LOCKFILE='/var/lock/subsys/ministry'
+EXTRA=''
+
+# any system overrides?
+if [ -e /etc/sysconfig/ministry ]; then
+	. /etc/sysconfig/ministry
+fi
+
+
+start()
+{
+	[ -f $CONFIG ] || exit 6
+	[ -x $EXEC   ] || exit 5
+
+	# make sure our pidfile dir is OK
+	d=$(dirname $PIDFILE)
+	mkdir -p $d
+
+	echo -n $"Starting `basename $EXEC`: "
+	if [ $USER != "root" ]; then
+		chown $USER:$USER $d
+		daemon --user $USER $EXEC -d -p $PIDFILE -c $CONFIG $EXTRA
+	else
+		daemon $EXEC -d -p $PIDFILE -c $CONFIG $EXTRA
+	fi
+	retval=$?
+	echo
+	[ $retval -eq 0 ] && touch $LOCKFILE
+	return $retval
+}
+
+
+stop()
+{
+	echo $"Killing `basename $EXEC` and waiting for threads."
+	echo -n $"Stopping `basename $EXEC`: "
+	killproc -p $PIDFILE -d 20 `basename $EXEC`
+	retval=$?
+	echo
+	[ $retval -eq 0 ] && rm -f $LOCKFILE
+	return $retval
+}
+
+restart()
+{
+	stop
+	start
+}
+
+reload()
+{
+	stop
+	start
+}
+
+rh_configcheck()
+{
+	[ -f $CONFIG ] || exit 6
+	[ -x $EXEC   ] || exit 5
+
+	echo -n $"Running config test for `basename $EXEC`: "
+	$EXEC -c $CONFIG $EXTRA -t
+	retval=$?
+	echo
+	return $retval
+}
+
+rh_status()
+{
+	status -p $PIDFILE `basename $EXEC`
+}
+
+rh_status_q()
+{
+	rh_status > /dev/null 2>&1
+}
+
+case "$1" in
+	start)
+		rh_status_q && exit 0
+		$1
+		;;
+	stop)
+		rh_status_q || exit 0
+		$1
+		;;
+	restart)
+		$1
+		;;
+	reload)
+		$1
+		;;
+	status)
+		rh_status
+		;;
+	configtest)
+		rh_configcheck
+		;;
+	condrestart)
+		rh_status_q || exit 0
+		restart
+		;;
+	*)
+		echo $"Usage: $0 {start|stop|status|restart|reload|condrestart|configtest}"
+		exit 2
+esac
+exit $?
+

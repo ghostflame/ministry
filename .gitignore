@@ -37,7 +37,5 @@
 
 # directories
 logs/*
+bin/*
 
-# binaries
-src/ministry
-test/src/ministry_test

@@ -1,51 +1,20 @@
-CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
+DIRS   = shared ministry ministry_test carbon_copy
+TARGET = unknown
 
-FILES  = utils regexp log loop thread mem gc net tcp udp io target data token synth stats selfstats http config main
-HEADS  = config data gc io log loop mem ministry target net tcp udp token run stats selfstats http synth thread typedefs regexp utils
-VERS   = $(shell sed -rn 's/^Version:\t(.*)/\1/p' ../ministry.spec)
+all: TARGET = all
+all: subdirs
 
-OBJS   = $(FILES:%=%.o)
-HDRS   = $(HEADS:%=%.h)
+install: TARGET = install
+install: subdirs
 
-WFLAGS = -Wall -Wshadow
-IFLAGS = -I. 
-#DFLAGS = -g -pg -ggdb3 -DDEBUG -DDEBUG_LOOPS -DDEBUG_SYNTH -DDEBUG_IO -DDEBUG_ENV
-DFLAGS = -g -pg -ggdb3 -DDEBUG
-TFLAGS = -pthread
-CFLAGS = $(TFLAGS) $(IFLAGS) -DVERSION_STRING='"$(VERS)"'
-LFLAGS = $(TFLAGS) $(IFLAGS) -lm -lcurl -lmicrohttpd
+clean: TARGET = clean
+clean: subdirs
+	@rm -f ../bin/*
 
-BINDIR = $(DESTDIR)/usr/bin
-BIN    = ministry
+debug: TARGET = debug
+debug: subdirs
 
-all:   WFLAGS += -Wpedantic -Wextra -Wno-unused-parameter
-all:   CFLAGS += -O2
-all:   $(BIN)
+subdirs:
+	for d in $(DIRS); do cd $$d; $(MAKE) $(MFLAGS) $(TARGET); cd ..; done
 
-debug: WFLAGS += -Wpedantic -Wextra -Wno-unused-parameter
-debug: CFLAGS += $(DFLAGS)
-debug: LFLAGS += $(DFLAGS)
-debug: $(BIN)
-
-with_old_gcc:  CFLAGS += -O2
-with_old_gcc:  WFLAGS += -pedantic
-with_old_gcc:  LFLAGS += -lrt
-with_old_gcc:  $(BIN)
-
-
-$(BIN): $(HDRS) $(OBJS)
-	$(CC) -o $(BIN) $(OBJS) $(LFLAGS)
-	@echo "Ministry constructed.  Submit your forms, citizen!"
-
-install: $(BIN)
-	@mkdir -p $(BINDIR)
-	@install -m755 $(BIN) $(BINDIR)/$(BIN)
-	@echo "Installed ministry as $(BINDIR)/$(BIN)"
-
-uninstall:
-	@echo "Removing ministry binary."
-	@rm -f $(BINDIR)/$(BIN)
-
-clean:
-	@rm -f core* *.core $(OBJS) $(BIN)
-
+.PHONY: all clean debug

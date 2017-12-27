@@ -1,4 +1,3 @@
-DIRS    = src test
 TARGET  = all
 
 VERS    = $(shell sed -rn 's/^Version:\t(.*)/\1/p' ministry.spec)
@@ -14,6 +13,8 @@ INIDIR ?= $(DESTDIR)/etc/init.d
 SSLDIR ?= $(CFGDIR)/ssl
 TSTDIR ?= $(CFGDIR)/test
 
+BINS    = ministry ministry-test carbon-copy
+SVCS    = ministry carbon-copy
 
 all:  subdirs
 all:  code
@@ -25,41 +26,45 @@ debug: TARGET = debug
 debug: all
 
 subdirs:
-	@mkdir -p logs
+	@mkdir -p logs bin
 
 code:
-	@for d in $(DIRS); do cd $$d; $(MAKE) $(MFLAGS) $(TARGET); cd ..; done
+	@cd src && $(MAKE) $(MFLAGS) $(TARGET)
 
 docker:
 	dist/docker.sh
 
-
 install:
 	@echo "Making installation directories"
 	@mkdir -p $(CFGDIR) $(SSLDIR) $(TSTDIR) $(LRTDIR) $(MANDIR)/man1 $(MANDIR)/man5 $(DOCDIR)
-	@for d in $(DIRS); do cd $$d; $(MAKE) $(MFLAGS) install; cd ..; done
+	@cd src && $(MAKE) $(MFLAGS) install; cd ..
 	@echo "Creating config and scripts."
-	@install -m644 dist/ministry.logrotate $(LRTDIR)/ministry
-	@install -m644 conf/install.conf $(CFGDIR)/ministry.conf
-	@install -m644 test/conf/install.conf $(TSTDIR)/ministry_test.conf
+	@for d in $(BINS); do \
+		install -m644 dist/$$d/install.conf $(CFGDIR)/$$d.conf; \
+		@echo "Creating manual pages and docs."; \
+		gzip dist/$$d/$$d.1 > $(MANDIR)/man1/$$d.1.gz; \
+		chmod 644 $(MANDIR)/man1/$$d.1.gz; \
+		gzip dist/$$d/$$d.conf.5 > $(MANDIR)/man5/$$d.conf.5.gz; \
+	done
+	@for d in $(SVCS); do \
+		install -m644 dist/$$d/$$d.logrotate $(LRTDIR)/$$d; \
+	done
 	@install -m644 dist/ssl/cert.pem $(SSLDIR)/cert.pem
 	@install -m600 dist/ssl/key.pem $(SSLDIR)/key.pem
-	@echo "Creating manual pages and docs."
-	@gzip -c dist/ministry.1 > $(MANDIR)/man1/ministry.1.gz
-	@chmod 644 $(MANDIR)/man1/ministry.1.gz
-	@gzip -c dist/ministry.conf.5 > $(MANDIR)/man5/ministry.conf.5.gz
-	@chmod 644 $(MANDIR)/man5/ministry.conf.5.gz
 	@cp LICENSE BUGS README.md $(DOCDIR)
 
 
 unitinstall: install
 	@mkdir -p $(UNIDIR)
-	@install -m644 dist/ministry.service $(UNIDIR)/ministry.service
+	@for d in $(SVCS); do \
+		install -m644 dist/$$d/$$d.service $(UNIDIR)/$$d.service; \
+	done
 
 initinstall: install
 	@mkdir -p $(INIDIR)
-	@install -m755 dist/ministry.init $(INIDIR)/ministry
-
+	@for d in $(SVCS); do \
+		install -m755 dist/$$d/$$d.init $(UNIDIR)/$$d; \
+	done
 
 uninstall:
 	@echo "Warning: this may delete your ministry config files!"
@@ -69,13 +74,20 @@ version:
 	@echo $(VERS)
 
 remove:
-	@for d in $(DIRS); do cd $$dl; $(MAKE) $(MFLAGS) uninstall; cd ..; done
-	@service ministry stop || :
-	@rm -rf $(LOGDIR) $(DOCDIR) $(SSLDIR) $(CFGDIR) $(UNIDIR)/ministry.service $(MANDIR)/man1/ministry.1.gz $(MANDIR)/man5/ministry.conf.5.gz $(LRTDIR)/ministry $(INIDIR)/ministry
+	@service ministry stop ||:
+	@service carbon-copy stop ||:
+	@cd src && $(MAKE) $(MFLAGS) uninstall; cd ..
+	@for d in $(SVCS); do \
+		rm -f $(UNIDIR)/$$d.service $(INIDIR)/$$d $(LRTDIR)/$$d; \
+	done
+	@for d in $(BINS); do \
+		rm -f $(MANDIR)/man1/$$d.1.gz $(MANDIR)/man5/$$d.conf.5.gz; \
+	done
+	@rm -rf $(LOGDIR) $(DOCDIR) $(SSLDIR) $(CFGDIR)
 
 clean:
-	@for d in $(DIRS); do cd $$d; $(MAKE) $(MFLAGS) clean; cd ..; done
-	@rm -f logs/* core*
+	@cd src && $(MAKE) $(MFLAGS) clean
+	@rm -f logs/* core* bin/*
 	@echo "done."
 
 .PHONY:  docker

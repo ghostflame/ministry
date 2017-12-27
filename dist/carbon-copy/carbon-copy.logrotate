@@ -1,0 +1,8 @@
+/var/log/ministry/carbon-copy/*.log {
+    weekly
+    missingok
+    rotate 7
+    compress
+    notifempty
+    lastaction 'pkill -HUP carbon-copy'
+}
