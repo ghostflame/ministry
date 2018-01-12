@@ -9,6 +9,20 @@
 
 #include "ministry.h"
 
+static inline int __synth_set_first( SYNTH *s )
+{
+	int i;
+
+	for( i = 0; i < s->parts; i++ )
+		if( s->dhash[i]->proc.count > 0 )
+		{
+			s->target->proc.total = s->dhash[i]->proc.total;
+			break;
+		}
+
+	return i + 1;
+}
+
 
 void synth_sum( SYNTH *s )
 {
@@ -40,13 +54,35 @@ void synth_div( SYNTH *s )
 		s->target->proc.total = ( a->proc.total * s->factor ) / b->proc.total;
 }
 
+void synth_prod( SYNTH *s )
+{
+	int i;
+
+	s->target->proc.total = s->factor;
+
+	// only use present values
+	for( i = 0; i < s->parts; i++ )
+		if( s->dhash[i]->proc.count > 0 )
+			s->target->proc.total *= s->dhash[i]->proc.total;
+}
+
+void synth_cap( SYNTH *s )
+{
+	DHASH *a, *b;
+
+	a = s->dhash[0];
+	b = s->dhash[1];
+
+	s->target->proc.total = ( a->proc.total < b->proc.total ) ? a->proc.total : b->proc.total;
+}
+
 void synth_max( SYNTH *s )
 {
 	int i;
 
-	s->target->proc.total = s->dhash[0]->proc.total;
+	i = __synth_set_first( s );
 
-	for( i = 1; i < s->parts; i++ )
+	for( ; i < s->parts; i++ )
 		if( s->target->proc.total < s->dhash[i]->proc.total )
 			s->target->proc.total = s->dhash[i]->proc.total;
 
@@ -57,9 +93,9 @@ void synth_min( SYNTH *s )
 {
 	int i;
 
-	s->target->proc.total = s->dhash[0]->proc.total;
+	i = __synth_set_first( s );
 
-	for( i = 1; i < s->parts; i++ )
+	for( ; i < s->parts; i++ )
 		if( s->target->proc.total > s->dhash[i]->proc.total )
 			s->target->proc.total = s->dhash[i]->proc.total;
 
@@ -71,9 +107,11 @@ void synth_spread( SYNTH *s )
 	double min, max;
 	int i;
 
-	min = max = s->dhash[0]->proc.total;
+	i = __synth_set_first( s );
 
-	for( i = 1; i < s->parts; i++ )
+	min = max = s->target->proc.total;
+
+	for( ; i < s->parts; i++ )
 	{
 		if( max < s->dhash[i]->proc.total )
 			max = s->dhash[i]->proc.total;
@@ -90,38 +128,29 @@ void synth_mean( SYNTH *s )
 	s->target->proc.total /= s->parts;
 }
 
+void synth_meanIf( SYNTH *s )
+{
+	synth_sum( s );
+	s->target->proc.total /= ( s->parts - s->absent );
+}
+
 void synth_count( SYNTH *s )
 {
-	int i;
-
-	s->target->proc.total = 0;
-
-	for( i = 0; i < s->parts; i++ )
-		if( s->dhash[i]->proc.count > 0 )
-			s->target->proc.total += 1;
-
-	s->target->proc.total *= s->factor;
+	s->target->proc.total = s->factor * ( s->parts - s->absent );
 }
 
 void synth_active( SYNTH *s )
 {
-	int i;
-
-	s->target->proc.total = 0;
-
-	for( i = 0; i < s->parts; i++ )
-		if( s->dhash[i]->proc.count > 0 )
-		{
-			s->target->proc.total = 1;
-			break;
-		}
+	// we only get here if we had one active
+	s->target->proc.total = 1;
 }
+
 
 
 
 void synth_generate( SYNTH *s )
 {
-	uint64_t pt;
+	uint64_t pt, ct;
 	int i;
 
 	// check everything it needs exists...
@@ -154,17 +183,25 @@ void synth_generate( SYNTH *s )
 	// are we a go?
 	if( s->missing == 0 )
 	{
+		s->absent = 0;
+
 		// check to see if there's any data
 		for( pt = 0, i = 0; i < s->parts; i++ )
-			pt += s->dhash[i]->proc.count;
+		{
+			if( ( ct = s->dhash[i]->proc.count ) == 0 )
+				s->absent++;
+			else
+				pt += ct;
+		}
 
 		// make the point appropriately
 		s->target->proc.count = pt;
 
-		// only generate if there's anything to do
-		if( pt > 0 )
+		// make sure not too many are missing
+		if( pt > 0 && s->absent <= s->max_absent )
 		{
-			(s->fn)( s );
+			// only generate if there's anything to do
+			(s->def->fn)( s );
 
 			// and mark it for reporting
 			s->target->do_pass = 1;
@@ -267,6 +304,15 @@ void synth_init( void )
 		// mark us as not having everything yet
 		s->missing = s->parts;
 
+		// and set the max absent; -ve values are parts - val
+		if( s->max_absent < 0 )
+		{
+			if( s->def->max_absent >= 0 )
+				s->max_absent = s->def->max_absent;
+			else
+				s->max_absent = s->parts + s->def->max_absent;
+		}
+
 		info( "Synthetic '%s' has hash id %u.", s->target_path, s->target->id );
 	}
 }
@@ -287,17 +333,20 @@ static int __synth_cfg_state = 0;
 struct synth_fn_def synth_fn_defs[] =
 {
 	// the first name is the 'proper' name
-	{ { "sum",    "add",     "plus" }, synth_sum,    1, 0 },
-	{ { "diff",   "minus",   NULL   }, synth_diff,   2, 2 },
-	{ { "ratio",  "div",     NULL   }, synth_div,    2, 2 },
-	{ { "max",    "highest", NULL   }, synth_max,    1, 0 },
-	{ { "min",    "lowest",  NULL   }, synth_min,    1, 0 },
-	{ { "spread", "width",   NULL   }, synth_spread, 1, 0 },
-	{ { "mean",   "average", NULL   }, synth_mean,   1, 0 },
-	{ { "count",  "nonzero", NULL   }, synth_count,  1, 0 },
-	{ { "active", "present", NULL   }, synth_active, 1, 0 },
+	{ { "sum",    "add",     "plus" }, synth_sum,    1, 0, SYNTH_PART_MAX },
+	{ { "diff",   "minus",   NULL   }, synth_diff,   2, 2, 0 },
+	{ { "ratio",  "div",     NULL   }, synth_div,    2, 2, 0 },
+	{ { "mult",   "product", NULL   }, synth_prod,   1, 0, SYNTH_PART_MAX },
+	{ { "cap",    "limit",   NULL   }, synth_cap,    2, 2, 0 },
+	{ { "max",    "highest", NULL   }, synth_max,    2, 0, SYNTH_PART_MAX },
+	{ { "min",    "lowest",  NULL   }, synth_min,    2, 0, SYNTH_PART_MAX },
+	{ { "spread", "width",   NULL   }, synth_spread, 2, 0, -2 },
+	{ { "mean",   "average", NULL   }, synth_mean,   2, 0, -1 },
+	{ { "meanIf", "avgIf",   NULL   }, synth_meanIf, 2, 0, -1 },
+	{ { "count",  "nonzero", NULL   }, synth_count,  1, 0, SYNTH_PART_MAX },
+	{ { "active", "present", NULL   }, synth_active, 1, 0, SYNTH_PART_MAX },
 	// last entry is a marker
-	{ { NULL,     NULL,      NULL   }, NULL,         0, 0 },
+	{ { NULL,     NULL,      NULL   }, NULL,         0, 0, SYNTH_PART_MAX },
 };
 
 
@@ -318,6 +367,7 @@ int synth_config_path( SYNTH *s, AVP *av )
 
 	s->paths[s->parts] = str_copy( av->val, av->vlen );
 	s->plens[s->parts] = av->vlen;
+
 	s->parts++;
 
 	return 0;
@@ -328,7 +378,7 @@ int synth_config_path( SYNTH *s, AVP *av )
 int synth_config_line( AVP *av )
 {
 	SYNTH *ns, *s = &__synth_cfg_tmp;
-	struct synth_fn_def *def;
+	SYNDEF *def;
 	int i;
 
 	// empty?
@@ -337,7 +387,7 @@ int synth_config_line( AVP *av )
 		memset( s, 0, sizeof( SYNTH ) );
 		s->factor = 1;
 		s->enable = 1;
-		s->min_parts = 1;
+		s->max_absent = -1;
 	}
 
 	if( attIs( "path" ) || attIs( "target" ) )
@@ -353,6 +403,7 @@ int synth_config_line( AVP *av )
 	{
 		if( synth_config_path( s, av ) != 0 )
 			return -1;
+
 		__synth_cfg_state = 1;
 	}
 	else if( attIs( "enable" ) )
@@ -365,6 +416,11 @@ int synth_config_line( AVP *av )
 		s->factor = strtod( av->val, NULL );
 		__synth_cfg_state = 1;
 	}
+	else if( attIs( "maxAbsent" ) )
+	{
+		s->max_absent = atoi( av->val );
+		__synth_cfg_state = 1;
+	}
 	else if( attIs( "operation" ) )
 	{
 		for( def = synth_fn_defs; def->fn; def++ )
@@ -373,10 +429,7 @@ int synth_config_line( AVP *av )
 			 || ( def->names[1] && valIs( def->names[1] ) )
 			 || ( def->names[2] && valIs( def->names[2] ) ) )
 			{
-				s->fn        = def->fn;
-				s->min_parts = def->min_parts;
-				s->max_parts = def->max_parts;
-				s->op_name   = def->names[0];
+				s->def = def;
 				break;
 			}
 		}
@@ -392,7 +445,7 @@ int synth_config_line( AVP *av )
 	else if( attIs( "done" ) )
 	{
 		if( !__synth_cfg_state
-		 || !s->fn
+		 || !s->def
 		 || !s->parts
 		 || !s->target_path )
 		{
@@ -400,18 +453,18 @@ int synth_config_line( AVP *av )
 			return -1;
 		}
 
-		if( s->parts < s->min_parts )
+		if( s->parts < s->def->min_parts )
 		{
 			err( "Synthetic %s does not have enough sources (needs %d).",
-				s->target_path, s->min_parts );
+				s->target_path, s->def->min_parts );
 			return -1;
 		}
 
 		// will we have unused sources?
-		if( s->max_parts > 0 && s->parts > s->max_parts )
+		if( s->def->max_parts > 0 && s->parts > s->def->max_parts )
 		{
 			warn( "Synthetic %s has %d sources but only %d will be used!",
-				s->target_path, s->parts, s->max_parts );
+				s->target_path, s->parts, s->def->max_parts );
 		}
 
 		if( s->enable )
@@ -427,7 +480,7 @@ int synth_config_line( AVP *av )
 			ctl->synth->scount++;
 
 			debug( "Added synthetic %s (%s/%d).", ns->target_path,
-				ns->op_name, ns->parts );
+				ns->def->names[0], ns->parts );
 		}
 		else
 		{
@@ -435,7 +488,7 @@ int synth_config_line( AVP *av )
 			if( s->target_path )
 			{
 				debug( "Dropping disabled synthetic %s (%s/%d).",
-					s->target_path, s->op_name, s->parts );
+					s->target_path, s->def->names[0], s->parts );
 
 				free( s->target_path );
 				s->target_path = NULL;

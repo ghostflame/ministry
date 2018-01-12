@@ -39,3 +39,9 @@
 logs/*
 bin/*
 
+# binaries
+src/carbon_copy/carbon-copy
+src/ministry/ministry
+src/ministry_test/ministry-test
+
+

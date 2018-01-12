@@ -35,6 +35,7 @@ typedef struct targets_set			TSET;
 typedef struct host_prefixes		HPRFXS;
 typedef struct host_data			HOST;
 typedef struct synth_data			SYNTH;
+typedef struct synth_fn_def			SYNDEF;
 typedef struct token_data			TOKEN;
 typedef struct token_info			TOKENS;
 typedef struct tcp_thread			TCPTH;
