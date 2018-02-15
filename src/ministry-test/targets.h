@@ -36,6 +36,7 @@ struct targets_control
 target_cfg_fn targets_set_type;
 
 int targets_start_one( TGT **tp );
+void targets_resolve( void );
 
 TGTS_CTL *targets_config_defaults( void );
 

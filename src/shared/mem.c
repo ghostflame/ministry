@@ -52,6 +52,16 @@ void *mem_reverse_list( void *list_in )
 }
 
 
+void __mtype_report_counts( MTYPE *mt )
+{
+#ifdef MTYPE_TRACING
+	info( "Mtype %12s:  Flist %p   Fcount %10d    Alloc: calls %12d sum %12d   Free: calls %12d sum %12d",
+		mt->name, mt->flist, mt->fcount,
+		mt->a_call_ctr, mt->a_call_sum,
+		mt->f_call_ctr, mt->f_call_sum );
+#endif
+}
+
 
 // grab some more memory of the proper size
 // must be called inside a lock
@@ -63,6 +73,23 @@ void __mtype_alloc_free( MTYPE *mt, int count )
 
 	if( count <= 0 )
 		count = mt->alloc_ct;
+
+	if( !mt->flist )
+	{
+		if( mt->fcount > 0 )
+		{
+			err( "Mtype %s flist null but fcount %d.", mt->name, mt->fcount );
+			__mtype_report_counts( mt );
+			//mt->fcount = 0;
+		}
+	}
+	else if( !mt->fcount )
+	{
+		err( "Mtype %s flist set but fcount 0.", mt->name );
+		__mtype_report_counts( mt );
+		//for( i = 0, p = mt->flist; p; p = p->next; i++ );
+		//mt->fcount = i;
+	}
 
 	list = (MTBLANK *) allocz( mt->alloc_sz * count );
 
@@ -100,6 +127,7 @@ void __mtype_alloc_free( MTYPE *mt, int count )
 	}
 
 	// and attach to the free list (it might not be null)
+	info( "Mtype %s end of alloc list -> existing flist: %p", mt->name, mt->flist );
 	p->next = mt->flist;
 
 	// and update our type
@@ -113,13 +141,18 @@ inline void *mtype_new( MTYPE *mt )
 
 	mem_lock( mt );
 
-	if( !mt->fcount )
+	if( !mt->fcount || !mt->flist )
 		__mtype_alloc_free( mt, 0 );
 
 	b = mt->flist;
 	mt->flist = b->next;
 
 	--(mt->fcount);
+
+#ifdef MTYPE_TRACING
+	mt->a_call_ctr++;
+	mt->a_call_sum++;
+#endif
 
 	mem_unlock( mt );
 
@@ -155,6 +188,11 @@ inline void *mtype_new_list( MTYPE *mt, int count )
 	mt->flist   = end->next;
 	mt->fcount -= c;
 
+#ifdef MTYPE_TRACING
+	mt->a_call_ctr++;
+	mt->a_call_sum += c;
+#endif
+
 	mem_unlock( mt );
 
 	end->next = NULL;
@@ -174,6 +212,11 @@ inline void mtype_free( MTYPE *mt, void *p )
 	mt->flist = p;
 	++(mt->fcount);
 
+#ifdef MTYPE_TRACING
+	mt->f_call_ctr++;
+	mt->f_call_sum++;
+#endif
+
 	mem_unlock( mt );
 }
 
@@ -187,6 +230,11 @@ inline void mtype_free_list( MTYPE *mt, int count, void *first, void *last )
 	l->next     = mt->flist;
 	mt->flist   = first;
 	mt->fcount += count;
+
+#ifdef MTYPE_TRACING
+	mt->f_call_ctr++;
+	mt->f_call_sum += count;
+#endif
 
 	mem_unlock( mt );
 }
@@ -537,7 +585,8 @@ void mem_free_iobuf_list( IOBUF *list )
 	IOBUF *b, *freed, *end;
 	int j = 0;
 
-	freed = end = NULL;
+	freed = NULL;
+	end   = list;
 
 	while( list )
 	{
@@ -559,9 +608,6 @@ void mem_free_iobuf_list( IOBUF *list )
 
 		b->next = freed;
 		freed   = b;
-
-		if( !end )
-			end = b;
 
 		j++;
 	}

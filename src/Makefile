@@ -1,4 +1,4 @@
-DIRS   = shared ministry ministry_test carbon_copy
+DIRS   = shared ministry ministry-test carbon-copy
 TARGET = unknown
 
 all: TARGET = all

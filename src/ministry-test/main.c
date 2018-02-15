@@ -47,6 +47,9 @@ void main_create_conf( void )
 
 void main_loop( void )
 {
+	// make sure we have suitable target types
+	targets_resolve( );
+
 	// and start the metrics (which start the targets)
 	metric_start_all( );
 

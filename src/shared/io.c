@@ -288,7 +288,7 @@ IOBUF *io_buf_fetch( TGT *t )
 
 
 
-void io_buf_post_one( TGT *t, IOBUF *b )
+void __io_buf_post_one( TGT *t, IOBUF *b )
 {
 	IOBP *bp;
 
@@ -323,6 +323,14 @@ void io_buf_post_one( TGT *t, IOBUF *b )
 	unlock_target( t );
 }
 
+void io_buf_post_one( TGT *t, IOBUF *b )
+{
+	if( b->refs <= 0 )
+		b->refs = 1;
+
+	__io_buf_post_one( t, b );
+}
+
 
 // post buffer to list
 void io_buf_post( TGTL *l, IOBUF *buf )
@@ -343,12 +351,12 @@ void io_buf_post( TGTL *l, IOBUF *buf )
 	}
 
 	// set the refs if told
-	if( buf->refs < 0 )
+	if( buf->refs <= 0 )
 		buf->refs = l->count;
 
 	// and send to each one
 	for( p = l->targets; p; p = p->next )
-		io_buf_post_one( p, buf );
+		__io_buf_post_one( p, buf );
 }
 
 

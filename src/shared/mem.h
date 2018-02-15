@@ -61,6 +61,13 @@ struct mem_type
 	uint32_t			stats_sz;
 	uint32_t			prealloc;
 
+#ifdef MTYPE_TRACING
+	int64_t				a_call_ctr;
+	int64_t				a_call_sum;
+	int64_t				f_call_ctr;
+	int64_t				f_call_sum;
+#endif
+
 	int16_t				id;
 
 	double				threshold;

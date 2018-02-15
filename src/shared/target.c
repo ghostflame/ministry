@@ -334,11 +334,13 @@ int target_config_line( AVP *av )
 		// all in one go
 		if( !target_create_str( av->val, av->vlen, ':' ) )
 			return -1;
+
 		__tgt_cfg_state = 0;
 	}
 	else if( attIs( "list" ) )
 	{
 		t->list = __target_list_find_create( av->val );
+		__tgt_cfg_state = 1;
 	}
 	else if( attIs( "name" ) )
 	{
@@ -447,6 +449,8 @@ int target_config_line( AVP *av )
 		}
 		n->list->count++;
 		_tgt->tcount++;
+
+		__tgt_cfg_state = 0;
 	}
 	else
 		return -1;

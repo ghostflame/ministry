@@ -52,6 +52,24 @@ int targets_start_one( TGT **tp )
 }
 
 
+void targets_resolve( void )
+{
+	struct targets_defaults *td;
+	TGTL *l;
+	int i;
+
+	td = &(targets_data[0]);
+
+	for( i = 0; i < METRIC_TYPE_MAX; i++, td++ )
+		if( ( l = target_list_find( td->name ) ) && l->targets )
+		{
+			if( !l->targets->port )
+				l->targets->port = td->port;
+
+			ctl->tgt->targets[i] = l->targets;
+		}
+}
+
 
 int targets_set_type( TGT *t, char *name, int len )
 {
