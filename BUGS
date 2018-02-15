@@ -1,3 +1,4 @@
 UDP data lines spread across multiple packets are not handled well.  We
 do not have a facility for keeping the previous packet from that IP and then
-joining them back together.
+joining them back together.  With no guarantee of orderedness, it is not
+something worth trying to fix.

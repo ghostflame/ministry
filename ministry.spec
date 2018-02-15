@@ -1,5 +1,5 @@
 Name:		ministry
-Version:	0.4.2
+Version:	0.4.3
 Release:	1%{?dist}
 Summary:	A statsd implementation in threaded C.
 
@@ -13,7 +13,8 @@ Requires(pre): shadow-utils systemd libcurl libmicrohttpd
 
 %description
 A drop-in replacement for Etsy's statsd, written in threaded C.  Designed to
-be high-performance and reasonable to work with.
+be high-performance and reasonable to work with.  Comes with a test/load-gen
+program, ministry-test, and a metrics router, carbon-copy, for load-balancing.
 
 %prep
 %setup -q
@@ -29,9 +30,8 @@ getent passwd ministry > /dev/null || useradd  -r -g ministry -M -d /etc/ministr
 # see https://fedoraproject.org/wiki/Packaging:UsersAndGroups for reasoning
 mkdir -p -m 700 /etc/ministry/ssl
 chown ministry:ministry /etc/ministry/ssl
-mkdir -p /var/log/ministry
-chown ministry:ministry /var/log/ministry
-
+mkdir -p /var/log/ministry/carbon-copy
+chown -R ministry:ministry /var/log/ministry
 
 
 %install
@@ -51,13 +51,23 @@ make unitinstall
 %files
 %doc %{_docdir}/ministry/
 %config(noreplace) /etc/ministry/ministry.conf
+%config(noreplace) /etc/ministry/carbon-copy.conf
+%config(noreplace) /etc/ministry/ministry-test.conf
 %config(noreplace) /etc/logrotate.d/ministry
+%config(noreplace) /etc/logrotate.d/carbon-copy
 %config(noreplace) /etc/ministry/ssl/cert.pem
 %config(noreplace) /etc/ministry/ssl/key.pem
 %{_bindir}/ministry
+%{_bindir}/carbon-copy
+%{_bindir}/ministry-test
 %{_mandir}/man1/ministry.1.gz
+%{_mandir}/man1/ministry-test.1.gz
+%{_mandir}/man1/carbon-copy.1.gz
 %{_mandir}/man5/ministry.conf.5.gz
+%{_mandir}/man5/ministry-test.conf.5.gz
+%{_mandir}/man5/carbon-copy.conf.5.gz
 %{_unitdir}/ministry.service
+%{_unitdir}/carbon-copy.service
 
 %changelog
 

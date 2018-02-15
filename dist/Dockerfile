@@ -1,8 +1,8 @@
-FROM fedora:24
+FROM fedora:26
 
 RUN mkdir /etc/ministry
-ADD conf/install.conf /etc/ministry/ministry.conf
-ADD src/ministry /usr/bin/ministry
+ADD conf/ministry/install.conf /etc/ministry/ministry.conf
+ADD bin/ministry /usr/bin/ministry
 ADD dist/ministry.service /etc/systemd/system/ministry.service
 
 RUN groupadd -r ministry ;\

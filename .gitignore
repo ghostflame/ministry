@@ -37,6 +37,11 @@
 
 # directories
 logs/*
+bin/*
 
-# binary
-src/ministry
+# binaries
+src/carbon-copy/carbon-copy
+src/ministry/ministry
+src/ministry-test/ministry-test
+
+
