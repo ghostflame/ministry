@@ -367,7 +367,7 @@ int target_config_line( AVP *av )
 			return -1;
 		__tgt_cfg_state = 1;
 	}
-	else if( attIs( "enabled" ) )
+	else if( attIs( "enable" ) || attIs( "enabled" ) )
 	{
 		t->enabled = config_bool( av );
 		__tgt_cfg_state = 1;

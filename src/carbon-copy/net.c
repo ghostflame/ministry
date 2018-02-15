@@ -278,7 +278,7 @@ int net_config_line( AVP *av )
 		return 0;
 	}
 
-	/* then it's data., statsd. or adder. (or ipcheck) */
+	/* then it's tcp or udp */
 	d++;
 
 	if( !strncasecmp( av->att, "udp.", 4 ) )

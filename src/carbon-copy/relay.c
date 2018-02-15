@@ -76,12 +76,18 @@ __attribute__((hot)) int relay_write( IOBUF *b, RLINE *l )
 __attribute__((hot)) int relay_regex( HBUFS *h, RLINE *l )
 {
 	RELAY *r = h->rule;
+	uint8_t mat;
 	int j;
 
 	// try each regex
 	for( j = 0; j < r->mcount; j++ )
-		if( regexec( r->matches + j, l->path, 0, NULL, 0 ) == 0 )
+	{
+		mat  = regexec( r->matches + j, l->path, 0, NULL, 0 ) ? 0 : 1;
+		mat ^= r->invert[j];
+
+		if( mat )
 			break;
+	}
 
 	// no match?
 	if( j == r->mcount )
@@ -385,6 +391,7 @@ static int __relay_cfg_state = 0;
 int relay_config_line( AVP *av )
 {
 	RELAY *n, *r = &__relay_cfg_tmp;
+	char *s;
 
 	if( !__relay_cfg_state )
 	{
@@ -393,6 +400,7 @@ int relay_config_line( AVP *av )
 		r->type = RTYPE_UNKNOWN;
 		r->name = str_copy( "- unnamed -", 0 );
 		r->matches = (regex_t *) allocz( RELAY_MAX_REGEXES * sizeof( regex_t ) );
+		r->invert  = (uint8_t *) allocz( RELAY_MAX_REGEXES * sizeof( uint8_t ) );
 	}
 
 	if( attIs( "name" ) )
@@ -415,7 +423,14 @@ int relay_config_line( AVP *av )
 			return -1;
 		}
 
-		if( regcomp( r->matches + r->mcount, av->val, REG_EXTENDED|REG_ICASE|REG_NOSUB ) )
+		s = av->val;
+		if( *s == '!' )
+		{
+			r->invert[r->mcount] = 1;
+			s++;
+		}
+
+		if( regcomp( r->matches + r->mcount, s, REG_EXTENDED|REG_ICASE|REG_NOSUB ) )
 		{
 			err( "Invalid regex for relay block '%s': '%s'",
 				r->name, av->val );
@@ -430,7 +445,7 @@ int relay_config_line( AVP *av )
 	else if( attIs( "last" ) )
 	{
 		r->last = config_bool( av );
-		debug( "Relay block '%s' does not terminate processing on a match.",
+		debug( "Relay block '%s' terminates processing on a match.",
 			r->name );
 		__relay_cfg_state = 1;
 	}
@@ -477,9 +492,11 @@ int relay_config_line( AVP *av )
 		// make it's own memory
 		n->mstats  = (int64_t *) allocz( n->mcount * sizeof( int64_t ) );
 		n->matches = (regex_t *) allocz( n->mcount * sizeof( regex_t ) );
+		n->invert  = (uint8_t *) allocz( n->mcount * sizeof( uint8_t ) );
 
-		// and copy in the regexes
+		// and copy in the regexes and inverts
 		memcpy( n->matches, r->matches, n->mcount * sizeof( regex_t ) );
+		memcpy( n->invert,  r->invert,  n->mcount * sizeof( uint8_t ) );
 
 		// set the relay function and buffers
 		switch( n->type )
@@ -501,8 +518,10 @@ int relay_config_line( AVP *av )
 
 		debug( "Added relay block '%s' with %d regexes.", n->name, n->mcount );
 
-		// free up the allocated matches memory
+		// free up the allocated memory
 		free( r->matches );
+		free( r->invert );
+		free( r->name );
 		__relay_cfg_state = 0;
 	}
 	else
