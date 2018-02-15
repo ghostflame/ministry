@@ -474,10 +474,9 @@ int relay_config_line( AVP *av )
 	else if( attIs( "done" ) )
 	{
 		if( !r->name || !strcmp( r->name, "- unnamed -" )
-		 || !r->tcount
 		 || !r->target_str
 		 || r->type == RTYPE_UNKNOWN
-		 || ( !r->mcount && r->type != RTYPE_HASH ) )
+		 || ( r->mcount == 0 && r->type != RTYPE_HASH ) )
 		{
 			err( "A relay block needs a name, a target and some regex strings." );
 			return -1;
