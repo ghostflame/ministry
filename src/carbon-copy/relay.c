@@ -11,42 +11,6 @@
 #include "carbon_copy.h"
 
 
-static const uint32_t relay_cksum_primes[8] =
-{
-	2909, 3001, 3083, 3187, 3259, 3343, 3517, 3581
-};
-
-__attribute__((hot)) static inline uint32_t relay_path_cksum( char *str, int len )
-{
-	register uint32_t *p, sum = 0xbeef;
-	int rem;
-
-	rem = len & 0x3;
-	len = len >> 2;
-	p   = (uint32_t *) str;
-
-	// a little unrolling for good measure
-	while( len > 4 )
-	{
-		sum ^= *p++;
-		sum ^= *p++;
-		sum ^= *p++;
-		sum ^= *p++;
-		len -= 4;
-	}
-
-	// and the rest
-	while( len-- > 0 )
-		sum ^= *p++;
-
-	// and capture the rest
-	str = (char *) p;
-	while( rem-- > 0 )
-		sum += *str++ * relay_cksum_primes[rem];
-
-	return sum;
-}
-
 
 __attribute__((hot)) int relay_write( IOBUF *b, RLINE *l )
 {
@@ -110,7 +74,7 @@ __attribute__((hot)) int relay_hash( HBUFS *h, RLINE *l )
 	uint32_t j = 0;
 
 	if( h->rule->tcount > 1 )
-		j = relay_path_cksum( l->path, l->plen ) % h->rule->tcount;
+		j = (*(h->rule->hfp))( l->path, l->plen ) % h->rule->tcount;
 
 	// hash writes to just one target
 	if( relay_write( h->bufs[j], l ) )
@@ -462,6 +426,17 @@ int relay_config_line( AVP *av )
 		{
 			warn( "Relay block '%s' is being set to type has but has %d regexes.",
 				r->name, r->mcount );
+		}
+		if( valIs( "cksum" ) )
+			r->hfp = &hash_cksum;
+		else if( valIs( "fnv1" ) )
+			r->hfp = &hash_fnv1;
+		else if( valIs( "fnv1a" ) )
+			r->hfp = &hash_fnv1a;
+		else
+		{
+			err( "Unrecognised hash type: %s", av->val );
+			return -1;
 		}
 		r->type = RTYPE_HASH;
 		__relay_cfg_state = 1;

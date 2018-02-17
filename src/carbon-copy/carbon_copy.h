@@ -26,6 +26,7 @@
 #include "tcp.h"
 #include "mem.h"
 #include "target.h"
+#include "hash.h"
 #include "relay.h"
 #include "selfstats.h"
 

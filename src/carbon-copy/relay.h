@@ -26,8 +26,8 @@ enum relay_rule_types
 	RTYPE_MAX
 };
 
-#define RTYPE_HASH				1
-#define RTYPE_REGEX				2
+#define RTYPE_REGEX				1
+#define RTYPE_HASH				2
 
 
 struct relay_line
@@ -50,6 +50,7 @@ struct relay_rule
 	int64_t			*	mstats;
 	char			*	name;
 	char			*	target_str;
+	hash_fn			*	hfp;
 	relay_fn		*	rfp;
 
 	int64_t				lines;

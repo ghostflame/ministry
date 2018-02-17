@@ -1,7 +1,7 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-FILES  = mem net tcp udp relay main
-HEADS  = mem carbon_copy  net tcp udp relay selfstats typedefs 
+FILES  = mem net tcp udp hash relay main
+HEADS  = mem carbon_copy net tcp udp hash relay selfstats typedefs 
 VERS   = $(shell sed -rn 's/^Version:\t(.*)/\1/p' ../../ministry.spec)
 
 OBJS   = $(FILES:%=%.o)
