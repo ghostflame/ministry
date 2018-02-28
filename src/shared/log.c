@@ -269,6 +269,9 @@ int log_start( void )
 	if( !_logger )
 		return -1;
 
+	if( _logger->force_stdout )
+		_logger->use_std = 1;
+
 	if( _logger->use_std )
 	{
 		_logger->notify_re = 0;

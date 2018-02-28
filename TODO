@@ -1,5 +1,5 @@
 Refactor
-	none
+    man pages, install.conf, service files
 
 HTTP
 	Accept submissions via HTTP
@@ -8,6 +8,7 @@ HTTP
 Network
 	More granular token control
 		Allow a token / non-token port on one type
+        Force some IPs to present a token?
 
 Data types
 	none
@@ -16,7 +17,7 @@ Stats generation
 	Allow for usec timestamps - multiple buffers
 
 Monitoring
-	none
+	carbon-copy self-metrics
 
 Operational Readiness
 	Pen Testing

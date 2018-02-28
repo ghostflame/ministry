@@ -127,7 +127,6 @@ void __mtype_alloc_free( MTYPE *mt, int count )
 	}
 
 	// and attach to the free list (it might not be null)
-	info( "Mtype %s end of alloc list -> existing flist: %p", mt->name, mt->flist );
 	p->next = mt->flist;
 
 	// and update our type

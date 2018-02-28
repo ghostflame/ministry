@@ -140,7 +140,7 @@ int app_start( int writePid )
 	else
 		debug( "Working directory now %s", getcwd( NULL, 0 ) );
 
-	if( runf_has( RUN_DAEMON ) )
+	if( runf_has( RUN_DAEMON ) && !runf_has( RUN_TGT_STDOUT ) )
 	{
 		if( daemon( 1, 0 ) < 0 )
 		{
