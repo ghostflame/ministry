@@ -560,7 +560,7 @@ __attribute__((hot)) void data_line_token( HOST *h, char *line, int len )
 	tval = strtoll( line, NULL, 10 );
 
 	// look up a token based on that information
-	if( !( t = token_find( h->peer->sin_addr.s_addr, h->type->token_type, tval ) ) )
+	if( !( t = token_find( h->ip, h->type->token_type, tval ) ) )
 	{
 		debug( "Found no token: %p", t );
 

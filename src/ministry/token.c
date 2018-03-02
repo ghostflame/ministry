@@ -303,7 +303,7 @@ void *token_loop( void *arg )
 
 
 
-void token_init( void )
+int token_init( void )
 {
 	TOKENS *ts = ctl->net->tokens;
 
@@ -314,7 +314,19 @@ void token_init( void )
 		ts->lifetime *= 1000000;
 	}
 
+	if( ts->filter_name )
+	{
+		if( !( ts->filter = iplist_find( ts->filter_name ) ) )
+		{
+			fatal( "Could not find token filter list '%s'.", ts->filter_name );
+			return -1;
+		}
+
+		iplist_explain( ts->filter, NULL, NULL, "Tokens", NULL );
+	}
+
 	http_add_handler( "/tokens", 1024, &token_url_handler, "Issues tokens.", NULL );
+	return 0;
 }
 
 

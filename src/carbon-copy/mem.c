@@ -26,6 +26,7 @@ HOST *mem_new_host( struct sockaddr_in *peer, uint32_t bufsz )
 
 	// copy the peer details in
 	*(h->peer) = *peer;
+	h->ip      = h->peer->sin_addr.s_addr;
 
 	// and make our name
 	snprintf( h->net->name, 32, "%s:%hu", inet_ntoa( h->peer->sin_addr ),
@@ -50,6 +51,7 @@ void mem_free_host( HOST **h )
 	sh->net->fd    = -1;
 	sh->net->flags = 0;
 	sh->ipn        = NULL;
+	sh->ip         = 0;
 
 	sh->peer->sin_addr.s_addr = INADDR_ANY;
 	sh->peer->sin_port = 0;

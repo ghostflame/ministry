@@ -150,7 +150,7 @@ void *udp_loop_checks( void *arg )
 		b->buf[b->len] = '\0';
 
 		// do a prefix check on that
-		iplist_test_ip( ctl->net->prefix, h->peer->sin_addr.s_addr, &ipn );
+		iplist_test_ip( ctl->net->prefix, h->ip, &ipn );
 		if( ipn && ipn->tlen )
 			relay_parse_buf( udp_get_phost( n, ipn ), b );
 		else

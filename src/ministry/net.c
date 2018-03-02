@@ -54,6 +54,8 @@ int net_set_host_prefix( HOST *h, IPNET *n )
 // tokens are on for that type, set the token handler.
 int net_set_host_parser( HOST *h, int token_check, int prefix_check )
 {
+	TOKENS *ts = ctl->net->tokens;
+	int set_token = 0;
 	IPNET *n;
 
 	// this is the default
@@ -61,18 +63,30 @@ int net_set_host_parser( HOST *h, int token_check, int prefix_check )
 
 	// are we doing a token check?
 	if(   token_check
-	 &&   ctl->net->tokens->enable
-	 && ( ctl->net->tokens->mask & h->type->token_type ) )
+	 &&   ts->enable
+	 && ( ts->mask & h->type->token_type ) )
 	{
-		// token handler is the same for all types
-		h->parser = &data_line_token;
-		return 0;
+		if( ts->filter )
+		{
+			iplist_test_ip( ts->filter, h->ip, &n );
+			if( n || ts->filter->def == IPLIST_POSITIVE )
+				set_token = 1;
+		}
+		else
+			set_token = 1;
+
+		if( set_token )
+		{
+			// token handler is the same for all types
+			h->parser = &data_line_token;
+			return 0;
+		}
 	}
 
 	// do we have a prefix for this host?
 	if( prefix_check )
 	{
-		iplist_test_ip( ctl->net->prefix, h->peer->sin_addr.s_addr, &n );
+		iplist_test_ip( ctl->net->prefix, h->ip, &n );
 		return net_set_host_prefix( h, n );
 	}
 
@@ -102,11 +116,11 @@ void net_start_type( NET_TYPE *nt )
 			th->type  = nt;
             th->hosts = (HOST **) allocz( nt->pollmax * sizeof( HOST * ) );
 			th->polls = (struct pollfd *) allocz( nt->pollmax * sizeof( struct pollfd ) );
-            for( j = 0; j < nt->pollmax; j++ )
-            {
-                th->polls[j].fd     = -1;  // makes poll ignore this one
-                th->polls[j].events = POLL_EVENTS;
-            }
+			for( j = 0; j < nt->pollmax; j++ )
+			{
+				th->polls[j].fd     = -1;  // makes poll ignore this one
+				th->polls[j].events = POLL_EVENTS;
+			}
 
 			pthread_mutex_init( &(th->lock), NULL );
 			nt->tcp->threads[i] = th;
@@ -153,7 +167,7 @@ int net_startup( NET_TYPE *nt )
 		// init the lock for keeping track of current connections
 		pthread_mutex_init( &(nt->lock), NULL );
 
-        info( "Type %s can handle at most %ld connections.", nt->name, ( nt->threads * nt->pollmax ) );
+		info( "Type %s can handle at most %ld connections.", nt->name, ( nt->threads * nt->pollmax ) );
 	}
 
 
@@ -194,7 +208,8 @@ int net_start( void )
 	int ret = 0;
 
 	// create our token hash table
-	token_init( );
+	if( token_init( ) )
+		return -1;
 
 	if( ctl->net->filter_list )
 	{
@@ -390,6 +405,13 @@ int net_config_line( AVP *av )
 		else if( !strcasecmp( p, "mask" ) )
 		{
 			av_int( n->tokens->mask );
+		}
+		else if( !strcasecmp( p, "filter" ) )
+		{
+			if( n->tokens->filter_name )
+				free( n->tokens->filter_name );
+
+			n->tokens->filter_name = str_copy( av->val, av->vlen );
 		}
 		else
 			return -1;
