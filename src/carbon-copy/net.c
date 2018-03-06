@@ -21,7 +21,7 @@ int net_set_host_prefix( HOST *h, IPNET *n )
 		return 0;
 
 	h->ipn = n;
-  
+
 	// change the parser function to one that does prefixing
 	h->parser = h->type->prfx_parser;
 

@@ -125,7 +125,7 @@ __attribute__((hot)) void relay_simple( HOST *h, char *line, int len )
 			if( r->last )
 				break;
 		}
-    }
+	}
 }
 
 
@@ -162,7 +162,7 @@ __attribute__((hot)) void relay_prefix( HOST *h, char *line, int len )
 		return;
 	}
 
-    h->lines++;
+	h->lines++;
 
 	// copy the path onto the end of the prefix
 	memcpy( h->ltarget, line, l.plen );

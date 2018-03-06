@@ -201,7 +201,7 @@ int targets_set_type( TGT *t, char *type, int len )
 	}
 
 	err( "Unrecognised target type: %s", type );
-    return -1;
+	return -1;
 }
 
 

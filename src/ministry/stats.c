@@ -261,24 +261,24 @@ void stats_thread_report( ST_THR *t )
 // useful to avoid floating point errors
 static inline void kahan_sum( double val, double *sum, double *low )
 {
-    double y, t;
+	double y, t;
 
-    y = val - *low;     // low starts off small
-    t = *sum + y;       // sum is big, y small, lo-order y is lost
+	y = val - *low;     // low starts off small
+	t = *sum + y;       // sum is big, y small, lo-order y is lost
 
-    *low = ( t - *sum ) - y;// (t-sum) is hi-order y, -y recovers lo-order
-    *sum = t;       // low is algebraically always 0
+	*low = ( t - *sum ) - y;// (t-sum) is hi-order y, -y recovers lo-order
+	*sum = t;           // low is algebraically always 0
 }
 
 void kahan_summation( double *list, int len, double *sum )
 {
-    double low = 0;
-    int i;
+	double low = 0;
+	int i;
 
-    for( *sum = 0, i = 0; i < len; i++ )
-        kahan_sum( list[i], sum, &low );
+	for( *sum = 0, i = 0; i < len; i++ )
+		kahan_sum( list[i], sum, &low );
 
-    *sum += low;
+	*sum += low;
 }
 
 

@@ -35,7 +35,7 @@ void config_args_substitute( char *str, int *len )
 	// 1-indexed
 	if( str[0] == '%' && str[l - 1] == '%'
 	 && ( i = atoi( str + 1 ) ) > 0
-     && i <= context->argc )
+	 && i <= context->argc )
 	{
 		// it can't be too long, or we could never
 		// have read the include line in the first
@@ -663,8 +663,8 @@ void config_set_main_file( char *path )
 {
 	snprintf( _proc->cfg_file, CONF_LINE_MAX, "%s", path );
 
-    // this wins against env
-    setcfFlag( FILE_OPT );
+	// this wins against env
+	setcfFlag( FILE_OPT );
 }
 
 void config_set_env_prefix( char *prefix )

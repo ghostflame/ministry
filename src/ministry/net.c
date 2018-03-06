@@ -114,7 +114,7 @@ void net_start_type( NET_TYPE *nt )
 			th = (TCPTH *) allocz( sizeof( TCPTH ) );
 
 			th->type  = nt;
-            th->hosts = (HOST **) allocz( nt->pollmax * sizeof( HOST * ) );
+			th->hosts = (HOST **) allocz( nt->pollmax * sizeof( HOST * ) );
 			th->polls = (struct pollfd *) allocz( nt->pollmax * sizeof( struct pollfd ) );
 			for( j = 0; j < nt->pollmax; j++ )
 			{
@@ -170,8 +170,7 @@ int net_startup( NET_TYPE *nt )
 		info( "Type %s can handle at most %ld connections.", nt->name, ( nt->threads * nt->pollmax ) );
 	}
 
-
-    notice( "TCP dead time is %d seconds.", ctl->net->dead_time );
+	notice( "TCP dead time is %d seconds.", ctl->net->dead_time );
 
 	if( nt->flags & NTYPE_UDP_ENABLED )
 		for( i = 0; i < nt->udp_count; i++ )
