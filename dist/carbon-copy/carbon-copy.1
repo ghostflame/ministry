@@ -1,0 +1,67 @@
+.\" Carbon-copy manual page
+.TH CARBON-COPY "1" "Nov 2017" "Networking Utilities" "User Commands"
+.SH NAME
+carbon-copy \- metrics routing daemon
+.SH SYNOPSIS
+.nf
+.BI "carbon-copy [-v|-h]"
+.BI "carbon-copy [-DVtEFIUu] -c <" config-file "> [-p <" pid-file ">]"
+.fi
+.SH DESCRIPTION
+.PP
+\fBCarbon-copy\fP is a network daemon which can route and copy graphite-like metrics to named
+targets with options for hashing and duplication.
+.PP
+The main options are:
+.TP
+\fB\-h\fR
+print help
+.TP
+\fB\-v\fR
+print version and exit
+.TP
+\fB\-t\fR
+just test config and exit
+.TP
+\fB\-c\fR \fI<FILE|URI>\fR
+select config source instead of default file
+.TP
+\fB\-s\fR
+be strict about parsing config
+.TP
+\fB\-F\fR
+disable reading config source (environment only)
+.TP
+\fB\-E\fR
+disable reading variables from the environment
+.TP
+\fB\-U\fR
+disable reading any URI config (even if given with -c)
+.TP
+\fB\-u\fR
+disable URI config including other URI configs
+.TP
+\fB\-i\fR
+allow insecure URI's
+.TP
+\fB\-I\fR
+allow secure URI's to include insecure URI's
+.TP
+\fB\-D\fR
+run in debug mode
+.TP
+\fB\-V\fR
+run in verbose mode, with more output to stdout
+.PP
+The config file format is in sections, denoted as \fB[Section]\fR and is of a general format of:
+.TP
+\fBvariable\fR = \fIvalue\fR
+.PP
+It may use the keyword \fBinclude\fR to read in another file - the current section context is kept.
+.PP
+The default config file is /etc/carbon-copy/carbon-copy.conf
+.SH Behaviour
+.SH SEE ALSO
+.BR ministry (1)
+.SH AUTHOR
+\fBCarbon-copy\fP is written and maintained by John Denholm, Sky Betting And Gaming.
