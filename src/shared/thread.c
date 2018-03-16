@@ -52,7 +52,7 @@ pthread_t thread_throw( throw_fn *fp, void *arg, int64_t num )
 	return t->id;
 }
 
-pthread_t thread_throw_high( throw_fn *fp, void *arg, int64_t num )
+pthread_t thread_throw_high_stack( throw_fn *fp, void *arg, int64_t num )
 {
 	THRD *t;
 
