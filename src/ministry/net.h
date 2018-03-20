@@ -53,14 +53,16 @@ struct host_data
 	uint64_t				invalid;
 
 	int64_t					connected;	// first timestamp seen (nsec)
-    time_t                  last;       // last timestamp sec
+	time_t                  last;       // last timestamp sec
 
 	IPNET				*	ipn;
 	char				*	workbuf;	// gets set to fixed size
 	char				*	ltarget;
 	int						plen;
 	int						lmax;
-    int                     quiet;
+	int						quiet;
+
+	uint32_t				ip;			// because we want it
 };
 
 

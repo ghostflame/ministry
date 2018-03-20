@@ -84,8 +84,8 @@ int http_unused_kv( void *cls, HTTP_VAL kind, const char *key, const char *value
 }
 
 int http_unused_post( void *cls, HTTP_VAL kind, const char *key, const char *filename,
-                    const char *content_type, const char *transfer_encoding, const char *data,
-                    uint64_t off, size_t size )
+                      const char *content_type, const char *transfer_encoding, const char *data,
+                      uint64_t off, size_t size )
 {
 	return MHD_NO;
 }

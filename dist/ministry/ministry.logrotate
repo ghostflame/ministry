@@ -1,4 +1,4 @@
-/var/log/ministry/*.log {
+/var/log/ministry/ministry.log {
     weekly
     missingok
     rotate 7

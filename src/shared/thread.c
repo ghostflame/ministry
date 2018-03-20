@@ -46,13 +46,13 @@ pthread_t thread_throw( throw_fn *fp, void *arg, int64_t num )
 
 	t = (THRD *) allocz( sizeof( THRD ) );
 	t->arg = arg;
-    t->num = num;
+	t->num = num;
 	pthread_create( &(t->id), tt_attr, fp, t );
 
 	return t->id;
 }
 
-pthread_t thread_throw_high( throw_fn *fp, void *arg, int64_t num )
+pthread_t thread_throw_high_stack( throw_fn *fp, void *arg, int64_t num )
 {
 	THRD *t;
 

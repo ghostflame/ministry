@@ -72,6 +72,8 @@ struct host_data
 	char				*	ltarget;
 	int						plen;
 	int						lmax;
+
+	uint32_t				ip;
 };
 
 

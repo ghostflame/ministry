@@ -19,27 +19,27 @@
 
 struct tcp_conn
 {
-    TCPCN                   *   next;
-    HOST                    *   host;
+	TCPCN				*	next;
+	HOST				*	host;
 };
 
 
 struct tcp_thread
 {
-    struct pollfd           *   polls;
-    int64_t                     pmax;   // highest in-use poll slot
-    int64_t                     pmin;   // lowest free poll slot
-    int64_t                     curr;   // how many current connections
+	struct pollfd		*	polls;
+	int64_t					pmax;	// highest in-use poll slot
+	int64_t					pmin;	// lowest free poll slot
+	int64_t					curr;	// how many current connections
 
-    HOST                    **  hosts;
-    HOST                    *   waiting;
+	HOST				**	hosts;
+	HOST				*	waiting;
 
-    NET_PORT                *   port;
-    NET_TYPE                *   type;
+	NET_PORT			*	port;
+	NET_TYPE			*	type;
 
-    pthread_mutex_t             lock;
-    pthread_t                   tid;
-    int64_t                     num;
+	pthread_mutex_t			lock;
+	pthread_t				tid;
+	int64_t					num;
 };
 
 

@@ -1,0 +1,70 @@
+.\" Ministry-test manual page
+.TH MINISTRY-TEST "1" "Jan 2018" "Networking Utilities" "User Commands"
+.SH NAME
+ministry-test \- test tool for ministry stats daemon
+.SH SYNOPSIS
+.nf
+.BI "ministry-test [-v|-h]"
+.BI "ministry-test [-DVtEFIUu] -c <" config-file ">"
+.fi
+.SH DESCRIPTION
+.PP
+\fBMinistry-test\fP is a test tool for \fBministry\fP statistics engine.  It takes the same format
+of config file as \fBministry\fP.  The config file specifies metrics to be simulated.
+.PP
+The main options are:
+.TP
+\fB\-h\fR
+print help
+.TP
+\fB\-v\fR
+print version and exit
+.TP
+\fB\-t\fR
+just test config and exit
+.TP
+\fB\-c\fR \fI<FILE|URI>\fR
+select config source instead of default file
+.TP
+\fB\-s\fR
+be strict about parsing config
+.TP
+\fB\-F\fR
+disable reading config source (environment only)
+.TP
+\fB\-E\fR
+disable reading variables from the environment
+.TP
+\fB\-U\fR
+disable reading any URI config (even if given with -c)
+.TP
+\fB\-u\fR
+disable URI config including other URI configs
+.TP
+\fB\-i\fR
+allow insecure URI's
+.TP
+\fB\-I\fR
+allow secure URI's to include insecure URI's
+.TP
+\fB\-D\fR
+run in debug mode
+.TP
+\fB\-V\fR
+run in verbose mode, with more output to stdout
+.PP
+The config file format is in sections, denoted as \fB[Section]\fR and is of a general format of:
+.TP
+\fBvariable\fR = \fIvalue\fR
+.PP
+It may use the keyword \fBinclude\fR to read in another file - the current section context is kept.
+.PP
+The default config file is /etc/ministry-test/ministry-test.conf
+.SH Behaviour
+.PP
+\fBMinistry-test\fR generates quasi-realistic values that will exercise both metric reception and
+sorting logic.  Config specifies the frequency of emission and value range, as well as update type.
+.SH SEE ALSO
+.BR ministry (1)
+.SH AUTHOR
+\fBMinistry-test\fP is written and maintained by John Denholm, Sky Betting And Gaming.

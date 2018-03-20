@@ -40,6 +40,8 @@ struct token_data
 struct token_info
 {
 	TOKEN			**	hash;
+	IPLIST			*	filter;
+	char			*	filter_name;
 	uint64_t			hsize;
 	int64_t				lifetime;
 	int64_t				mask;
@@ -54,7 +56,7 @@ void token_generate( uint32_t ip, int16_t types, TOKEN **ptrs, int max, int *cou
 
 throw_fn token_loop;
 
-void token_init( void );
+int token_init( void );
 TOKENS *token_setup( void );
 
 #endif

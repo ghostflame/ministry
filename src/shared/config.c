@@ -35,7 +35,7 @@ void config_args_substitute( char *str, int *len )
 	// 1-indexed
 	if( str[0] == '%' && str[l - 1] == '%'
 	 && ( i = atoi( str + 1 ) ) > 0
-     && i <= context->argc )
+	 && i <= context->argc )
 	{
 		// it can't be too long, or we could never
 		// have read the include line in the first
@@ -663,8 +663,8 @@ void config_set_main_file( char *path )
 {
 	snprintf( _proc->cfg_file, CONF_LINE_MAX, "%s", path );
 
-    // this wins against env
-    setcfFlag( FILE_OPT );
+	// this wins against env
+	setcfFlag( FILE_OPT );
 }
 
 void config_set_env_prefix( char *prefix )
@@ -719,10 +719,10 @@ char *config_help( void )
  -U            Disable all reading of URI's\n\
  -u            Disable URI config including other URI's\n\
  -i            Allow insecure URI's\n\
- -I            Allow secure URI's to include insecure URI's.\n\
+ -I            Allow secure URI's to include insecure URI's\n\
  -d            Daemonize in the background\n\
  -D            Switch on debug output (overrides config)\n\
- -V            Verbose logging to console\n\
+ -V            Logging to console (prevents daemonizing)\n\
  -s            Strict config parsing\n\
 ";
 }
@@ -765,6 +765,7 @@ void config_args( int ac, char **av, char *optstr, help_fn *hfp )
 				runf_add( RUN_DEBUG );
 				break;
 			case 'V':
+				runf_add( RUN_TGT_STDOUT );
 				_logger->force_stdout = 1;
 				break;
 			case 'v':

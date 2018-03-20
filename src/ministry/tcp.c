@@ -324,7 +324,7 @@ void tcp_choose_thread( NET_PORT *n, HOST *h )
 	TCPTH *t;
 
 	// choose thread based on host and port
-	v = h->peer->sin_addr.s_addr;
+	v = h->ip;
 	v = ( v << 16 ) + h->peer->sin_port;
 
 	t = n->threads[v % h->type->threads];
