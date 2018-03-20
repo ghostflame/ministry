@@ -42,18 +42,18 @@ install:
 	@for d in $(BINS); do \
 		install -m644 dist/$$d/install.conf $(CFGDIR)/$$d.conf; \
 		@echo "Creating manual pages and docs."; \
-		gzip dist/$$d/$$d.1 > $(MANDIR)/man1/$$d.1.gz; \
+		gzip -c dist/$$d/$$d.1 > $(MANDIR)/man1/$$d.1.gz; \
 		chmod 644 $(MANDIR)/man1/$$d.1.gz; \
 		if [ -f dist/$$d/$$d.conf.5 ]; then \
-		    gzip dist/$$d/$$d.conf.5 > $(MANDIR)/man5/$$d.conf.5.gz; \
+		    gzip -c dist/$$d/$$d.conf.5 > $(MANDIR)/man5/$$d.conf.5.gz; \
 			chmod 644 $(MANDIR)/man5/$$d.conf.5.gz; \
 		fi \
 	done
 	@for d in $(SVCS); do \
 		install -m644 dist/$$d/$$d.logrotate $(LRTDIR)/$$d; \
 	done
-	@install -m644 dist/ssl/cert.pem $(SSLDIR)/cert.pem
-	@install -m600 dist/ssl/key.pem $(SSLDIR)/key.pem
+	@install -m644 -o $(USER) dist/ssl/cert.pem $(SSLDIR)/cert.pem
+	@install -m600 -o $(USER) dist/ssl/key.pem $(SSLDIR)/key.pem
 	@cp LICENSE BUGS README.md $(DOCDIR)
 
 
