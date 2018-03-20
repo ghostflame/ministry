@@ -44,7 +44,10 @@ install:
 		@echo "Creating manual pages and docs."; \
 		gzip dist/$$d/$$d.1 > $(MANDIR)/man1/$$d.1.gz; \
 		chmod 644 $(MANDIR)/man1/$$d.1.gz; \
-		gzip dist/$$d/$$d.conf.5 > $(MANDIR)/man5/$$d.conf.5.gz; \
+		if [ -f dist/$$d/$$d.conf.5 ]; then \
+		    gzip dist/$$d/$$d.conf.5 > $(MANDIR)/man5/$$d.conf.5.gz; \
+			chmod 644 $(MANDIR)/man5/$$d.conf.5.gz; \
+		fi \
 	done
 	@for d in $(SVCS); do \
 		install -m644 dist/$$d/$$d.logrotate $(LRTDIR)/$$d; \

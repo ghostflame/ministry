@@ -30,7 +30,7 @@ getent passwd ministry > /dev/null || useradd  -r -g ministry -M -d /etc/ministr
 # see https://fedoraproject.org/wiki/Packaging:UsersAndGroups for reasoning
 mkdir -p -m 700 /etc/ministry/ssl
 chown ministry:ministry /etc/ministry/ssl
-mkdir -p /var/log/ministry/carbon-copy
+mkdir -p /var/log/ministry
 chown -R ministry:ministry /var/log/ministry
 
 
@@ -65,8 +65,6 @@ make initinstall
 %{_mandir}/man1/ministry-test.1.gz
 %{_mandir}/man1/carbon-copy.1.gz
 %{_mandir}/man5/ministry.conf.5.gz
-%{_mandir}/man5/ministry-test.conf.5.gz
-%{_mandir}/man5/carbon-copy.conf.5.gz
 %{_sysconfdir}/init.d/ministry
 %{_sysconfdir}/init.d/carbon-copy
 

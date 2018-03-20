@@ -1,4 +1,4 @@
-/var/log/ministry/carbon-copy/*.log {
+/var/log/ministry/carbon-copy/carbon-copy.log {
     weekly
     missingok
     rotate 7
