@@ -643,7 +643,7 @@ __attribute__((hot)) void data_parse_buf( HOST *h, IOBUF *b )
 		// and trailing \r's
 		if( l > 0 && *r == '\r' )
 		{
-			*r-- = '\0';
+			*r = '\0';
 			l--;
 		}
 

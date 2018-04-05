@@ -474,6 +474,7 @@ void stats_report_one( ST_THR *t, DHASH *d )
 void stats_stats_pass( ST_THR *t )
 {
 	uint64_t i;
+	PTLIST *p;
 	DHASH *d;
 
 #ifdef DEBUG
@@ -487,13 +488,19 @@ void stats_stats_pass( ST_THR *t )
 		if( ( i % t->max ) == t->id )
 		{
 			for( d = t->conf->data[i]; d && d->valid; d = d->next )
-				if( d->valid && d->in.points )
+				if( d->valid && d->in.count )
 				{
+					// prefetch a points object
+					// outside the lock
+					// this may fix some of the
+					// locking issues under high load
+					p = mem_new_point( );
+
 					lock_stats( d );
 
 					d->proc.points = d->in.points;
 					d->proc.count  = d->in.count;
-					d->in.points   = NULL;
+					d->in.points   = p;
 					d->in.count    = 0;
 					d->do_pass     = 1;
 

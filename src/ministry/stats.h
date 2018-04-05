@@ -53,7 +53,6 @@ enum stats_types
 
 #define DEFAULT_MOM_MIN				30L
 
-
 #define TSBUF_SZ					32
 #define PREFIX_SZ					512
 #define PATH_SZ						8192

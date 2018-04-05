@@ -52,8 +52,8 @@ install:
 	@for d in $(SVCS); do \
 		install -m644 dist/$$d/$$d.logrotate $(LRTDIR)/$$d; \
 	done
-	@install -m644 -o $(USER) dist/ssl/cert.pem $(SSLDIR)/cert.pem
-	@install -m600 -o $(USER) dist/ssl/key.pem $(SSLDIR)/key.pem
+	@install -m644 dist/ssl/cert.pem $(SSLDIR)/cert.pem
+	@install -m600 dist/ssl/key.pem $(SSLDIR)/key.pem
 	@cp LICENSE BUGS README.md $(DOCDIR)
 
 

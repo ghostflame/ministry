@@ -296,7 +296,7 @@ MEMT_CTL *memt_config_defaults( void )
 
 	m->hosts  = mem_type_declare( "hosts",  sizeof( HOST ),   MEM_ALLOCSZ_HOSTS,  0, 1 );
 	m->points = mem_type_declare( "points", sizeof( PTLIST ), MEM_ALLOCSZ_POINTS, 0, 1 );
-	m->dhash  = mem_type_declare( "dhashs", sizeof( DHASH ),  MEM_ALLOCSZ_DHASH,  64, 1 ); // guess on path length
+	m->dhash  = mem_type_declare( "dhashs", sizeof( DHASH ),  MEM_ALLOCSZ_DHASH,  128, 1 ); // guess on path length
 	m->token  = mem_type_declare( "tokens", sizeof( TOKEN ),  MEM_ALLOCSZ_TOKEN,  0, 1 );
 
 	m->gc_enabled   = 1;

@@ -141,6 +141,9 @@ int str_nlen( char *src, int max );
 // processing a config line in variable/value
 int var_val( char *line, int len, AVP *av, int flags );
 
+// break up potentially quoted string by delimiter
+int strqwords( WORDS *w, char *src, int len, char sep );
+
 // break up a string by delimiter
 int strwords( WORDS *w, char *src, int len, char sep );
 

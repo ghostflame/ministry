@@ -211,6 +211,116 @@ int str_nlen( char *src, int max )
 	return max;
 }
 
+int strqwords( WORDS *w, char *src, int len, char sep )
+{
+	register char *p = src;
+	register char *q = NULL;
+	register int   l;
+	int i = 0, qc = 0, qchar;
+
+	if( !w || !p || !sep )
+		return -1;
+
+	if( !len && !( len = strlen( p ) ) )
+		return 0;
+
+	l = len;
+
+	memset( w, 0, sizeof( WORDS ) );
+
+	w->in_len = l;
+	qchar     = '"';
+
+	// step over leading separators
+	while( *p == sep )
+	{
+		p++;
+		l--;
+	}
+
+	// anything left?
+	if( !*p )
+		return 0;
+
+	while( l > 0 )
+	{
+		// decision: "" wraps ''
+		if( *p == '"' )
+		{
+			qc = 1;
+			qchar = '"';
+		}
+
+		if( !qc && *p == '\'' )
+		{
+			qc = 1;
+			qchar = '\'';
+		}
+
+		if( qc )
+		{
+			p++;
+			l--;
+
+			w->wd[i] = p;
+
+			if( ( q = memchr( p, qchar, l ) ) )
+			{
+				// capture inside the quotes
+				w->len[i++] = q - p;
+				*q++ = '\0';
+				l -= q - p;
+				p = q;
+				qc = 0;
+			}
+			else
+			{
+				// invalid string - uneven quotes
+				// assume to-end-of-line for the
+				// quoted string
+				w->len[i++] = l;
+				break;
+			}
+
+			// step over any separators following the quotes
+			while( *p == sep )
+			{
+				p++;
+				l--;
+			}
+		}
+		else
+		{
+			w->wd[i] = p;
+
+			if( ( q = memchr( p, sep, l ) ) )
+			{
+				w->len[i++] = q - p;
+				*q++ = '\0';
+				l -= q - p;
+				p = q;
+			}
+			else
+			{
+				w->len[i++] = l;
+				break;
+			}
+		}
+
+		// note any remaining we didn't capture
+		// due to size constraints
+		if( i == STRWORDS_MAX )
+		{
+			w->end = p;
+			w->end_len = l;
+			break;
+		}
+	}
+
+	return ( w->wc = i );
+}
+
+
 
 int strwords( WORDS *w, char *src, int len, char sep )
 {

@@ -13,15 +13,15 @@
 void loop_end( char *reason )
 {
 	info( "Shutting down polling: %s", reason );
-	_proc->run_flags |=  RUN_SHUTDOWN;
-	_proc->run_flags &= ~RUN_LOOP;
+	runf_add( RUN_SHUTDOWN );
+	runf_rmv( RUN_LOOP );
 }
 
 void loop_kill( int sig )
 {
 	notice( "Received signal %d", sig );
-	_proc->run_flags |=  RUN_SHUTDOWN;
-	_proc->run_flags &= ~RUN_LOOP;
+	runf_add( RUN_SHUTDOWN );
+	runf_rmv( RUN_LOOP );
 }
 
 
@@ -140,7 +140,7 @@ void loop_control( const char *name, loop_call_fn *fp, void *arg, int usec, int 
 	// say a loop has started
 	loop_mark_start( name );
 
-	while( _proc->run_flags & RUN_LOOP )
+	while( RUNNING( ) )
 	{
 		// decide if we are firing the payload
 		if( ++curr == ticks )

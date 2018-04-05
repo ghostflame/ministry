@@ -12,8 +12,8 @@
 #ifndef MINISTRY_DATA_H
 #define MINISTRY_DATA_H
 
-// rounds the structure to 8k with a spare space
-#define PTLIST_SIZE				1021
+// rounds the structure to 16k with a spare space
+#define PTLIST_SIZE				2045
 
 #define LINE_SEPARATOR			'\n'
 #define FIELD_SEPARATOR			' '
@@ -65,6 +65,9 @@ struct data_hash_entry
 	DHASH			*	next;
 	char			*	path;
 
+	// in.points is pre-allocated by the stats pass
+	// we cannot assume in.points non-null means we
+	// have data
 	DVAL				in;
 	DVAL				proc;
 
