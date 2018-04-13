@@ -461,7 +461,7 @@ MTYPE *mem_type_declare( char *name, int sz, int ct, int extra, uint32_t pre )
 	__mtype_alloc_free( mt, 4 * mt->alloc_ct );
 
 	// init the mutex
-	pthread_mutex_init( &(mt->lock), NULL );
+	pthread_mutex_init( &(mt->lock), &(_proc->mtxa) );
 
 	return mt;
 }

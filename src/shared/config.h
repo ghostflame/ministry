@@ -88,6 +88,7 @@ struct process_control
 	int64_t					loop_count;
 
 	pthread_mutex_t			loop_lock;
+	pthread_mutexattr_t		mtxa;
 
 	int						env_prfx_len;
 	int						strict;

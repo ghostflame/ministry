@@ -343,7 +343,7 @@ void metric_init_group( MGRP *g )
 	g->buf = mem_new_iobuf( IO_BUF_SZ );
 	g->buf->lifetime = ctl->metric->max_age;
 
-	pthread_mutex_init( &(g->lock), NULL );
+	pthread_mutex_init( &(g->lock), &(ctl->proc->mtxa) );
 
 	// do we need to merge parents?
 	if( g->parent )

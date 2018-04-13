@@ -825,6 +825,14 @@ PROC_CTL *config_defaults( char *app_name )
 
 	config_set_env_prefix( app_name );
 
+	// we like adaptive mutexes please
+	pthread_mutexattr_init( &(_proc->mtxa) );
+#ifdef DEFAULT_MUTEXES
+	pthread_mutexattr_settype( &(_proc->mtxa), PTHREAD_MUTEX_DEFAULT );
+#else
+	pthread_mutexattr_settype( &(_proc->mtxa), PTHREAD_MUTEX_ADAPTIVE_NP );
+#endif
+
 	// max these two out
 	config_set_limit( _proc, RLIMIT_NOFILE, -1 );
 	config_set_limit( _proc, RLIMIT_NPROC,  -1 );

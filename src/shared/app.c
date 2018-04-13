@@ -101,7 +101,7 @@ int app_init( char *name )
 		app_finish( 2 );
 	}
 
-	pthread_mutex_init( &(_proc->loop_lock), NULL );
+	pthread_mutex_init( &(_proc->loop_lock), &(_proc->mtxa) );
 
 	// make curl ready
 	curl_global_init( CURL_GLOBAL_SSL );

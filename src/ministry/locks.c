@@ -20,20 +20,20 @@ LOCK_CTL *lock_config_defaults( void )
 	// and init all the mutexes
 
 	// used to keep counters
-	pthread_mutex_init( &(l->hashstats), NULL );
+	pthread_mutex_init( &(l->hashstats), &(ctl->proc->mtxa) );
 
 	// used in synths/stats
-	pthread_mutex_init( &(l->synth), NULL );
+	pthread_mutex_init( &(l->synth), &(ctl->proc->mtxa) );
 
 	// used to control io buffer expiry
-	pthread_mutex_init( &(l->bufref), NULL );
+	pthread_mutex_init( &(l->bufref), &(ctl->proc->mtxa) );
 
 	// used to control network tokens
-	pthread_mutex_init( &(l->tokens), NULL );
+	pthread_mutex_init( &(l->tokens), &(ctl->proc->mtxa) );
 
 	// used to lock table positions
 	for( i = 0; i < HASHT_MUTEX_COUNT; i++ )
-		pthread_mutex_init( l->table + i, NULL );
+		pthread_mutex_init( l->table + i, &(ctl->proc->mtxa) );
 
 	l->init_done = 1;
 	return l;
