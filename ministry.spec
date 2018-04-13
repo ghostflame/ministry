@@ -29,10 +29,8 @@ getent passwd ministry > /dev/null || useradd  -r -g ministry -M -d /etc/ministr
 # note, we do not remove the group/user post uninstall
 # see https://fedoraproject.org/wiki/Packaging:UsersAndGroups for reasoning
 mkdir -p -m 700 /etc/ministry/ssl
-chown ministry:ministry /etc/ministry/ssl
 mkdir -p /var/log/ministry
 chown -R ministry:ministry /var/log/ministry
-
 
 %install
 DESTDIR=%{buildroot} \
@@ -46,6 +44,9 @@ UNIDIR=%{buildroot}%{_unitdir} \
 SSLDIR=%{buildroot}/etc/ministry/ssl \
 USER=ministry GROUP=ministry \
 make unitinstall
+
+%post
+chown -R ministry:ministry /etc/ministry/ssl
 
 
 %files

@@ -100,7 +100,7 @@ int net_startup( NET_TYPE *nt )
 			return -1;
 
 		// and the lock for keeping track of current connections
-		pthread_mutex_init( &(nt->lock), NULL );
+		pthread_mutex_init( &(nt->lock), &(ctl->proc->mtxa) );
 	}
 
 	if( nt->flags & NTYPE_UDP_ENABLED )

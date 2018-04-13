@@ -95,7 +95,6 @@ void main_create_conf( void )
 }
 
 
-
 int main( int ac, char **av, char **env )
 {
 	char *pidfile = NULL, *optstr;

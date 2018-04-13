@@ -127,55 +127,36 @@ void metric_update_sometimes_track( METRIC *m )
 }
 
 
-
-void metric_update( int64_t tval, void *arg )
+void metric_report( int64_t tval, METRIC *m )
 {
-	METRIC *m = (METRIC *) arg;
 	MGRP *g = m->grp;
-	char rbuf[32];
-	int l;
+	int l, i;
 
-	// update the value
-	(*(m->ufp))( m );
+	lock_mgrp( m->grp );
 
-	// render the value
-	l = snprintf( rbuf, 32, "%0.6f", m->curr );
+	// create the line
+	l = snprintf( g->wtmp, METRIC_WTMP_SZ, "%s%c%0.6f%s\n",
+			m->path->buf, m->sep, m->curr,
+			( m->tlen ) ? m->trlr : "" );
 
-	lock_mgrp( g );
-
-	// copy the path - they all start with that
-	memcpy( g->buf->buf + g->buf->len, m->path->buf, m->path->len );
-	g->buf->len += m->path->len;
-
-	// then a separator
-	g->buf->buf[g->buf->len++] = m->sep;
-
-	// then the reading
-	memcpy( g->buf->buf + g->buf->len, rbuf, l );
-	g->buf->len += l;
-
-	// do we have a trailer?
-	if( m->tlen )
+	for( i = 0; i < g->repeat; i++ )
 	{
-		memcpy( g->buf->buf + g->buf->len, m->trlr, m->tlen );
-		g->buf->len += m->tlen;
+		memcpy( g->buf->buf + g->buf->len, g->wtmp, l );
+		g->buf->len += l;
+
+		// check buffer rollover
+		if( g->buf->len > g->buf->hwmk )
+		{
+			debug( "Posting group %s buffer %p (size).", g->name, g->buf );
+			g->buf->refs = 1;
+			io_buf_post_one( g->target, g->buf );
+			g->buf = mem_new_iobuf( IO_BUF_SZ );
+			g->buf->lifetime = ctl->metric->max_age;
+			g->buf->expires  = tval + g->buf->lifetime;
+		}
 	}
 
-	// and a newline
-	g->buf->buf[g->buf->len++] = '\n';
-
-	// check buffer rollover
-	if( g->buf->len > g->buf->hwmk )
-	{
-		debug( "Posting group %s buffer %p (size).", g->name, g->buf );
-		g->buf->refs = 1;
-		io_buf_post_one( g->target, g->buf );
-		g->buf = mem_new_iobuf( IO_BUF_SZ );
-		g->buf->lifetime = ctl->metric->max_age;
-		g->buf->expires  = tval + g->buf->lifetime;
-	}
-
-	unlock_mgrp( g );
+	unlock_mgrp( m->grp );
 
 	//debug( "Group %s buf size %d", g->name, g->buf->len );
 }
@@ -187,11 +168,23 @@ void metric_update_group( int64_t tval, void *arg )
 	MGRP *g = (MGRP *) arg;
 	METRIC *m;
 
-	if( g->intv > 1000000 )
+	if( g->upd_intv > 1000000 )
 		debug( "Updating group %s.", g->name );
 
 	for( m = g->list; m; m = m->next )
-		metric_update( tval, m );
+		(*(m->ufp))( m );
+}
+
+void metric_report_group( int64_t tval, void *arg )
+{
+	MGRP *g = (MGRP *) arg;
+	METRIC *m;
+
+	if( g->rep_intv > 1000000 )
+		debug( "Reporting group %s.", g->name );
+
+	for( m = g->list; m; m = m->next )
+		metric_report( tval, m );
 }
 
 
@@ -223,7 +216,21 @@ void metric_group_io( int64_t tval, void *arg )
 
 
 
-void *metric_group_loop( void *arg )
+void *metric_group_update_loop( void *arg )
+{
+	MGRP *g;
+	THRD *t;
+
+	t = (THRD *) arg;
+	g = (MGRP *) t->arg;
+
+	loop_control( "group-update", metric_update_group, g, g->upd_intv, LOOP_SYNC, 0 );
+
+	free( t );
+	return NULL;
+}
+
+void *metric_group_report_loop( void *arg )
 {
 	int64_t offset;
 	MGRP *g;
@@ -235,7 +242,7 @@ void *metric_group_loop( void *arg )
 	// select a randomized offset
 	offset = 30000 + ( (int64_t) ( 40000 * metrandM( ) ) );
 
-	loop_control( "group", metric_update_group, g, g->intv, LOOP_SYNC, offset );
+	loop_control( "group-report", metric_report_group, g, g->rep_intv, LOOP_SYNC, offset );
 
 	free( t );
 	return NULL;
@@ -247,7 +254,7 @@ void *metric_group_io_loop( void *arg )
 	THRD *t = (THRD *) arg;
 
 	// just make sure things don't age out too badly.
-	loop_control( "io", metric_group_io, t->arg, 10000, 0, 0 );
+	loop_control( "group-io", metric_group_io, t->arg, 10000, 0, 0 );
 
 	free( t );
 	return NULL;
@@ -336,15 +343,18 @@ void metric_init_group( MGRP *g )
 	g->buf = mem_new_iobuf( IO_BUF_SZ );
 	g->buf->lifetime = ctl->metric->max_age;
 
-	pthread_mutex_init( &(g->lock), NULL );
+	pthread_mutex_init( &(g->lock), &(ctl->proc->mtxa) );
 
 	// do we need to merge parents?
 	if( g->parent )
 		metric_add_prefix( g->parent->prefix, g->prefix );
 
-	// inherit interval if we don't have one
-	if( !g->intv )
-		g->intv = ( g->parent ) ? g->parent->intv : METRIC_DEFAULT_INTV;
+	// inherit intervals if we don't have one
+	if( !g->upd_intv )
+		g->upd_intv = ( g->parent ) ? g->parent->upd_intv : METRIC_DEFAULT_UPD_INTV;
+	// and copy update into report if we don't have anything
+	if( !g->rep_intv )
+		g->rep_intv = ( g->parent ) ? g->parent->rep_intv : g->upd_intv;
 
 	// do we have a type?
 	if( g->tgttype >= 0 )
@@ -365,6 +375,9 @@ void metric_init_group( MGRP *g )
 	for( m = g->list; m; m = m->next )
 		metric_set_target_params( m );
 
+	// make our write buffer
+	g->wtmp = (char *) allocz( METRIC_WTMP_SZ );
+
 	// and start up the target - we get a new one
 	targets_start_one( &(g->target) );
 	if( !g->target )
@@ -374,8 +387,9 @@ void metric_init_group( MGRP *g )
 	}
 
 	// start up the group
-	debug( "Starting group %s with %d metrics @ interval %ld.", g->name, g->mcount, g->intv );
-	thread_throw( metric_group_loop, g, 0 );
+	debug( "Starting group %s with %d metrics @ interval %ld.", g->name, g->mcount, g->rep_intv );
+	thread_throw( metric_group_update_loop, g, 0 );
+	thread_throw( metric_group_report_loop, g, 0 );
 
 	// and a loop to handle io max_age
 	thread_throw( metric_group_io_loop, g, 0 );
@@ -406,8 +420,6 @@ void metric_start_all( void )
 	ctl->metric->max_age *= MILLION;
 	metric_start_group_list( ctl->metric->groups );
 }
-
-
 
 
 
@@ -461,7 +473,7 @@ int metric_add_group( MGRP *g )
 
 
 // we allow a leading / to indicate this is a per-second count,
-// rather than an interval.  If it's not, it's in msec and we
+// rather than an interval.  If it's not, it's in msec and 
 // need to convert
 int metric_get_interval( char *str, int64_t *res )
 {
@@ -489,7 +501,6 @@ int metric_get_interval( char *str, int64_t *res )
 
 	return 0;
 }
-
 
 
 int metric_add( MGRP *g, char *str, int len )
@@ -623,11 +634,13 @@ int metric_config_line( AVP *av )
 	else if( attIs( "group" ) )
 	{
 		ng = (MGRP *) allocz( sizeof( MGRP ) );
-		ng->intv = METRIC_DEFAULT_INTV;
 		ng->name = dup_val( );
 		ng->nlen = av->vlen;
 		ng->prefix = strbuf( METRIC_MAX_PATH );
-		ng->tgttype = -1;
+		ng->repeat = 1;
+		ng->tgttype  = -1;
+		ng->upd_intv = METRIC_DEFAULT_UPD_INTV;
+		ng->rep_intv = METRIC_DEFAULT_REP_INTV;
 
 		if( __mcl_grp_tmp )
 			ng->parent = __mcl_grp_tmp;
@@ -688,7 +701,7 @@ int metric_config_line( AVP *av )
 			return -1;
 		}
 	}
-	else if( attIs( "interval" ) )
+	else if( attIs( "update" ) )
 	{
 		if( !g || !g->name )
 		{
@@ -696,9 +709,37 @@ int metric_config_line( AVP *av )
 			return -1;
 		}
 
-		if( metric_get_interval( av->val, &(g->intv) ) )
+		if( metric_get_interval( av->val, &(g->upd_intv) ) )
 		{
-			err( "Invalid reporting interval for group %s: %s", g->name, av->val );
+			err( "Invalid update interval for group %s: %s", g->name, av->val );
+			return -1;
+		}
+	}
+	else if( attIs( "report" ) )
+	{
+		if( !g || !g->name )
+		{
+			err( "Declare a group by name first.", g->name );
+			return -1;
+		}
+
+		if( metric_get_interval( av->val, &(g->rep_intv) ) )
+		{
+			err( "Invalid report interval for group %s: %s", g->name, av->val );
+			return -1;
+		}
+	}
+	else if( attIs( "repeat" ) )
+	{
+		if( !g || !g->name )
+		{
+			err( "Declare a group by name first.", g->name );
+			return -1;
+		}
+
+		if( av_int( g->repeat ) == NUM_INVALID )
+		{
+			err( "Invalid repeat count for group %s: %s", g->name, av->val );
 			return -1;
 		}
 	}

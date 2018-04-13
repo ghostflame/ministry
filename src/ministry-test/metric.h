@@ -13,8 +13,10 @@
 
 
 #define METRIC_MAX_AGE				100			// msec
-#define METRIC_DEFAULT_INTV			10000000	// usec
+#define METRIC_DEFAULT_UPD_INTV		10000000	// usec
+#define METRIC_DEFAULT_REP_INTV		10000000	// usec
 #define METRIC_MAX_PATH				1024		// bytes
+#define METRIC_WTMP_SZ				4096		// bytes
 
 
 struct metric_types_data
@@ -94,10 +96,13 @@ struct metric_group
 	IOBUF				*	buf;
 	char				*	name;
 	BUF					*	prefix;
+	char				*	wtmp;
 
 	pthread_mutex_t			lock;
 	int64_t					mcount;
-	int64_t					intv;
+	int64_t					upd_intv;
+	int64_t					rep_intv;
+	int64_t					repeat;
 	int16_t					nlen;
 	int8_t					closed;
 	int8_t					tgttype;
@@ -120,11 +125,12 @@ update_fn metric_update_track_mean_pos;
 update_fn metric_update_floor_up;
 update_fn metric_update_sometimes_track;
 
-loop_call_fn metric_update;
 loop_call_fn metric_group_update;
+loop_call_fn metric_group_report;
 loop_call_fn metric_group_io;
 
-throw_fn metric_group_loop;
+throw_fn metric_group_update_loop;
+throw_fn metric_group_report_loop;
 throw_fn metric_group_io_loop;
 
 void metric_start_all( void );

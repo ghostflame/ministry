@@ -37,50 +37,38 @@ void thread_throw_init_attr( void )
 }
 
 
-pthread_t thread_throw( throw_fn *fp, void *arg, int64_t num )
+
+pthread_t __thread_throw( throw_fn *call, throw_fn *farg, void *arg, pthread_attr_t **tt_a, int64_t num )
 {
 	THRD *t;
 
-	if( !tt_attr )
+	if( *tt_a )
 		thread_throw_init_attr( );
 
 	t = (THRD *) allocz( sizeof( THRD ) );
 	t->arg = arg;
 	t->num = num;
-	pthread_create( &(t->id), tt_attr, fp, t );
+	t->fp  = farg;
+
+	pthread_create( &(t->id), *tt_a, call, t );
 
 	return t->id;
+}
+
+
+pthread_t thread_throw( throw_fn *fp, void *arg, int64_t num )
+{
+	return __thread_throw( fp, fp, arg, &tt_attr, num );
 }
 
 pthread_t thread_throw_high_stack( throw_fn *fp, void *arg, int64_t num )
 {
-	THRD *t;
-
-	if( !tt_high )
-		thread_throw_init_attr( );
-
-	t = (THRD *) allocz( sizeof( THRD ) );
-	t->arg = arg;
-	t->num = num;
-	pthread_create( &(t->id), tt_high, fp, t );
-
-	return t->id;
+	return __thread_throw( fp, fp, arg, &tt_high, num );
 }
-
 
 pthread_t thread_throw_watched( throw_fn *watcher, throw_fn *fp, void *arg, int64_t num )
 {
-	THRD *t;
-
-	if( !tt_attr )
-		thread_throw_init_attr( );
-
-	t = (THRD *) allocz( sizeof( THRD ) );
-	t->arg = arg;
-	t->num = num;
-	t->fp  = fp;
-	pthread_create( &(t->id), tt_attr, watcher, t );
-
-	return t->id;
+	return __thread_throw( watcher, fp, arg, &tt_attr, num );
 }
+
 

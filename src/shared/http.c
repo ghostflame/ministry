@@ -10,6 +10,14 @@
 
 #include "shared.h"
 
+#ifndef MIN_MHD_PASS
+  #if MHD_VERSION > 0x00094000
+    #define MIN_MHD_PASS 1
+  #else
+    #define MIN_MHD_PASS 0
+  #endif
+#endif
+
 
 int http_add_handler( char *path, int fixed, http_handler *fp, char *desc, void *arg )
 {
@@ -353,7 +361,7 @@ int http_start( void )
 			mop( PER_IP_CONNECTION_LIMIT ),  h->conns_max_ip,
 			mop( CONNECTION_TIMEOUT ),       h->conns_tmout,
 			mop( HTTPS_MEM_KEY ),            (const char *) h->ssl->key.content,
-#if MHD_VERSION > 0x00094000
+#if MIN_MHD_PASS > 0
 			mop( HTTPS_KEY_PASSWORD ),       (const char *) h->ssl->password,
 #endif
 			mop( HTTPS_MEM_CERT ),           (const char *) h->ssl->cert.content,
