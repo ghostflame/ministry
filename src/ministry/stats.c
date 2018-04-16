@@ -905,7 +905,7 @@ STAT_CTL *stats_config_defaults( void )
 	s->adder->name    = stats_type_names[STATS_TYPE_ADDER];
 	s->adder->hsize   = 0;
 	s->adder->enable  = 1;
-	stats_prefix( s->stats, DEFAULT_ADDER_PREFIX );
+	stats_prefix( s->adder, DEFAULT_ADDER_PREFIX );
 
 	s->gauge          = (ST_CFG *) allocz( sizeof( ST_CFG ) );
 	s->gauge->threads = DEFAULT_GAUGE_THREADS;
@@ -916,7 +916,7 @@ STAT_CTL *stats_config_defaults( void )
 	s->gauge->name    = stats_type_names[STATS_TYPE_GAUGE];
 	s->gauge->hsize   = 0;
 	s->gauge->enable  = 1;
-	stats_prefix( s->stats, DEFAULT_GAUGE_PREFIX );
+	stats_prefix( s->gauge, DEFAULT_GAUGE_PREFIX );
 
 	s->self           = (ST_CFG *) allocz( sizeof( ST_CFG ) );
 	s->self->threads  = 1;
@@ -926,7 +926,7 @@ STAT_CTL *stats_config_defaults( void )
 	s->self->dtype    = -1;
 	s->self->name     = stats_type_names[STATS_TYPE_SELF];
 	s->self->enable   = 1;
-	stats_prefix( s->stats, DEFAULT_SELF_PREFIX );
+	stats_prefix( s->self, DEFAULT_SELF_PREFIX );
 
 	// moment checks are off by default
 	s->mom            = (ST_MOM *) allocz( sizeof( ST_MOM ) );
