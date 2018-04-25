@@ -55,7 +55,6 @@ void main_create_conf( void )
 
 	config_register_section( "network", &net_config_line );
 	config_register_section( "relay",   &relay_config_line );
-	config_register_section( "target",  &target_config_line );
 }
 
 
