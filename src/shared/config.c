@@ -398,8 +398,18 @@ int config_read_url( char *url )
 
 	if( context->is_ssl )
 	{
-		curl_easy_setopt( c, CURLOPT_SSL_VERIFYPEER, 0L );
-		curl_easy_setopt( c, CURLOPT_SSL_VERIFYHOST, 0L );
+		if( chkcfFlag( SEC_VALIDATE ) )
+		{
+			curl_easy_setopt( c, CURLOPT_SSL_VERIFYPEER,   1L );
+			curl_easy_setopt( c, CURLOPT_SSL_VERIFYHOST,   1L );
+			curl_easy_setopt( c, CURLOPT_SSL_VERIFYSTATUS, 1L );
+		}
+		else
+		{
+			curl_easy_setopt( c, CURLOPT_SSL_VERIFYPEER,   0L );
+			curl_easy_setopt( c, CURLOPT_SSL_VERIFYHOST,   0L );
+			curl_easy_setopt( c, CURLOPT_SSL_VERIFYSTATUS, 0L );
+		}
 	}
 
 	// make a temporary file
@@ -720,6 +730,7 @@ char *config_help( void )
  -u            Disable URI config including other URI's\n\
  -i            Allow insecure URI's\n\
  -I            Allow secure URI's to include insecure URI's\n\
+ -T            Validate certificates from config hosts\n\
  -d            Daemonize in the background\n\
  -D            Switch on debug output (overrides config)\n\
  -V            Logging to console (prevents daemonizing)\n\
@@ -728,7 +739,7 @@ char *config_help( void )
 }
 
 
-const char *config_args_opt_string = "HhDVvtsUuiIEFdC:c:";
+const char *config_args_opt_string = "HhDVvtsUuiIETFdC:c:";
 char config_args_opt_merged[CONF_LINE_MAX];
 
 char *config_arg_string( char *argstr )
@@ -794,6 +805,9 @@ void config_args( int ac, char **av, char *optstr, help_fn *hfp )
 			case 'I':
 				setcfFlag( SEC_INC_INSEC );
 				break;
+			case 'T':
+				setcfFlag( SEC_VALIDATE );
+				break;
 			case 'E':
 				cutcfFlag( READ_ENV );
 				break;
@@ -845,7 +859,7 @@ PROC_CTL *config_defaults( char *app_name )
 	XsetcfFlag( _proc, READ_ENV );
 	XsetcfFlag( _proc, READ_URL );
 	XsetcfFlag( _proc, URL_INC_URL );
-	// but not: sec include non-sec, read non-sec
+	// but not: sec include non-sec, read non-sec, validate
 
 	return _proc;
 }
