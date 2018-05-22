@@ -1,0 +1,133 @@
+.\" Ministry-test manual page
+.TH MINISTRY-TEST "1" "Jan 2018" "Networking Utilities" "User Commands"
+.SH NAME
+ministry-test.conf \- ministry-test config file
+.SH SYNOPSIS
+.nf
+.BI /etc/ministry/ministry-test.conf
+.fi
+.SH DESCRIPTION
+.PP
+This manual page describes the configuration file for \fBministry-test(1)\fP.  The file is in
+sections, and including other files is permitted, though wildcard expansion is not performed -
+included file paths must be complete.  Config is read before \fBministry-test\fP changes to
+the configured working directory, so non-absolute paths included are interpreted relative to
+the current working directory.
+.PP
+\fBMinistry-test\fP has a lot of shared code with \fBministry\fP and some sections are not
+described here.  Refer to \fBministry.conf(5)\fP for details.
+.SH FORMAT
+See \fBministry.conf(5)\fP.
+.SS [Main]
+See \fBministry.conf(5)\fP.
+.SS [Logging]
+See \fBministry.conf(5)\fP.
+.SS [IO]
+See \fBministry.conf(5)\fP.
+.SS [Target]
+.PP
+\fBMinistry-test\fP must have targets named one or more of: adder, stats, gauge, compat, as this
+affects how metrics are sent.  Other than that, see \fBministry.conf(5)\fP.
+.SS [Metric]
+.PP
+\fBMinistry-test\fP must supply a varied set of metrics if it is to simulate real data sufficiently
+to properly exercise \fBministry\fP.  As each metric inside \fBministry\fP uses its own mutex,
+the amount of stress placed on a given metric directly affects the apparent maximum input rate.
+.PP
+To avoid having to repetitively specify metrics and their parameters, and to simplify the threading
+scheme for generating them, metrics are specified in groups.  This allows the \fBinclude\fP statement
+to reduce the amount of work involved in generating a suitable config.
+.PP
+For example, suppose a simulated apache server would generate a bunch of metrics from apache-status
+and other on-host processes.  One config file giving the apache metrics, one giving the CPU and memory
+metrics, another reporting network IO metrics, could all be created, and then re-used by inclusion.
+A config file specifying servers 01-20, each just including the above, and then one including that
+file for each of a dozen types of server, would perhaps make for a 1000 lines of config that creates
+25,000 unique metrics.
+.PP
+A metrics group consists of a name, a prefix, an update and send rate, some metric lines and a
+\fBdone\fP statement.
+.TP
+\fBgroup\fP
+The name of the group.  As groups can be included multiple times there is no uniqueness requirement,
+but it makes sense not to name disparate groups the same.
+.TP
+\fBtarget\fP
+Which target this group sends to.
+.TP
+\fBupdate\fP
+How frequently these metrics update.  Value is either in msec, or if it starts with a /, eg /50, is
+interpreted as how often to update per second.
+.TP
+\fBreport\fP
+How often to report.  As above, either msec or a rate per second.  The interaction of update and report
+affects whether metrics are different each time.
+.TP
+\fBrepeat\fP
+To simulate truly stressful metric rates, especially to stress a given metric, it makes the most
+sense to not try to simulate, say, 100,000 updates per second.  It makes more sense to send repeating
+batches.  Thus ( \fBrepeat\fP * \fBreport-rate\fP ) is how many values/sec a metric has.  (default 1).
+.TP
+\fBmetric\fP
+This specifies a metric line.  It takes a complex set of arguments, which are described below.  Each
+one of these is a variable reported to \fBministry\fP.  For example:
+.nf
+matric = stats floor_up 120 4.5 12 3 request.total_time
+.fi
+
+.SS Metric Fields
+.PP Each metric takes seven arguments, but the meaning of the four numeric arguments changes with
+the update function specified.  The seven fields are:
+.TP
+\fBtype\fP
+Can be: stats, adder, gauge
+.TP
+\fBupdate-function\fP
+These are described below.
+.TP
+\fBValue-1\fP
+Numeric float value.
+.TP
+\fBValue-2\fP
+Numeric float value.
+.TP
+\fBValue-3\fP
+Numeric float value.
+.TP
+\fBValue-4\fP
+Numeric float value.
+.TP
+\fBpath\fP
+The path suffix to the existing group path.
+
+.SS Metric Functions
+.TP
+\fBtrack_mean\fP
+This metric tracks around a mean (Value-1) by a random amount related to Value-2, with a tendency
+to return to the mean.
+.TP
+\fBtrack_mean_pos\fP
+As \fBtrack_mean\fP, but only ever positive.
+.TP
+\fBfloor_up\fP
+A value that is always above a floor (Value-1).  A variation base (Value-3) is raised to the power of
+a variation multiplier (Value-2) normalised against a randon number (0-1) to the power of the normality
+power (Value-2).  Good behaviour simulating the timings of software events is observed with values
+something like:
+.nf
+Value-1 (timing minimum)
+Value-2 (4-7 is good)
+Value-3 (Value-1 / (5 to 15))
+Value-4 (2-4 is good)
+.fi
+.TP
+\fBsometimes_track\fP
+Good for gauges, this uses Value-3 to control the behaviour of calls to \fBtrack_mean\fP.  Value-3 is
+compared to a number between 0 and 1, and if Value-3 is lower then an update happens.
+
+.SH SEE ALSO
+.BR ministry-test (1)
+.BR ministry (1)
+.BR ministry.conf (5)
+.SH AUTHOR
+\fBMinistry-test\fP is written and maintained by John Denholm, Sky Betting And Gaming.

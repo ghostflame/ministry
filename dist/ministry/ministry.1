@@ -69,10 +69,9 @@ It may use the keyword \fBinclude\fR to read in another file - the current secti
 The default config file is /etc/ministry/ministry.conf
 .SH Behaviour
 .PP
-\fBMinistry\fR performs two separate functions - summation of data against paths and generating
-simple statistics about input data against paths.  In each case, \fBministry\fR expects graphite-
-style dot-delimited, directory-safe strings.  Data submitted to the adder port is simply summed
-and then reported onwards.
+\fBMinistry\fR performs three separate functions, each storing data against input paths, which are
+graphite-style, dot-delimited, directory-safe strings.  Those functions are: summation of data,
+keeping gauge values, and generating simple statistics about input values.
 .PP
 The stats port creates an array of values against the path and at submission time this array is
 sorted to assess the lowest, highest and median value.  Any configured threshold values are also
@@ -84,7 +83,7 @@ specific to \fBministry\fR.  The new format is:
 .TP
 \fBpath\fR(dot-delimited string) \fIvalue\fR(double)\\n
 .PP
-\fBMinistry\fR would normally listen on two ports (or sets of ports) to delineate stats traffic
+\fBMinistry\fR would normally listen on three ports (or sets of ports) to delineate stats traffic
 from adder traffic.
 .PP
 The subset of statsd formats supported is:
@@ -107,8 +106,9 @@ This line is otherwise ignored.
 .SH Threading
 .PP
 \fBMinistry\fR can open up a number of ports, listening on both TCP and UDP for data.  The threading
-model runs one thread per TCP port and spawns a new thread per accepted connection, allowing it to
-engage multiple cores to handle multiple connections.  However, UDP does not allow that option.
+model runs one acceptor thread per TCP port and a number of handler threads.  The number of these,
+as well as their maximum handled connections, are config values.  This allows it to engage multiple
+cores to handle multiple connections.  However, UDP does not allow that option.
 .PP
 To permit multiple cores to be used to handle UDP traffic, the config permits multiple UDP ports to
 be specified for any format port.  A single thread is created to handle packets received by each
@@ -125,5 +125,6 @@ moved from incoming to processing do they go back and begin stats generation.  T
 stats arriving are very cleanly delineated at the submission timer.
 .SH SEE ALSO
 .BR ministry.conf (5)
+.BR ministry-test (1)
 .SH AUTHOR
 \fBMinistry\fP is written and maintained by John Denholm, Sky Betting And Gaming.
