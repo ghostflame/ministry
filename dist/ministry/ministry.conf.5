@@ -8,9 +8,9 @@ ministry.conf \- ministry stats daemon config file
 .fi
 .SH DESCRIPTION
 .PP
-This manual page describes the configuration file for \fBministry(1)\fR.  The file is in sections,
+This manual page describes the configuration file for \fBministry(1)\fP.  The file is in sections,
 and including other files is permitted, though wildcard expansion is not performed - included file
-paths must be complete.  Config is read before \fBministry\fR changes directory to it's configured
+paths must be complete.  Config is read before \fBministry\fP changes directory to it's configured
 base directory, so non-absolute paths included are interpreted relative to the current working
 directory.
 .PP
@@ -20,224 +20,296 @@ in which they are found, and as such names may be present in more than one secti
 are not case sensitive.  In fact, only values are case-preserving - all config variable names are
 examined case-insensitively.
 .PP
-\fBMinistry\fR can fetch its config from an HTTP URI (http or https, though it is light on checks
+\fBMinistry\fP can fetch its config from an HTTP URI (http or https, though it is light on checks
 for the validity of https certificates).  It will fetch the source and write it to a temporary file,
-and then read it back.  At this time, \fBMinistry\fR does not support authentication for URI's.  It
-uses \fIlibcurl\fR for these fetches.
+and then read it back.  At this time, \fBMinistry\fP does not support authentication for URI's.  It
+uses \fIlibcurl\fP for these fetches.
 .PP
-By default, \fBMinistry\fR will allow URI configs to include other URI's.  This can be disabled
-separately from reading a URI config.  Also by default, \fBMinistry\fR will refused to let a secure
+By default, \fBMinistry\fP will allow URI configs to include other URI's.  This can be disabled
+separately from reading a URI config.  Also by default, \fBMinistry\fP will refused to let a secure
 URI config include a non-secure one, but this can be enabled explicitly.
 .SH FORMAT
 .SS Section Format
 .PP
-Sections are expected to be presented inside square brackets.  Valid sections are:  \fBmain\fR,
-\fBlogging\fR, \fBnetwork\fR, \fBmemory\fR, \fBsynth\fR, \fBtarget\fR and \fBstats\fR.  e.g.
+Sections are expected to be presented inside square brackets.  Valid sections are:  \fBmain\fP,
+\fBlogging\fP, \fBnetwork\fP, \fBiplist\fP, \fBio\fP, \fBmemory\fP, \fBgc\fP, \fBsynth\fP, \fBtarget\fP
+and \fBstats\fP.  e.g.
 .PP
-\fB[Logging]\fR
+\fB[Logging]\fP
 .SS Line Format
 .PP
-Config lines are expected to follow \fBvariable\fR = \fIvalue\fR
+Config lines are expected to follow \fBvariable\fP = \fIvalue\fP
 .PP
 Whitespsace is trimmed fore and aft, and from around the = sign.  If the = and value are absent,
 then the value "1" is automatically filled in.  This is useful for switching behaviour on.  Many
 config variables contain dots.  Wherever lists of values are permitted, they should be
 comma-separated without intervening spaces.  e.g.
 .PP
-\fBstats.udp.ports = 8100,8101,8102,8103\fR
+\fBstats.udp.ports = 8100,8101,8102,8103\fP
 .SS Bools
 .PP
 Anything marked as a boolean accepts the following responses as true to (case insenstive) "true",
 "y", "yes" or any non-zero number.  Any other value is taken as false.
 .SS File Inclusion
-Ministry can read in other config files using an \fBinclude\fR = \fIfilename\fR directive.
+Ministry can read in other config files using an \fBinclude\fP = \fIfilename\fP directive.
 .SH CONFIG
 .PP
-The config variables accepted by \fBministry\fR are presented here by section.
+The config variables accepted by \fBministry\fP are presented here by section.
 .SS (Anywhere)
 .PP
 These values can appear in any section.  Just include for now.
 .TP
-\fBinclude\fR
-The name of another source to read in.  \fBMinistry\fR will refuse to read what it believes is the
+\fBinclude\fP
+The name of another source to read in.  \fBMinistry\fP will refuse to read what it believes is the
 same file twice - it could be fooled with symlinks or multiple hardlinks.  This is a protection
 against circular includes.  Included source are read in depth-first, meaning reading the current
 source is paused until the included file is read (possibly recursively).  This is important for any
 duplication of config values, as the last one read will win.  If include is found within a section,
 that section context is preserved into the new file, until it is changed by a new section heading.
+
 .SS [Main]
 .PP
-These are a few unsectioned variables controlling overall \fBministry\fR behaviour.
+These are a few unsectioned variables controlling overall \fBministry\fP behaviour.
 .TP
-\fBtick_msec\fR
+\fBtickMsec\fP
 Overall internal tick time in msec.  Controls internal time accuracy (default 20)
 .TP
-\fBdaemon\fR
-Whether \fBministry\fR disconnects from the controlling terminal with the daemon(2) system call
+\fBdaemon\fP
+Whether \fBministry\fP disconnects from the controlling terminal with the daemon(2) system call
 (boolean, default 0).  This can also be switched on with the -d CLI option.
 .TP
-\fBpidfile\fR
-Filename \fBministry\fR will write its process ID to (default /var/run/ministry.pid).  This can also
-be overriden with the -p <file> CLI option.
+\fBpidFile\fP
+Filename \fBministry\fP will write its process ID to (default /var/run/ministry/ministry.pid).  This
+can also be overriden with the -p <file> CLI option.
 .TP
-\fBlimits.TYPE\fR
-Make a call to setrlimit for the specified type.  Supported types are \fBprocs\fR and \fBfiles\fR.
+\fBlimits.TYPE\fP
+Make a call to setrlimit for the specified type.  Supported types are \fBprocs\fP and \fBfiles\fP.
 Both default to the system hard limit of the type.
+
 .SS [Logging]
 .TP
-\fBfilename\fR | \fBfile\fR | \fBlogfile\fR
-File name to write the log to.  The special value \fB-\fR writes to stdout, and is the default.  The
-special value \fBsyslog\fR writes to syslog.
+\fBfilename\fP | \fBfile\fP | \fBlogfile\fP
+File name to write the log to.  The special value \fB-\fP writes to stdout, and is the default.  The
+special value \fBsyslog\fP writes to syslog.
 .TP
-\fBlevel\fR
+\fBlevel\fP
 Maximum log level, one of FATAL, ERR, WARN, NOTICE, INFO or DEBUG.
 .TP
-\fBnotify\fR
+\fBnotify\fP
 Add a notification of log re-opening.  Guarantees a non-zero log file size after log rotation (boolean,
 default 1).  Disabled for stdout logs and syslog.
 .TP
-\fBfacility\fR
+\fBfacility\fP
 Set the facility to write to syslog with (if that is the configured output).  Only some are available.
 .TP
-\fBidentifier\fR
+\fBidentifier\fP
 Set the identifier string for syslog messages (default 'ministry').
 .TP
-\fBwriteLevel\fR
+\fBwriteLevel\fP
 Set whether the log level is written in syslog lines (defaults to on).
+
 .SS [Memory]
 .TP
-\fBmax_mb\fR | \fBmax_size\fR
-Maximum in-memory size (in MB) before \fBministry\fR self-terminates (default 10GB).
+\fBmaxMb\fP | \fBmaxSize\fP
+Maximum in-memory size (in MB) before \fBministry\fP self-terminates (default 10GB).
 .TP
-\fBmax_kb\fR
+\fBmaxKb\fP
 As above, but expressed in KB.
 .TP
-\fBinterval\fR | \fBmsec\fR
+\fBinterval\fP
 Memory size check interval, in milliseconds (default 5000)
 .TP
-\fBhashsize\fR
-This is the size that types will default to for their hash table size.  This is a quick way of setting
-all three types.  It should be of the same order of magnitude as the expected number of paths.  Prime
-numbers are recommended to prevent large numbers of hash collisions (default 100003)
+\fBdoChecks\fP
+Boolean to turn on (default) or off the memory size check.
 .TP
-\fBstacksize\fR
+\fBstackSize\fP
 This is the thread stack size (in KB).  This is mainly used during debugging to control VSS where there
 might be a lot of threads (from client connections mostly).  Best not mess with this (default 128).
+.PP
+Each memory type has a default block allocation size.  Whenever new memory is allocated
+for registered types it is not done individually, but as a block, to prevent frequent calls to \fBbrk()\fP.
+.PP
+Valid types include: hosts, iobufs, iolist, dhash, points
 .TP
-\fBgc\fR
+\fBTYPE.block\fP
+Number of instances to allocate at once.
+
+.SS [GC]
+.TP
+\fBenable\fP
 Whether gc is enabled or not (boolean, default 1).
 .TP
-\fBgc_thresh\fR
+\fBgcThresh\fP
 How many submission cycles a path must lie empty for before it is deleted (default 8640).
 .TP
-\fBgc_gauge_thresh\fR
+\fBgcGaugeThresh\fP
 How many submission cycles a gauge must not be updated for before it is deleted (default 25960).
+
+.SS [Iplist]
+.PP
+\fBMinistry\fP has the concept of an ordered list of network/single ip addresses.  It uses CIDR notation.
+It has the concept of match/miss entries, and a default behaviour.  So it is possible to create a list
+to capture 10.0.0.0/8, but not 10.0.0.0/16, except for still capturing 10.0.0.0/24.  The lists are also
+used to filter connections and apply metric prefixes.
+.PP
+Iplist statements finish with a \fBdone\fP statement, and may include the following:
+.TP
+\fBenable\fP
+Turn a list on or off (boolean, default 1).
+.TP
+\fBdefault\fP
+A boolean indicating whether the default behaviour is to match or miss (default miss).
+.TP
+\fBverbose\fP
+A boolean indicating whether the list should be logged out once it has been read (default false).
+.TP
+\fBhashsize\fP
+The hash size for the list.  It is rarely necessary to alter this (default 2003).
+.PP
+Any Iplist must also include the following:
+.TP
+\fBname\fP
+As Iplists are created separately, then used by different config elements, they are named, and referred
+to by name elsewhere.  After config read is complete, these names are matched up to ensure all lists
+referred to in config actually exist.  These names must be unique.
+.TP
+\fBmatch\fP | \fBmiss\fP
+A list element.  It expects a CIDR specification.  The /32 is optional on individual addresses.  There is no
+maximum number of match/miss statements in one list.
+.TP
+\fBentry\fP
+A list element, as used for prefixing.  It takes two arguments, the first is the CIDR range and second is the
+prefix to apply to that range.
+.TP
+\fBdone\fP
+Indicates this list is complete.  Checks are done to make sure it is valid at this point.
+
+.SS [IO]
+.PP
+\fBMinistry\fP does asynchronous network IO with dedicated threads.  Each outgoing TCP connection has its own
+thread to keep track of it, and buffers being sent to multiple targets are tracked separately without copying
+by having a separate list of buffers to send for each target.
+.TP
+\fBsendMsec\fP
+Interval, in msec, between checks for any buffers to send (default 11).  Reducing this too low can result in
+IO threads spinning quite actively.
+.TP
+\fBreconnectMsec\fP
+Number of msec to wait before attempting to reconnect a dead socket (default 2000).
+
+.SS [Target]
+.PP
+\fBMinistry\fP shares a lot of code with \fBcarbon-copy\fP and so duplicates its behaviour for describing
+network metric targets.  While \fBministry\fP sends to all enabled targets, \fBcarbon-copy\fP has rules for
+which metrics to send to which targets.  So the organisation of targets makes a little more sense in the
+context of \fBcarbon-copy\fP than \fBministry\fP, but for simplicity (and re-useability of target config
+files) the conventions and format at the same.
+.PP
+The basic principle is that targets are organised into lists of equivalent targets, which will always be
+given the same metrics.  This makes handling resilient multi-server targets easier.  There is no reason
+a set of targets cannot be several lists of one address each, thus effectively unrelated.  However, all
+targets in one list must be of the same type.
+.PP
+Targets have names, and lists have names.  If no list is given for a target, a new list named after that
+target is created, so any reference to lists is fully optional within \fBministry\fP.  All targets must
+have a type and a \fBdone\fP statement.  There is no limit to the number of targets, though each target
+has a compute cost associated with it.
+.TP
+\fBname\fP
+The name of the target, and the list if no list name is given.
+.TP
+\fBlist\fP
+The (optional) name of the target list this target is part of.  Caution: typos will result in new lists.
+\fBMinistry\fP cannot guess when you meant some other list.
+.TP
+\fBenable\fP
+A boolean to control whether this target is used (default 1).
+.TP
+\fBtype\fP
+What type of target this is - it affects the format of message is sent.  Recognised types include: graphite,
+coal, opentsdb.
+.TP
+\fBport\fP
+Network port to connect to the target on; if none is supplied then a default is guessed from the type.
+.TP
+\fBhost\fP
+Address or DNS name of the target.  Lookups are made at initial connect time.  \fBMinistry\fP does not
+yet support 0-second TTL DNS from the likes of consul which need looking up each time.  Default is localhost.
+.TP
+\fBmaxWaiting\fP
+The maximum number of outstanding network buffers waiting to be sent to this target before new buffers
+are dropped (default 1024).
+.TP
+\fBdone\fP
+Signals the end of one target block.
+
 .SS [Stats]
 .TP
-\fBperiod\fR
-Set all reporting interval types, in msec (defaults are against individual types).
-.TP
-\fBthresholds\fR
+\fBthresholds\fP
 A list of integer percentage values to generate thresholds at.  Must be 0 < x < 100.
-.TP
-\fBtimestamps\fR
-What format of timestamps should be outputted.  Options are: sec, msec, usec, nsec, dotmsec, dotusec, dotnsec.
 .PP
-In addition to regular thresholds and calculated values, \fBMinistry\fR can produce other sample-moment based
+In addition to regular thresholds and calculated values, \fBMinistry\fP can produce other sample-moment based
 statistics: standard deviation, skewness and kurtosis.  It does not do this by default, and has a minimum points
 check to avoid producing relatively meaningless stats about a half-dozen data points.  It also can match paths
 against a whitelist/blacklist regex check - a series of expressions defining whether a path is in or out of the
 list of paths receiving moments processing.
 .TP
-\fBmoments.enable\fR
+\fBmoments.enable\fP
 Enable or disable moments processing (boolean, defaults to 0)
 .TP
-\fBmoments.minimum\fR
+\fBmoments.minimum\fP
 Set the minimum point count in stats to trigger moment calculations (default is 30)
 .TP
-\fBmoments.whitelist\fR, \fBmoments.blacklist\fR
+\fBmoments.whitelist\fP, \fBmoments.blacklist\fP
 A set of regular expressions to control moments calculation.  Each can appear multiple times.  The order of the
 list is preserved and paths are checked against it in order, to decide if they should or should not have this
 processing done.  This will have a performance impact on new path creation for stats paths, depending on the
 number and nature of the expressions.
 .TP
-\fBmoments.fallbackMatch\fR
+\fBmoments.fallbackMatch\fP
 Set whether matching no regexes results in overall match or no match (default is to match)
 .PP
 The rest of these are of the form stats.XXX, adder.XXX, gauge.XXX or self.XXX, affecting the behaviour of
 stats reporting, adder reporting, gauge reporting or self reporting.
 .TP
-\fBTYPE.threads\fR
+\fBTYPE.threads\fP
 How many reporting threads to run (not used for self) (default 2)
 .TP
-\fBTYPE.enable\fR
+\fBTYPE.enable\fP
 Enable or disable this reporting (boolean, defaults to 1 for all)
 .TP
-\fBTYPE.size\fR
-Hashsize information for this type.  Not used for self.  Tells \fBministry\fR how to size the hash table
+\fBTYPE.size\fP
+Hashsize information for this type.  Not used for self.  Tells \fBministry\fP how to size the hash table
 for metrics.  The number of metrics can exceed this size, but it can result in performance deteriorating.
-There are five set values: \fBtiny\fR, \fBsmall\fR, \fBmedium\fR, \fBlarge\fR, and \fBxlarge\fR.  It can
+There are five set values: \fBtiny\fP, \fBsmall\fP, \fBmedium\fP, \fBlarge\fP, and \fBxlarge\fP.  It can
 also accept a number, which is taken as the hash table size.  Prime numbers are recommended here, despite
 the apparent memory-friendly attraction of powers of two (that results in poor hashing behaviour, as the
 hash function does limited bit-mixing).  Each type's hash size defaults to the global value.  If all three
 are set, then the global value is not used anywhere.
 .TP
-\fBTYPE.prefix\fR
+\fBTYPE.prefix\fP
 Prefix string for all metrics of this type.  (defaults:  stats.timers., (blank), stats.gauges. and
 stats.ministry.)
 .TP
-\fBTYPE.period\fR
+\fBTYPE.period\fP
 Reporting interval, in msec.  (default 10000 for all)
 .TP
-\fBTYPE.delay\fR
-Reporting delay, in msec.  \fBMinistry\fR's timing loop aligns reporting intervals to the clock, so,
+\fBTYPE.offset\fP
+Reporting delay, in msec.  \fBMinistry\fP's timing loop aligns reporting intervals to the clock, so,
 e.g. 10 second reporting would occur on 10-second boundaries.  The delay must be less than the period
 and is used to offset reporting into that interval.  This is useful when systems report data to
-\fBministry\fR on their own timing cycle but metrics may or may not make it into a given interval.
-So if a reporting system submits adder data every 10 seconds, and \fBministry\fR reports every 10
+\fBministry\fP on their own timing cycle but metrics may or may not make it into a given interval.
+So if a reporting system submits adder data every 10 seconds, and \fBministry\fP reports every 10
 seconds, it might be prudent to set an offset of 3 or 4 seconds, so that all data for the interval
 is in and recorded by the interval is closed (defaults are 0 for all).
-.SS [Target]
-.PP
-Target configs are a block, ending in a \fBdone\fR statement.  They can repeat as needed.
-.PP
-Both Graphite and InfluxDB are sent to using graphite line-based protocol.  Coal receives nanosecond
-timestamps but is otherwise the same.  OpenTSDB is sent using the telnet protocol.
-.TP
-\fBtype\fR
-Type of target.  Must be one of the known supported types:  graphite, influxdb, coal, opentsdb.
-.TP
-\fBhost\fR
-Hostname or IP address.  Names are looked up using normal DNS resolution.  The special string '-' will
-result in ministry writing to \fIstdout\fR and disable daemon mode.  Multiple targets writing to \fIstdout\fR
-will result in an error parsing config.
-.TP
-\fBport\fR
-Port the target is listening on.  Only TCP is supported as yet.  If this is not supplied, \fBministry\fR
-can guess the port for some types.
-.TP
-\fBmax\fR
-Maximum waiting buffers when the host is unresponsive.  Between 1 and 64K.  The default is 128.
-.TP
-\fBdone\fR
-No value; signifies the end of the target config block.
+
 .SS [Network]
 .TP
-\fBtimeout\fR
+\fBtimeout\fP
 Number of seconds a client connection must have been silent for before being considered dead.
 .TP
-\fBrcv_tmout\fR
+\fBrcvTmout\fP
 Number of seconds to set on UDP sockets for SO_RCVTIMEO (prevents receive blocking indefinitely).
-.TP
-\fBreconn_msec\fR
-Time to wait, in msec, before attempting reconnect to onward targets (default 3000).
-.TP
-\fBio_msec\fR
-How often, in msec, to perform asynchronous IO flushes to onward targets (default 500).
-.TP
-\fBmax_waiting\fR
-Maximum number of IO buffers to permit to be waiting for flush to one target.  Each buffer can hold
-256KB but frequently holds much less.  Accounting is still done by number of buffers (default 1024).
 .PP
 Prefixing specific hosts is configured by IP address (not hostname - reverse lookups are not done).
 Hostnames are looked up and first IPv4 address taken.  Networks are expected as a.b.c.d/x (where the
@@ -246,69 +318,64 @@ specified address is not the base of the network, the masking will select the ne
 specifier and the prefix.  The prefix should have a trailing . but will be given one if absent.
 This prefix is prepended to incoming paths at time of network read and so any later behaviour will
 need to account for it.  This config key can be repeated.  \fBNote, this does not work for UDP
-packets - the mechanism would be very DoS'able.\fR
+packets - the mechanism would be very DoS'able.\fP
 .TP
-\fBprefix.enable\fR
-Enable the prefixing code.  Without this, no checks are performed (boolean, default is 0).
-.TP
-\fBprefix.verbose\fR
-Report on the ruleset in the log, and log hosts which will receive a prefix (boolean, default is 0).
-.TP
-\fBprefix.set\fR
-Add a prefix specifier, of the form "<host or net> <prefix>."  The trailing dot will be added if
-absent.  Hosts connecting which match either the host/network given will have the prefix supplied
-prepended to all paths at network read time.
-.TP
-\fBtarget\fR
-List (comma-separated) of onward target hosts (with optional :port).  Names are looked up using normal
-DNS resolution.  This config key can repeat if you'd rather not do a list.
+\fBprefixList\fP
+The named prefix list to apply.
 .PP
-IP address blacklisting and whitelisting is done, as with prefixes, on IP, network or hostnames.  IP
-addresses (and resolved names) are checked first, and then networks \fBin the order they appear\fR.
-This allows for complex allow/deny decisions - provided the most specific networks come first.
+Filtering is done at TCP connect time.  A filter Iplist is created and named for use.  The assumption
+is that matches are allowed, and misses rejected.  See the \fI[Iplist]\fP section for details on how
+to create and order an Iplist.
 .TP
-\fBipcheck.enable\fR
-Enable the IP checking code.  Without this set, no checks are performed (boolean, default is 0).
-.TP
-\fBipcheck.drop\fR
-Default drop connections which do not match a rule (boolean, default is 0).
-.TP
-\fBipcheck.verbose\fR
-Report on the ruleset in the log, and log on denied connections (boolean, default is 0).
-.TP
-\fBipcheck.whitelist\fR
-Specifically allow the listed host, IP or network.
-.TP
-\fBipcheck.blacklist\fR
-Specifically deny the listed host, IP or network.
+\fBfilterList\fP
+The named filter list to apply.
 .PP
 All remaining network variables are of the form stats.XXX, compat.XXX, gauge.XXX or adder.XXX, pertaining
 to new-style stats ports, statsd-compatible ports, new-style gauge ports or new-style adder ports.
 .TP
-\fBTYPE.enable\fR
+\fBTYPE.enable\fP
 Enable or disable this type of collection (boolean, defaults to 1 for all).
 .TP
-\fBTYPE.label\fR
-Label these ports have within logging.
-.TP
-\fBTYPE.tcp.backlog\fR
+\fBTYPE.tcp.backlog\fP
 Backlog for incoming TCP connections (default 32).
 .TP
-\fBTYPE.udp.checks\fR
+\fBTYPE.udp.checks\fP
 Perform blacklist/whitelist checks and prefixing on UDP for this type.
 .PP
 Everything after this is of the form TYPE.udp.XXX or TYPE.tcp.XXX, pertaining to either UDP ports
 or TCP ports respectively.
 .TP
-\fBTYPE.PROTO.bind\fR
+\fBTYPE.PROTO.bind\fP
 Bind address for this type and protocol - must be a local IP address (default IPADDR_ANY)
 .TP
-\fBTYPE.PROTO.enable\fR
+\fBTYPE.PROTO.enable\fP
 Enable or disable his protocol for this type of collection (boolean, defaults to 1).
 .TP
-\fBTYPE.PROTO.port\fR
+\fBTYPE.PROTO.port\fP
 A list of listen ports, comma separated.  By default, statsd-compatible listens on 8125, the default
 statsd port, new-style stats is on 9125 and new-style adder is on 9225.
+.PP
+\fBMinistry\fP no longer uses one thread per TCP connection.  Instead it pools connections onto a set
+number of threads.  Each thread has a maximum number of possible connections.  They are assigned by
+hashing on source IP/port.  This can lead to degenerate conditions of uneven load, but this is rather
+unlikely.  When a thread can take no more connections, that connection is rejected.  A client might
+then reconnect but is likely to get given a new port, probably hitting a different thread.
+.PP
+So to assess how many threads to use, perform the following calculation:
+.PP
+\fIthreads\fP = ( \fImax-connections\fP ) / ( \fIpollMax\fB * 0.8 )
+.PP
+The 0.8 is to allow for uneven hashing.
+.PP
+This does not change the UDP listener behaviour of one thread per port.
+.TP
+\fBTYPE.tcp.threads\fI
+How many threads in the pool for listening for each type.  Defaults are stats:60, adder:30, gauge:10,
+compat:20.
+.TP
+.\fPpollMax\fB
+Max connections to a TCP listener thread (default 128).
+
 .SS [Synth]
 .PP
 Synthetic metrics are derived from submitted metrics and calculated at the point of downstream
@@ -325,49 +392,52 @@ There is no limit to the number of synthetics that are specified.  They do not t
 (ministry has no wildcard search mechanism and it would be astonishingly expensive in large data
 sets - it would have to check what matched every submission interval).
 .TP
-\fBtarget\fR
+\fBtarget\fP
 The metric path to create.
 .TP
-\fBsource\fR
+\fBsource\fP
 A source path to take values from.
 .TP
-\fBoperation\fR
-Operation to perform.  One of sum, diff, ratio, min, max, spread, mean or count.
+\fBoperation\fP
+Operation to perform.  One of sum, diff, ratio, min, max, spread, mean, meanIf, count or active.
 .TP
-\fBfactor\fR
+\fBfactor\fP
 A double precision number that the synthetic metric value is multiplied by.  Default 1.
 .TP
-\fBdone\fR
+\fBdone\fP
 No value - signifies the end of the synthetic block.  Error checking on source count is performed
 when this config line is found.  Subsequent lines are taken to be a new synthetic block.
 .SS Synthetic Operation Types
 .TP
-\fBsum\fR
+\fBsum\fP
 The sum of the values of all source metrics.
 .TP
-\fBdiff\fR
+\fBdiff\fP
 The value of second metric is subtracted from the value of the first.
 .TP
-\fBratio\fR
+\fBratio\fP
 The value of the first metric is divided by the value of the second (or zero if the second metric
 value is zero).
 .TP
-\fBmin\fR
+\fBmin\fP
 The lowest of all source metric values.
 .TP
-\fBmax\fR
+\fBmax\fP
 The highest of all source metric values.
 .TP
-\fBspread\fR
+\fBspread\fP
 The gap between the highest and lowest source metric values.
 .TP
-\fBmean\fR
+\fBmean\fP
 The arithmetic mean of the values of all source metrics.
 .TP
-\fBcount\fR
+\fBmeanIf\fP
+The mean of values that were presented in this period, rather than all configured.
+.TP
+\fBcount\fP
 The number of source metrics with a non-zero value.
 .TP
-\fBactive\fR
+\fBactive\fP
 Returns 0 or 1 depending on whether any data points were present.
 .SH SEE ALSO
 .BR ministry (1)

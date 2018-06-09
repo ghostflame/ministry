@@ -79,7 +79,7 @@ IPLIST *iplist_find( char *name )
 }
 
 
-// in case you want to attach structures to the IPNEts
+// in case you want to attach structures to the IPNETs
 // eg prefixing structures
 // this allows you to call a callback on each configured item
 void iplist_call_data( IPLIST *l, iplist_data_fn *fp, void *arg )
@@ -404,12 +404,12 @@ int iplist_config_line( AVP *av )
 			l->hashsz = hs;
 		_iplist_cfg_set = 1;
 	}
-	else if( attIs( "whitelist" ) )
+	else if( attIs( "match" ) || attIs( "whitelist" ) )
 	{
 		_iplist_cfg_set = 1;
 		return iplist_add_entry( l, IPLIST_POSITIVE, av->val, av->vlen );
 	}
-	else if( attIs( "blacklist" ) )
+	else if( attIs( "miss" ) || attIs( "blacklist" ) )
 	{
 		_iplist_cfg_set = 1;
 		return iplist_add_entry( l, IPLIST_NEGATIVE, av->val, av->vlen );

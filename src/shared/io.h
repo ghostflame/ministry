@@ -22,7 +22,7 @@
 
 #define IO_BLOCK_BITS			5	// 32 locks
 
-#define IO_SEND_USEC			4000	// usec
+#define IO_SEND_USEC			11000	// usec
 #define IO_RECONN_DELAY			2000	// msec
 
 

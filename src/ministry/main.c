@@ -89,7 +89,6 @@ void main_create_conf( void )
 	config_register_section( "gc",      &gc_config_line );
 	config_register_section( "stats",   &stats_config_line );
 	config_register_section( "synth",   &synth_config_line );
-	config_register_section( "target",  &target_config_line );
 
 	target_set_type_fn( &targets_set_type );
 }
