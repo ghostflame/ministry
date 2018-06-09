@@ -59,6 +59,7 @@ struct relay_rule
 	int					last;
 	int					tcount;
 	int					mcount;
+	int					drop;
 };
 
 

@@ -1,0 +1,81 @@
+.\" Carbon-copy config manual page
+.TH CARBON-COPY "1" "Jan 2018" "Networking Utilities" "User Commands"
+.SH NAME
+carbon-copy.conf \- carbon-copy config file
+.SH SYNOPSIS
+.nf
+.BI /etc/ministry/carbon-copy.conf
+.fi
+.SH DESCRIPTION
+.PP
+This manual page describes the configuration file for \fBcarbon-copy(1)\fP.  The file is in
+sections, and including other files is permitted, though wildcard expansion is not performed -
+included file paths must be complete.  Config is read before \fBcarbon-copy\fP changes to the
+configured working directory, so non-absolute paths included are interpreted relative to the
+current working directory.
+.PP
+\fBCarbon-copy\fP has a lot of shared code with \fBministry(1)\fP and some sections are not
+described here.  Refer to \fBministry.conf(5)\fP for details.
+.SH FORMAT
+See \fBministry.conf(5)\fP.
+.SS [Main]
+See \fBministry.conf(5)\fP.
+.SS [Logging]
+See \fBministry.conf(5)\fP.
+.SS [IO]
+See \fBministry.conf(5)\fP.
+.SS [Target]
+.PP
+\fBCarbon-copy\fP has the most complex target configuration of any of the \fBministry\fP family
+of programs.  The basic principle is that targets are grouped into lists, or one or more host/
+port combinations, which receive identical streams of metrics.  As many lists as are desired
+can be configured.  \fBCarbon-copy\fP uses named lists as targets for routing rules.  A given
+rule may have a list of target lists and hash across them.  It is for system administrators to
+devise a suitable hierarchy or structure for their desired level of resilience.
+.PP
+The structure and configuration of target lists is otherwise the same as \fBministry.conf(5)\fP.
+.SS [Network]
+.PP
+Networking configuration for \fBcarbon-copy\fP greatly resembles that found in \fBministry\fP,
+with the exception that \fBcarbon-copy\fP routers processed metrics, and therefore does not
+discriminate between stats, adder or gauge metrics.
+.SS [Relay]
+.PP
+Relay rules are processed in order, and the distribution of metrics to targets is handled
+according the type of matching.  Hash types always match, and hash their metrics across a set
+of targets.  Regex types have a set of criteria for matching.  Each rule is a block of config
+ending in a \fBdone\fP statement.
+.PP
+Once matching has been determined, the set of targets provided are written to according to the
+type.  The special target value \fIblackhole\fP results in metrics being dropped.
+.TP
+\fBname\fP
+The name of the relay rule.  It will be listed as '- unnamed -' in logs if no name is given.
+.TP
+\fBregex\fP
+Regular expression to test against metrics.  Can appear multiple times.  A leading \fI!\fP
+indicates a negation of matching, and is stripped before compilation.  Any regex lines will
+set the type to regex.
+.TP
+\fBhash\fP
+Hash metric to use.  It is an error to specify this alongside regex type.  The known types
+are: \fBcksum\fP, \fBfnv1\fP, \fBfnv1a\fP.  Hash types always match.
+.TP
+\fBlast\fP
+Stop processing if this rule matches.
+.TP
+\fBcontinue\fP
+Continue processing even if this rule matches (this is the default behaviour).
+.TP
+\fBtarget\fP
+Comma-separated list of target names.  The special value (on it's own) \fIblackhole\fP is
+interpreted as drop matching metrics.  It is a botch to combine blackhole target and the
+\fBcontinue\fP statement.  This/these names will be resolved against \fBTarget\fP config.
+
+.SH SEE ALSO
+.BR carbon-copy (1)
+.BR ministry.conf (5)
+.BR ministry (1)
+
+.SH AUTHOR
+\fBCarbon-copy\fP is written and maintained by John Denholm, Sky Betting And Gaming.

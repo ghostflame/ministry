@@ -7,6 +7,8 @@ ADD dist/ministry-test/install.conf /etc/ministry-test/ministry-test.conf
 ADD dist/carbon-copy/install.conf /etc/carbon-copy/carbon-copy.conf
 ADD dist/ministry/ministry.1 /usr/share/man/man1/ministry.1
 ADD dist/ministry/ministry.conf.5 /usr/share/man/man5/ministry.conf.5
+ADD dist/ministry-test/ministry-test.1 /usr/share/man/man1/ministry-test.1
+ADD dist/ministry-test/ministry-test.conf.5 /usr/share/man/man5/ministry-test.conf.5
 ADD bin/ministry /ministry
 ADD bin/ministry-test /ministry-test
 ADD bin/carbon-copy /carbon-copy
