@@ -57,6 +57,10 @@ __attribute__((hot)) int relay_regex( HBUFS *h, RLINE *l )
 	if( j == r->mcount )
 		return 0;
 
+	// are we dropping it?
+	if( r->drop )
+		return 1;
+
 	// regex match writes to every target
 	if( relay_write( h->bufs[0], l ) )
 	{
@@ -72,6 +76,10 @@ __attribute__((hot)) int relay_regex( HBUFS *h, RLINE *l )
 __attribute__((hot)) int relay_hash( HBUFS *h, RLINE *l )
 {
 	uint32_t j = 0;
+
+	// if we are dropping, then just drop it
+	if( h->rule->drop )
+		return 1;
 
 	if( h->rule->tcount > 1 )
 		j = (*(h->rule->hfp))( l->path, l->plen ) % h->rule->tcount;
@@ -322,6 +330,13 @@ int relay_resolve( void )
 
 	for( r = ctl->relay->rules; r; r = r->next )
 	{
+		// special case - blackhole
+		if( !strcasecmp( r->target_str, "blackhole" ) )
+		{
+			r->drop = 1;
+			continue;
+		}
+
 		strwords( &w, r->target_str, strlen( r->target_str ), ',' );
 		for( i = 0; i < w.wc; i++ )
 		{

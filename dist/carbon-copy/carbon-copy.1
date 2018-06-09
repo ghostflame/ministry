@@ -61,6 +61,11 @@ It may use the keyword \fBinclude\fR to read in another file - the current secti
 .PP
 The default config file is /etc/carbon-copy/carbon-copy.conf
 .SH Behaviour
+.PP
+\fBCarbon-copy\fP listens on a network port for graphite/coal metrics.  It assesses each line
+against configured rules, and forwards the metrics according to those rules to none, one or more
+targets.  It does not transform metrics in any way, nor aggregate them.  It is a drop-in replacement
+for the likes of \fBcarbon-relay\fP or \fBcarbon-c-relay\fP.
 .SH SEE ALSO
 .BR ministry (1)
 .SH AUTHOR
