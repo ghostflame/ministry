@@ -12,6 +12,19 @@
 #include "shared.h"
 
 
+// curl options check
+// can't use verify below 7.41.0
+#if LIBCURL_VERSION_MAJOR > 7 || \
+  ( LIBCURL_VERSION_MAJOR == 7 && \
+    LIBCURL_VERSION_MINOR > 40 )
+	#define _LCURL_CAN_VERIFY 1
+#else
+	#define _LCURL_CAN_VERIFY 0
+#endif
+
+
+
+
 CCTXT *ctxt_top = NULL;
 CCTXT *context  = NULL;
 
@@ -396,6 +409,7 @@ int config_read_url( char *url )
 	curl_easy_setopt( c, CURLOPT_TIMEOUT_MS, 10000 );
 	curl_easy_setopt( c, CURLOPT_CONNECTTIMEOUT_MS, 5000 );
 
+#if _LCURL_CAN_VERIFY > 0
 	if( context->is_ssl )
 	{
 		if( chkcfFlag( SEC_VALIDATE ) )
@@ -411,6 +425,7 @@ int config_read_url( char *url )
 			curl_easy_setopt( c, CURLOPT_SSL_VERIFYSTATUS, 0L );
 		}
 	}
+#endif
 
 	// make a temporary file
 	if( !( fh = tmpfile( ) ) )
@@ -715,9 +730,12 @@ void config_register_section( char *name, conf_line_fn *fp )
 }
 
 
+static char config_help_buffer[4096];
+
 char *config_help( void )
 {
-	return "\
+	snprintf( config_help_buffer, 4096, "%s%s%s",
+"\
  -h            Print this help\n\
  -v            Print version number and exit\n\
  -t            Just test the config is valid and exit\n\
@@ -729,13 +747,18 @@ char *config_help( void )
  -U            Disable all reading of URI's\n\
  -u            Disable URI config including other URI's\n\
  -i            Allow insecure URI's\n\
- -I            Allow secure URI's to include insecure URI's\n\
- -T            Validate certificates from config hosts\n\
- -d            Daemonize in the background\n\
+ -I            Allow secure URI's to include insecure URI's\n", 
+#if _LCURL_CAN_VERIFY
+" -T            Validate certificates from config hosts (if available)\n"
+#else
+""
+#endif
+, " -d            Daemonize in the background\n\
  -D            Switch on debug output (overrides config)\n\
  -V            Logging to console (prevents daemonizing)\n\
  -s            Strict config parsing\n\
-";
+" );
+	return config_help_buffer;
 }
 
 
@@ -747,6 +770,7 @@ char *config_arg_string( char *argstr )
 	snprintf( config_args_opt_merged, CONF_LINE_MAX, "%s%s", config_args_opt_string, argstr );
 	return config_args_opt_merged;
 }
+
 
 
 
@@ -805,9 +829,11 @@ void config_args( int ac, char **av, char *optstr, help_fn *hfp )
 			case 'I':
 				setcfFlag( SEC_INC_INSEC );
 				break;
+#if _LCURL_CAN_VERIFY > 0
 			case 'T':
 				setcfFlag( SEC_VALIDATE );
 				break;
+#endif
 			case 'E':
 				cutcfFlag( READ_ENV );
 				break;
