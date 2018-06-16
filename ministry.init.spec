@@ -1,5 +1,5 @@
 Name:		ministry
-Version:	0.4.8
+Version:	0.4.11
 Release:	1%{?dist}
 Summary:	A statsd implementation in threaded C.
 
@@ -65,6 +65,8 @@ make initinstall
 %{_mandir}/man1/ministry-test.1.gz
 %{_mandir}/man1/carbon-copy.1.gz
 %{_mandir}/man5/ministry.conf.5.gz
+%{_mandir}/man5/ministry-test.conf.5.gz
+%{_mandir}/man5/carbon-copy.conf.5.gz
 %{_sysconfdir}/init.d/ministry
 %{_sysconfdir}/init.d/carbon-copy
 

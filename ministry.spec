@@ -65,6 +65,8 @@ chown -R ministry:ministry /etc/ministry/ssl
 %{_mandir}/man1/ministry-test.1.gz
 %{_mandir}/man1/carbon-copy.1.gz
 %{_mandir}/man5/ministry.conf.5.gz
+%{_mandir}/man5/ministry-test.conf.5.gz
+%{_mandir}/man5/carbon-copy.conf.5.gz
 %{_unitdir}/ministry.service
 %{_unitdir}/carbon-copy.service
 
