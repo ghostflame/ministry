@@ -287,6 +287,64 @@ void mem_free_token_list( TOKEN *list )
 }
 
 
+PRED *mem_new_pred( void )
+{
+	PRED *p = (PRED *) mtype_new( ctl->mem->preds );
+
+	if( !p->points )
+		p->points = (DPT *) allocz( ctl->stats->pred->vsize * sizeof( DPT ) );
+
+	return p;
+}
+
+void mem_free_pred( PRED **p )
+{
+	DPT *points;
+	PRED *pp;
+
+	pp = *p;
+	*p = NULL;
+
+	points = pp->points;
+	memset( points, 0, ctl->stats->pred->vsize * sizeof( DPT ) );
+	memset( pp, 0, sizeof( PRED ) );
+	pp->points = points;
+
+	mtype_free( ctl->mem->preds, pp );
+}
+
+void mem_free_pred_list( PRED *list )
+{
+	PRED *p, *freed, *end;
+	DPT *points;
+	int j = 0;
+
+	freed = end = NULL;
+
+	while( list )
+	{
+		p    = list;
+		list = p->next;
+
+		points = p->points;
+		memset( points, 0, ctl->stats->pred->vsize * sizeof( DPT ) );
+		memset( p, 0, sizeof( PRED ) );
+		p->points = points;
+
+		p->next = freed;
+		freed   = p;
+
+		if( !end )
+			end = p;
+
+		j++;
+	}
+
+	mtype_free_list( ctl->mem->preds, j, freed, end );
+}
+
+
+
 
 MEMT_CTL *memt_config_defaults( void )
 {
@@ -298,6 +356,7 @@ MEMT_CTL *memt_config_defaults( void )
 	m->points = mem_type_declare( "points", sizeof( PTLIST ), MEM_ALLOCSZ_POINTS, 0, 1 );
 	m->dhash  = mem_type_declare( "dhashs", sizeof( DHASH ),  MEM_ALLOCSZ_DHASH,  128, 1 ); // guess on path length
 	m->token  = mem_type_declare( "tokens", sizeof( TOKEN ),  MEM_ALLOCSZ_TOKEN,  0, 1 );
+	m->preds  = mem_type_declare( "preds",  sizeof( PRED ),   MEM_ALLOCSZ_PREDS,  480, 1 ); // guess on vals
 
 	m->gc_enabled   = 1;
 	m->gc_thresh    = DEFAULT_GC_THRESH;

@@ -535,6 +535,92 @@ void stats_stats_pass( ST_THR *t )
 }
 
 
+void stats_predictor( ST_THR *t, DHASH *d )
+{
+	double diffx, diffy, meanx, meany, sumy, sumxy, sumxx, sumyy, xxyy, val;
+	ST_PRED *sp = ctl->stats->pred;
+	PRED *p = d->predict;
+	uint8_t ctr, valid;
+	DPT *dp;
+
+	val = d->proc.total;
+	valid = p->valid;
+
+	// capture the current value
+	p->points[p->vindex].ts  = ( (double) tvalts( t->tval ) ) + ( (double) tvalns( t->tval ) / BILLIONF );
+	p->points[p->vindex].val = val;
+	if( (++(p->vindex)) == sp->vsize )
+		p->vindex = 0;
+
+	// zero the prediction-only counter
+	p->pcount = 0;
+
+	if( p->valid == 0 )
+	{
+		p->vcount++;
+		if( p->vcount == sp->vsize )
+			p->valid = 1;
+	}
+
+	// if we've not got enough points yet, we're done
+	if( !p->valid )
+		return;
+
+	// were we already valid?
+	if( valid )
+	{
+		// report the diff of the previous prediction against the new value
+		p->prev = p->prediction;
+		bprintf( t, "%s.diff %f", d->path, ( p->prev.val - val ) );
+	}
+
+	// is it all in one row?
+	if( p->vindex == 0 )
+		memcpy( t->predbuf, p->points, sp->vsize * sizeof( DPT ) );
+	else
+	{
+		// copy in the buffer, end first
+		memcpy( t->predbuf, p->points + p->vindex, ( sp->vsize - p->vindex - 1 ) * sizeof( DPT ) );
+		memcpy( t->predbuf + p->vindex, p->points, p->vindex * sizeof( DPT ) );
+	}
+
+	// calculate the new value
+	for( sumy = 0.0, ctr = 0; ctr < sp->vsize; ctr++ )
+		sumy += t->predbuf[ctr].val;
+
+	// average timestamp is easy
+	meanx = ( (double) t->predbuf[0].ts + (double) t->predbuf[sp->vsize - 1].ts ) / 2.0;
+	meany = sumy / (double) sp->vsize;
+
+	for( sumxx = 0.0, sumyy = 0.0, sumxy = 0.0, ctr = 0; ctr < sp->vsize; ctr++ )
+	{
+		dp    = t->predbuf + ctr;
+		diffx = meanx - dp->ts;
+		diffy = meany - dp->val;
+
+		sumxy += diffx * diffy;
+		sumxx += diffx * diffx;
+		sumyy += diffy * diffy;
+	}
+
+	// coefficients
+	p->b = sumxy / sumxx;
+	p->a = meany - ( p->b * meanx );
+
+	xxyy = sumyy * sumxx;
+	if( xxyy != 0.0 )
+		p->coef = ( sumxy * sumxy ) / xxyy;
+	else
+		p->coef = 0.0;
+
+	// now we are in business
+	p->prediction.ts  = t->predbuf[sp->vsize - 1].ts + ( t->predbuf[1].ts - t->predbuf[0].ts );
+	p->prediction.val = p->a + ( p->b * p->prediction.ts );
+
+	bprintf( t, "%s.predict %f", d->path, ( p->prediction.val - val ) );
+	bprintf( t, "%s.coef %f", d->path, p->coef );
+	bprintf( t, "%s.raw %f", d->path, val );
+}
 
 void stats_adder_pass( ST_THR *t )
 {
@@ -561,6 +647,22 @@ void stats_adder_pass( ST_THR *t )
 					d->in.total = 0;
 					d->in.count = 0;
 					d->do_pass  = 1;
+
+					unlock_adder( d );
+				}
+				else if( d->predict
+					  && d->predict->valid
+					  && d->predict->pcount < ctl->stats->pred->pmax )
+				{
+					// fill in the number using the predictor
+					lock_adder( d );
+
+					// copy it in
+					d->proc.total = d->predict->prediction.val;
+					d->proc.count = 1;
+					d->do_pass    = 1;
+					// mark it as having another prediction used
+					d->predict->pcount++;
 
 					unlock_adder( d );
 				}
@@ -604,6 +706,9 @@ void stats_adder_pass( ST_THR *t )
 				{
 					if( d->empty > 0 )
 						d->empty = 0;
+
+					if( d->predict )
+						stats_predictor( t, d );
 
 					bprintf( t, "%s %f", d->path, d->proc.total );
 
@@ -850,6 +955,10 @@ void stats_init_control( ST_CFG *c, int alloc_data )
 			t->counters = (uint32_t *) allocz( 6 * sizeof( uint32_t ) * F8_SORT_HIST_SIZE );
 		}
 
+		// and adder may need a prediction buffer
+		if( ctl->stats->pred->enabled && c->type == STATS_TYPE_ADDER )
+			t->predbuf = (DPT *) allocz( ctl->stats->pred->vsize * sizeof( DPT ) );
+
 		pthread_mutex_init( &(t->lock), NULL );
 
 		// and that starts locked
@@ -933,6 +1042,13 @@ STAT_CTL *stats_config_defaults( void )
 	s->mom->min_pts   = DEFAULT_MOM_MIN;
 	s->mom->enabled   = 0;
 	s->mom->rgx       = regex_list_create( 1 );
+
+	// predictions are off by default
+	s->pred           = (ST_PRED *) allocz( sizeof( ST_PRED ) );
+	s->pred->enabled  = 0;
+	s->pred->vsize    = DEFAULT_STATS_PREDICT;
+	s->pred->pmax     = DEFAULT_STATS_PREDICT / 3;
+	s->pred->rgx      = regex_list_create( 1 );
 
 	// function choice threshold
 	s->qsort_thresh   = DEFAULT_QSORT_THRESHOLD;
@@ -1078,6 +1194,51 @@ int stats_config_line( AVP *av )
 			if( regex_list_add( av->val, 1, s->mom->rgx ) )
 				return -1;
 			debug( "Added moments blacklist regex: %s", av->val );
+		}
+		else
+			return -1;
+
+		return 0;
+	}
+	else if( !strncasecmp( av->att, "predict.", 8 ) )
+	{
+		if( !strcasecmp( d, "enable" ) )
+		{
+			s->pred->enabled = config_bool( av );
+		}
+		else if( !strcasecmp( d, "size" ) )
+		{
+			if( av_int( v ) == NUM_INVALID )
+			{
+				err( "Invalid linear regression size '%s'", av->val );
+				return -1;
+			}
+			if( v < MIN_STATS_PREDICT || v > MAX_STATS_PREDICT )
+			{
+				err( "Linear regression size must be %d < x <= %d",
+					MIN_STATS_PREDICT, MAX_STATS_PREDICT );
+				return -1;
+			}
+
+			s->pred->vsize = (uint8_t) v;
+			s->pred->pmax  = s->pred->vsize / 3;
+		}
+		else if( !strcasecmp( d, "fallbackMatch" ) )
+		{
+			t = config_bool( av );
+			regex_list_set_fallback( t, s->pred->rgx );
+		}
+		else if( !strcasecmp( d, "whitelist" ) )
+		{
+			if( regex_list_add( av->val, 0, s->pred->rgx ) )
+				return -1;
+			debug( "Added prediction whitelist regex: %s", av->val );
+		}
+		else if( !strcasecmp( d, "blacklist" ) )
+		{
+			if( regex_list_add( av->val, 1, s->pred->rgx ) )
+				return -1;
+			debug( "Added prediction blacklist regex: %s", av->val );
 		}
 		else
 			return -1;

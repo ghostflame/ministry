@@ -57,6 +57,10 @@ enum stats_types
 #define PREFIX_SZ					512
 #define PATH_SZ						8192
 
+#define DEFAULT_STATS_PREDICT		30
+#define MAX_STATS_PREDICT			254
+#define MIN_STATS_PREDICT			8
+
 
 struct stat_thread_ctl
 {
@@ -71,6 +75,7 @@ struct stat_thread_ctl
 	double			*	wkbuf1;		// first buffer
 	double			*	wkbuf2;		// second buffer
 	double			*	wkspc;		// source buffer
+	DPT				*	predbuf;	// prediction buffer
 	uint32_t		*	counters;
 	int32_t				wkspcsz;
 
@@ -138,6 +143,14 @@ struct stat_moments
 	int					enabled;
 };
 
+struct stat_predict
+{
+	RGXL			*	rgx;
+	uint8_t				vsize;
+	uint8_t				pmax;
+	int8_t				enabled;
+};
+
 
 struct stats_control
 {
@@ -148,6 +161,7 @@ struct stats_control
 
 	ST_THOLD		*	thresholds;
 	ST_MOM			*	mom;
+	ST_PRED			*	pred;
 
 	// for new sorting
 	int32_t				qsort_thresh;

@@ -43,6 +43,29 @@ struct data_type_params
 extern const DTYPE data_type_defns[];
 
 
+struct data_point
+{
+	double				ts;
+	double				val;
+};
+
+
+struct data_predict
+{
+	PRED			*	next;
+	DPT				*	points;
+	DPT					prediction;
+	DPT					prev;
+	double				a;		// presumes a + bx
+	double				b;
+	double				coef;	// quality coefficient
+	uint8_t				vindex;
+	uint8_t				vcount;
+	uint8_t				pcount;
+	uint8_t				valid;
+};
+
+
 struct points_list
 {
 	PTLIST			*	next;
@@ -70,6 +93,9 @@ struct data_hash_entry
 	// have data
 	DVAL				in;
 	DVAL				proc;
+
+	// predictor structure, present or absent
+	PRED			*	predict;
 
 	dhash_lock_t	*	lock;
 
