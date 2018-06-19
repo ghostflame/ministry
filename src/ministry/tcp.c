@@ -320,14 +320,17 @@ __attribute__((hot)) void *tcp_watcher( void *arg )
 
 void tcp_choose_thread( NET_PORT *n, HOST *h )
 {
-	uint64_t v;
+	uint64_t v, w;
 	TCPTH *t;
 
 	// choose thread based on host and port
-	v = h->ip;
-	v = ( v << 16 ) + h->peer->sin_port;
+	v = h->peer->sin_port;
+	v = ( v << 32 ) + h->ip;
 
-	t = n->threads[v % h->type->threads];
+	// use an algorithm more likely to give a better spread
+	// first modulo a large prime, then the number of threads
+	w = v % TCP_MODULO_PRIME;
+	t = n->threads[w % h->type->threads];
 
 	// put it in the waiting queue
 	lock_tcp( t );

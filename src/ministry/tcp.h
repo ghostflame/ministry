@@ -17,6 +17,11 @@
 
 #define TCP_MAX_POLLS               128
 
+// used to hash (port<<32)+ip to give a nice
+// spread of tcp slots even with a power-of-two
+// number of threads
+#define TCP_MODULO_PRIME			1316779
+
 struct tcp_conn
 {
 	TCPCN				*	next;
