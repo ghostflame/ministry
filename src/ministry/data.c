@@ -248,6 +248,8 @@ __attribute__((hot)) static inline DHASH *data_get_dhash( char *path, int len, S
 				//	debug( "Path %s will get linear regression prediction.", d->path );
 					d->predict = mem_new_pred( );
 				}
+				//else
+				//	debug( "Path %s will not get prediction.", d->path );
 			}
 		}
 	}

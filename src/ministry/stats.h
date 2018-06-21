@@ -57,9 +57,6 @@ enum stats_types
 #define PREFIX_SZ					512
 #define PATH_SZ						8192
 
-#define DEFAULT_STATS_PREDICT		30
-#define MAX_STATS_PREDICT			254
-#define MIN_STATS_PREDICT			8
 
 
 struct stat_thread_ctl
@@ -76,6 +73,7 @@ struct stat_thread_ctl
 	double			*	wkbuf2;		// second buffer
 	double			*	wkspc;		// source buffer
 	DPT				*	predbuf;	// prediction buffer
+	DPT				*	predend;	// for for loops
 	uint32_t		*	counters;
 	int32_t				wkspcsz;
 
@@ -92,6 +90,7 @@ struct stat_thread_ctl
 	int64_t				active;
 	int64_t				points;
 	int64_t				highest;
+	int64_t				predict;
 
 	// timings
 	struct timespec		now;
@@ -114,8 +113,8 @@ struct stat_config
 	int					dtype;
 	int					threads;
 	int					enable;
-	int					period;		// msec config, converted to usec
-	int					offset;		// msec config, converted to usec
+	int64_t				period;		// msec config, converted to usec
+	int64_t				offset;		// msec config, converted to usec
 	stats_fn		*	statfn;
 
 	// and the data
@@ -143,12 +142,13 @@ struct stat_moments
 	int					enabled;
 };
 
-struct stat_predict
+struct stat_predict_conf
 {
 	RGXL			*	rgx;
 	uint8_t				vsize;
 	uint8_t				pmax;
 	int8_t				enabled;
+	pred_fn			*	fp;
 };
 
 

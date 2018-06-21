@@ -36,6 +36,7 @@
 #include "mem.h"
 #include "synth.h"
 #include "sort.h"
+#include "m_maths.h"
 #include "stats.h"
 #include "selfstats.h"
 

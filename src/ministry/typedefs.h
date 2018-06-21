@@ -26,10 +26,11 @@ typedef struct stat_config			ST_CFG;
 typedef struct stat_thread_ctl		ST_THR;
 typedef struct stat_threshold		ST_THOLD;
 typedef struct stat_moments			ST_MOM;
-typedef struct stat_predict			ST_PRED;
+typedef struct stat_predict_conf	ST_PRED;
+typedef struct maths_prediction		PRED;
+typedef struct maths_moments		MOMS;
 typedef struct points_list			PTLIST;
 typedef struct data_point			DPT;
-typedef struct data_predict			PRED;
 typedef struct data_hash_vals		DVAL;
 typedef struct data_hash_entry		DHASH;
 typedef struct data_type_params		DTYPE;
@@ -52,5 +53,6 @@ typedef void stats_fn ( ST_THR * );
 typedef void add_fn ( char *, int, char * );
 typedef void line_fn ( HOST *, char *, int );
 typedef void synth_fn( SYNTH * );
+typedef void pred_fn ( ST_THR *, DHASH * );
 
 #endif

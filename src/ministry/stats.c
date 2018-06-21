@@ -154,6 +154,8 @@ void stats_set_bufs( ST_THR *t, ST_CFG *c, int64_t tval )
 	TSET *s;
 	int i;
 
+	//debug( "Thread: %p (%s), Config: %p", t, t->wkrstr, c );
+
 	// only set the timestamp buffer if we need to
 	if( tval )
 	{
@@ -165,11 +167,8 @@ void stats_set_bufs( ST_THR *t, ST_CFG *c, int64_t tval )
 		t->active  = 0;
 		t->points  = 0;
 		t->highest = 0;
+		t->predict = 0;
 	}
-
-	// default to our own config
-	if( !c )
-		c = t->conf;
 
 	// just point to the prefix buffer we want
 	t->prefix = c->prefix;
@@ -217,6 +216,10 @@ void stats_thread_report( ST_THR *t )
 		bprintf( t, "%s.highest %d",   t->wkrstr, t->highest );
 	}
 
+	// how many predictions?
+	if( t->predbuf )
+		bprintf( t, "%s.predictions %d", t->wkrstr, t->predict );
+
 	tsteal = tsll( t->steal );
 	twait  = tsll( t->wait );
 	tstats = tsll( t->stats );
@@ -256,92 +259,23 @@ void stats_thread_report( ST_THR *t )
 
 
 
-// an implementation of Kaham Summation
-// https://en.wikipedia.org/wiki/Kahan_summation_algorithm
-// useful to avoid floating point errors
-static inline void kahan_sum( double val, double *sum, double *low )
-{
-	double y, t;
 
-	y = val - *low;     // low starts off small
-	t = *sum + y;       // sum is big, y small, lo-order y is lost
-
-	*low = ( t - *sum ) - y;// (t-sum) is hi-order y, -y recovers lo-order
-	*sum = t;           // low is algebraically always 0
-}
-
-void kahan_summation( double *list, int len, double *sum )
-{
-	double low = 0;
-	int i;
-
-	for( *sum = 0, i = 0; i < len; i++ )
-		kahan_sum( list[i], sum, &low );
-
-	*sum += low;
-}
-
-
-// https://en.wikipedia.org/wiki/Standard_deviation#Estimation
-// https://en.wikipedia.org/wiki/Skewness#Sample_skewness
-// https://en.wikipedia.org/wiki/Kurtosis#Sample_kurtosis
+// report on standard deviation, skewness and kurtosis
 void stats_report_moments( ST_THR *t, DHASH *d, int64_t ct, double mean )
 {
-	double sdev, skew, kurt, dtmp, stmp, ktmp, diff, prod;
-	int64_t i;
+	MOMS m;
 
-	sdev = skew = kurt = 0;
-	dtmp = stmp = ktmp = 0;
+	memset( &m, 0, sizeof( MOMS ) );
+	m.input    = t->wkspc;
+	m.count    = ct;
+	m.mean     = mean;
+	m.mean_set = 1;
 
-	for( i = 0; i < ct; i++ )
-	{
-		// diff from mean
-		diff = t->wkspc[i] - mean;
-		prod = diff * diff;
+	maths_moments( &m );
 
-		// stddev needs sum of squares of diffs
-		kahan_sum( prod, &sdev, &dtmp );
-
-		// skewness needs third moment
-		prod *= diff;
-		kahan_sum( prod, &skew, &stmp );
-
-		// kurtosis needs fourth moment
-		prod *= diff;
-		kahan_sum( prod, &kurt, &ktmp );
-	}
-
-	// complete the kahan sum
-	sdev += dtmp;
-	skew += stmp;
-	kurt += ktmp;
-
-	// we don't need corrected - we have the whole population
-	sdev /= (double) ct;
-	kurt /= (double) ct;
-
-	// using Fisher-Pearson standardized moment with any decent count size
-	// http://www.statisticshowto.com/skewness/
-	if( ct > 5 )
-	{
-		skew *= (double) ct;
-		skew /= (double) ( ct - 1 ) * ( ct - 2 );
-	}
-	else
-		skew /= (double) ct;
-
-	// and sqrt the variance to get the std deviation
-	sdev = sqrt( sdev );
-
-	// normalize against the variance
-	skew /= sdev * sdev * sdev;
-	kurt /= sdev * sdev * sdev * sdev;
-	// and subtract 3 from kurtosis
-	kurt -= 3;
-
-	bprintf( t, "%s.stddev %f",   d->path, sdev );
-	bprintf( t, "%s.skewness %f", d->path, skew );
-	bprintf( t, "%s.kurtosis %f", d->path, kurt );
+	bprintf( t, "%s.stddev %f",   d->path, m.sdev );
+	bprintf( t, "%s.skewness %f", d->path, m.skew );
+	bprintf( t, "%s.kurtosis %f", d->path, m.kurt );
 }
 
 
@@ -420,7 +354,7 @@ void stats_report_one( ST_THR *t, DHASH *d )
 	}
 
 	sum = 0;
-	kahan_summation( t->wkspc, ct, &sum );
+	maths_kahan_summation( t->wkspc, ct, &sum );
 
 	// median offset
 	idx = ct / 2;
@@ -478,7 +412,7 @@ void stats_stats_pass( ST_THR *t )
 	DHASH *d;
 
 #ifdef DEBUG
-	debug( "[%02d] Stats claim", t->id );
+	//debug( "[%02d] Stats claim", t->id );
 #endif
 
 	st_thr_time( steal );
@@ -511,7 +445,7 @@ void stats_stats_pass( ST_THR *t )
 		}
 
 #ifdef DEBUG
-	debug( "[%02d] Stats report", t->id );
+	//debug( "[%02d] Stats report", t->id );
 #endif
 
 	st_thr_time( stats );
@@ -535,26 +469,38 @@ void stats_stats_pass( ST_THR *t )
 }
 
 
+
+
 void stats_predictor( ST_THR *t, DHASH *d )
 {
-	double diffx, diffy, meanx, meany, sumy, sumxy, sumxx, sumyy, xxyy, val;
 	ST_PRED *sp = ctl->stats->pred;
 	PRED *p = d->predict;
-	uint8_t ctr, valid;
+	uint8_t valid, c;
+	double ts, val;
+	int64_t next;
 	DPT *dp;
 
 	val = d->proc.total;
 	valid = p->valid;
 
+	// report what we got
+	bprintf( t, "%s.input %f", d->path, val );
+
 	// capture the current value
-	p->points[p->vindex].ts  = ( (double) tvalts( t->tval ) ) + ( (double) tvalns( t->tval ) / BILLIONF );
-	p->points[p->vindex].val = val;
-	if( (++(p->vindex)) == sp->vsize )
-		p->vindex = 0;
+	dp = p->points + p->vindex;
+	ts = timedbl( t->tval );
+	dpp_set( dp, ts, val );
 
-	// zero the prediction-only counter
-	p->pcount = 0;
+	// and roll the vindex around
+	p->vindex = ( p->vindex + 1 ) % sp->vsize;
 
+	// zero the prediction-only counter if we have a real value
+	if( p->pflag )
+		p->pflag = 0;
+	else
+		p->pcount = 0;
+
+	// increment the count
 	if( p->valid == 0 )
 	{
 		p->vcount++;
@@ -564,14 +510,16 @@ void stats_predictor( ST_THR *t, DHASH *d )
 
 	// if we've not got enough points yet, we're done
 	if( !p->valid )
+	{
+		debug( "Path %s is not valid yet: %hhu points.", d->path, p->vcount );
 		return;
+	}
 
 	// were we already valid?
 	if( valid )
 	{
 		// report the diff of the previous prediction against the new value
-		p->prev = p->prediction;
-		bprintf( t, "%s.diff %f", d->path, ( p->prev.val - val ) );
+		bprintf( t, "%s.diff %f", d->path, ( dp_get_v( p->prediction ) - val ) );
 	}
 
 	// is it all in one row?
@@ -580,46 +528,33 @@ void stats_predictor( ST_THR *t, DHASH *d )
 	else
 	{
 		// copy in the buffer, end first
-		memcpy( t->predbuf, p->points + p->vindex, ( sp->vsize - p->vindex - 1 ) * sizeof( DPT ) );
-		memcpy( t->predbuf + p->vindex, p->points, p->vindex * sizeof( DPT ) );
+		c = sp->vsize - p->vindex;
+
+		memcpy( t->predbuf, p->points + p->vindex, c * sizeof( DPT ) );
+		memcpy( t->predbuf + c, p->points, p->vindex * sizeof( DPT ) );
 	}
 
-	// calculate the new value
-	for( sumy = 0.0, ctr = 0; ctr < sp->vsize; ctr++ )
-		sumy += t->predbuf[ctr].val;
+	// calculate the next timestamp and put it in
+	next = t->tval + ( 1000 * t->conf->period );
+	ts = timedbl( next );
+	dp_set( p->prediction, ts, 0 );
 
-	// average timestamp is easy
-	meanx = ( (double) t->predbuf[0].ts + (double) t->predbuf[sp->vsize - 1].ts ) / 2.0;
-	meany = sumy / (double) sp->vsize;
+	// and call the relevant function
+	(*(ctl->stats->pred->fp))( t, d );
 
-	for( sumxx = 0.0, sumyy = 0.0, sumxy = 0.0, ctr = 0; ctr < sp->vsize; ctr++ )
+	// report our newly calculated prediction
+	bprintf( t, "%s.predict %f", d->path, dp_get_v( p->prediction ) );
+
+	// have we run the course on pcount?
+	if( p->pcount == sp->pmax )
 	{
-		dp    = t->predbuf + ctr;
-		diffx = meanx - dp->ts;
-		diffy = meany - dp->val;
-
-		sumxy += diffx * diffy;
-		sumxx += diffx * diffx;
-		sumyy += diffy * diffy;
+		p->valid = 0;
+		p->vcount = 0;
+		p->pcount = 0;
 	}
 
-	// coefficients
-	p->b = sumxy / sumxx;
-	p->a = meany - ( p->b * meanx );
-
-	xxyy = sumyy * sumxx;
-	if( xxyy != 0.0 )
-		p->coef = ( sumxy * sumxy ) / xxyy;
-	else
-		p->coef = 0.0;
-
-	// now we are in business
-	p->prediction.ts  = t->predbuf[sp->vsize - 1].ts + ( t->predbuf[1].ts - t->predbuf[0].ts );
-	p->prediction.val = p->a + ( p->b * p->prediction.ts );
-
-	bprintf( t, "%s.predict %f", d->path, ( p->prediction.val - val ) );
-	bprintf( t, "%s.coef %f", d->path, p->coef );
-	bprintf( t, "%s.raw %f", d->path, val );
+	// and keep count
+	t->predict++;
 }
 
 void stats_adder_pass( ST_THR *t )
@@ -628,7 +563,7 @@ void stats_adder_pass( ST_THR *t )
 	DHASH *d;
 
 #ifdef DEBUG
-	debug( "[%02d] Adder claim", t->id );
+	//debug( "[%02d] Adder claim", t->id );
 #endif
 
 	st_thr_time( steal );
@@ -658,11 +593,13 @@ void stats_adder_pass( ST_THR *t )
 					lock_adder( d );
 
 					// copy it in
-					d->proc.total = d->predict->prediction.val;
+					d->proc.total = dp_get_v( d->predict->prediction );
+					debug( "Using predicted value: %f", d->proc.total );
 					d->proc.count = 1;
 					d->do_pass    = 1;
 					// mark it as having another prediction used
 					d->predict->pcount++;
+					d->predict->pflag = 1;
 
 					unlock_adder( d );
 				}
@@ -693,7 +630,7 @@ void stats_adder_pass( ST_THR *t )
 	lock_stthr( t );
 
 #ifdef DEBUG
-	debug( "[%02d] Adder report", t->id );
+	//debug( "[%02d] Adder report", t->id );
 #endif
 
 	st_thr_time( stats );
@@ -709,8 +646,8 @@ void stats_adder_pass( ST_THR *t )
 
 					if( d->predict )
 						stats_predictor( t, d );
-
-					bprintf( t, "%s %f", d->path, d->proc.total );
+					else
+						bprintf( t, "%s %f", d->path, d->proc.total );
 
 					// keep count and then zero it
 					t->points += d->proc.count;
@@ -734,7 +671,7 @@ void stats_gauge_pass( ST_THR *t )
 	DHASH *d;
 
 #ifdef DEBUG
-	debug( "[%02d] Gauge claim", t->id );
+	//debug( "[%02d] Gauge claim", t->id );
 #endif
 
 	st_thr_time( steal );
@@ -760,7 +697,7 @@ void stats_gauge_pass( ST_THR *t )
 		}
 
 #ifdef DEBUG
-	debug( "[%02d] Gauge report", t->id );
+	//debug( "[%02d] Gauge report", t->id );
 #endif
 
 	st_thr_time( stats );
@@ -802,7 +739,7 @@ void thread_pass( int64_t tval, void *arg )
 	int i;
 
 	// set up bufs and such
-	stats_set_bufs( t, NULL, tval );
+	stats_set_bufs( t, t->conf, tval );
 
 	// do the work
 	(*(t->conf->statfn))( t );
@@ -957,7 +894,10 @@ void stats_init_control( ST_CFG *c, int alloc_data )
 
 		// and adder may need a prediction buffer
 		if( ctl->stats->pred->enabled && c->type == STATS_TYPE_ADDER )
+		{
 			t->predbuf = (DPT *) allocz( ctl->stats->pred->vsize * sizeof( DPT ) );
+			t->predend = t->predbuf + ctl->stats->pred->vsize;
+		}
 
 		pthread_mutex_init( &(t->lock), NULL );
 
@@ -1046,9 +986,11 @@ STAT_CTL *stats_config_defaults( void )
 	// predictions are off by default
 	s->pred           = (ST_PRED *) allocz( sizeof( ST_PRED ) );
 	s->pred->enabled  = 0;
-	s->pred->vsize    = DEFAULT_STATS_PREDICT;
-	s->pred->pmax     = DEFAULT_STATS_PREDICT / 3;
+	s->pred->vsize    = DEFAULT_MATHS_PREDICT;
+	s->pred->pmax     = DEFAULT_MATHS_PREDICT / 3;
 	s->pred->rgx      = regex_list_create( 1 );
+	// fixed for now
+	s->pred->fp       = &maths_predict_linear;
 
 	// function choice threshold
 	s->qsort_thresh   = DEFAULT_QSORT_THRESHOLD;
@@ -1213,10 +1155,10 @@ int stats_config_line( AVP *av )
 				err( "Invalid linear regression size '%s'", av->val );
 				return -1;
 			}
-			if( v < MIN_STATS_PREDICT || v > MAX_STATS_PREDICT )
+			if( v < MIN_MATHS_PREDICT || v > MAX_MATHS_PREDICT )
 			{
 				err( "Linear regression size must be %d < x <= %d",
-					MIN_STATS_PREDICT, MAX_STATS_PREDICT );
+					MIN_MATHS_PREDICT, MAX_MATHS_PREDICT );
 				return -1;
 			}
 

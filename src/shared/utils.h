@@ -58,13 +58,14 @@ enum num_types
 #define BILLIONF			1000000000.0
 
 
-#define tsll( a )			( ( 1000000000 * (int64_t) a.tv_sec ) + (int64_t) a.tv_nsec )
-#define llts( a, _s )		_s.tv_sec = (time_t) ( a / 1000000000 ); _s.tv_nsec = (long) ( a % 1000000000 )
-#define lltv( a, _v )		_v.tv_sec = (time_t) ( a / 1000000000 ); _v.tv_usec = (long) ( ( a % 1000000000 ) / 1000 )
+#define tsll( a )			( ( BILLION * (int64_t) a.tv_sec ) + (int64_t) a.tv_nsec )
+#define llts( a, _s )		_s.tv_sec = (time_t) ( a / BILLION ); _s.tv_nsec = (long)   ( a % BILLION )
+#define lltv( a, _v )		_v.tv_sec = (time_t) ( a / BILLION ); _v.tv_usec = (long) ( ( a % BILLION ) / 1000 )
 #define tsdupe( a, b )		b.tv_sec = a.tv_sec; b.tv_nsec = a.tv_nsec
 
-#define tvalts( _t )		( _t / 1000000000 )
-#define tvalns( _t )		( _t % 1000000000 )
+#define tvalts( _t )		( _t / BILLION )
+#define tvalns( _t )		( _t % BILLION )
+#define timedbl( _t )		( ( (double) tvalts( _t ) ) + ( (double) tvalns( _t ) / BILLIONF ) )
 
 
 struct words_data

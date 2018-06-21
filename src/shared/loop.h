@@ -28,7 +28,7 @@ void loop_kill( int sig );
 
 throw_fn loop_timer;
 
-void loop_control( const char *name, loop_call_fn *fp, void *arg, int usec, int flags, int offset );
+void loop_control( const char *name, loop_call_fn *fp, void *arg, int64_t usec, int flags, int64_t offset );
 
 
 #endif
