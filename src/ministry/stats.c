@@ -988,7 +988,7 @@ STAT_CTL *stats_config_defaults( void )
 	s->pred->enabled  = 0;
 	s->pred->vsize    = DEFAULT_MATHS_PREDICT;
 	s->pred->pmax     = DEFAULT_MATHS_PREDICT / 3;
-	s->pred->rgx      = regex_list_create( 1 );
+	s->pred->rgx      = regex_list_create( 0 );
 	// fixed for now
 	s->pred->fp       = &maths_predict_linear;
 
