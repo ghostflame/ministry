@@ -295,6 +295,9 @@ __attribute__((hot)) void *tcp_watcher( void *arg )
 			th->hosts[i] = NULL;
 			th->polls[i].fd = -1;
 
+			// and counters
+			th->curr--;
+
 			// is this a new first-available-slot?
 			if( i < th->pmin )
 			    th->pmin = i;
