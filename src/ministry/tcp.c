@@ -114,10 +114,10 @@ __attribute__((hot)) void tcp_find_slot( TCPTH *th, HOST *h )
 	int64_t i;
 
 	// are we full?
-	if( th->curr == th->type->pollmax )
+	if( th->curr == th->type->pollmax || th->pmin < 0 )
 	{
 		twarn( "Closing socket to host %s because we cannot take on any more.",
-			    th->num, h->net->name );
+		       h->net->name );
 		tcp_close_host( h );
 		return;
 	}
@@ -153,7 +153,10 @@ __attribute__((hot)) void tcp_find_slot( TCPTH *th, HOST *h )
 
 	// this will bark if we ever screw up
 	if( i == th->type->pollmax )
+	{
 		th->pmin = -1;
+		twarn( "Setting pmin to -1." );
+	}
 }
 
 
