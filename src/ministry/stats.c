@@ -109,6 +109,22 @@ void bprintf( ST_THR *t, char *fmt, ... )
 
 
 
+// PREDICTOR FUNCTIONS
+void stats_predict_linear( ST_THR *t, DHASH *d )
+{
+	// calculate the values
+	maths_predict_linear( d, ctl->stats->pred );
+
+	// report our coefficients and fitness parameter
+	// these need to be reported more accurately
+	bprintf( t, "%s.lr_a %.10f", d->path, d->predict->a );
+	bprintf( t, "%s.lr_b %.10f", d->path, d->predict->b );
+	bprintf( t, "%s.fit %f", d->path, d->predict->fit );
+}
+
+
+
+
 // TIMESTAMP FUNCTIONS
 void stats_tsf_sec( ST_THR *t, BUF *b )
 {
@@ -217,7 +233,7 @@ void stats_thread_report( ST_THR *t )
 	}
 
 	// how many predictions?
-	if( t->predbuf )
+	if( t->predict )
 		bprintf( t, "%s.predictions %d", t->wkrstr, t->predict );
 
 	tsteal = tsll( t->steal );
@@ -475,10 +491,9 @@ void stats_predictor( ST_THR *t, DHASH *d )
 {
 	ST_PRED *sp = ctl->stats->pred;
 	PRED *p = d->predict;
-	uint8_t valid, c;
 	double ts, val;
+	uint8_t valid;
 	int64_t next;
-	DPT *dp;
 
 	val = d->proc.total;
 	valid = p->valid;
@@ -487,12 +502,7 @@ void stats_predictor( ST_THR *t, DHASH *d )
 	bprintf( t, "%s.input %f", d->path, val );
 
 	// capture the current value
-	dp = p->points + p->vindex;
-	ts = timedbl( t->tval );
-	dpp_set( dp, ts, val );
-
-	// and roll the vindex around
-	p->vindex = ( p->vindex + 1 ) % sp->vsize;
+	history_add_point( p->hist, t->tval, val );
 
 	// zero the prediction-only counter if we have a real value
 	if( p->pflag )
@@ -504,7 +514,7 @@ void stats_predictor( ST_THR *t, DHASH *d )
 	if( p->valid == 0 )
 	{
 		p->vcount++;
-		if( p->vcount == sp->vsize )
+		if( p->vcount == p->hist->size )
 			p->valid = 1;
 	}
 
@@ -520,18 +530,6 @@ void stats_predictor( ST_THR *t, DHASH *d )
 	{
 		// report the diff of the previous prediction against the new value
 		bprintf( t, "%s.diff %f", d->path, ( dp_get_v( p->prediction ) - val ) );
-	}
-
-	// is it all in one row?
-	if( p->vindex == 0 )
-		memcpy( t->predbuf, p->points, sp->vsize * sizeof( DPT ) );
-	else
-	{
-		// copy in the buffer, end first
-		c = sp->vsize - p->vindex;
-
-		memcpy( t->predbuf, p->points + p->vindex, c * sizeof( DPT ) );
-		memcpy( t->predbuf + c, p->points, p->vindex * sizeof( DPT ) );
 	}
 
 	// calculate the next timestamp and put it in
@@ -556,6 +554,7 @@ void stats_predictor( ST_THR *t, DHASH *d )
 	// and keep count
 	t->predict++;
 }
+
 
 void stats_adder_pass( ST_THR *t )
 {
@@ -892,13 +891,6 @@ void stats_init_control( ST_CFG *c, int alloc_data )
 			t->counters = (uint32_t *) allocz( 6 * sizeof( uint32_t ) * F8_SORT_HIST_SIZE );
 		}
 
-		// and adder may need a prediction buffer
-		if( ctl->stats->pred->enabled && c->type == STATS_TYPE_ADDER )
-		{
-			t->predbuf = (DPT *) allocz( ctl->stats->pred->vsize * sizeof( DPT ) );
-			t->predend = t->predbuf + ctl->stats->pred->vsize;
-		}
-
 		pthread_mutex_init( &(t->lock), NULL );
 
 		// and that starts locked
@@ -990,7 +982,7 @@ STAT_CTL *stats_config_defaults( void )
 	s->pred->pmax     = DEFAULT_MATHS_PREDICT / 3;
 	s->pred->rgx      = regex_list_create( 0 );
 	// fixed for now
-	s->pred->fp       = &maths_predict_linear;
+	s->pred->fp       = &stats_predict_linear;
 
 	// function choice threshold
 	s->qsort_thresh   = DEFAULT_QSORT_THRESHOLD;
@@ -1162,7 +1154,7 @@ int stats_config_line( AVP *av )
 				return -1;
 			}
 
-			s->pred->vsize = (uint8_t) v;
+			s->pred->vsize = (uint16_t) v;
 			s->pred->pmax  = s->pred->vsize / 3;
 		}
 		else if( !strcasecmp( d, "fallbackMatch" ) )

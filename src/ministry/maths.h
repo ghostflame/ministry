@@ -12,8 +12,8 @@
 
 
 #define DEFAULT_MATHS_PREDICT		30
-#define MAX_MATHS_PREDICT			254
-#define MIN_MATHS_PREDICT			8
+#define MAX_MATHS_PREDICT			500
+#define MIN_MATHS_PREDICT			10
 
 
 // one of these lives on the DHASH if we are
@@ -21,16 +21,15 @@
 struct maths_prediction
 {
 	PRED			*	next;
-	DPT				*	points;
+	HIST			*	hist;
 	DPT					prediction;
 	double				a;		// presumes a + bx + cx^2 ...
 	double				b;
 //	double				c;
 //	double				d;
 	double				fit;	// quality coefficient
-	uint8_t				vindex;
-	uint8_t				vcount;
-	uint8_t				pcount;
+	uint16_t			vcount;
+	uint16_t			pcount;
 	uint8_t				valid;
 	uint8_t				pflag;
 };
@@ -52,7 +51,7 @@ struct maths_moments
 
 
 // I'll do more at some point
-pred_fn maths_predict_linear;
+void maths_predict_linear( DHASH *d, ST_PRED *sp );
 
 // see https://en.wikipedia.org/wiki/Kahan_summation_algorithm
 void maths_kahan_summation( double *list, int len, double *sum );

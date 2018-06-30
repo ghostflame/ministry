@@ -12,25 +12,33 @@
 
 
 
-void maths_predict_linear( ST_THR *t, DHASH *d )
+void maths_predict_linear( DHASH *d, ST_PRED *sp )
 {
 	double ts, diffx, diffy, meanx, meany, sumy, sumxy, sumxx, sumyy, xxyy, pval;
-	ST_PRED *sp = ctl->stats->pred;
 	PRED *p = d->predict;
+	HIST *h = p->hist;
+	uint16_t i;
 	DPT *dp;
 
 	// calculate the new value
-	for( sumy = 0.0, dp = t->predbuf; dp < t->predend; dp++ )
-		sumy += dpp_get_v( dp );
+	for( sumy = 0.0, i = 0; i < h->size; i++ )
+		sumy += dp_get_v( h->points[i] );
 
-	// average timestamp is easy
-	meanx = ( dp_get_t( t->predbuf[0] ) + dp_get_t( t->predbuf[sp->vsize - 1] ) ) / 2.0;
-	meany = sumy / (double) sp->vsize;
+	meany = sumy / (double) h->size;
+
+	// average timestamp 
+	dp = history_get_oldest( h );
+	meanx = dpp_get_t( dp );
+	dp = history_get_newest( h );
+	meanx += dpp_get_t( dp );
+	meanx /= 2.0;
+
 	//debug( "Means: x - %f, y - %f", meanx, meany );
 
 	sumxx = 0.0, sumyy = 0.0, sumxy = 0.0;
-	for( dp = t->predbuf; dp < t->predend; dp++ )
+	for( i = 0; i < h->size; i++ )
 	{
+		dp = h->points + i;
 		diffx = dpp_get_t( dp ) - meanx;
 		diffy = dpp_get_v( dp ) - meany;
 
@@ -48,7 +56,6 @@ void maths_predict_linear( ST_THR *t, DHASH *d )
 	p->a = meany - ( p->b * meanx );
 
 	//debug( "Coefs: a - %f, b - %f", p->a, p->b );
-
 	xxyy = sumyy * sumxx;
 
 	if( xxyy != 0.0 )
@@ -60,12 +67,6 @@ void maths_predict_linear( ST_THR *t, DHASH *d )
 	ts = dp_get_t( p->prediction );
 	pval = p->a + ( p->b * ts );
 	dp_set( p->prediction, ts, pval );
-
-	// report our coefficients and fitness parameter
-	// these need to be reported more accurately
-	bprintf( t, "%s.lr_a %.10f", d->path, p->a );
-	bprintf( t, "%s.lr_b %.10f", d->path, p->b );
-	bprintf( t, "%s.fit %f", d->path, p->fit );
 }
 
 

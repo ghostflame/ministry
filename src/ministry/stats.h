@@ -11,6 +11,8 @@
 #define MINISTRY_STATS_H
 
 
+pred_fn stats_predict_linear;
+
 loop_call_fn thread_pass;
 
 stats_fn stats_stats_pass;
@@ -72,8 +74,6 @@ struct stat_thread_ctl
 	double			*	wkbuf1;		// first buffer
 	double			*	wkbuf2;		// second buffer
 	double			*	wkspc;		// source buffer
-	DPT				*	predbuf;	// prediction buffer
-	DPT				*	predend;	// for for loops
 	uint32_t		*	counters;
 	int32_t				wkspcsz;
 
@@ -145,10 +145,10 @@ struct stat_moments
 struct stat_predict_conf
 {
 	RGXL			*	rgx;
-	uint8_t				vsize;
-	uint8_t				pmax;
-	int8_t				enabled;
 	pred_fn			*	fp;
+	uint16_t			vsize;
+	uint16_t			pmax;
+	int8_t				enabled;
 };
 
 
