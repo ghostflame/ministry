@@ -122,8 +122,6 @@ __attribute__((hot)) void tcp_find_slot( TCPTH *th, HOST *h )
 		return;
 	}
 
-	tinfo( "Accepted %s connection from host %s into slot %ld.", h->type->label, h->net->name, th->pmin );
-
 	// find the first free slot
 	i = th->pmin;
 
@@ -157,6 +155,9 @@ __attribute__((hot)) void tcp_find_slot( TCPTH *th, HOST *h )
 		th->pmin = -1;
 		twarn( "Setting pmin to -1." );
 	}
+
+	tinfo( "Accepted %s connection from host %s into slot %ld, curr %ld.",
+	       h->type->label, h->net->name, th->pmin, th->curr );
 }
 
 
