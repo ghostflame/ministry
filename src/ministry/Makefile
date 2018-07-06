@@ -1,7 +1,7 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-FILES  = locks mem gc net tcp udp targets data token synth sort stats selfstats main
-HEADS  = data gc mem ministry targets net tcp udp token sort stats selfstats synth locks typedefs 
+FILES  = locks mem gc net tcp udp targets data token synth sort history maths stats selfstats main
+HEADS  = data gc mem ministry targets net tcp udp token sort history maths stats selfstats synth locks typedefs 
 VERS   = $(shell sed -rn 's/^Version:\t(.*)/\1/p' ../../ministry.spec)
 
 OBJS   = $(FILES:%=%.o)

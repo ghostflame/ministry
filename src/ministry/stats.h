@@ -11,6 +11,8 @@
 #define MINISTRY_STATS_H
 
 
+pred_fn stats_predict_linear;
+
 loop_call_fn thread_pass;
 
 stats_fn stats_stats_pass;
@@ -58,6 +60,7 @@ enum stats_types
 #define PATH_SZ						8192
 
 
+
 struct stat_thread_ctl
 {
 	ST_THR			*	next;
@@ -87,6 +90,7 @@ struct stat_thread_ctl
 	int64_t				active;
 	int64_t				points;
 	int64_t				highest;
+	int64_t				predict;
 
 	// timings
 	struct timespec		now;
@@ -109,8 +113,8 @@ struct stat_config
 	int					dtype;
 	int					threads;
 	int					enable;
-	int					period;		// msec config, converted to usec
-	int					offset;		// msec config, converted to usec
+	int64_t				period;		// msec config, converted to usec
+	int64_t				offset;		// msec config, converted to usec
 	stats_fn		*	statfn;
 
 	// and the data
@@ -138,6 +142,15 @@ struct stat_moments
 	int					enabled;
 };
 
+struct stat_predict_conf
+{
+	RGXL			*	rgx;
+	pred_fn			*	fp;
+	uint16_t			vsize;
+	uint16_t			pmax;
+	int8_t				enabled;
+};
+
 
 struct stats_control
 {
@@ -148,6 +161,7 @@ struct stats_control
 
 	ST_THOLD		*	thresholds;
 	ST_MOM			*	mom;
+	ST_PRED			*	pred;
 
 	// for new sorting
 	int32_t				qsort_thresh;

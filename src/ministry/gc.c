@@ -13,7 +13,7 @@
 // does not have it's own config - owned by mem.c
 
 
-__attribute__((hot)) int gc_hash_list( DHASH **list, DHASH **flist, unsigned int idx, int thresh )
+__attribute__((hot)) int gc_hash_list( DHASH **list, DHASH **flist, PRED **plist, unsigned int idx, int thresh )
 {
 	int lock = 0, freed = 0;
 	DHASH *h, *prev, *next;
@@ -54,6 +54,14 @@ __attribute__((hot)) int gc_hash_list( DHASH **list, DHASH **flist, unsigned int
 				if( pts )
 					mem_free_point_list( pts );
 			}
+
+			// clear any predictor block
+			if( h->predict )
+			{
+				h->predict->next = *plist;
+				*plist = h->predict;
+				h->predict = NULL;
+			}
 		}
 		else if( h->empty > thresh )
 		{
@@ -71,13 +79,13 @@ __attribute__((hot)) int gc_hash_list( DHASH **list, DHASH **flist, unsigned int
 }
 
 
-void gc_one_set( ST_CFG *c, DHASH **flist, int thresh )
+void gc_one_set( ST_CFG *c, DHASH **flist, PRED **plist, int thresh )
 {
 	int hits = 0;
 	uint64_t i;
 
 	for( i = 0; i < c->hsize; i++ )
-		hits += gc_hash_list( &(c->data[i]), flist, i, thresh );
+		hits += gc_hash_list( &(c->data[i]), flist, plist, i, thresh );
 
 	if( hits > 0 )
 	{
@@ -105,20 +113,24 @@ void gc_one_set( ST_CFG *c, DHASH **flist, int thresh )
 void gc_pass( int64_t tval, void *arg )
 {
 	DHASH *flist = NULL;
+	PRED *plist = NULL;
 
-	gc_one_set( ctl->stats->stats, &flist, ctl->gc->thresh );
-	gc_one_set( ctl->stats->adder, &flist, ctl->gc->thresh );
-	gc_one_set( ctl->stats->gauge, &flist, ctl->gc->gg_thresh );
+	gc_one_set( ctl->stats->stats, &flist, &plist, ctl->gc->thresh );
+	gc_one_set( ctl->stats->adder, &flist, &plist, ctl->gc->thresh );
+	gc_one_set( ctl->stats->gauge, &flist, &plist, ctl->gc->gg_thresh );
 
 	if( flist )
 		mem_free_dhash_list( flist );
+
+	if( plist )
+		mem_free_pred_list( plist );
 }
 
 
 
 void *gc_loop( void *arg )
 {
-	int usec;
+	int64_t usec;
 
 	// we don't use that
 	free( (THRD *) arg );
@@ -126,7 +138,7 @@ void *gc_loop( void *arg )
 	// we only loop if we are gc-enabled
 	// otherwise exit straight away
 	if( ctl->gc->enabled ) {
-		usec = (int) ( ( (double) ctl->stats->self->period ) * 1.72143698 );
+		usec = (int64_t) ( ( (double) ctl->stats->self->period ) * 1.72143698 );
 		loop_control( "gc", &gc_pass, NULL, usec, LOOP_TRIM, 0 );
 	}
 

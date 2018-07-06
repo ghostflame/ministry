@@ -280,7 +280,7 @@ IOBUF *io_buf_fetch( TGT *t )
 		b = bp->buf;
 		mem_free_iobp( &bp );
 
-		tgdebug( "Grabbed buffer %p, %d remaining", b, t->curr );
+		//tgdebug( "Grabbed buffer %p, %d remaining", b, t->curr );
 	}
 
 	return b;
@@ -318,7 +318,7 @@ void __io_buf_post_one( TGT *t, IOBUF *b )
 	}
 
 	t->curr++;
-	tgdebug( "Target now has %d bufs.", t->curr );
+	//tgdebug( "Target now has %d bufs.", t->curr );
 
 	unlock_target( t );
 }

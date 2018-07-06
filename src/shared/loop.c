@@ -77,7 +77,7 @@ static int64_t loop_control_factors[8] = {
 
 // we do integer maths here to avoid creeping
 // double-precision addition inaccuracies
-void loop_control( const char *name, loop_call_fn *fp, void *arg, int usec, int flags, int offset )
+void loop_control( const char *name, loop_call_fn *fp, void *arg, int64_t usec, int flags, int64_t offset )
 {
 	int64_t timer, intv, nsec, offs, diff, t, skips, fires;
 	int i, ticks = 1, curr = 0;
@@ -87,8 +87,8 @@ void loop_control( const char *name, loop_call_fn *fp, void *arg, int usec, int 
 #endif
 
 	// convert to nsec
-	nsec = 1000 * (int64_t) usec;
-	offs = 1000 * (int64_t) offset;
+	nsec = 1000 * usec;
+	offs = 1000 * offset;
 	// the actual sleep interval may be less
 	// if period is too high
 	intv = nsec;

@@ -43,6 +43,21 @@ struct data_type_params
 extern const DTYPE data_type_defns[];
 
 
+#define dp_set( _dp, t, v )			_dp.ts = t; _dp.val = v
+#define dp_get_t( _dp )				_dp.ts
+#define dp_get_v( _dp )				_dp.val
+
+#define dpp_set( __dp, t, v )		__dp->ts = t; __dp->val = v
+#define dpp_get_t( __dp )			__dp->ts
+#define dpp_get_v( __dp )			__dp->val
+
+struct data_point
+{
+	double				ts;
+	double				val;
+};
+
+
 struct points_list
 {
 	PTLIST			*	next;
@@ -70,6 +85,9 @@ struct data_hash_entry
 	// have data
 	DVAL				in;
 	DVAL				proc;
+
+	// predictor structure, present or absent
+	PRED			*	predict;
 
 	dhash_lock_t	*	lock;
 

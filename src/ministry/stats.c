@@ -109,6 +109,22 @@ void bprintf( ST_THR *t, char *fmt, ... )
 
 
 
+// PREDICTOR FUNCTIONS
+void stats_predict_linear( ST_THR *t, DHASH *d )
+{
+	// calculate the values
+	maths_predict_linear( d, ctl->stats->pred );
+
+	// report our coefficients and fitness parameter
+	// these need to be reported more accurately
+	bprintf( t, "%s.lr_a %.10f", d->path, d->predict->a );
+	bprintf( t, "%s.lr_b %.10f", d->path, d->predict->b );
+	bprintf( t, "%s.fit %f", d->path, d->predict->fit );
+}
+
+
+
+
 // TIMESTAMP FUNCTIONS
 void stats_tsf_sec( ST_THR *t, BUF *b )
 {
@@ -154,6 +170,8 @@ void stats_set_bufs( ST_THR *t, ST_CFG *c, int64_t tval )
 	TSET *s;
 	int i;
 
+	//debug( "Thread: %p (%s), Config: %p", t, t->wkrstr, c );
+
 	// only set the timestamp buffer if we need to
 	if( tval )
 	{
@@ -165,11 +183,8 @@ void stats_set_bufs( ST_THR *t, ST_CFG *c, int64_t tval )
 		t->active  = 0;
 		t->points  = 0;
 		t->highest = 0;
+		t->predict = 0;
 	}
-
-	// default to our own config
-	if( !c )
-		c = t->conf;
 
 	// just point to the prefix buffer we want
 	t->prefix = c->prefix;
@@ -217,6 +232,10 @@ void stats_thread_report( ST_THR *t )
 		bprintf( t, "%s.highest %d",   t->wkrstr, t->highest );
 	}
 
+	// how many predictions?
+	if( t->predict )
+		bprintf( t, "%s.predictions %d", t->wkrstr, t->predict );
+
 	tsteal = tsll( t->steal );
 	twait  = tsll( t->wait );
 	tstats = tsll( t->stats );
@@ -256,92 +275,23 @@ void stats_thread_report( ST_THR *t )
 
 
 
-// an implementation of Kaham Summation
-// https://en.wikipedia.org/wiki/Kahan_summation_algorithm
-// useful to avoid floating point errors
-static inline void kahan_sum( double val, double *sum, double *low )
-{
-	double y, t;
 
-	y = val - *low;     // low starts off small
-	t = *sum + y;       // sum is big, y small, lo-order y is lost
-
-	*low = ( t - *sum ) - y;// (t-sum) is hi-order y, -y recovers lo-order
-	*sum = t;           // low is algebraically always 0
-}
-
-void kahan_summation( double *list, int len, double *sum )
-{
-	double low = 0;
-	int i;
-
-	for( *sum = 0, i = 0; i < len; i++ )
-		kahan_sum( list[i], sum, &low );
-
-	*sum += low;
-}
-
-
-// https://en.wikipedia.org/wiki/Standard_deviation#Estimation
-// https://en.wikipedia.org/wiki/Skewness#Sample_skewness
-// https://en.wikipedia.org/wiki/Kurtosis#Sample_kurtosis
+// report on standard deviation, skewness and kurtosis
 void stats_report_moments( ST_THR *t, DHASH *d, int64_t ct, double mean )
 {
-	double sdev, skew, kurt, dtmp, stmp, ktmp, diff, prod;
-	int64_t i;
+	MOMS m;
 
-	sdev = skew = kurt = 0;
-	dtmp = stmp = ktmp = 0;
+	memset( &m, 0, sizeof( MOMS ) );
+	m.input    = t->wkspc;
+	m.count    = ct;
+	m.mean     = mean;
+	m.mean_set = 1;
 
-	for( i = 0; i < ct; i++ )
-	{
-		// diff from mean
-		diff = t->wkspc[i] - mean;
-		prod = diff * diff;
+	maths_moments( &m );
 
-		// stddev needs sum of squares of diffs
-		kahan_sum( prod, &sdev, &dtmp );
-
-		// skewness needs third moment
-		prod *= diff;
-		kahan_sum( prod, &skew, &stmp );
-
-		// kurtosis needs fourth moment
-		prod *= diff;
-		kahan_sum( prod, &kurt, &ktmp );
-	}
-
-	// complete the kahan sum
-	sdev += dtmp;
-	skew += stmp;
-	kurt += ktmp;
-
-	// we don't need corrected - we have the whole population
-	sdev /= (double) ct;
-	kurt /= (double) ct;
-
-	// using Fisher-Pearson standardized moment with any decent count size
-	// http://www.statisticshowto.com/skewness/
-	if( ct > 5 )
-	{
-		skew *= (double) ct;
-		skew /= (double) ( ct - 1 ) * ( ct - 2 );
-	}
-	else
-		skew /= (double) ct;
-
-	// and sqrt the variance to get the std deviation
-	sdev = sqrt( sdev );
-
-	// normalize against the variance
-	skew /= sdev * sdev * sdev;
-	kurt /= sdev * sdev * sdev * sdev;
-	// and subtract 3 from kurtosis
-	kurt -= 3;
-
-	bprintf( t, "%s.stddev %f",   d->path, sdev );
-	bprintf( t, "%s.skewness %f", d->path, skew );
-	bprintf( t, "%s.kurtosis %f", d->path, kurt );
+	bprintf( t, "%s.stddev %f",   d->path, m.sdev );
+	bprintf( t, "%s.skewness %f", d->path, m.skew );
+	bprintf( t, "%s.kurtosis %f", d->path, m.kurt );
 }
 
 
@@ -420,7 +370,7 @@ void stats_report_one( ST_THR *t, DHASH *d )
 	}
 
 	sum = 0;
-	kahan_summation( t->wkspc, ct, &sum );
+	maths_kahan_summation( t->wkspc, ct, &sum );
 
 	// median offset
 	idx = ct / 2;
@@ -478,7 +428,7 @@ void stats_stats_pass( ST_THR *t )
 	DHASH *d;
 
 #ifdef DEBUG
-	debug( "[%02d] Stats claim", t->id );
+	//debug( "[%02d] Stats claim", t->id );
 #endif
 
 	st_thr_time( steal );
@@ -511,7 +461,7 @@ void stats_stats_pass( ST_THR *t )
 		}
 
 #ifdef DEBUG
-	debug( "[%02d] Stats report", t->id );
+	//debug( "[%02d] Stats report", t->id );
 #endif
 
 	st_thr_time( stats );
@@ -536,13 +486,83 @@ void stats_stats_pass( ST_THR *t )
 
 
 
+
+void stats_predictor( ST_THR *t, DHASH *d )
+{
+	ST_PRED *sp = ctl->stats->pred;
+	PRED *p = d->predict;
+	double ts, val;
+	uint8_t valid;
+	int64_t next;
+
+	val = d->proc.total;
+	valid = p->valid;
+
+	// report what we got
+	bprintf( t, "%s.input %f", d->path, val );
+
+	// capture the current value
+	history_add_point( p->hist, t->tval, val );
+
+	// zero the prediction-only counter if we have a real value
+	if( p->pflag )
+		p->pflag = 0;
+	else
+		p->pcount = 0;
+
+	// increment the count
+	if( p->valid == 0 )
+	{
+		p->vcount++;
+		if( p->vcount == p->hist->size )
+			p->valid = 1;
+	}
+
+	// if we've not got enough points yet, we're done
+	if( !p->valid )
+	{
+		debug( "Path %s is not valid yet: %hhu points.", d->path, p->vcount );
+		return;
+	}
+
+	// were we already valid?
+	if( valid )
+	{
+		// report the diff of the previous prediction against the new value
+		bprintf( t, "%s.diff %f", d->path, ( dp_get_v( p->prediction ) - val ) );
+	}
+
+	// calculate the next timestamp and put it in
+	next = t->tval + ( 1000 * t->conf->period );
+	ts = timedbl( next );
+	dp_set( p->prediction, ts, 0 );
+
+	// and call the relevant function
+	(*(ctl->stats->pred->fp))( t, d );
+
+	// report our newly calculated prediction
+	bprintf( t, "%s.predict %f", d->path, dp_get_v( p->prediction ) );
+
+	// have we run the course on pcount?
+	if( p->pcount == sp->pmax )
+	{
+		p->valid = 0;
+		p->vcount = 0;
+		p->pcount = 0;
+	}
+
+	// and keep count
+	t->predict++;
+}
+
+
 void stats_adder_pass( ST_THR *t )
 {
 	uint64_t i;
 	DHASH *d;
 
 #ifdef DEBUG
-	debug( "[%02d] Adder claim", t->id );
+	//debug( "[%02d] Adder claim", t->id );
 #endif
 
 	st_thr_time( steal );
@@ -561,6 +581,24 @@ void stats_adder_pass( ST_THR *t )
 					d->in.total = 0;
 					d->in.count = 0;
 					d->do_pass  = 1;
+
+					unlock_adder( d );
+				}
+				else if( d->predict
+					  && d->predict->valid
+					  && d->predict->pcount < ctl->stats->pred->pmax )
+				{
+					// fill in the number using the predictor
+					lock_adder( d );
+
+					// copy it in
+					d->proc.total = dp_get_v( d->predict->prediction );
+					debug( "Using predicted value: %f", d->proc.total );
+					d->proc.count = 1;
+					d->do_pass    = 1;
+					// mark it as having another prediction used
+					d->predict->pcount++;
+					d->predict->pflag = 1;
 
 					unlock_adder( d );
 				}
@@ -591,7 +629,7 @@ void stats_adder_pass( ST_THR *t )
 	lock_stthr( t );
 
 #ifdef DEBUG
-	debug( "[%02d] Adder report", t->id );
+	//debug( "[%02d] Adder report", t->id );
 #endif
 
 	st_thr_time( stats );
@@ -605,7 +643,10 @@ void stats_adder_pass( ST_THR *t )
 					if( d->empty > 0 )
 						d->empty = 0;
 
-					bprintf( t, "%s %f", d->path, d->proc.total );
+					if( d->predict )
+						stats_predictor( t, d );
+					else
+						bprintf( t, "%s %f", d->path, d->proc.total );
 
 					// keep count and then zero it
 					t->points += d->proc.count;
@@ -629,7 +670,7 @@ void stats_gauge_pass( ST_THR *t )
 	DHASH *d;
 
 #ifdef DEBUG
-	debug( "[%02d] Gauge claim", t->id );
+	//debug( "[%02d] Gauge claim", t->id );
 #endif
 
 	st_thr_time( steal );
@@ -655,7 +696,7 @@ void stats_gauge_pass( ST_THR *t )
 		}
 
 #ifdef DEBUG
-	debug( "[%02d] Gauge report", t->id );
+	//debug( "[%02d] Gauge report", t->id );
 #endif
 
 	st_thr_time( stats );
@@ -697,7 +738,7 @@ void thread_pass( int64_t tval, void *arg )
 	int i;
 
 	// set up bufs and such
-	stats_set_bufs( t, NULL, tval );
+	stats_set_bufs( t, t->conf, tval );
 
 	// do the work
 	(*(t->conf->statfn))( t );
@@ -934,6 +975,15 @@ STAT_CTL *stats_config_defaults( void )
 	s->mom->enabled   = 0;
 	s->mom->rgx       = regex_list_create( 1 );
 
+	// predictions are off by default
+	s->pred           = (ST_PRED *) allocz( sizeof( ST_PRED ) );
+	s->pred->enabled  = 0;
+	s->pred->vsize    = DEFAULT_MATHS_PREDICT;
+	s->pred->pmax     = DEFAULT_MATHS_PREDICT / 3;
+	s->pred->rgx      = regex_list_create( 0 );
+	// fixed for now
+	s->pred->fp       = &stats_predict_linear;
+
 	// function choice threshold
 	s->qsort_thresh   = DEFAULT_QSORT_THRESHOLD;
 
@@ -1078,6 +1128,51 @@ int stats_config_line( AVP *av )
 			if( regex_list_add( av->val, 1, s->mom->rgx ) )
 				return -1;
 			debug( "Added moments blacklist regex: %s", av->val );
+		}
+		else
+			return -1;
+
+		return 0;
+	}
+	else if( !strncasecmp( av->att, "predict.", 8 ) )
+	{
+		if( !strcasecmp( d, "enable" ) )
+		{
+			s->pred->enabled = config_bool( av );
+		}
+		else if( !strcasecmp( d, "size" ) )
+		{
+			if( av_int( v ) == NUM_INVALID )
+			{
+				err( "Invalid linear regression size '%s'", av->val );
+				return -1;
+			}
+			if( v < MIN_MATHS_PREDICT || v > MAX_MATHS_PREDICT )
+			{
+				err( "Linear regression size must be %d < x <= %d",
+					MIN_MATHS_PREDICT, MAX_MATHS_PREDICT );
+				return -1;
+			}
+
+			s->pred->vsize = (uint16_t) v;
+			s->pred->pmax  = s->pred->vsize / 3;
+		}
+		else if( !strcasecmp( d, "fallbackMatch" ) )
+		{
+			t = config_bool( av );
+			regex_list_set_fallback( t, s->pred->rgx );
+		}
+		else if( !strcasecmp( d, "whitelist" ) )
+		{
+			if( regex_list_add( av->val, 0, s->pred->rgx ) )
+				return -1;
+			debug( "Added prediction whitelist regex: %s", av->val );
+		}
+		else if( !strcasecmp( d, "blacklist" ) )
+		{
+			if( regex_list_add( av->val, 1, s->pred->rgx ) )
+				return -1;
+			debug( "Added prediction blacklist regex: %s", av->val );
 		}
 		else
 			return -1;

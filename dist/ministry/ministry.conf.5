@@ -269,6 +269,26 @@ number and nature of the expressions.
 \fBmoments.fallbackMatch\fP
 Set whether matching no regexes results in overall match or no match (default is to match)
 .PP
+A new, experiemental feature in \fBministry\fP is metric prediction.  It only applies to adder types.  It keeps
+a number of value/timestamp pairs for selected metrics and runs linear regression each time a new metric is
+reported.  It predicts the next period's value, compares it's previous prediction against the actual next input
+and reports the modelling parameters.  This is all done by appending suffixes to the original path.
+.TP
+\fBpredict.enable\fP
+Enable prediction processing (boolean, defaults to 0)
+.TP
+\fBpredict.size\fP
+The number of points of data to keep for matching metrics (default 32)
+.TP
+\fBpredict.whitelist\fP, \fBpredict.blacklist\fP
+A set of regular expressions to control metric prediction.  Each can appear multiple times.  The order of the
+list is preserved and paths are checked against it in order, to decide if they should or should not have this
+processing done.  This will have a performance impact on new path creation for stats paths, depending on the
+number and nature of the expressions.
+.TP
+\fBpredict.fallbackMatch\fP
+Set whether matching no regexes results in an overall match or no match (default is to \fBNOT\fP match)
+.PP
 The rest of these are of the form stats.XXX, adder.XXX, gauge.XXX or self.XXX, affecting the behaviour of
 stats reporting, adder reporting, gauge reporting or self reporting.
 .TP

@@ -15,6 +15,8 @@
 #define MEM_ALLOCSZ_POINTS			512
 #define MEM_ALLOCSZ_DHASH			512
 #define MEM_ALLOCSZ_TOKEN			128
+#define MEM_ALLOCSZ_PREDS			128
+#define MEM_ALLOCSZ_HISTY			128
 
 #define DEFAULT_GC_THRESH			8640		// 1 day @ 10s
 #define DEFAULT_GC_GG_THRESH		25920		// 3 days @ 10s
@@ -26,6 +28,8 @@ struct memt_control
 	MTYPE			*	points;
 	MTYPE			*	dhash;
 	MTYPE			*	token;
+	MTYPE			*	preds;
+	MTYPE			*	histy;
 
 	int64_t				gc_enabled;
 	int64_t				gc_thresh;
@@ -47,6 +51,14 @@ void mem_free_dhash_list( DHASH *list );
 TOKEN *mem_new_token( void );
 void mem_free_token( TOKEN **t );
 void mem_free_token_list( TOKEN *list );
+
+PRED *mem_new_pred( void );
+void mem_free_pred( PRED **p );
+void mem_free_pred_list( PRED *list );
+
+HIST *mem_new_history( uint16_t size );
+void mem_free_history( HIST **h );
+void mem_free_history_list( HIST *list );
 
 int memt_config_line( AVP *av );
 MEMT_CTL *memt_config_defaults( void );

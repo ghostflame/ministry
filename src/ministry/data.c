@@ -241,6 +241,16 @@ __attribute__((hot)) static inline DHASH *data_get_dhash( char *path, int len, S
 				//else
 				//	debug( "Path %s will not get moments processing.", d->path );
 			}
+			else if( c->dtype == DATA_TYPE_ADDER && ctl->stats->pred->enabled )
+			{
+				if( regex_list_test( d->path, ctl->stats->pred->rgx ) == 0 )
+				{
+				//	debug( "Path %s will get linear regression prediction.", d->path );
+					d->predict = mem_new_pred( );
+				}
+				//else
+				//	debug( "Path %s will not get prediction.", d->path );
+			}
 		}
 	}
 
