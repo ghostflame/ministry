@@ -153,7 +153,7 @@ __attribute__((hot)) void tcp_find_slot( TCPTH *th, HOST *h )
 	if( i == th->type->pollmax )
 	{
 		th->pmin = -1;
-		twarn( "Setting pmin to -1." );
+		twarn( "Setting pmin to %d.", th->pmin );
 	}
 
 	tinfo( "Accepted %s connection from host %s into slot %ld, curr %ld.",
