@@ -1,5 +1,10 @@
 Refactor
-    man pages, install.conf, service files
+    Consider how to reduce the amount of calls to poll()
+        It returns as soon as any fd is ready
+        So with multiple fd's active it is hitting one and returning
+            then we have to poll again to catch the next one
+        How can we have a small interval then check them all?
+    Looks like prealloc isn't working.
 
 HTTP
 	Accept submissions via HTTP
