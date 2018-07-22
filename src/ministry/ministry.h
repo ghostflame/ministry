@@ -20,6 +20,9 @@
 #define VERSION_STRING "unknown"
 #endif
 
+// include epoll
+#include <sys/epoll.h>
+
 
 // crazy control
 #include "typedefs.h"
@@ -28,6 +31,8 @@
 #include "locks.h"
 #include "net.h"
 #include "udp.h"
+#include "tcp_thrd.h"
+#include "tcp_pool.h"
 #include "tcp.h"
 #include "token.h"
 #include "targets.h"

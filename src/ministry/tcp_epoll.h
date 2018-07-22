@@ -7,14 +7,9 @@
 * Updates:                                                                *
 **************************************************************************/
 
-#ifndef MINISTRY_TCP_H
-#define MINISTRY_TCP_H
+#ifndef MINISTRY_TCP_EPOLL_H
+#define MINISTRY_TCP_EPOLL_H
 
-throw_fn tcp_loop;
 
-void tcp_close_host( HOST *h );
-void tcp_close_active_host( HOST *h );
-HOST *tcp_get_host( int sock, NET_PORT *np );
-int tcp_listen( unsigned short port, uint32_t ip, int backlog );
 
 #endif

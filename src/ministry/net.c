@@ -125,7 +125,7 @@ void net_start_type( NET_TYPE *nt )
 			pthread_mutex_init( &(th->lock), NULL );
 			nt->tcp->threads[i] = th;
 
-			thread_throw( tcp_watcher, th, i );
+			thread_throw( tcp_pool_watcher, th, i );
 		}
 
 		// and start watching the socket

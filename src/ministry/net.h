@@ -45,6 +45,7 @@ struct host_data
 	SOCK				*	net;
 
 	NET_TYPE			*	type;
+	NET_PORT			*	port;
 	line_fn				*	parser;
 
 	struct sockaddr_in	*	peer;
@@ -130,6 +131,8 @@ struct network_control
 
 	char				*	filter_list;
 	char				*	prefix_list;
+
+	tcp_fn				*	tcp_hdlr;
 
 	time_t					dead_time;
 	unsigned int			rcv_tmout;

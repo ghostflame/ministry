@@ -55,5 +55,6 @@ typedef void add_fn ( char *, int, char * );
 typedef void line_fn ( HOST *, char *, int );
 typedef void synth_fn( SYNTH * );
 typedef void pred_fn ( ST_THR *, DHASH * );
+typedef void tcp_fn ( HOST * );
 
 #endif
