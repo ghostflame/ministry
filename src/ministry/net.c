@@ -226,6 +226,10 @@ int net_start( void )
 		iplist_explain( ctl->net->prefix, NULL, NULL, "Prefix", NULL );
 	}
 
+	// grab our tcp setup/handler fns
+	ctl->net->tcp_setup = tcp_styles[ctl->net->tcp_style].setup;
+	ctl->net->tcp_hdlr  = tcp_styles[ctl->net->tcp_style].fp;
+
 	notice( "Starting networking." );
 
 	ret += net_startup( ctl->net->stats );
@@ -318,6 +322,8 @@ NET_CTL *net_config_defaults( void )
 
 	// create our tokens structure
 	net->tokens      = token_setup( );
+
+	net->tcp_style   = TCP_STYLE_THRD;
 
 	return net;
 }
@@ -500,6 +506,25 @@ int net_config_line( AVP *av )
 			nt->pollmax = v;
 		}
 	}
+	else if( !strcasecmp( d, "style" ) )
+	{
+		if( tcp )
+		{
+			// do we recognise it?
+			for( i = 0; i < TCP_STYLE_MAX; i++ )
+				if( !strcasecmp( av->val, tcp_styles.name ) )
+				{
+					debug( "TCP handling style set to %s", av->val );
+					ctl->net->tcp_style = i;
+					return 0;
+				}
+
+			err( "TCP style '%s' not recognised.", av->val );
+			return -1;
+		}
+		else
+			warn( "Cannot set a handling style on UDP handling." );
+	}
 	else if( !strcasecmp( d, "checks" ) )
 	{
 		if( tcp )
@@ -525,7 +550,7 @@ int net_config_line( AVP *av )
 			nt->tcp->back = (unsigned short) v;
 		}
 		else
-			warn( "Cannot set a backlog for a udp connection." );
+			warn( "Cannot set a backlog for a UDP connection." );
 	}
 	else if( !strcasecmp( d, "port" ) || !strcasecmp( d, "ports" ) )
 	{

@@ -56,6 +56,8 @@ struct host_data
 	int64_t					connected;	// first timestamp seen (nsec)
 	time_t                  last;       // last timestamp sec
 
+	struct epoll_event		ep_evt;		// used in epoll option
+
 	IPNET				*	ipn;
 	char				*	workbuf;	// gets set to fixed size
 	char				*	ltarget;
@@ -76,6 +78,8 @@ struct net_in_port
 	uint16_t				port;
 	uint16_t				back;
 	uint32_t				ip;
+
+	int						ep_fd;
 
 	TCPTH				**	threads;
 
@@ -132,6 +136,8 @@ struct network_control
 	char				*	filter_list;
 	char				*	prefix_list;
 
+	int						tcp_style;
+	tcp_setup_fn		*	tcp_setup;
 	tcp_fn				*	tcp_hdlr;
 
 	time_t					dead_time;

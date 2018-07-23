@@ -49,6 +49,7 @@ struct tcp_thread
 
 
 throw_fn tcp_pool_watcher;
+tcp_setup_fn tcp_pool_setup;
 tcp_fn tcp_pool_hander;
 
 

@@ -258,3 +258,8 @@ void tcp_pool_handler( HOST *h )
 }
 
 
+void tcp_pool_setup( void )
+{
+	// iterate over ports, setting up threads
+}
+

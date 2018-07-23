@@ -10,6 +10,7 @@
 #ifndef MINISTRY_TCP_THRD_H
 #define MINISTRY_TCP_THRD_H
 
+tcp_setup_fn tcp_thrd_setup;
 tcp_fn tcp_thrd_handler;
 
 #endif

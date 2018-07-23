@@ -22,7 +22,7 @@
 //  to push back to the start of the buffer.
 //
 
-__attribute__((hot)) void *tcp_thrd_handler( void *arg )
+__attribute__((hot)) void *tcp_thrd_connection( void *arg )
 {
 	struct pollfd pf;
 	THRD *td;
@@ -34,7 +34,7 @@ __attribute__((hot)) void *tcp_thrd_handler( void *arg )
 	h  = (HOST *) td->arg;
 	n  = h->net;
 
-	pf.fd     = h->fd;
+	pf.fd     = h->net->fd;
 	pf.events = POLL_EVENTS;
 
 	while( RUNNING( ) )
@@ -46,7 +46,7 @@ __attribute__((hot)) void *tcp_thrd_handler( void *arg )
 			if( errno == EINTR )
 				continue;
 
-			twarn( "Poll error -- %s", Err );
+			warn( "Poll error from %s -- %s", n->name, Err );
 			break;
 		}
 
@@ -55,7 +55,7 @@ __attribute__((hot)) void *tcp_thrd_handler( void *arg )
 		{
 			if( (ctl->proc->curr_time.tv_sec - h->last) > ctl->net->dead_time )
 			{
-				tnotice( "Connection from host %s timed out.", n->name );
+				notice( "Connection from host %s timed out.", n->name );
 				n->flags |= IO_CLOSE;
 				break;
 			}
@@ -66,7 +66,7 @@ __attribute__((hot)) void *tcp_thrd_handler( void *arg )
 		// Hung up?
 		if( pf.revents & POLLHUP )
 		{
-			tdebug( "Received pollhup event from %s", n->name );
+			debug( "Received pollhup event from %s", n->name );
 
 			// close host
 			n->flags |= IO_CLOSE;
@@ -87,7 +87,7 @@ __attribute__((hot)) void *tcp_thrd_handler( void *arg )
 			// do we have anything
 			if( !n->in->len )
 			{
-				tdebug( "No incoming data from %s", n->name );
+				debug( "No incoming data from %s", n->name );
 				break;
 			}
 
@@ -114,6 +114,19 @@ __attribute__((hot)) void *tcp_thrd_handler( void *arg )
 }
 
 
+
+
+void tcp_thrd_handler( HOST *h )
+{
+	thread_throw( &tcp_thrd_connection, h, 0 );
+}
+
+
+void tcp_thrd_setup( void )
+{
+	// not much to do, I think
+	return;
+}
 
 
 

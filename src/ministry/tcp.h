@@ -10,6 +10,25 @@
 #ifndef MINISTRY_TCP_H
 #define MINISTRY_TCP_H
 
+struct tcp_style_data
+{
+	char				*	name;
+	int						style;
+	tcp_setup_fn		*	setup;
+	tcp_fn				*	fp;
+};
+
+enum tcp_style_types
+{
+	TCP_STYLE_POOL = 0,
+	TCP_STYLE_THRD,
+	TCP_STYPE_EPOLL,
+	TCP_STYLE_MAX
+};
+
+extern const struct tcp_style_data tcp_styles[];
+
+
 throw_fn tcp_loop;
 
 void tcp_close_host( HOST *h );

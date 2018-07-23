@@ -10,6 +10,29 @@
 
 #include "ministry.h"
 
+const struct tcp_style_data tcp_styles[TCP_STYLE_MAX] =
+{
+	{
+		.name  = "pool",
+		.style = TCP_STYLE_POOL,
+		.setup = &tcp_pool_setup,
+		.fp    = &tcp_pool_handler,
+	},
+	{
+		.name  = "threads",
+		.style = TCP_STYLE_THRD,
+		.setup = &tcp_thrd_setup,
+		.fp    = &tcp_thrd_handler,
+	},
+	{
+		.name  = "epoll",
+		.style = TCP_STYLE_EPOLL,
+		.setup = &tcp_epoll_setup,
+		.fp    = &tcp_epoll_handler,
+	}
+};
+
+
 
 void tcp_close_host( HOST *h )
 {

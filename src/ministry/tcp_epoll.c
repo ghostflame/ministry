@@ -14,14 +14,6 @@
 
 
 
-#define terr( fmt, ... )        err( "[TCP:%03d] " fmt, th->num, ##__VA_ARGS__ )
-#define twarn( fmt, ... )       warn( "[TCP:%03d] " fmt, th->num, ##__VA_ARGS__ )
-#define tnotice( fmt, ... )     notice( "[TCP:%03d] " fmt, th->num, ##__VA_ARGS__ )
-#define tinfo( fmt, ... )       info( "[TCP:%03d] " fmt, th->num, ##__VA_ARGS__ )
-#define tdebug( fmt, ... )      debug( "[TCP:%03d] " fmt, th->num, ##__VA_ARGS__ )
-
-
-
 __attribute__((hot)) void tcp_handler( TCPTH *th, struct pollfd *p, HOST *h )
 {
 	SOCK *n = h->net;
@@ -188,28 +180,23 @@ __attribute__((hot)) void *tcp_watcher( void *arg )
 
 
 
-void tcp_choose_thread( HOST *h )
+void tcp_epoll_handler( HOST *h )
 {
-	uint64_t v, w;
-	TCPTH *t;
+	// set up the epoll structure
+	h->ep_evt.events   = EPOLL_EVENTS;
+	h->ep_evt.data.ptr = h;
 
-	// choose thread based on host and port
-	v = h->peer->sin_port;
-	v = ( v << 32 ) + h->ip;
+	// add it to the epoll list
+	epoll_ctl( h->port->ep_fd, EPOLL_CTL_ADD, h->net->fd, h->ep_evt );
 
-	// use an algorithm more likely to give a better spread
-	// first modulo a large prime, then the number of threads
-	w = v % TCP_MODULO_PRIME;
-	t = h->port->threads[w % h->type->threads];
-
-	// put it in the waiting queue
-	lock_tcp( t );
-
-	h->next = t->waiting;
-	t->waiting = h;
-
-	unlock_tcp( t );
+	// TODO  get that thread a lock.  threads love locks.
+	h->port->ep_ctr++;
 }
 
+
+void tcp_epoll_setup( void )
+{
+	// iterate over ports, setting up epoll
+}
 
 
