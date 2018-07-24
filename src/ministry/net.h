@@ -15,8 +15,6 @@
 #define DEFAULT_GAUGE_PORT				9325
 #define DEFAULT_COMPAT_PORT				8125
 
-#define POLL_EVENTS						(POLLIN|POLLPRI|POLLRDNORM|POLLRDBAND|POLLHUP)
-
 #define MIN_NETBUF_SZ					0x10000	// 64k
 
 #define DEFAULT_NET_BACKLOG				32
@@ -45,6 +43,7 @@ struct host_data
 	SOCK				*	net;
 
 	NET_TYPE			*	type;
+	NET_PORT			*	port;
 	line_fn				*	parser;
 
 	struct sockaddr_in	*	peer;
@@ -53,7 +52,9 @@ struct host_data
 	uint64_t				invalid;
 
 	int64_t					connected;	// first timestamp seen (nsec)
-	time_t                  last;       // last timestamp sec
+	time_t					last;		// last timestamp sec
+
+	struct epoll_event		ep_evt;		// used in epoll option
 
 	IPNET				*	ipn;
 	char				*	workbuf;	// gets set to fixed size
@@ -109,6 +110,10 @@ struct net_type
 	uint32_t				udp_bind;
 
 	int32_t					token_type;
+
+	int						tcp_style;
+	tcp_setup_fn		*	tcp_setup;
+	tcp_fn				*	tcp_hdlr;
 };
 
 

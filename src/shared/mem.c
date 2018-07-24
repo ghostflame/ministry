@@ -249,11 +249,13 @@ void mem_prealloc_one( MTYPE *mt )
 	if( !mt->prealloc )
 		return;
 
-	act = (double) mt->total;
+	act = (double) mt->alloc_ct;
 	fct = (double) mt->fcount;
 
 	add = 2 * mt->alloc_ct;
 	tot = 0;
+
+	//debug( "Mem type %s free/alloc ratio is %.2f, threshold %.2f", mt->name, fct / act, mt->threshold );
 
 	while( ( fct / act ) < mt->threshold )
 	{
@@ -282,8 +284,7 @@ void mem_prealloc( int64_t tval, void *arg )
 		if( !( mt = _mem->types[i] ) )
 			break;
 
-		if( mt->prealloc )
-			mem_prealloc_one( mt );
+		mem_prealloc_one( mt );
 	}
 }
 

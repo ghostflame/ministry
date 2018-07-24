@@ -99,34 +99,15 @@ int net_set_host_parser( HOST *h, int token_check, int prefix_check )
 void net_start_type( NET_TYPE *nt )
 {
 	throw_fn *fp;
-	TCPTH *th;
-	int i, j;
+	int i;
 
 	if( !( nt->flags & NTYPE_ENABLED ) )
 		return;
 
 	if( nt->flags & NTYPE_TCP_ENABLED )
 	{
-		// start up our handler threads
-		nt->tcp->threads = (TCPTH **) allocz( nt->threads * sizeof( TCPTH * ) );
-		for( i = 0; i < nt->threads; i++ )
-		{
-			th = (TCPTH *) allocz( sizeof( TCPTH ) );
-
-			th->type  = nt;
-			th->hosts = (HOST **) allocz( nt->pollmax * sizeof( HOST * ) );
-			th->polls = (struct pollfd *) allocz( nt->pollmax * sizeof( struct pollfd ) );
-			for( j = 0; j < nt->pollmax; j++ )
-			{
-				th->polls[j].fd     = -1;  // makes poll ignore this one
-				th->polls[j].events = POLL_EVENTS;
-			}
-
-			pthread_mutex_init( &(th->lock), NULL );
-			nt->tcp->threads[i] = th;
-
-			thread_throw( tcp_watcher, th, i );
-		}
+		// call the style handler
+		(*(nt->tcp_setup))( nt );
 
 		// and start watching the socket
 		thread_throw( tcp_loop, nt->tcp, 0 );
@@ -157,6 +138,10 @@ int net_startup( NET_TYPE *nt )
 	if( !( nt->flags & NTYPE_ENABLED ) )
 		return 0;
 
+	// grab our tcp setup/handler fns
+	nt->tcp_setup = tcp_styles[nt->tcp_style].setup;
+	nt->tcp_hdlr  = tcp_styles[nt->tcp_style].hdlr;
+
 	if( nt->flags & NTYPE_TCP_ENABLED )
 	{
 		// listen on the port
@@ -170,7 +155,8 @@ int net_startup( NET_TYPE *nt )
 		info( "Type %s can handle at most %ld connections.", nt->name, ( nt->threads * nt->pollmax ) );
 	}
 
-	notice( "TCP dead time is %d seconds.", ctl->net->dead_time );
+	notice( "Type %s has TCP dead time %ds, TCP handler style %s.",
+		nt->name, ctl->net->dead_time, tcp_styles[nt->tcp_style].name );
 
 	if( nt->flags & NTYPE_UDP_ENABLED )
 		for( i = 0; i < nt->udp_count; i++ )
@@ -293,6 +279,7 @@ NET_TYPE *net_type_defaults( int type )
 	nt->udp_bind    = INADDR_ANY;
 	nt->threads     = d->thrd;
 	nt->pollmax     = TCP_MAX_POLLS;
+	nt->tcp_style   = TCP_STYLE_THRD;
 	nt->label       = strdup( d->sock );
 	nt->name        = strdup( d->name );
 	nt->flags       = NTYPE_ENABLED|NTYPE_TCP_ENABLED|NTYPE_UDP_ENABLED;
@@ -500,6 +487,25 @@ int net_config_line( AVP *av )
 			nt->pollmax = v;
 		}
 	}
+	else if( !strcasecmp( d, "style" ) )
+	{
+		if( tcp )
+		{
+			// do we recognise it?
+			for( i = 0; i < TCP_STYLE_MAX; i++ )
+				if( !strcasecmp( av->val, tcp_styles[i].name ) )
+				{
+					debug( "TCP handling style set to %s", av->val );
+					nt->tcp_style = tcp_styles[i].style;
+					return 0;
+				}
+
+			err( "TCP style '%s' not recognised.", av->val );
+			return -1;
+		}
+		else
+			warn( "Cannot set a handling style on UDP handling." );
+	}
 	else if( !strcasecmp( d, "checks" ) )
 	{
 		if( tcp )
@@ -525,7 +531,7 @@ int net_config_line( AVP *av )
 			nt->tcp->back = (unsigned short) v;
 		}
 		else
-			warn( "Cannot set a backlog for a udp connection." );
+			warn( "Cannot set a backlog for a UDP connection." );
 	}
 	else if( !strcasecmp( d, "port" ) || !strcasecmp( d, "ports" ) )
 	{

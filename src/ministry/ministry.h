@@ -20,6 +20,9 @@
 #define VERSION_STRING "unknown"
 #endif
 
+// include epoll
+#include <sys/epoll.h>
+
 
 // crazy control
 #include "typedefs.h"

@@ -479,83 +479,6 @@ int64_t io_send_file( TGT *t )
 
 
 
-// targets
-
-
-void *io_target_loop( void *arg )
-{
-	struct sockaddr_in sa;
-	int64_t fires = 0, r;
-	THRD *d;
-	TGT *t;
-
-	d = (THRD *) arg;
-	t = (TGT *) d->arg;
-
-	if( t->to_stdout )
-	{
-		t->iofp = io_send_stdout;
-	}
-	else
-	{
-		if( t->proto == TARGET_PROTO_TCP )
-			t->iofp = io_send_net_tcp;
-		else
-			t->iofp = io_send_net_udp;
-
-		if( net_lookup_host( t->host, &sa ) )
-		{
-			loop_end( "Unable to look up network target." );
-			free( d );
-			return NULL;
-		}
-	}
-
-	// we should already have a port
-	sa.sin_port = htons( t->port );
-
-	// make a socket with no buffers of its own
-	t->sock = io_make_sock( 0, 0, &sa );
-
-	r = 1000 * _io->rc_msec;
-	t->rc_limit = r / _io->send_usec;
-	if( r % _io->send_usec )
-		t->rc_limit++;
-
-	// make sure we have a non-zero max
-	if( t->max == 0 )
-		t->max = IO_MAX_WAITING;
-
-	// init the lock
-	pthread_spin_init( &(t->lock), PTHREAD_PROCESS_PRIVATE );
-
-	tgdebug( "Started target, max waiting %d", t->max );
-
-	loop_mark_start( "io" );
-
-	// now loop around sending
-	while( RUNNING( ) )
-	{
-		usleep( _io->send_usec );
-
-		// call the io_fn
-		fires += (*(t->iofp))( t );
-	}
-
-	loop_mark_done( "io", 0, fires );
-
-	// disconnect
-	io_disconnect( t->sock );
-
-	pthread_spin_destroy( &(t->lock) );
-
-	free( d );
-	return NULL;
-}
-
-
-
-
 
 // processing control
 
@@ -569,12 +492,14 @@ int io_init( void )
 	i->lock_size = 1 << i->lock_bits;
 	i->lock_mask = i->lock_size - 1;
 
-	i->locks = (pthread_spinlock_t *) allocz( i->lock_size * sizeof( pthread_spinlock_t ) );
+	i->locks = (io_lock_t *) allocz( i->lock_size * sizeof( io_lock_t ) );
 
 	for( k = 0; k < i->lock_size; k++ )
-		pthread_spin_init( i->locks + k, PTHREAD_PROCESS_PRIVATE );
+	{
+		io_lock_init( i->locks[k] );
+	}
 
-	pthread_spin_init( &(i->idlock), PTHREAD_PROCESS_PRIVATE );
+	io_lock_init( i->idlock );
 
 	return 0;
 }
@@ -586,7 +511,9 @@ void io_stop( void )
 	int k;
 
 	for( k = 0; k < i->lock_size; k++ )
-		pthread_spin_destroy( i->locks + k );
+	{
+		io_lock_destroy( i->locks[k] );
+	}
 }
 
 
