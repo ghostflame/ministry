@@ -57,7 +57,7 @@ void *target_loop( void *arg )
 		t->max = IO_MAX_WAITING;
 
 	// init the lock
-	pthread_spin_init( &(t->lock), PTHREAD_PROCESS_PRIVATE );
+	io_lock_init( t->lock );
 
 	tgdebug( "Started target, max waiting %d", t->max );
 
@@ -77,7 +77,7 @@ void *target_loop( void *arg )
 	// disconnect
 	io_disconnect( t->sock );
 
-	pthread_spin_destroy( &(t->lock) );
+	io_lock_destroy( t->lock );
 
 	free( d );
 	return NULL;
@@ -133,14 +133,14 @@ int target_run( int enabled_check )
 
 TGTL *target_list_find( char *name )
 {
-	TGTL *l = NULL;
+	TGTL *l;
 
 	if( name && *name )
 		for( l = _tgt->lists; l; l = l->next )
 			if( !strcasecmp( name, l->name ) )
-				break;
+				return l;
 
-	return l;
+	return NULL;
 }
 
 

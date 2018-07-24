@@ -255,7 +255,7 @@ void mem_prealloc_one( MTYPE *mt )
 	add = 2 * mt->alloc_ct;
 	tot = 0;
 
-	debug( "Mem type %s free/alloc ratio is %.2f, threshold %.2f", mt->name, fct / act, mt->threshold );
+	//debug( "Mem type %s free/alloc ratio is %.2f, threshold %.2f", mt->name, fct / act, mt->threshold );
 
 	while( ( fct / act ) < mt->threshold )
 	{

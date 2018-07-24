@@ -11,16 +11,7 @@
 #include "ministry.h"
 
 
-
-#define terr( fmt, ... )        err( "[TCP:%03d] " fmt, th->num, ##__VA_ARGS__ )
-#define twarn( fmt, ... )       warn( "[TCP:%03d] " fmt, th->num, ##__VA_ARGS__ )
-#define tnotice( fmt, ... )     notice( "[TCP:%03d] " fmt, th->num, ##__VA_ARGS__ )
-#define tinfo( fmt, ... )       info( "[TCP:%03d] " fmt, th->num, ##__VA_ARGS__ )
-#define tdebug( fmt, ... )      debug( "[TCP:%03d] " fmt, th->num, ##__VA_ARGS__ )
-
-
-
-__attribute__((hot)) void tcp_find_slot( TCPTH *th, HOST *h )
+void tcp_pool_find_slot( TCPTH *th, HOST *h )
 {
 	int64_t i;
 
@@ -68,7 +59,7 @@ __attribute__((hot)) void tcp_find_slot( TCPTH *th, HOST *h )
 
 
 
-__attribute__((hot)) void tcp_handler( TCPTH *th, struct pollfd *p, HOST *h )
+__attribute__((hot)) void tcp_pool_handler( TCPTH *th, struct pollfd *p, HOST *h )
 {
 	SOCK *n = h->net;
 
@@ -133,7 +124,7 @@ __attribute__((hot)) void tcp_handler( TCPTH *th, struct pollfd *p, HOST *h )
 //  to push back to the start of the buffer.
 //
 
-__attribute__((hot)) void *tcp_pool_watcher( void *arg )
+__attribute__((hot)) void *tcp_pool_thread( void *arg )
 {
 	struct pollfd *pf;
 	int64_t i, max;
@@ -154,10 +145,14 @@ __attribute__((hot)) void *tcp_pool_watcher( void *arg )
 		// take on any any new sockets
 		while( th->waiting )
 		{
+			lock_tcp( th );
+
 			h = th->waiting;
 			th->waiting = h->next;
 
-			tcp_find_slot( th, h );
+			unlock_tcp( th );
+
+			tcp_pool_find_slot( th, h );
 		}
 
 		if( !th->curr )
@@ -182,7 +177,7 @@ __attribute__((hot)) void *tcp_pool_watcher( void *arg )
 		// run through the answers
 		for( i = 0, pf = th->polls; i < th->pmax; i++, pf++ )
 			if( pf->fd >= 0 )
-				tcp_handler( th, pf, th->hosts[i] );
+				tcp_pool_handler( th, pf, th->hosts[i] );
 
 		// and run through looking for connections to close
 		max = 0;
@@ -218,7 +213,7 @@ __attribute__((hot)) void *tcp_pool_watcher( void *arg )
 			th->pmax = max + 1;
 
 		// and sleep a very little, to avoid poll-spam
-		//usleep( 1000 );
+		//usleep( 2000 );
 	}
 
 	// close everything!
@@ -234,32 +229,31 @@ __attribute__((hot)) void *tcp_pool_watcher( void *arg )
 
 
 
-void tcp_pool_handler( HOST *h )
+
+void tcp_pool_setup( NET_TYPE *nt )
 {
-	uint64_t v, w;
-	TCPTH *t;
+	TCPTH *th;
+	int i, j;
 
-	// choose thread based on host and port
-	v = h->peer->sin_port;
-	v = ( v << 32 ) + h->ip;
+	// start up our handler threads
+	nt->tcp->threads = (TCPTH **) allocz( nt->threads * sizeof( TCPTH * ) );
+	for( i = 0; i < nt->threads; i++ )
+	{
+		th = (TCPTH *) allocz( sizeof( TCPTH ) );
 
-	// use an algorithm more likely to give a better spread
-	// first modulo a large prime, then the number of threads
-	w = v % TCP_MODULO_PRIME;
-	t = h->port->threads[w % h->type->threads];
+		th->type  = nt;
+		th->hosts = (HOST **) allocz( nt->pollmax * sizeof( HOST * ) );
+		th->polls = (struct pollfd *) allocz( nt->pollmax * sizeof( struct pollfd ) );
+		for( j = 0; j < nt->pollmax; j++ )
+		{
+			th->polls[j].fd     = -1;  // makes poll ignore this one
+			th->polls[j].events = POLL_EVENTS;
+		}
 
-	// put it in the waiting queue
-	lock_tcp( t );
+		pthread_mutex_init( &(th->lock), NULL );
+		nt->tcp->threads[i] = th;
 
-	h->next = t->waiting;
-	t->waiting = h;
-
-	unlock_tcp( t );
-}
-
-
-void tcp_pool_setup( void )
-{
-	// iterate over ports, setting up threads
+		thread_throw( tcp_pool_thread, th, i );
+	}
 }
 

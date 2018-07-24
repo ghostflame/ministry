@@ -56,18 +56,32 @@ void targets_resolve( void )
 {
 	struct targets_defaults *td;
 	TGTL *l;
+	TGT *t;
 	int i;
 
 	td = &(targets_data[0]);
 
 	for( i = 0; i < METRIC_TYPE_MAX; i++, td++ )
-		if( ( l = target_list_find( td->name ) ) && l->targets )
+		if( ( l = target_list_find( td->name ) ) )
 		{
-			if( !l->targets->port )
-				l->targets->port = td->port;
+			if( l->targets )
+			{
+				for( t = l->targets; t; t = t->next )
+				{
+					debug( "Found %s target %s (%s:%hu) [%d]", td->name,
+						t->name, t->host, t->port, t->enabled );
 
-			ctl->tgt->targets[i] = l->targets;
+					if( !t->port )
+						t->port = td->port;
+				}
+
+				ctl->tgt->targets[i] = l->targets;
+			}
+			else
+				warn( "Found no targets in the list for type %s.", td->name );
 		}
+		else
+			warn( "Found no targets for type %s.", td->name );
 }
 
 

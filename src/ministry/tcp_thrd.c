@@ -22,7 +22,7 @@
 //  to push back to the start of the buffer.
 //
 
-__attribute__((hot)) void *tcp_thrd_connection( void *arg )
+__attribute__((hot)) void *tcp_thrd_thread( void *arg )
 {
 	struct pollfd pf;
 	THRD *td;
@@ -116,13 +116,8 @@ __attribute__((hot)) void *tcp_thrd_connection( void *arg )
 
 
 
-void tcp_thrd_handler( HOST *h )
-{
-	thread_throw( &tcp_thrd_connection, h, 0 );
-}
 
-
-void tcp_thrd_setup( void )
+void tcp_thrd_setup( NET_TYPE *nt )
 {
 	// not much to do, I think
 	return;

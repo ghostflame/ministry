@@ -13,7 +13,7 @@ IFLAGS = -I. -I../shared
 #DFLAGS = -g -pg -ggdb3 -DDEBUG -DDEBUG_IO -DDEBUG_RELAY
 DFLAGS = -g -pg -ggdb3 -DDEBUG
 TFLAGS = -pthread
-CFLAGS = $(TFLAGS) $(IFLAGS) -DVERSION_STRING='"$(VERS)"'
+CFLAGS = $(TFLAGS) $(IFLAGS) -DVERSION_STRING='"$(VERS)"' -DIO_LOCK_MUTEX
 LFLAGS = $(TFLAGS) $(IFLAGS) -lm -lcurl -lmicrohttpd
 
 BINDIR = $(DESTDIR)/usr/bin

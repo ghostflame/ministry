@@ -26,10 +26,6 @@
 #define IO_RECONN_DELAY			2000	// msec
 
 
-// this is measured against the buffer size; the bitshift should mask off at least buffer size
-#define lock_buf( b )			pthread_spin_lock(   &(_io->locks[(((uint64_t) b) >> 6) & _io->lock_mask]) )
-#define unlock_buf( b )			pthread_spin_unlock( &(_io->locks[(((uint64_t) b) >> 6) & _io->lock_mask]) )
-
 
 
 // size: (8x8) 64
@@ -75,7 +71,7 @@ struct io_socket
 
 struct io_control
 {
-	pthread_spinlock_t	*	locks;
+	io_lock_t			*	locks;
 
 	uint64_t				lock_bits;
 	uint64_t				lock_size;
@@ -85,7 +81,7 @@ struct io_control
 	int32_t					rc_msec;
 
 	int32_t					tgt_id;
-	pthread_spinlock_t		idlock;
+	io_lock_t				idlock;
 
 	int						stdout_count;
 };
@@ -110,8 +106,6 @@ io_fn io_send_net_tcp;
 io_fn io_send_net_udp;
 io_fn io_send_stdout;
 io_fn io_send_file;
-
-throw_fn io_target_loop;
 
 // sockets
 SOCK *io_make_sock( int32_t insz, int32_t outsz, struct sockaddr_in *peer );

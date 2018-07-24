@@ -304,8 +304,8 @@ void metric_set_target_params( METRIC *m )
 		// and force a type match
 		if( m->type != t->type )
 		{
-			warn( "Metric %s is type %d but group is type %d - changing metric type.",
-				m->path->buf, m->type, t->type );
+			//warn( "Metric %s is type %d but group is type %d - changing metric type.",
+			//	m->path->buf, m->type, t->type );
 			m->type = t->type;
 		}
 	}
@@ -416,6 +416,18 @@ void metric_start_group_list( MGRP *list )
 
 void metric_start_all( void )
 {
+	TGTL *l;
+	TGT *t;
+
+	for( l = ctl->target->lists; l; l = l->next )
+	{
+		notice( "Target dump : List : %2d / %s", l->count, l->name );
+		for( t = l->targets; t; t = t->next )
+			notice( "Target dump :      : %d / %s / %hu / %s",
+				t->enabled, t->host, t->port, t->name );
+	}
+
+
 	// convert to nsec
 	ctl->metric->max_age *= MILLION;
 	metric_start_group_list( ctl->metric->groups );

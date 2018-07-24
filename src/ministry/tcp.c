@@ -10,25 +10,56 @@
 
 #include "ministry.h"
 
+
+void tcp_choose_thread( HOST *h )
+{
+	uint64_t v, w;
+	TCPTH *t;
+
+	// choose thread based on host and port
+	v = h->peer->sin_port;
+	v = ( v << 32 ) + h->ip;
+
+	// use an algorithm more likely to give a better spread
+	// first modulo a large prime, then the number of threads
+	w = v % TCP_MODULO_PRIME;
+	t = h->port->threads[w % h->type->threads];
+
+	// put it in the waiting queue
+	lock_tcp( t );
+
+	h->next = t->waiting;
+	t->waiting = h;
+
+	unlock_tcp( t );
+}
+
+void tcp_throw_thread( HOST *h )
+{
+	thread_throw( &tcp_thrd_thread, h, 0 );
+}
+
+
+// details of the different styles
 const struct tcp_style_data tcp_styles[TCP_STYLE_MAX] =
 {
 	{
 		.name  = "pool",
 		.style = TCP_STYLE_POOL,
 		.setup = &tcp_pool_setup,
-		.fp    = &tcp_pool_handler,
+		.hdlr  = &tcp_choose_thread,
 	},
 	{
-		.name  = "threads",
+		.name  = "thread",
 		.style = TCP_STYLE_THRD,
 		.setup = &tcp_thrd_setup,
-		.fp    = &tcp_thrd_handler,
+		.hdlr  = &tcp_throw_thread,
 	},
 	{
 		.name  = "epoll",
 		.style = TCP_STYLE_EPOLL,
 		.setup = &tcp_epoll_setup,
-		.fp    = &tcp_epoll_handler,
+		.hdlr  = &tcp_choose_thread,
 	}
 };
 
@@ -164,7 +195,7 @@ void *tcp_loop( void *arg )
 		if( p.revents & POLL_EVENTS )
 		{
 			if( ( h = tcp_get_host( p.fd, n ) ) )
-				(*(ctl->net->tcp_hdlr))( h );
+				(*(h->type->tcp_hdlr))( h );
 		}
 	}
 

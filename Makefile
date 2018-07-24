@@ -16,6 +16,7 @@ TSTDIR ?= $(CFGDIR)/test
 BINS    = ministry ministry-test carbon-copy
 SVCS    = ministry carbon-copy
 
+
 all:  subdirs
 all:  code
 

@@ -21,13 +21,43 @@
 #define tgdebug( fmt, ... )
 #endif
 
-typedef pthread_spinlock_t target_lock_t;
+#define tginfo( fmt, ... )		info(   "[%d:%s] " fmt, t->id, t->name, ##__VA_ARGS__ )
+#define tgnotice( fmt, ... )	notice( "[%d:%s] " fmt, t->id, t->name, ##__VA_ARGS__ )
+
+
+
+#ifdef IO_LOCK_MUTEX
+
+typedef pthread_mutex_t io_lock_t;
+
+#define io_lock_init( l )		pthread_mutex_init(    &(l), NULL )
+#define io_lock_destroy( l )	pthread_mutex_destroy( &(l) )
+
+#define lock_target( t )		pthread_mutex_lock(   &(t->lock) )
+#define unlock_target( t )		pthread_mutex_unlock( &(t->lock) )
+#define target_set_id( t )		pthread_mutex_lock( &(_io->idlock) ); t->id = ++(_io->tgt_id); pthread_mutex_unlock( &(_io->idlock) );
+
+// this is measured against the buffer size; the bitshift should mask off at least buffer size
+#define lock_buf( b )			pthread_mutex_lock(   &(_io->locks[(((uint64_t) b) >> 6) & _io->lock_mask]) )
+#define unlock_buf( b )			pthread_mutex_unlock( &(_io->locks[(((uint64_t) b) >> 6) & _io->lock_mask]) )
+
+
+#else
+
+typedef pthread_spinlock_t io_lock_t;
+
+#define io_lock_init( l )		pthread_spin_init(    &(l), PTHREAD_PROCESS_PRIVATE )
+#define io_lock_destroy( l )	pthread_spin_destroy( &(l) )
 
 #define lock_target( t )		pthread_spin_lock(   &(t->lock) )
 #define unlock_target( t )		pthread_spin_unlock( &(t->lock) )
+#define target_set_id( t )		pthread_spin_lock( &(_io->idlock) ); t->id = ++(_io->tgt_id); pthread_spin_unlock( &(_io->idlock) );
 
-#define target_set_id( t )		pthread_spin_lock( &(_io->idlock) ); t->id = ++(_io->tgt_id); pthread_spin_unlock( &(_io->idlock) ); 
+// this is measured against the buffer size; the bitshift should mask off at least buffer size
+#define lock_buf( b )			pthread_spin_lock(   &(_io->locks[(((uint64_t) b) >> 6) & _io->lock_mask]) )
+#define unlock_buf( b )			pthread_spin_unlock( &(_io->locks[(((uint64_t) b) >> 6) & _io->lock_mask]) )
 
+#endif
 
 struct target
 {
@@ -57,7 +87,7 @@ struct target
 	int32_t					rc_limit;
 
 	// misc
-	target_lock_t			lock;
+	io_lock_t				lock;
 	int						to_stdout;
 	int						enabled;
 	int						proto;
@@ -104,6 +134,8 @@ TGT *target_create_str( char *src, int len, char sep );
 
 void target_set_type_fn( target_cfg_fn *fp );
 void target_set_data_fn( target_cfg_fn *fp );
+
+throw_fn target_loop;
 
 // if prefix is null we use name
 void target_set_handle( TGT *t, char *prefix );

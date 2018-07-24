@@ -31,8 +31,6 @@
 #include "locks.h"
 #include "net.h"
 #include "udp.h"
-#include "tcp_thrd.h"
-#include "tcp_pool.h"
 #include "tcp.h"
 #include "token.h"
 #include "targets.h"
