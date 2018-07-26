@@ -84,7 +84,7 @@ IPLIST *iplist_find( char *name )
 // this allows you to call a callback on each configured item
 void iplist_call_data( IPLIST *l, iplist_data_fn *fp, void *arg )
 {
-	int32_t i;
+	uint32_t i;
 	IPNET *n;
 
 	if( !l )
@@ -129,8 +129,9 @@ void __iplist_explain_list( IPNET *list, char *pos, char *neg, char *nei, char *
 
 void iplist_explain( IPLIST *l, char *pos, char *neg, char *nei, char *pre )
 {
-	int i, len, sz = 0;
+	int len, sz = 0;
 	char fmt[64];
+	uint32_t i;
 
 	if( !l )
 		return;
