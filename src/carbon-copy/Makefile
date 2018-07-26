@@ -1,8 +1,9 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
+VERS  ?= 0.0.1
 FILES  = mem net tcp udp hash relay main
 HEADS  = mem carbon_copy net tcp udp hash relay selfstats typedefs 
-VERS   = $(shell sed -rn 's/^Version:\t(.*)/\1/p' ../../ministry.spec)
+#VERS   = $(shell sed -rn 's/^Version:\t(.*)/\1/p' ../../ministry.spec)
 
 OBJS   = $(FILES:%=%.o)
 HDRS   = $(HEADS:%=%.h)
@@ -13,7 +14,7 @@ IFLAGS = -I. -I../shared
 #DFLAGS = -g -pg -ggdb3 -DDEBUG -DDEBUG_IO -DDEBUG_RELAY
 DFLAGS = -g -pg -ggdb3 -DDEBUG
 TFLAGS = -pthread
-CFLAGS = $(TFLAGS) $(IFLAGS) -DVERSION_STRING='"$(VERS)"' -DIO_LOCK_MUTEX
+CFLAGS = $(TFLAGS) $(IFLAGS) -DVERSION_STRING='"$(VERS)"'
 LFLAGS = $(TFLAGS) $(IFLAGS) -lm -lcurl -lmicrohttpd
 
 BINDIR = $(DESTDIR)/usr/bin

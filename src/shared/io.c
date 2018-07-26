@@ -438,7 +438,7 @@ int64_t io_send_net_tcp( TGT *t )
 		// any problems?
 		if( flagf_has( s, IO_CLOSE ) )
 		{
-			tgdebug( "Disconnecting." );
+			tgdebug( "Disconnecting from %s.", "target" );	// needs at least one arg :/
 			io_disconnect( s );
 			flagf_rmv( s, IO_CLOSE );
 			// try again later
@@ -486,7 +486,7 @@ int64_t io_send_file( TGT *t )
 int io_init( void )
 {
 	IO_CTL *i = _io;
-	int k;
+	uint64_t k;
 
 	// allocate and init our locks
 	i->lock_size = 1 << i->lock_bits;
@@ -508,7 +508,7 @@ int io_init( void )
 void io_stop( void )
 {
 	IO_CTL *i = _io;
-	int k;
+	uint64_t k;
 
 	for( k = 0; k < i->lock_size; k++ )
 	{

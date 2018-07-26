@@ -30,7 +30,7 @@ subdirs:
 	@mkdir -p logs bin
 
 code:
-	@cd src && $(MAKE) $(MFLAGS) $(TARGET)
+	@cd src && VERS=$(VERS) $(MAKE) $(MFLAGS) $(TARGET)
 
 docker:
 	dist/docker.sh

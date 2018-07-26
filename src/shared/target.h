@@ -25,24 +25,7 @@
 #define tgnotice( fmt, ... )	notice( "[%d:%s] " fmt, t->id, t->name, ##__VA_ARGS__ )
 
 
-
-#ifdef IO_LOCK_MUTEX
-
-typedef pthread_mutex_t io_lock_t;
-
-#define io_lock_init( l )		pthread_mutex_init(    &(l), NULL )
-#define io_lock_destroy( l )	pthread_mutex_destroy( &(l) )
-
-#define lock_target( t )		pthread_mutex_lock(   &(t->lock) )
-#define unlock_target( t )		pthread_mutex_unlock( &(t->lock) )
-#define target_set_id( t )		pthread_mutex_lock( &(_io->idlock) ); t->id = ++(_io->tgt_id); pthread_mutex_unlock( &(_io->idlock) );
-
-// this is measured against the buffer size; the bitshift should mask off at least buffer size
-#define lock_buf( b )			pthread_mutex_lock(   &(_io->locks[(((uint64_t) b) >> 6) & _io->lock_mask]) )
-#define unlock_buf( b )			pthread_mutex_unlock( &(_io->locks[(((uint64_t) b) >> 6) & _io->lock_mask]) )
-
-
-#else
+#ifdef IO_LOCK_SPIN
 
 typedef pthread_spinlock_t io_lock_t;
 
@@ -57,7 +40,25 @@ typedef pthread_spinlock_t io_lock_t;
 #define lock_buf( b )			pthread_spin_lock(   &(_io->locks[(((uint64_t) b) >> 6) & _io->lock_mask]) )
 #define unlock_buf( b )			pthread_spin_unlock( &(_io->locks[(((uint64_t) b) >> 6) & _io->lock_mask]) )
 
+#else
+
+typedef pthread_mutex_t io_lock_t;
+
+#define io_lock_init( l )		pthread_mutex_init(    &(l), NULL )
+#define io_lock_destroy( l )	pthread_mutex_destroy( &(l) )
+
+#define lock_target( t )		pthread_mutex_lock(   &(t->lock) )
+#define unlock_target( t )		pthread_mutex_unlock( &(t->lock) )
+#define target_set_id( t )		pthread_mutex_lock( &(_io->idlock) ); t->id = ++(_io->tgt_id); pthread_mutex_unlock( &(_io->idlock) );
+
+// this is measured against the buffer size; the bitshift should mask off at least buffer size
+#define lock_buf( b )			pthread_mutex_lock(   &(_io->locks[(((uint64_t) b) >> 6) & _io->lock_mask]) )
+#define unlock_buf( b )			pthread_mutex_unlock( &(_io->locks[(((uint64_t) b) >> 6) & _io->lock_mask]) )
+
 #endif
+
+
+
 
 struct target
 {

@@ -146,8 +146,8 @@ __attribute__((hot)) static inline DHASH *data_find_path( DHASH *list, uint64_t 
 	register DHASH *h;
 
 	for( h = list; h; h = h->next )
-		if( h->valid
-		 && h->sum == hval
+		if( h->sum == hval
+		 && h->valid
 		 && h->len == len
 		 && !memcmp( h->path, path, len ) )
 			break;
@@ -159,9 +159,9 @@ __attribute__((hot)) static inline DHASH *data_find_path( DHASH *list, uint64_t 
 
 DHASH *data_locate( char *path, int len, int type )
 {
-	register DHASH *d;
 	uint64_t hval;
 	ST_CFG *c;
+	DHASH *d;
 
 	hval = data_path_hash( path, len );
 

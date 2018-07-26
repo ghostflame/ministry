@@ -1,8 +1,9 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
+VERS  ?= 0.0.1
 FILES  = locks mem gc net tcp_epoll tcp_pool tcp_thrd tcp udp targets data token synth sort history maths stats selfstats main
 HEADS  = data gc mem ministry targets net tcp udp token sort history maths stats selfstats synth locks typedefs 
-VERS   = $(shell sed -rn 's/^Version:\t(.*)/\1/p' ../../ministry.spec)
+#VERS   = $(shell sed -rn 's/^Version:\t(.*)/\1/p' ../../ministry.spec)
 
 OBJS   = $(FILES:%=%.o)
 HDRS   = $(HEADS:%=%.h)
@@ -13,7 +14,7 @@ IFLAGS = -I. -I../shared
 #DFLAGS = -g -pg -ggdb3 -DDEBUG -DDEBUG_LOOPS -DDEBUG_SYNTH -DDEBUG_IO -DDEBUG_ENV
 DFLAGS = -g -pg -ggdb3 -DDEBUG
 TFLAGS = -pthread
-CFLAGS = $(TFLAGS) $(IFLAGS) -DVERSION_STRING='"$(VERS)"' -DLOCK_DHASH_MUTEX -DIO_LOCK_MUTEX
+CFLAGS = $(TFLAGS) $(IFLAGS) -DVERSION_STRING='"$(VERS)"' -DLOCK_DHASH_MUTEX
 LFLAGS = $(TFLAGS) $(IFLAGS) -lm -lcurl -lmicrohttpd
 
 BINDIR = $(DESTDIR)/usr/bin
