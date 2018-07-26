@@ -19,6 +19,6 @@ typedef struct metric_group			MGRP;
 
 // function types
 typedef void update_fn ( METRIC * );
-typedef void line_fn ( METRIC * );
+//typedef void line_fn ( METRIC * );
 
 #endif
