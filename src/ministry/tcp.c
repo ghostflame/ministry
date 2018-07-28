@@ -153,8 +153,6 @@ HOST *tcp_get_host( int sock, NET_PORT *np )
 	h->type->conns++;
 	unlock_ntype( h->type );
 
-	info( "Accepted %s connection from host %s.", h->type->label, h->net->name );
-
 	np->accepts.count++;
 	return h;
 }

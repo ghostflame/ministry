@@ -37,6 +37,8 @@ __attribute__((hot)) void *tcp_thrd_thread( void *arg )
 	pf.fd     = h->net->fd;
 	pf.events = POLL_EVENTS;
 
+	info( "Accepted %s connection from host %s.", h->type->label, h->net->name );
+
 	while( RUNNING( ) )
 	{
 		// poll all active connections
