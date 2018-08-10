@@ -38,6 +38,7 @@
 # directories
 logs/*
 bin/*
+tmp/*
 
 # binaries
 src/carbon-copy/carbon-copy
