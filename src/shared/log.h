@@ -18,7 +18,7 @@
 enum log_levels
 {
 	LOG_LEVEL_FATAL = 0,
-	LOG_LEVEL_ERR,
+	LOG_LEVEL_ERROR,
 	LOG_LEVEL_WARN,
 	LOG_LEVEL_NOTICE,
 	LOG_LEVEL_INFO,
@@ -69,7 +69,7 @@ conf_line_fn log_config_line;
 #define LLNZN( l, ... )         log_line( LOG_LEVEL_##l,     NULL,        0,     NULL, ## __VA_ARGS__ )
 
 #define fatal( ... )            LLFLF( FATAL,  ## __VA_ARGS__ )
-#define err( ... )              LLNZN( ERR,    ## __VA_ARGS__ )
+#define err( ... )              LLNZN( ERROR,  ## __VA_ARGS__ )
 #define warn( ... )             LLNZN( WARN,   ## __VA_ARGS__ )
 #define notice( ... )           LLNZN( NOTICE, ## __VA_ARGS__ )
 #define info( ... )             LLNZN( INFO,   ## __VA_ARGS__ )

@@ -12,7 +12,7 @@
 char *log_level_strings[LOG_LEVEL_MAX] =
 {
 	"FATAL",
-	"ERR",
+	"ERROR",
 	"WARN",
 	"NOTICE",
 	"INFO",
@@ -129,7 +129,7 @@ int log_line( int8_t level, const char *file, const int line, const char *fn, ch
 	if( level > _logger->level )
 		return 0;
 
-	d = ( level <= LOG_LEVEL_ERR ) ? _logger->err_fd : _logger->ok_fd;
+	d = ( level <= LOG_LEVEL_ERROR ) ? _logger->err_fd : _logger->ok_fd;
 
 	// can we write?
 	if( d < 0 )
