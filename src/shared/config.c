@@ -385,8 +385,6 @@ int config_read_file( char *path )
 
 
 
-#define CErr		curl_easy_strerror( cc )
-
 
 int config_read_url( char *url )
 {
