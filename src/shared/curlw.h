@@ -11,18 +11,22 @@
 #define SHARED_CURLW_H
 
 
-#define CErr		curl_easy_strerror( cc )
+#define CErr						curl_easy_strerror( cc )
 
-// curl to file, deleting it before writing if required
+#define CURLW_FLAG_SSL				0x01
+#define CURLW_FLAG_VALIDATE			0x02
+#define CURLW_FLAG_SLOW				0x10
 
-// TODO - change the options to flags?
-int curlw_to_file( char *url, int secure, int ssl, int validate, FILE *fh )
-{
-	
+#define setCurlF( _i, F )			_i |= CURLW_##F
+#define curCurlF( _i, F )			_i &= ~CURLW_##F
+#define chkCurlF( _i, F )			( _i & CURLW_##F
 
 
-}
 
+
+
+// fetch to file
+FILE *curlw_to_file( char *url, int flags );
 
 
 #endif

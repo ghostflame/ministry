@@ -388,71 +388,28 @@ int config_read_file( char *path )
 
 int config_read_url( char *url )
 {
-	int ret = 0;
-	CURLcode cc;
+	int flags = 0;
 	FILE *fh;
-	CURL *c;
 
 	debug( "Opening config url '%s', section %s",
 		url, context->section->name );
 
-	// set up our new context
-	if( !( c = curl_easy_init( ) ) )
+	if( context->is_ssl )
+		curlf_set( flags, SSL );
+	
+	if( chkcfFlg( SEC_VALIDATE ) )
+		curlf_set( flags, VALIDATE );
+
+	if( !( fh = curlw_to_file( url, flags ) ) )
 	{
-		err( "Could not init curl for url fetch -- %s", Err );
+		err( "Could not fetch target url '%s'" );
 		return -1;
 	}
 
-	curl_easy_setopt( c, CURLOPT_URL, url );
-	curl_easy_setopt( c, CURLOPT_TIMEOUT_MS, 10000 );
-	curl_easy_setopt( c, CURLOPT_CONNECTTIMEOUT_MS, 5000 );
-
-#if _LCURL_CAN_VERIFY > 0
-	if( context->is_ssl )
-	{
-		if( chkcfFlag( SEC_VALIDATE ) )
-		{
-			curl_easy_setopt( c, CURLOPT_SSL_VERIFYPEER,   1L );
-			curl_easy_setopt( c, CURLOPT_SSL_VERIFYHOST,   1L );
-			curl_easy_setopt( c, CURLOPT_SSL_VERIFYSTATUS, 1L );
-		}
-		else
-		{
-			curl_easy_setopt( c, CURLOPT_SSL_VERIFYPEER,   0L );
-			curl_easy_setopt( c, CURLOPT_SSL_VERIFYHOST,   0L );
-			curl_easy_setopt( c, CURLOPT_SSL_VERIFYSTATUS, 0L );
-		}
-	}
-#endif
-
-	// make a temporary file
-	if( !( fh = tmpfile( ) ) )
-	{
-		err( "Could not create a temporary file for fetching '%s' -- %s",
-			url, Err );
-		ret = -2;
-		goto CRU_CLEANUP;
-	}
-
-	// and set the file handle
-	curl_easy_setopt( c, CURLOPT_WRITEDATA, (void *) fh );
-
-	// and go get it
-	if( ( cc = curl_easy_perform( c ) ) != CURLE_OK )
-	{
-		err( "Could not curl target url '%s' -- %s", url, CErr );
-		ret = -1;
-		goto CRU_CLEANUP;
-	}
-
-	// and go back to the beginning
-	fseek( fh, 0L, SEEK_SET );
-
 	// and read that file
 	ret = __config_read_file( fh );
+	fclose( fh );
 
-CRU_CLEANUP:
-	curl_easy_cleanup( c );
 	return ret;
 }
 

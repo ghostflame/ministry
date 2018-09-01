@@ -60,6 +60,7 @@
 #include "log.h"
 #include "loop.h"
 #include "utils.h"
+#include "curlw.h"
 #include "regexp.h"
 #include "net.h"
 #include "iplist.h"

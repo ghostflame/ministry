@@ -1,9 +1,9 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-FILES  = log utils regexp net iplist target io mem thread config loop http app
-HEADS  = log utils regexp net iplist target io mem thread config loop http app run
+FILES  = log utils regexp curlw net iplist target io mem thread config loop http app
+HEADS  = log utils regexp curlw net iplist target io mem thread config loop http app run
 
-VERS   = $(shell sed -rn 's/^Version:\t(.*)/\1/p' ../../ministry.spec)
+VERS  ?= 0.1.0
 RKV    = app_shared.a
 
 OBJS   = $(FILES:%=%.o)
