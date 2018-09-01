@@ -19,6 +19,7 @@ typedef struct stats_control		STAT_CTL;
 typedef struct synth_control		SYN_CTL;
 typedef struct http_control			HTTP_CTL;
 typedef struct targets_control		TGTS_CTL;
+typedef struct fetch_control		FTCH_CTL;
 
 typedef struct net_in_port			NET_PORT;
 typedef struct net_type				NET_TYPE;
@@ -44,9 +45,12 @@ typedef struct synth_fn_def			SYNDEF;
 typedef struct token_data			TOKEN;
 typedef struct token_info			TOKENS;
 typedef struct tcp_thread			TCPTH;
+typedef struct fetch_target			FETCH;
+typedef struct fetch_metrics_map	METMP;
 
 
 // function types
+typedef void data_fn ( HOST *, IOBUF * );
 typedef void targets_fn ( ST_THR *, BUF *, IOBUF * );
 typedef void tsf_fn ( ST_THR *, BUF * );
 typedef void stats_fn ( ST_THR * );

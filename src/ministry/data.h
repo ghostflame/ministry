@@ -111,15 +111,14 @@ add_fn data_point_stats;
 add_fn data_point_adder;
 add_fn data_point_gauge;
 
-void data_point_adder( char *path, int len, char *dat );
-
 line_fn data_line_ministry;
 line_fn data_line_token;
 line_fn data_line_compat;
 line_fn data_line_min_prefix;
 line_fn data_line_com_prefix;
 
-void data_parse_buf( HOST *h, IOBUF *b );
+data_fn data_parse_buf;
+
 void data_start( NET_TYPE *nt );
 
 #endif

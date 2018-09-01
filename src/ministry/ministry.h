@@ -16,10 +16,6 @@
 #define Err strerror( errno )
 #endif
 
-#ifndef VERSION_STRING
-#define VERSION_STRING "unknown"
-#endif
-
 // include epoll
 #include <sys/epoll.h>
 
@@ -32,6 +28,7 @@
 #include "net.h"
 #include "udp.h"
 #include "tcp.h"
+#include "fetch.h"
 #include "token.h"
 #include "targets.h"
 #include "data.h"
@@ -67,6 +64,7 @@ struct ministry_control
 	STAT_CTL			*	stats;
 	SYN_CTL				*	synth;
 	TGTS_CTL			*	tgt;
+	FTCH_CTL			*	fetch;
 };
 
 

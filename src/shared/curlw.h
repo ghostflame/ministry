@@ -17,9 +17,9 @@
 #define CURLW_FLAG_VALIDATE			0x02
 #define CURLW_FLAG_SLOW				0x10
 
-#define setCurlF( _i, F )			_i |= CURLW_##F
-#define curCurlF( _i, F )			_i &= ~CURLW_##F
-#define chkCurlF( _i, F )			( _i & CURLW_##F
+#define setCurlF( _i, F )			_i |= CURLW_FLAG_##F
+#define curCurlF( _i, F )			_i &= ~CURLW_FLAG_##F
+#define chkCurlF( _i, F )			( _i & CURLW_FLAG_##F )
 
 
 
@@ -28,6 +28,8 @@
 // fetch to file
 FILE *curlw_to_file( char *url, int flags );
 
+// fetch to iobuf
+int curlw_to_buffer( char *url, int flags, IOBUF *b );
+
 
 #endif
-

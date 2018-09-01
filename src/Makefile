@@ -1,6 +1,6 @@
 DIRS   = shared ministry ministry-test carbon-copy
 TARGET = unknown
-VERS  ?= 0.1.0
+VERS  ?= 0.0.1
 
 all: TARGET = all
 all: subdirs

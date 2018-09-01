@@ -12,18 +12,6 @@
 #include "shared.h"
 
 
-// curl options check
-// can't use verify below 7.41.0
-#if LIBCURL_VERSION_MAJOR > 7 || \
-  ( LIBCURL_VERSION_MAJOR == 7 && \
-    LIBCURL_VERSION_MINOR > 40 )
-	#define _LCURL_CAN_VERIFY 1
-#else
-	#define _LCURL_CAN_VERIFY 0
-#endif
-
-
-
 
 CCTXT *ctxt_top = NULL;
 CCTXT *context  = NULL;
@@ -388,17 +376,17 @@ int config_read_file( char *path )
 
 int config_read_url( char *url )
 {
-	int flags = 0;
+	int flags = 0, ret;
 	FILE *fh;
 
 	debug( "Opening config url '%s', section %s",
 		url, context->section->name );
 
 	if( context->is_ssl )
-		curlf_set( flags, SSL );
+		setCurlF( flags, SSL );
 	
-	if( chkcfFlg( SEC_VALIDATE ) )
-		curlf_set( flags, VALIDATE );
+	if( chkcfFlag( SEC_VALIDATE ) )
+		setCurlF( flags, VALIDATE );
 
 	if( !( fh = curlw_to_file( url, flags ) ) )
 	{
