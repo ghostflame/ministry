@@ -59,7 +59,8 @@ int net_set_host_parser( HOST *h, int token_check, int prefix_check )
 	IPNET *n;
 
 	// this is the default
-	h->parser = h->type->flat_parser;
+	h->parser  = h->type->flat_parser;
+	h->handler = h->type->handler;
 
 	// are we doing a token check?
 	if(   token_check
@@ -264,7 +265,7 @@ void net_stop( void )
 
 NET_TYPE *net_type_defaults( int type )
 {
-	const DTYPE *d = data_type_defns + type;
+	DTYPE *d = data_type_defns + type;
 	NET_TYPE *nt;
 
 	nt              = (NET_TYPE *) allocz( sizeof( NET_TYPE ) );
@@ -284,6 +285,9 @@ NET_TYPE *net_type_defaults( int type )
 	nt->name        = strdup( d->name );
 	nt->flags       = NTYPE_ENABLED|NTYPE_TCP_ENABLED|NTYPE_UDP_ENABLED;
 	nt->token_type  = d->tokn;
+
+	// and hook up the dtype
+	d->nt = nt;
 
 	return nt;
 }

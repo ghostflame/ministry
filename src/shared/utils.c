@@ -874,3 +874,23 @@ uint64_t hash_size( char *str )
 }
 
 
+int is_url( char *str )
+{
+	int l = strlen( str );	
+
+	if( l < 8 )
+		return STR_URL_NO;
+
+	if( !strncasecmp( str, "http://", 7 ) )
+		return STR_URL_YES;
+
+	if( !strncasecmp( str, "https://", 8 ) )
+		return STR_URL_SSL;
+
+	return STR_URL_NO;
+}
+
+
+
+
+

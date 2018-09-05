@@ -38,9 +38,10 @@ struct data_type_params
 	uint16_t			port;
 	int64_t				thrd;
 	char			*	sock;
+	NET_TYPE		*	nt;
 };
 
-extern const DTYPE data_type_defns[];
+extern DTYPE data_type_defns[];
 
 
 #define dp_set( _dp, t, v )			_dp.ts = t; _dp.val = v

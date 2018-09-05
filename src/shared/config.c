@@ -376,27 +376,34 @@ int config_read_file( char *path )
 
 int config_read_url( char *url )
 {
-	int flags = 0, ret;
-	FILE *fh;
+	CURLWH ch;
+	int ret;
 
 	debug( "Opening config url '%s', section %s",
 		url, context->section->name );
 
+	memset( &ch, 0, sizeof( CURLWH ) );
+
+	ch.url = url;
+
 	if( context->is_ssl )
-		setCurlF( flags, SSL );
+		setCurlFl( ch, SSL );
 	
 	if( chkcfFlag( SEC_VALIDATE ) )
-		setCurlF( flags, VALIDATE );
+		setCurlFl( ch, VALIDATE );
 
-	if( !( fh = curlw_to_file( url, flags ) ) )
+	// force to file
+	setCurlFl( ch, TOFILE );
+
+	if( curlw_fetch( &ch ) )
 	{
 		err( "Could not fetch target url '%s'" );
 		return -1;
 	}
 
 	// and read that file
-	ret = __config_read_file( fh );
-	fclose( fh );
+	ret = __config_read_file( ch.fh );
+	fclose( ch.fh );
 
 	return ret;
 }
@@ -407,7 +414,7 @@ int config_read_url( char *url )
 
 int config_read( char *inpath, WORDS *w )
 {
-	int ret = 0, p_url = 0, p_ssl = 0;
+	int ret = 0, p_url = 0, p_ssl = 0, s;
 	char *path;
 
 	// prune the path
@@ -424,9 +431,12 @@ int config_read( char *inpath, WORDS *w )
 	// set up our new context
 	context = config_make_context( path, w );
 
-	if( !strncmp( path, "http://", 7 ) )
+	// is that a url?
+	s = is_url( path );
+
+	if( s == STR_URL_YES )
 		context->is_url = 1;
-	else if( !strncmp( path, "https://", 8 ) )
+	else if( s == STR_URL_SSL )
 	{
 		context->is_url = 1;
 		context->is_ssl = 1;

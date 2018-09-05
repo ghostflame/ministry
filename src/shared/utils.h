@@ -171,6 +171,16 @@ int read_file( char *path, char **buf, int *len, size_t max, int perm, char *des
 // returns the type it thought it was
 int parse_number( char *str, int64_t *iv, double *dv );
 
+// is this an http url
+enum str_url_types
+{
+	STR_URL_NO = 0,
+	STR_URL_YES,
+	STR_URL_SSL
+};
+int is_url( char *str );
+
+
 // easier av reads
 #define av_int( _v )		parse_number( av->val, &(_v), NULL )
 #define av_dbl( _v )		parse_number( av->val, NULL, &(_v) )

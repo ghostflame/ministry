@@ -11,6 +11,9 @@
 #define MINISTRY_FETCH_H
 
 
+#define DEFAULT_FETCH_BUF_SZ		0x20000		// 128k
+
+
 struct fetch_metrics_map
 {
 	METMP			*	next;
@@ -20,23 +23,33 @@ struct fetch_metrics_map
 };
 
 
-
 struct fetch_target
 {
 	FETCH			*	next;
 
-	char			*	url;
 	char			*	name;
-	HOST			*	h;
+	char			*	remote;
+	char			*	path;
+
+	CURLWH			*	ch;
+
+	HOST			*	host;
 	DTYPE			*	dtype;
 	METMP			*	attmap;
 
+	line_fn			*	parser;
+	add_fn			*	handler;
+
 	int64_t				period;		// msec config, converted to usec
 	int64_t				offset;		// msec config, converted to usec
+	int64_t				bufsz;
 
 	int					metrics;	// is it a metrics type?
-	int					type;		// DATA_ type
-	int					is_ssl;
+	int					attct;		// attribute map count
+
+	uint16_t			port;
+
+	struct sockaddr_in	dst;
 };
 
 
@@ -49,7 +62,13 @@ struct fetch_control
 };
 
 
+curlw_cb fetch_ministry;
+curlw_cb fetch_metrics;
+
+
 throw_fn fetch_loop;
+
+int fetch_init( void );
 
 conf_line_fn fetch_config_line;
 FTCH_CTL *fetch_config_defaults( void );

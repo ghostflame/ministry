@@ -47,6 +47,8 @@ typedef struct http_callbacks       HTTP_CB;
 typedef struct http_ssl             SSL_CONF;
 typedef struct http_ssl_file        SSL_FILE;
 
+typedef struct curlw_handle			CURLWH;
+
 
 
 // function types
@@ -57,6 +59,7 @@ typedef int http_handler ( uint32_t, char **, int, void * );
 typedef void help_fn ( void );
 typedef int64_t io_fn( TGT * );
 typedef int target_cfg_fn( TGT *, char *, int );
+typedef void curlw_cb( void *, IOBUF *b );
 
 typedef void iplist_data_fn( void *, IPNET * );
 
