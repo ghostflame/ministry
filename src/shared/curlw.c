@@ -70,7 +70,7 @@ int curlw_setup( CURL **cp, CURLWH *ch )
 static size_t curlw_write_buf( void *contents, size_t size, size_t nmemb, void *userp )
 {
 	CURLWH *ch = (CURLWH *) userp;
-	int32_t csz, rem, len;
+	int32_t csz, rem, len, max;
 	uint8_t *cp;
 	IOBUF *b;
 
@@ -96,16 +96,18 @@ static size_t curlw_write_buf( void *contents, size_t size, size_t nmemb, void *
 	// copy to buffer and call the callback when it gets full
 	while( rem > 0 )
 	{
-		len = ( ( rem + 1 + b->len ) > b->sz ) ? b->sz - b->len - 1 : rem;
+		max = b->sz - ( b->len + 1 );
+		len = ( rem > max ) ? max : rem;
+
 		memcpy( b->buf + b->len, cp, len );
 		b->len += len;
 		b->buf[b->len] = '\0';
 
-		if( ch->cb )
-			(*(ch->cb))( ch->arg, b );
-
 		rem -= len;
-		cp += len;
+		cp  += len;
+
+		if( b->len > b->hwmk && ch->cb )
+			(*(ch->cb))( ch->arg, b );
 	}
 
 	return csz;

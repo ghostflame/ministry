@@ -1,0 +1,72 @@
+# HELP http_requests_total Count of http requests
+# TYPE http_requests_total counter
+http_requests_total{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="chrome"} 37
+http_requests_total{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="other"} 12
+http_requests_total{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="ipad"} 1
+http_requests_total{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="iphone"} 33
+http_requests_total{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="firefox"} 14
+http_requests_total{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="msie"} 2
+http_requests_total{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="unknown"} 1
+
+# HELP lamp_loglines_total Count of lamp log lines
+# TYPE lamp_loglines_total counter
+lamp_loglines_total{group="prodweb",host="webdmz01",level="NOTICE",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="chrome"} 268
+lamp_loglines_total{group="prodweb",host="webdmz01",level="NOTICE",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="other"} 88
+lamp_loglines_total{group="prodweb",host="webdmz01",level="NOTICE",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="ipad"} 5
+lamp_loglines_total{group="prodweb",host="webdmz01",level="NOTICE",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="iphone"} 301
+lamp_loglines_total{group="prodweb",host="webdmz01",level="NOTICE",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="firefox"} 104
+lamp_loglines_total{group="prodweb",host="webdmz01",level="NOTICE",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="msie"} 17
+lamp_loglines_total{group="prodweb",host="webdmz01",level="NOTICE",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="unknown"} 13
+
+# HELP http_request_duration Summary of request durations in seconds
+# TYPE http_request_duration summary
+http_request_duration{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="chrome",quantile="0.01"} 0.0025408267974853516
+http_request_duration{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="chrome",quantile="0.05"} 0.0027930736541748047
+http_request_duration{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="chrome",quantile="0.5"} 0.005167961120605469
+http_request_duration{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="chrome",quantile="0.9"} 0.09314894676208496
+http_request_duration{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="chrome",quantile="0.99"} 0.1965770721435547
+http_request_duration_sum{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="chrome"} 1.0359890460968018
+http_request_duration_count{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="chrome"} 37
+http_request_duration{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="other",quantile="0.01"} 0.0028748512268066406
+http_request_duration{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="other",quantile="0.05"} 0.0028748512268066406
+http_request_duration{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="other",quantile="0.5"} 0.005084037780761719
+http_request_duration{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="other",quantile="0.9"} 0.016235828399658203
+http_request_duration{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="other",quantile="0.99"} 0.05544090270996094
+http_request_duration_sum{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="other"} 0.1268165111541748
+http_request_duration_count{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="other"} 12
+http_request_duration{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="ipad",quantile="0.01"} 0.0031158924102783203
+http_request_duration{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="ipad",quantile="0.05"} 0.0031158924102783203
+http_request_duration{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="ipad",quantile="0.5"} 0.0031158924102783203
+http_request_duration{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="ipad",quantile="0.9"} 0.0031158924102783203
+http_request_duration{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="ipad",quantile="0.99"} 0.0031158924102783203
+http_request_duration_sum{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="ipad"} 0.0031158924102783203
+http_request_duration_count{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="ipad"} 1
+http_request_duration{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="iphone",quantile="0.01"} 0.002348184585571289
+http_request_duration{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="iphone",quantile="0.05"} 0.002377033233642578
+http_request_duration{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="iphone",quantile="0.5"} 0.028973817825317383
+http_request_duration{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="iphone",quantile="0.9"} 0.1389620304107666
+http_request_duration{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="iphone",quantile="0.99"} 0.338209867477417
+http_request_duration_sum{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="iphone"} 1.7906925678253174
+http_request_duration_count{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="iphone"} 33
+http_request_duration{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="firefox",quantile="0.01"} 0.0029821395874023438
+http_request_duration{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="firefox",quantile="0.05"} 0.0029821395874023438
+http_request_duration{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="firefox",quantile="0.5"} 0.010956048965454102
+http_request_duration{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="firefox",quantile="0.9"} 0.07713890075683594
+http_request_duration{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="firefox",quantile="0.99"} 0.21403098106384277
+http_request_duration_sum{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="firefox"} 0.37706518173217773
+http_request_duration_count{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="firefox"} 14
+http_request_duration{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="msie",quantile="0.01"} 0.0059490203857421875
+http_request_duration{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="msie",quantile="0.05"} 0.0059490203857421875
+http_request_duration{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="msie",quantile="0.5"} 0.010270833969116211
+http_request_duration{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="msie",quantile="0.9"} 0.010270833969116211
+http_request_duration{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="msie",quantile="0.99"} 0.010270833969116211
+http_request_duration_sum{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="msie"} 0.0162198543548584
+http_request_duration_count{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="msie"} 2
+http_request_duration{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="unknown",quantile="0.01"} 0.13692808151245117
+http_request_duration{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="unknown",quantile="0.05"} 0.13692808151245117
+http_request_duration{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="unknown",quantile="0.5"} 0.13692808151245117
+http_request_duration{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="unknown",quantile="0.9"} 0.13692808151245117
+http_request_duration{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="unknown",quantile="0.99"} 0.13692808151245117
+http_request_duration_sum{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="unknown"} 0.13692808151245117
+http_request_duration_count{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="unknown"} 1
+

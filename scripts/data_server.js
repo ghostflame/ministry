@@ -1,10 +1,21 @@
 var http = require( 'http' );
 var fs   = require( 'fs' );
+var optM = require( 'node-getopt' );
+
+var args = [
+	[ 'h', 'help',              'Print this help.' ],
+	[ 'p', 'port=i',            'Port to serve on.' ],
+	[ 'd', 'data=ARG',          'File to read for stats data.' ],
+	[ 'm', 'metrics=ARG',       'File to read for metrics data.' ],
+];
 
 var data = {
-	str:		null,
-	len:		0,
+	'/data':		null,
+	'/metrics':		null,
+	'/':			'',
 };
+
+var port = 10000;
 
 
 var logmsg = function( msg ) {
@@ -13,27 +24,47 @@ var logmsg = function( msg ) {
 
 var respond = function( req, res ) {
 
-	if( req.url != '/data' ) {
+	if( !( req.url in data ) ) {
 		logmsg( 'Unexpected path: ' + req.url );
 		res.writeHead( 404 );
 		res.end( );
 		return;
 	}
 
-	logmsg( 'Serving data.' );
-	res.writeHead( 200, { 'Content-Length': data.len } );
-	res.write( data.str );
+	logmsg( 'Serving ' + req.url );
+	res.writeHead( 200, { 'Content-Length': data[req.url].length } );
+	res.write( data[req.url] );
 	res.end( );
 };
 
-if( process.argv.length < 3 ) {
-	logmsg( 'No data file provided.' );
-	process.exit( 1 );
-}
-data.str = fs.readFileSync( process.argv[2] );
-data.len = data.str.length;
 
-port = process.argv[3] || 10000;
+var opt = optM.create( args );
+opt.setHelp(
+	"Usage: node data_server.js --help\n" +
+	"       node data_server.js [--port <port>] [--data <stats file>] [--metrics <metrics file>]\n\n" +
+	"This small webserver servers static stats/metrics content for testing ministry fetch.\n\n" );
+
+var opts = opt.bindHelp( ).parseSystem( ).options;
+
+if( opts.metrics ) {
+	data['/metrics'] = fs.readFileSync( opts.metrics );
+	logmsg( `/metrics taken from ${opts.metrics}.` ); 
+}
+if( opts.data ) {
+	data['/data'] = fs.readFileSync( opts.data );
+	logmsg( `/data taken from ${opts.data}.` );
+}
+if( opts.port ) {
+	port = parseInt( opts.port, 10 );
+}
+
+var str = '';
+for( var p in data ) {
+	if( data[p] ) {
+		str += p + "\n";
+	}
+}
+data['/'] = str;
 
 var svr = http.createServer( respond );
 svr.listen( port, function( ) {

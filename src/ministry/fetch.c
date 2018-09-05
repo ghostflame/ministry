@@ -13,13 +13,19 @@
 
 void fetch_metrics( void *arg, IOBUF *b )
 {
-	info( "Called fetch_metrics." );
+	info( "Called fetch_metrics for %d bytes.", b->len );
+
+	// flatten the buffer for now
+	b->len = 0;
 }
 
 
 void fetch_ministry( void *arg, IOBUF *b )
 {
 	FETCH *f = (FETCH *) arg;
+
+	info( "Called fetch_ministry for %d bytes.", b->len );
+
 	data_parse_buf( f->host, b );
 }
 
@@ -151,6 +157,10 @@ void *fetch_loop( void *arg )
 
 	// set up that host
 	f->host->ip   = sin.sin_addr.s_addr;
+
+	if( f->metrics )
+		f->dtype = data_type_defns + DATA_TYPE_ADDER;
+
 	f->host->type = f->dtype->nt;
 
 	// we might have prefixes
