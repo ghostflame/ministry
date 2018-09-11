@@ -106,6 +106,8 @@ struct data_hash_entry
 };
 
 
+uint64_t data_path_hash_wrap( char *path, int len );
+
 DHASH *data_locate( char *path, int len, int type );
 
 add_fn data_point_stats;
@@ -118,7 +120,7 @@ line_fn data_line_compat;
 line_fn data_line_min_prefix;
 line_fn data_line_com_prefix;
 
-data_fn data_parse_buf;
+void data_parse_buf( HOST *h, IOBUF *b );
 
 void data_start( NET_TYPE *nt );
 

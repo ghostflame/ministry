@@ -125,6 +125,12 @@ __attribute__((hot)) static inline uint64_t data_path_hash( char *str, int len )
 }
 
 
+uint64_t data_path_hash_wrap( char *str, int len )
+{
+	return data_path_hash( str, len );
+}
+
+
 
 uint32_t data_get_id( ST_CFG *st )
 {

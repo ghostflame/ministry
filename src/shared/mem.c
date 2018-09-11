@@ -9,27 +9,33 @@
 
 #include "shared.h"
 
+static uint8_t mem_alloc_size_vals[16] =
+{
+	0, 1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4
+};
 
 uint32_t mem_alloc_size( int len )
 {
-	uint32_t l, v = 1;
-	int k, h = 0;
+	uint32_t l = (uint32_t) len;
+	uint8_t s = 0;
 
-	l = (uint32_t) len;
-
-	// find the highest bit set
-	for( h = 0, k = 0; k < 32; k++ )
-	{
-		if( l & v )
-			h = k;
-
-		v <<= 1;
-	}
-
-	if( h > 15 )
+	if( l & 0xffff0000 )
 		return len + 1;
 
-	return 2 << h;
+	l >>= 16;
+
+	if( l & 0xff00 )
+	{
+		s += 8;
+		l >>= 8;
+	}
+	if( l & 0xf0 )
+	{
+		s += 4;
+		l >>= 4;
+	}
+
+	return 1 << ( s + mem_alloc_size_vals[l] );
 }
 
 

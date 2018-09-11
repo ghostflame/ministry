@@ -107,7 +107,8 @@ void mem_free_point_list( PTLIST *list )
 	PTLIST *p, *freed, *end;
 	int j = 0;
 
-	freed = end = NULL;
+	freed = NULL;
+	end   = list;
 
 	while( list )
 	{
@@ -117,11 +118,8 @@ void mem_free_point_list( PTLIST *list )
 		p->count    = 0;
 		p->sentinel = 0;
 
-		p->next  = freed;
-		freed    = p;
-
-		if( !end )
-			end = p;
+		p->next = freed;
+		freed   = p;
 
 		j++;
 	}
@@ -195,7 +193,8 @@ void mem_free_dhash_list( DHASH *list )
 	PTLIST *ptfree, *p;
 	int j = 0;
 
-	freed = end = NULL;
+	freed  = NULL;
+	end    = list;
 	ptfree = NULL;
 
 	while( list )
@@ -228,9 +227,6 @@ void mem_free_dhash_list( DHASH *list )
 
 		d->next = freed;
 		freed   = d;
-
-		if( !end )
-			end = d;
 
 		j++;
 	}
@@ -265,7 +261,8 @@ void mem_free_token_list( TOKEN *list )
 	TOKEN *t, *freed, *end;
 	int j = 0;
 
-	freed = end = NULL;
+	freed = NULL;
+	end   = list;
 
 	while( list )
 	{
@@ -276,9 +273,6 @@ void mem_free_token_list( TOKEN *list )
 
 		t->next = freed;
 		freed   = t;
-
-		if( !end )
-			end = t;
 
 		j++;
 	}
@@ -320,7 +314,8 @@ void mem_free_pred_list( PRED *list )
 	HIST *hist;
 	int j = 0;
 
-	freed = end = NULL;
+	freed = NULL;
+	end   = list;
 
 	while( list )
 	{
@@ -335,9 +330,6 @@ void mem_free_pred_list( PRED *list )
 
 		p->next = freed;
 		freed   = p;
-
-		if( !end )
-			end = p;
 
 		j++;
 	}
@@ -392,7 +384,8 @@ void mem_free_history_list( HIST *list )
 	HIST *h, *freed, *end;
 	int j = 0;
 
-	freed = end = NULL;
+	freed = NULL;
+	end   = list;
 
 	while( list )
 	{
@@ -405,14 +398,71 @@ void mem_free_history_list( HIST *list )
 		h->next = freed;
 		freed   = h;
 
-		if( !end )
-			end = h;
-
 		j++;
 	}
 
 	mtype_free_list( ctl->mem->histy, j, freed, end );
 }
+
+
+METRY *mem_new_metry( char *str, int len )
+{
+	METRY *m = (METRY *) mtype_new( ctl->mem->metry );
+
+	if( m->sz <= len )
+	{
+		free( m->metric );
+		m->sz = len + 32 - ( len % 32 );
+		m->metric = (char *) allocz( m->sz );
+	}
+
+	memcpy( m->metric, str, len );
+	m->metric[len] = '\0';
+	m->len = len;
+
+	return m;
+}
+
+void mem_free_metry( METRY **m )
+{
+	METRY *mp;
+
+	mp = *m;
+	*m = NULL;
+
+	mp->len       = 0;
+	mp->metric[0] = '\0';
+	mp->dtype     = NULL;
+
+	mtype_free( ctl->mem->metry, mp );
+}
+
+void mem_free_metry_list( METRY *list )
+{
+	METRY *m, *freed, *end;
+	int j = 0;
+
+	freed = NULL;
+	end   = list;
+
+	while( list )
+	{
+		m = list;
+		list = m->next;
+
+		m->len       = 0;
+		m->metric[0] = '\0';
+		m->dtype     = NULL;
+
+		m->next = freed;
+		freed   = m;
+
+		j++;
+	}
+
+	mtype_free_list( ctl->mem->metry, j, freed, end );
+}
+
 
 
 
@@ -428,6 +478,7 @@ MEMT_CTL *memt_config_defaults( void )
 	m->token  = mem_type_declare( "tokens", sizeof( TOKEN ),  MEM_ALLOCSZ_TOKEN,  0, 1 );
 	m->preds  = mem_type_declare( "preds",  sizeof( PRED ),   MEM_ALLOCSZ_PREDS,  0, 1 );
 	m->histy  = mem_type_declare( "histy",  sizeof( HIST ),   MEM_ALLOCSZ_HISTY,  480, 1 ); // guess on points
+	m->metry  = mem_type_declare( "metry",  sizeof( METRY ),  MEM_ALLOCSZ_METRY,  64, 1 );
 
 	m->gc_enabled   = 1;
 	m->gc_thresh    = DEFAULT_GC_THRESH;

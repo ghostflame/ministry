@@ -13,10 +13,10 @@
 
 void fetch_metrics( void *arg, IOBUF *b )
 {
-	info( "Called fetch_metrics for %d bytes.", b->len );
+	FETCH *f = (FETCH *) arg;
 
-	// flatten the buffer for now
-	b->len = 0;
+	info( "Called fetch_metrics for %d bytes.", b->len );
+	metrics_parse_buf( f, b );
 }
 
 
@@ -25,7 +25,6 @@ void fetch_ministry( void *arg, IOBUF *b )
 	FETCH *f = (FETCH *) arg;
 
 	info( "Called fetch_ministry for %d bytes.", b->len );
-
 	data_parse_buf( f->host, b );
 }
 
@@ -46,37 +45,6 @@ void fetch_single( int64_t tval, void *arg )
 
 
 
-int fetch_cmp_attrs( const void *ap1, const void *ap2 )
-{
-	METMP *m1 = *((METMP **) ap1);
-	METMP *m2 = *((METMP **) ap2);
-
-	return ( m1->order < m2->order ) ? 1 : ( m1->order == m2->order ) ? 0 : -1;
-}
-
-
-void fetch_sort_attrs( FETCH *f )
-{
-	METMP **list, *m;
-	int i = 0, j;
-
-	if( !f->attct )
-		return;
-
-	list = (METMP **) allocz( f->attct * sizeof( METMP * ) );
-	for( m = f->attmap; m; m = m->next )
-		list[i++] = m;
-
-	qsort( list, f->attct, sizeof( METMP * ), fetch_cmp_attrs );
-
-	// re-link them
-	j = f->attct - 1;
-	for( i = 0; i < j; i++ )
-		list[i]->next = list[i+1];
-	list[j]->next = NULL;
-
-	free( list );
-}
 
 
 void fetch_make_url( FETCH *f )
@@ -117,10 +85,6 @@ void *fetch_loop( void *arg )
 	f->period *= 1000;
 	f->offset *= 1000;
 
-	// sort the attrs
-	if( f->metrics && f->attmap )
-		fetch_sort_attrs( f );
-
 	// default ports
 	if( f->port == 0 )
 		f->port = ( chkCurlF( f->ch, SSL ) ) ? 443 : 80;
@@ -136,6 +100,8 @@ void *fetch_loop( void *arg )
 	if( net_lookup_host( f->remote, &sin ) )
 		return NULL;	// abort this thread
 
+	sin.sin_port = htons( f->port );
+
 	// make the host structure
 	if( !( f->host = mem_new_host( &sin, (uint32_t) f->bufsz ) ) )
 	{
@@ -146,28 +112,32 @@ void *fetch_loop( void *arg )
 	// it's the in side that has the buffer on the host
 	f->ch->iobuf = f->host->net->in;
 
-	// metrics or ministry data?
-	if( f->metrics )
-		f->ch->cb = &fetch_metrics;
-	else
-		f->ch->cb = &fetch_ministry;
-
 	// and place ourself as the argument
 	f->ch->arg = f;
 
 	// set up that host
 	f->host->ip   = sin.sin_addr.s_addr;
 
+	// set up prometheus metrics bits
 	if( f->metrics )
-		f->dtype = data_type_defns + DATA_TYPE_ADDER;
-
-	f->host->type = f->dtype->nt;
-
-	// we might have prefixes
-	if( net_set_host_parser( f->host, 0, 1 ) )
 	{
-		mem_free_host( &(f->host) );
-		return NULL;
+		metrics_init_data( f->metdata );
+
+		f->ch->cb = &fetch_metrics;
+	}
+	// and regular ministry data parser
+	else
+	{
+		f->host->type = f->dtype->nt;
+
+		// we might have prefixes
+		if( net_set_host_parser( f->host, 0, 1 ) )
+		{
+			mem_free_host( &(f->host) );
+			return NULL;
+		}
+
+		f->ch->cb = &fetch_ministry;
 	}
 
 	// and run the loop
@@ -192,42 +162,6 @@ int fetch_init( void )
 }
 
 
-
-
-int fetch_add_attr( FETCH *f, char *str, int len )
-{
-	METMP tmp, *m;
-	char *cl;
-
-	memset( &tmp, 0, sizeof( METMP ) );
-
-	// were we given an order?
-	if( ( cl = memchr( str, ':', len ) ) )
-	{
-		*cl++ = '\0';
-		len -= cl - str;
-		tmp.order = atoi( str );
-		str = cl;
-	}
-
-	if( !len )
-	{
-		err( "Empty attribute name in fetch block %s.", f->name );
-		return -1;
-	}
-
-	tmp.attr = str_dup( str, len );
-	tmp.alen = len;
-
-	m = (METMP *) allocz( sizeof( METMP ) );
-	memcpy( m, &tmp, sizeof( METMP ) );
-
-	m->next = f->attmap;
-	f->attmap = m;
-	f->attct++;
-
-	return 0;
-}
 
 
 FTCH_CTL *fetch_config_defaults( void )
@@ -255,6 +189,8 @@ int fetch_config_line( AVP *av )
 		f->name = str_copy( "as-yet-unnamed", 0 );
 		f->ch = (CURLWH *) allocz( sizeof( CURLWH ) );
 		f->bufsz = DEFAULT_FETCH_BUF_SZ;
+		f->metdata = (MDATA *) allocz( sizeof( MDATA ) );
+		f->metdata->hsz = METR_HASH_SZ;
 
 		// set validate by default if we are given it on
 		// the command line.  It principally affects config
@@ -315,6 +251,8 @@ int fetch_config_line( AVP *av )
 			setCurlF( f->ch, SSL );
 		else
 			cutCurlF( f->ch, SSL );
+
+		__fetch_config_state = 1;
 	}
 	else if( attIs( "validate" ) )
 	{
@@ -323,10 +261,24 @@ int fetch_config_line( AVP *av )
 		else
 			cutCurlF( f->ch, VALIDATE );
 		// absent means use default
+
+		__fetch_config_state = 1;
 	}
 	else if( attIs( "prometheus" ) )
 	{
 		f->metrics = config_bool( av );
+		__fetch_config_state = 1;
+	}
+	else if( attIs( "typehash" ) )
+	{
+		if( parse_number( av->val, &v, NULL ) == NUM_INVALID )
+		{
+			err( "Invalid metric type hash size: %s", av->val );
+			return -1;
+		}
+
+		f->metdata->hsz = (uint64_t) v;
+		__fetch_config_state = 1;
 	}
 	else if( attIs( "type" ) )
 	{
@@ -346,6 +298,8 @@ int fetch_config_line( AVP *av )
 		}
 		if( f->metrics )
 			warn( "Data type set to '%s' but this is a prometheus source.", f->dtype->name );
+
+		__fetch_config_state = 1;
 	}
 	else if( attIs( "period" ) )
 	{
@@ -356,6 +310,7 @@ int fetch_config_line( AVP *av )
 		}
 
 		f->period = v;
+		__fetch_config_state = 1;
 	}
 	else if( attIs( "offset" ) )
 	{
@@ -366,6 +321,7 @@ int fetch_config_line( AVP *av )
 		}
 
 		f->offset = v;
+		__fetch_config_state = 1;
 	}
 	else if( attIs( "buffer" ) )
 	{
@@ -386,11 +342,13 @@ int fetch_config_line( AVP *av )
 		}
 
 		f->bufsz = v;
+		__fetch_config_state = 1;
 	}
 	else if( attIs( "attribute" ) )
 	{
+		__fetch_config_state = 1;
 		// prometheus attribute map
-		return fetch_add_attr( f, av->val, av->vlen );
+		return metrics_add_attr( f->metdata, av->val, av->vlen );
 	}
 	else if( attIs( "done" ) )
 	{

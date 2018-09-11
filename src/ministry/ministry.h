@@ -32,6 +32,7 @@
 #include "token.h"
 #include "targets.h"
 #include "data.h"
+#include "metrics.h"
 #include "gc.h"
 #include "mem.h"
 #include "synth.h"

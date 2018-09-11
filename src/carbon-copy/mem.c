@@ -122,7 +122,8 @@ void mem_free_hbufs_list( HBUFS *list )
 	IOBUF *bufs = NULL;
 	int i, hc = 0;
 
-	hend = hfree = NULL;
+	hfree = NULL;
+	hend  = list;
 
 	while( list )
 	{
@@ -142,9 +143,6 @@ void mem_free_hbufs_list( HBUFS *list )
 
 		h->next = hfree;
 		hfree   = h;
-
-		if( !hend )
-			hend = h;
 
 		hc++;
 	}

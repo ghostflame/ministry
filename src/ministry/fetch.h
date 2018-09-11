@@ -14,14 +14,6 @@
 #define DEFAULT_FETCH_BUF_SZ		0x20000		// 128k
 
 
-struct fetch_metrics_map
-{
-	METMP			*	next;
-	char			*	attr;
-	int					alen;
-	int					order;
-};
-
 
 struct fetch_target
 {
@@ -35,7 +27,7 @@ struct fetch_target
 
 	HOST			*	host;
 	DTYPE			*	dtype;
-	METMP			*	attmap;
+	MDATA			*	metdata;
 
 	line_fn			*	parser;
 	add_fn			*	handler;
@@ -46,6 +38,7 @@ struct fetch_target
 
 	int					metrics;	// is it a metrics type?
 	int					attct;		// attribute map count
+	int					mtypesz;	// size of the mtypes hash
 
 	uint16_t			port;
 

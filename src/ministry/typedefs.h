@@ -46,11 +46,13 @@ typedef struct token_data			TOKEN;
 typedef struct token_info			TOKENS;
 typedef struct tcp_thread			TCPTH;
 typedef struct fetch_target			FETCH;
-typedef struct fetch_metrics_map	METMP;
+typedef struct metrics_data         MDATA;
+typedef struct metrics_map			METMP;
+typedef struct metrics_type			METTY;
+typedef struct metrics_entry		METRY;
 
 
 // function types
-typedef void data_fn ( HOST *, IOBUF * );
 typedef void targets_fn ( ST_THR *, BUF *, IOBUF * );
 typedef void tsf_fn ( ST_THR *, BUF * );
 typedef void stats_fn ( ST_THR * );
