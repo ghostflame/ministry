@@ -702,7 +702,8 @@ char *config_help( void )
  -i            Allow insecure URI's\n\
  -I            Allow secure URI's to include insecure URI's\n", 
 #if _LCURL_CAN_VERIFY
-" -T            Validate certificates from config hosts (if available)\n"
+" -T            Validate certificates for HTTPS (if available)\n\
+ -W            Permit invalid certificates from fetch targets\n"
 #else
 ""
 #endif
@@ -715,7 +716,7 @@ char *config_help( void )
 }
 
 
-const char *config_args_opt_string = "HhDVvtsUuiIETFdC:c:";
+const char *config_args_opt_string = "HhDVvtsUuiIETWFdC:c:";
 char config_args_opt_merged[CONF_LINE_MAX];
 
 char *config_arg_string( char *argstr )
@@ -785,6 +786,9 @@ void config_args( int ac, char **av, char *optstr, help_fn *hfp )
 #if _LCURL_CAN_VERIFY > 0
 			case 'T':
 				setcfFlag( SEC_VALIDATE );
+				break;
+			case 'W':
+				setcfFlag( SEC_VALIDATE_F );
 				break;
 #endif
 			case 'E':

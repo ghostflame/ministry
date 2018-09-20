@@ -10,6 +10,15 @@
 #ifndef SHARED_CURLW_H
 #define SHARED_CURLW_H
 
+// curl options check
+// can't use verify below 7.41.0
+#if LIBCURL_VERSION_MAJOR > 7 || \
+  ( LIBCURL_VERSION_MAJOR == 7 && \
+    LIBCURL_VERSION_MINOR > 40 )
+	#define _LCURL_CAN_VERIFY 1
+#else
+	#define _LCURL_CAN_VERIFY 0
+#endif
 
 #define CErr						curl_easy_strerror( cc )
 

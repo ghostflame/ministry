@@ -178,7 +178,7 @@ int fetch_config_line( AVP *av )
 		// set validate by default if we are given it on
 		// the command line.  It principally affects config
 		// fetch, but we use it here too
-		if( chkcfFlag( SEC_VALIDATE ) )
+		if( chkcfFlag( SEC_VALIDATE ) && !chkcfFlag( SEC_VALIDATE_F ) )
 			setCurlF( f->ch, VALIDATE );
 	}
 
@@ -242,7 +242,15 @@ int fetch_config_line( AVP *av )
 		if( config_bool( av ) )
 			setCurlF( f->ch, VALIDATE );
 		else
+		{
+			if( chkcfFlag( SEC_VALIDATE ) && !chkcfFlag( SEC_VALIDATE_F ) )
+			{
+				err( "Cannot disable validation on fetch block %s - cmd-line flag -T is set, but -W is not.",
+					f->name );
+				return -1;
+			}
 			cutCurlF( f->ch, VALIDATE );
+		}
 		// absent means use default
 
 		__fetch_config_state = 1;

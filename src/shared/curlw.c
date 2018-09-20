@@ -10,16 +10,6 @@
 
 #include "shared.h"
 
-// curl options check
-// can't use verify below 7.41.0
-#if LIBCURL_VERSION_MAJOR > 7 || \
-  ( LIBCURL_VERSION_MAJOR == 7 && \
-    LIBCURL_VERSION_MINOR > 40 )
-	#define _LCURL_CAN_VERIFY 1
-#else
-	#define _LCURL_CAN_VERIFY 0
-#endif
-
 
 // set up curl, and do appropriate checks
 int curlw_setup( CURL **cp, CURLWH *ch )
