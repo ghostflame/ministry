@@ -81,7 +81,7 @@ void metrics_sort_attrs( MDATA *md )
 	md->attrs = list[0];
 	free( list );
 
-	// leave room for quantile and a null
+	// leave room for quantile or le and a bucket
 	md->aps = (char **) allocz( ( 2 + md->attct ) * sizeof( char * ) );
 	md->apl = (int16_t *) allocz( ( 2 + md->attct ) * sizeof( int16_t ) );
 }
@@ -154,7 +154,7 @@ void metrics_add_entry( FETCH *f, METRY *parent )
 		m->entries[hval] = e;
 		m->entct++;
 
-		info( "Added entry '%s', type %s, for fetch block %s.", e->metric, e->mtype->name, f->name );
+		debug( "Added entry '%s', type %s, for fetch block %s.", e->metric, e->mtype->name, f->name );
 
 		// for summaries we need to create the _sum and _count entries too, parented off the main one
 		// and histograms need a _bucket too, and don't even use the main type.  WTF prometheus.
@@ -197,13 +197,13 @@ int metrics_check_attr( MDATA *m, int which, char *attr, int order )
 
 	if( p[--l] != '"' )
 	{
-		info( "Line broken - label with no second \": %s", p );
+		debug( "Line broken - label with no second \": %s", p );
 		return -1;
 	}
 
 	if( !( q = memchr( p, '=', l ) ) )
 	{
-		info( "Line broken - label with no =." );
+		debug( "Line broken - label with no =." );
 		return -2;
 	}
 
@@ -211,7 +211,7 @@ int metrics_check_attr( MDATA *m, int which, char *attr, int order )
 
 	if( *q++ != '"' )
 	{
-		info( "Line broken - label with no first \": %s", p );
+		debug( "Line broken - label with no first \": %s", p );
 		return -3;
 	}
 
@@ -307,7 +307,7 @@ void metrics_parse_line( FETCH *f, char *line, int len )
 	{
 		// broken line
 		m->broken++;
-		info( "Line broken - no space." );
+		debug( "Line broken - no space." );
 		return;
 	}
 
@@ -335,7 +335,7 @@ void metrics_parse_line( FETCH *f, char *line, int len )
 		{
 			// unknown metric
 			m->unknown++;
-			info( "Line dropped - metric '%s' unknown.", p );
+			debug( "Line dropped - metric '%s' unknown.", p );
 			return;
 		}
 
@@ -350,7 +350,7 @@ void metrics_parse_line( FETCH *f, char *line, int len )
 	if( !( q = memchr( p, '{', l ) ) )
 	{
 		m->broken++;
-		info( "Line broken - } but no {" );
+		debug( "Line broken - } but no {" );
 		return;
 	}
 
@@ -361,7 +361,7 @@ void metrics_parse_line( FETCH *f, char *line, int len )
 	{
 		// unknown metric again
 		m->unknown++;
-		info( "Line broken - labelled metric '%s' unknown.", p );
+		debug( "Line broken - labelled metric '%s' unknown.", p );
 		return;
 	}
 
@@ -380,7 +380,7 @@ void metrics_parse_line( FETCH *f, char *line, int len )
 
 	attct = m->attct;
 	if( e->mtype->type == METR_TYPE_SUMMARY || e->mtype->type == METR_TYPE_HISTOGRAM )
-		attct++;
+		attct += 2;
 
 	memset( m->aps, 0, attct * sizeof( char * ) );
 	memset( m->apl, 0, attct * sizeof( int16_t ) );
@@ -394,9 +394,17 @@ void metrics_parse_line( FETCH *f, char *line, int len )
 	// hack - last metric is quantile for summaries
 	// push it onto the end of the list
 	if( e->mtype->type == METR_TYPE_SUMMARY )
-		metrics_check_attr( m, m->wds->wc - 1, "quantile", m->attct );
+	{
+		m->aps[m->attct] = "stat";
+		m->apl[m->attct] = 4;
+		metrics_check_attr( m, m->wds->wc - 1, "quantile", m->attct + 1 );
+	}
 	else if( e->mtype->type == METR_TYPE_HISTOGRAM )
-		metrics_check_attr( m, m->wds->wc - 1, "le", m->attct );
+	{
+		m->aps[m->attct] = "le";
+		m->apl[m->attct] = 2;
+		metrics_check_attr( m, m->wds->wc - 1, "le", m->attct + 1 );
+	}
 
 	// let's assemble our path then
 	blen = e->len + 1;
