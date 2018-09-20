@@ -156,13 +156,15 @@ void metrics_add_entry( FETCH *f, METRY *parent )
 
 		info( "Added entry '%s', type %s, for fetch block %s.", e->metric, e->mtype->name, f->name );
 
-		// for summaries we need to create the _sum and _count entries too
-		if( e->mtype->type == METR_TYPE_SUMMARY && !e->parent )
+		// for summaries we need to create the _sum and _count entries too, parented off the main one
+		// and histograms need a _bucket too, and don't even use the main type.  WTF prometheus.
+		if( ( e->mtype->type == METR_TYPE_SUMMARY || e->mtype->type == METR_TYPE_HISTOGRAM )
+		 && !e->parent )
 		{
 			char pathbuf[2048];
 
 			m->wds->wd[2]  = pathbuf;
-			m->wds->wd[3]  = "Counter";
+			m->wds->wd[3]  = "counter";
 			m->wds->len[3] = 7;
 
 			m->wds->len[2] = snprintf( pathbuf, 2048, "%s_sum", pm );
@@ -170,6 +172,15 @@ void metrics_add_entry( FETCH *f, METRY *parent )
 
 			m->wds->len[2] = snprintf( pathbuf, 2048, "%s_count", pm );
 			metrics_add_entry( f, e );
+
+			if( e->mtype->type == METR_TYPE_HISTOGRAM )
+			{
+				m->wds->wd[3]  = "histogram";
+				m->wds->len[3] = 9;
+
+				m->wds->len[2] = snprintf( pathbuf, 2048, "%s_bucket", pm );
+				metrics_add_entry( f, e );
+			}
 		}
 	}
 }
@@ -218,7 +229,7 @@ int metrics_check_attr( MDATA *m, int which, char *attr, int order )
 
 			// known case - quantile.  Flatten the dots
 			for( i = 0; i < l; i++, q++ )
-				if( *q == '.' )
+				if( *q == '.' || *q == '+' )
 					*q = '_';
 		}
 
@@ -368,7 +379,7 @@ void metrics_parse_line( FETCH *f, char *line, int len )
 	l = r - q;
 
 	attct = m->attct;
-	if( e->mtype->type == METR_TYPE_SUMMARY )
+	if( e->mtype->type == METR_TYPE_SUMMARY || e->mtype->type == METR_TYPE_HISTOGRAM )
 		attct++;
 
 	memset( m->aps, 0, attct * sizeof( char * ) );
@@ -384,6 +395,8 @@ void metrics_parse_line( FETCH *f, char *line, int len )
 	// push it onto the end of the list
 	if( e->mtype->type == METR_TYPE_SUMMARY )
 		metrics_check_attr( m, m->wds->wc - 1, "quantile", m->attct );
+	else if( e->mtype->type == METR_TYPE_HISTOGRAM )
+		metrics_check_attr( m, m->wds->wc - 1, "le", m->attct );
 
 	// let's assemble our path then
 	blen = e->len + 1;

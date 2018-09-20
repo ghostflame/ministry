@@ -70,3 +70,16 @@ http_request_duration{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_sit
 http_request_duration_sum{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="unknown"} 0.13692808151245117
 http_request_duration_count{group="prodweb",host="webdmz01",mon_env="PROD_WEB",mon_site="euwest1",site="store",type="page",ua="unknown"} 1
 
+
+# A histogram, which has a pretty complex representation in the text format:
+# HELP http_request_duration_seconds A histogram of the request duration.
+# TYPE http_request_duration_seconds histogram
+http_request_duration_seconds_bucket{group="prodweb",host="webdmz06",ua="chrome",le="0.05"} 24054
+http_request_duration_seconds_bucket{group="prodweb",host="webdmz06",ua="chrome",le="0.1"} 33444
+http_request_duration_seconds_bucket{group="prodweb",host="webdmz06",ua="chrome",le="0.2"} 100392
+http_request_duration_seconds_bucket{group="prodweb",host="webdmz06",ua="chrome",le="0.5"} 129389
+http_request_duration_seconds_bucket{group="prodweb",host="webdmz06",ua="chrome",le="1"} 133988
+http_request_duration_seconds_bucket{group="prodweb",host="webdmz06",ua="chrome",le="+Inf"} 144320
+http_request_duration_seconds_sum{group="prodweb",host="webdmz06",ua="chrome"} 53423
+http_request_duration_seconds_count{group="prodweb",host="webdmz06",ua="chrome"} 144320
+
