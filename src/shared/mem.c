@@ -22,8 +22,6 @@ uint32_t mem_alloc_size( int len )
 	if( l & 0xffff0000 )
 		return len + 1;
 
-	l >>= 16;
-
 	if( l & 0xff00 )
 	{
 		s += 8;
@@ -35,7 +33,10 @@ uint32_t mem_alloc_size( int len )
 		l >>= 4;
 	}
 
-	return 1 << ( s + mem_alloc_size_vals[l] );
+	s += mem_alloc_size_vals[l];
+
+	// minimum 16 bytes
+	return 1 << ( ( s > 4 ) ? s : 4 );
 }
 
 

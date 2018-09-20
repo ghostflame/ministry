@@ -50,7 +50,7 @@ int metrics_cmp_attrs( const void *ap1, const void *ap2 )
 	METMP *m1 = *((METMP **) ap1);
 	METMP *m2 = *((METMP **) ap2);
 
-	return ( m1->order < m2->order ) ? 1 : ( m1->order == m2->order ) ? 0 : -1;
+	return ( m1->order < m2->order ) ? -1 : ( m1->order == m2->order ) ? 0 : 1;
 }
 
 
@@ -81,8 +81,9 @@ void metrics_sort_attrs( MDATA *md )
 	md->attrs = list[0];
 	free( list );
 
-	md->aps = (char **) allocz( md->attct * sizeof( char * ) );
-	md->apl = (int16_t *) allocz( md->attct * sizeof( int16_t ) );
+	// leave room for quantile and a null
+	md->aps = (char **) allocz( ( 2 + md->attct ) * sizeof( char * ) );
+	md->apl = (int16_t *) allocz( ( 2 + md->attct ) * sizeof( int16_t ) );
 }
 
 
@@ -104,7 +105,7 @@ METRY *metrics_find_entry( MDATA *m, char *str, int len )
 // it's in the words struct when this is called
 // no locking because the mdata struct is only used
 // by this thread
-void metrics_add_entry( FETCH *f )
+void metrics_add_entry( FETCH *f, METRY *parent )
 {
 	const METTY *t, *tp;
 	uint64_t hval;
@@ -145,13 +146,97 @@ void metrics_add_entry( FETCH *f )
 		}
 
 		e = mem_new_metry( pm, lm );
-		e->mtype = (METTY *) tp;
-		e->dtype = data_type_defns + tp->dtype;
-		e->afp   = e->dtype->af;
-		e->next  = m->entries[hval];
+		e->mtype  = (METTY *) tp;
+		e->dtype  = data_type_defns + tp->dtype;
+		e->afp    = e->dtype->af;
+		e->next   = m->entries[hval];
+		e->parent = parent;
 		m->entries[hval] = e;
 		m->entct++;
+
+		info( "Added entry '%s', type %s, for fetch block %s.", e->metric, e->mtype->name, f->name );
+
+		// for summaries we need to create the _sum and _count entries too
+		if( e->mtype->type == METR_TYPE_SUMMARY && !e->parent )
+		{
+			char pathbuf[2048];
+
+			m->wds->wd[2]  = pathbuf;
+			m->wds->wd[3]  = "Counter";
+			m->wds->len[3] = 7;
+
+			m->wds->len[2] = snprintf( pathbuf, 2048, "%s_sum", pm );
+			metrics_add_entry( f, e );
+
+			m->wds->len[2] = snprintf( pathbuf, 2048, "%s_count", pm );
+			metrics_add_entry( f, e );
+		}
 	}
+}
+
+
+int metrics_check_attr( MDATA *m, int which, char *attr, int order )
+{
+	register char *p, *q;
+	int i, l, k;
+	METMP *a;
+
+	p = m->wds->wd[which];
+	l = m->wds->len[which];
+
+	if( p[--l] != '"' )
+	{
+		info( "Line broken - label with no second \": %s", p );
+		return -1;
+	}
+
+	if( !( q = memchr( p, '=', l ) ) )
+	{
+		info( "Line broken - label with no =." );
+		return -2;
+	}
+
+	k = q++ - p;
+
+	if( *q++ != '"' )
+	{
+		info( "Line broken - label with no first \": %s", p );
+		return -3;
+	}
+
+	l -= q - p;
+
+	// are we doing a single comparison?
+	// check it and always return
+	if( attr )
+	{
+		i = strlen( attr );
+		if( k == i && !memcmp( p, attr, i ) )
+		{
+			m->aps[order] = q;
+			m->apl[order] = l;
+
+			// known case - quantile.  Flatten the dots
+			for( i = 0; i < l; i++, q++ )
+				if( *q == '.' )
+					*q = '_';
+		}
+
+		return 0;
+	}
+
+	// go looking for it in the order
+	// capture a pointer to it and its length
+	for( a = m->attrs; a; a = a->next )
+		if( a->alen == k && !memcmp( a->attr, p, k ) )
+		{
+			//info( "Matched attribute '%s', order %d.", a->attr, a->order );
+			m->aps[a->order] = q;
+			m->apl[a->order] = l;
+			break;
+		}
+
+	return 0;
 }
 
 
@@ -159,15 +244,14 @@ void metrics_add_entry( FETCH *f )
 void metrics_parse_line( FETCH *f, char *line, int len )
 {
 	register char *q, *p = line;
+	int j, l, blen, attct;
 	MDATA *m = f->metdata;
-	int j, k, l, blen;
 	char *r, *val;
 	METRY *e;
-	METMP *a;
 
 	m = f->metdata;
 
-	info( "Saw line [%03d]: %s", len, line );
+	//info( "Saw line [%03d]: %s", len, line );
 	m->lines++;
 
 	while( len > 0 && isspace( *p ) )
@@ -178,7 +262,10 @@ void metrics_parse_line( FETCH *f, char *line, int len )
 
 	// it's no use if it's shorter than this
 	if( len < 8 )
+	{
+		//info( "Dropped line - too short." );
 		return;
+	}
 
 	// we *should* get a type and a help line before we see metrics
 	// we are ignoring help, as we don't send things to users
@@ -188,9 +275,10 @@ void metrics_parse_line( FETCH *f, char *line, int len )
 		 && m->wds->len[1] == 4 && !strncasecmp( m->wds->wd[1], "TYPE", 4 ) )
 		{
 			// yup, got a type, so add it
-			metrics_add_entry( f );
+			metrics_add_entry( f, NULL );
 		}
 
+		//info( "Dropped line - comment." );
 		return;
 	}
 
@@ -208,6 +296,7 @@ void metrics_parse_line( FETCH *f, char *line, int len )
 	{
 		// broken line
 		m->broken++;
+		info( "Line broken - no space." );
 		return;
 	}
 
@@ -235,10 +324,12 @@ void metrics_parse_line( FETCH *f, char *line, int len )
 		{
 			// unknown metric
 			m->unknown++;
+			info( "Line dropped - metric '%s' unknown.", p );
 			return;
 		}
 
 		// if we have it, we can go for it
+		//info( "Submitting with no labels: (%d) %s %s", l, p, val );
 		(*(e->afp))( p, l, val );
 		return;
 	}
@@ -248,20 +339,25 @@ void metrics_parse_line( FETCH *f, char *line, int len )
 	if( !( q = memchr( p, '{', l ) ) )
 	{
 		m->broken++;
+		info( "Line broken - } but no {" );
 		return;
 	}
+
+	*q = '\0';
 
 	// metric is in front of the labels
 	if( !( e = metrics_find_entry( m, p, q - p ) ) )
 	{
 		// unknown metric again
 		m->unknown++;
+		info( "Line broken - labelled metric '%s' unknown.", p );
 		return;
 	}
 
 	// do we care about attrs?
 	if( m->attct == 0 )
 	{
+		//info( "Submitting without attrs: (%d) %s %s", e->len, e->metric, val );
 		(*(e->afp))( e->metric, e->len, val );
 		return;
 	}
@@ -269,76 +365,37 @@ void metrics_parse_line( FETCH *f, char *line, int len )
 	// so let's read our labels
 	q++;
 	*r = '\0';
-	l = r - p;
+	l = r - q;
 
-	memset( m->aps, 0, m->attct * sizeof( char * ) );
-	memset( m->apl, 0, m->attct * sizeof( int16_t ) );
+	attct = m->attct;
+	if( e->mtype->type == METR_TYPE_SUMMARY )
+		attct++;
 
-	while( l > 0 )
-	{
-		// if we have a comma, just take the slice
-		if( ( q = memchr( p, ',', l ) ) )
-		{
-			k = q - p;
-			*q++ = '\0';
-			r = q;
-		}
-		// otherwise take the whole thing
-		else
-			k = l;
+	memset( m->aps, 0, attct * sizeof( char * ) );
+	memset( m->apl, 0, attct * sizeof( int16_t ) );
 
-		if( !( q = memchr( p, '=', k ) ) )
-		{
-			m->broken++;
+	strwords( m->wds, q, l, ',' );
+
+	for( j = 0; j < m->wds->wc; j++ )
+		if( metrics_check_attr( m, j, NULL, 0 ) != 0 )
 			return;
-		}
 
-		// length of the attr
-		j = q - p;
-
-		// go looking for it in the order
-		// capture a pointer to it and its length
-		for( a = m->attrs; a; a = a->next )
-			if( a->alen == j && !memcmp( a->attr, p, j ) )
-			{
-				// find the value
-				q++;
-				if( *q != '"' )
-				{
-					m->broken++;
-					return;
-				}
-
-				q++;
-				k -= q - p;
-				if( q[k-1] != '"' )
-				{
-					m->broken++;
-					return;
-				}
-				q[--k] = '\0';
-
-				m->aps[a->order] = q;
-				m->apl[a->order] = k;
-				break;
-			}
-
-		// and move on
-		p = r;
-		l -= k;
-	}
+	// hack - last metric is quantile for summaries
+	// push it onto the end of the list
+	if( e->mtype->type == METR_TYPE_SUMMARY )
+		metrics_check_attr( m, m->wds->wc - 1, "quantile", m->attct );
 
 	// let's assemble our path then
 	blen = e->len + 1;
 	memcpy( m->buf, e->metric, e->len );
 	m->buf[e->len] = '.';
 
-	for( j = 0; j < m->attct; j++ )
-		if( m->apl[j] == 0 )
+	for( j = 0; j < attct; j++ )
+		if( m->apl[j] > 0 )
 		{
 			memcpy( m->buf + blen, m->aps[j], m->apl[j] );
 			blen += m->apl[j];
-			m->buf[blen - 1] = '.';
+			m->buf[blen++] = '.';
 		}
 		else
 		{
@@ -349,9 +406,8 @@ void metrics_parse_line( FETCH *f, char *line, int len )
 	// chop off the last .
 	m->buf[--blen] = '\0';
 
-	info( "Submit: %s %s", m->buf, val );
-
 	// and we are ready to go - process that
+	//info( "Submitting with attrs: (%d) %s %s", blen, m->buf, val );
 	(*(e->afp))( m->buf, blen, val );
 }
 
@@ -431,6 +487,12 @@ void metrics_parse_buf( FETCH *f, IOBUF *b )
 	b->len = len;
 }
 
+
+void metrics_fetch_cb( void *arg, IOBUF *b )
+{
+	FETCH *f = (FETCH *) arg;
+	metrics_parse_buf( f, b );
+}
 
 
 

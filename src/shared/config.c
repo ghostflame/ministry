@@ -647,7 +647,7 @@ void config_set_main_file( char *path )
 
 void config_set_env_prefix( char *prefix )
 {
-	char *p, prev;
+	char *p, prev = ' ';
 	int i;
 
 	// it needs to be uppercase

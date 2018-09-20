@@ -55,9 +55,6 @@ struct fetch_control
 };
 
 
-curlw_cb fetch_ministry;
-curlw_cb fetch_metrics;
-
 
 throw_fn fetch_loop;
 

@@ -11,30 +11,13 @@
 #include "ministry.h"
 
 
-void fetch_metrics( void *arg, IOBUF *b )
-{
-	FETCH *f = (FETCH *) arg;
-
-	info( "Called fetch_metrics for %d bytes.", b->len );
-	metrics_parse_buf( f, b );
-}
-
-
-void fetch_ministry( void *arg, IOBUF *b )
-{
-	FETCH *f = (FETCH *) arg;
-
-	info( "Called fetch_ministry for %d bytes.", b->len );
-	data_parse_buf( f->host, b );
-}
-
 
 
 void fetch_single( int64_t tval, void *arg )
 {
 	FETCH *f = (FETCH *) arg;
 
-	info( "Fetching for target %s", f->name );
+	//info( "Fetching for target %s", f->name );
 
 	// this repeatedly calls it's callback with chunks of data
 	if( curlw_fetch( f->ch ) != 0 )
@@ -123,7 +106,7 @@ void *fetch_loop( void *arg )
 	{
 		metrics_init_data( f->metdata );
 
-		f->ch->cb = &fetch_metrics;
+		f->ch->cb = &metrics_fetch_cb;
 	}
 	// and regular ministry data parser
 	else
@@ -137,7 +120,7 @@ void *fetch_loop( void *arg )
 			return NULL;
 		}
 
-		f->ch->cb = &fetch_ministry;
+		f->ch->cb = &data_fetch_cb;
 	}
 
 	// and run the loop

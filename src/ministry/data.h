@@ -120,6 +120,8 @@ line_fn data_line_compat;
 line_fn data_line_min_prefix;
 line_fn data_line_com_prefix;
 
+curlw_cb data_fetch_cb;
+
 void data_parse_buf( HOST *h, IOBUF *b );
 
 void data_start( NET_TYPE *nt );

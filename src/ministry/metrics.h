@@ -44,6 +44,7 @@ struct metrics_map
 struct metrics_entry
 {
 	METRY			*	next;
+	METRY			*	parent;
 	char			*	metric;
 	METTY			*	mtype;
 	DTYPE			*	dtype;
@@ -73,7 +74,11 @@ struct metrics_data
 };
 
 
+curlw_cb metrics_fetch_cb;
+
 void metrics_parse_buf( FETCH *f, IOBUF *b );
+
+void metrics_add_entry( FETCH *f, METRY *parent );
 
 void metrics_init_data( MDATA *m );
 int metrics_add_attr( MDATA *m, char *str, int len );
