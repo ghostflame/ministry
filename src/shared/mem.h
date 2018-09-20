@@ -20,6 +20,8 @@
 #define DEFAULT_MEM_PRE_THRESH		0.33
 
 // pre-defined hash sizes
+#define MEM_HSZ_NANO				41
+#define MEM_HSZ_MICRO				199
 #define MEM_HSZ_TINY				1009
 #define MEM_HSZ_SMALL				5003
 #define MEM_HSZ_MEDIUM				25013

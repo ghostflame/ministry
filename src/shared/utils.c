@@ -846,6 +846,12 @@ uint64_t hash_size( char *str )
 		return 0;
 	}
 
+	if( !strcasecmp( str, "nano" ) )
+		return MEM_HSZ_NANO;
+
+	if( !strcasecmp( str, "micro" ) )
+		return MEM_HSZ_MICRO;
+
 	if( !strcasecmp( str, "tiny" ) )
 		return MEM_HSZ_TINY;
 
