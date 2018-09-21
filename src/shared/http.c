@@ -136,11 +136,21 @@ void http_log( void *arg, const char *fm, va_list ap )
 #define _jfield8( p, f, v )		l += snprintf( b + l, max - l, p "\"%s\": %ld,\r\n", f, v )
 #define _jfieldu( p, f, v )		l += snprintf( b + l, max - l, p "\"%s\": %u,\r\n", f, v )
 #define _jfieldl( p, f, v )		l += snprintf( b + l, max - l, p "\"%s\": %lu,\r\n", f, v )
+#define _jprunecma( )			if( b[l-3] == ',' ) { l--; b[l-2] = '\r'; b[l-1] = '\n'; } else notice( "Jprune called on %c.", b[l-3] )
+
+#define _jmtype( n, mc )		snprintf( tmp, 16, "%s_calls", n ); \
+								_jfieldl( "      ", tmp, mc.ctr ); \
+								snprintf( tmp, 16, "%s_total", n ); \
+								_jfieldl( "      ", tmp, mc.sum )
+
 
 int http_handler_stats( uint32_t ip, char **buf, int max, void *arg )
 {
 	char *b = *buf;
 	int j, l = 0;
+#ifdef MTYPE_TRACING
+	char tmp[16];
+#endif
 	MTSTAT ms;
 
 	_jstr( "{" );
@@ -158,15 +168,19 @@ int http_handler_stats( uint32_t ip, char **buf, int max, void *arg )
 
 		_jstr( "    {" );
 		_jfields( "      ", "type", ms.name );
-		_jfieldu( "      ", "free", ms.freec );
-		_jfieldu( "      ", "alloc", ms.alloc );
+		_jfieldu( "      ", "free", ms.ctrs.fcount );
+		_jfieldu( "      ", "alloc", ms.ctrs.total );
 		_jfieldl( "      ", "kb", ms.bytes >> 10 );
-
-		if( j == ( _mem->type_ct - 1 ) )
-			_jstr( "    }" );
-		else
-			_jstr( "    }," );
+#ifdef MTYPE_TRACING
+		_jmtype( "alloc",  ms.ctrs.all );
+		_jmtype( "freed",  ms.ctrs.fre );
+		_jmtype( "preall", ms.ctrs.pre );
+		_jmtype( "refill", ms.ctrs.ref );
+#endif
+		_jprunecma( );
+		_jstr( "    }," );
 	}
+	_jprunecma( );
 	_jstr( "  ]" );
 	_jstr( "}" );
 
@@ -182,7 +196,7 @@ int http_handler_stats( uint32_t ip, char **buf, int max, void *arg )
 #undef _jfield8
 #undef _jfieldu
 #undef _jfieldl
-
+#undef _jprunecma
 
 int http_handler_usage( uint32_t ip, char **buf, int max, void *arg )
 {
@@ -298,7 +312,9 @@ int http_ssl_load_file( SSL_FILE *sf, char *type )
 
 	snprintf( desc, 32, "SSL %s file", sf->type );
 
-	return read_file( sf->path, &(sf->content), &(sf->len), MAX_SSL_FILE_SIZE, 1, desc );
+	sf->len = MAX_SSL_FILE_SIZE;
+
+	return read_file( sf->path, &(sf->content), &(sf->len), 1, desc );
 }
 
 

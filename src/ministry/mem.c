@@ -96,8 +96,7 @@ void mem_free_point( PTLIST **p )
 	sp = *p;
 	*p = NULL;
 
-	sp->count    = 0;
-	sp->sentinel = 0;
+	sp->count = 0;
 
 	mtype_free( ctl->mem->points, sp );
 }
@@ -115,11 +114,9 @@ void mem_free_point_list( PTLIST *list )
 		p    = list;
 		list = p->next;
 
-		p->count    = 0;
-		p->sentinel = 0;
-
-		p->next = freed;
-		freed   = p;
+		p->count = 0;
+		p->next  = freed;
+		freed    = p;
 
 		j++;
 	}

@@ -2,6 +2,8 @@ DIRS   = shared ministry ministry-test carbon-copy
 TARGET = unknown
 VERS  ?= 0.0.1
 
+EARGS  = -DMTYPE_TRACING
+
 all: TARGET = all
 all: subdirs
 
@@ -16,6 +18,6 @@ debug: TARGET = debug
 debug: subdirs
 
 subdirs:
-	for d in $(DIRS); do cd $$d; VERS=$(VERS) $(MAKE) $(MFLAGS) $(TARGET); cd ..; done
+	for d in $(DIRS); do cd $$d; EARGS="$(EARGS)" VERS=$(VERS) $(MAKE) $(MFLAGS) $(TARGET); cd ..; done
 
 .PHONY: all clean debug

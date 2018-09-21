@@ -11,6 +11,10 @@
 
 
 
+#define __srmt_ct( n, c )	\
+		bprintf( t, "mem.trace.%s.%s.calls %ld", ms.name, n, c.ctr ); \
+		bprintf( t, "mem.trace.%s.%s.total %ld", ms.name, n, c.sum )
+
 void self_report_mtypes( ST_THR *t )
 {
 	MTSTAT ms;
@@ -22,11 +26,21 @@ void self_report_mtypes( ST_THR *t )
 			return;
 
 		// and report them
-		bprintf( t, "mem.%s.free %u",  ms.name, ms.freec );
-		bprintf( t, "mem.%s.alloc %u", ms.name, ms.alloc );
+		bprintf( t, "mem.%s.free %u",  ms.name, ms.ctrs.fcount );
+		bprintf( t, "mem.%s.alloc %u", ms.name, ms.ctrs.total );
+#ifdef MTYPE_TRACING
+		__srmt_ct( "alloc",  ms.ctrs.all );
+		__srmt_ct( "freed",  ms.ctrs.fre );
+		__srmt_ct( "preall", ms.ctrs.pre );
+		__srmt_ct( "refill", ms.ctrs.ref );
+		bprintf( t, "mem.trace.%s.unfreed %ld",  ms.name, ( ms.ctrs.all.sum - ms.ctrs.fre.sum ) );
+#endif
 		bprintf( t, "mem.%s.kb %lu",   ms.name, ms.bytes / 1024 );
 	}
 }
+
+#undef __srmt_ct
+
 
 
 void self_report_types( ST_THR *t, ST_CFG *c )

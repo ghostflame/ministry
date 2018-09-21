@@ -49,26 +49,37 @@ struct mem_type_blank
 	MTBLANK			*	next;
 };
 
+struct mem_call_counters
+{
+	int64_t				ctr;
+	int64_t				sum;
+};
+
+struct mem_type_counters
+{
+	uint32_t			fcount;
+	uint32_t			total;
+
+#ifdef MTYPE_TRACING
+	MCCTR				all;
+	MCCTR				fre;
+	MCCTR				pre;
+	MCCTR				ref;
+#endif
+};
 
 struct mem_type
 {
 	MTBLANK			*	flist;
 	char			*	name;
 
-	uint32_t			fcount;
-	uint32_t			total;
+	MTCTR				ctrs;
 
 	uint32_t			alloc_sz;
 	uint32_t			alloc_ct;
 	uint32_t			stats_sz;
 	uint32_t			prealloc;
 
-#ifdef MTYPE_TRACING
-	int64_t				a_call_ctr;
-	int64_t				a_call_sum;
-	int64_t				f_call_ctr;
-	int64_t				f_call_sum;
-#endif
 
 	int16_t				id;
 
@@ -81,25 +92,33 @@ struct mem_type
 struct mem_type_stats
 {
 	char			*	name;
-	uint32_t			freec;
-	uint32_t			alloc;
 	uint64_t			bytes;
+
+	MTCTR				ctrs;
 };
 
+struct mem_check
+{
+	char			*	buf;
+	WORDS			*	w;
+	int64_t				psize;
+	int64_t				checks;
+	int64_t				interval;	// msec
+	int64_t				curr_kb;
+	int64_t				max_kb;
+};
 
 struct mem_control
 {
 	MTYPE			*	types[MEM_TYPES_MAX];
 
-	int64_t				curr_kb;
-	int64_t				max_kb;
+	MCHK			*	mcheck;
+
 	int64_t				stacksize;
 	int64_t				stackhigh;
-	int64_t				interval;	// msec
 	int64_t				prealloc;	// msec
 
 	int16_t				type_ct;
-	int8_t				do_checks;
 
 	// known types
 	MTYPE			*	iobufs;

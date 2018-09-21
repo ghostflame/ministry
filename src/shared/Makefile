@@ -5,6 +5,7 @@ HEADS  = log utils regexp curlw net iplist target io mem thread config loop http
 
 VERS  ?= 0.1.0
 RKV    = app_shared.a
+EARGS ?=
 
 OBJS   = $(FILES:%=%.o)
 HDRS   = $(HEADS:%=%.h)
@@ -13,7 +14,7 @@ WFLAGS = -Wall -Wshadow
 IFLAGS = -I. 
 DFLAGS = -g -pg -ggdb3 -DDEBUG
 TFLAGS = -pthread
-CFLAGS = -c $(TFLAGS) $(IFLAGS) -DVERSION_STRING='"$(VERS)"'
+CFLAGS = -c $(TFLAGS) $(IFLAGS) -DVERSION_STRING='"$(VERS)"' $(EARGS)
 #CFLAGS = -c $(TFLAGS) $(IFLAGS) -DVERSION_STRING='"$(VERS)"' -DMIN_MHD_PASS=0
 #LFLAGS = -lm -lcurl -lmicrohttpd
 

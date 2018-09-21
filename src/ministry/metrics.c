@@ -186,7 +186,7 @@ void metrics_add_entry( FETCH *f, METRY *parent )
 }
 
 
-int metrics_check_attr( MDATA *m, int which, char *attr, int order )
+static inline int metrics_check_attr( MDATA *m, int which, char *attr, int order )
 {
 	register char *p, *q;
 	int i, l, k;

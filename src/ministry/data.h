@@ -13,7 +13,7 @@
 #define MINISTRY_DATA_H
 
 // rounds the structure to 16k with a spare space
-#define PTLIST_SIZE				2045
+#define PTLIST_SIZE				2046
 
 #define LINE_SEPARATOR			'\n'
 #define FIELD_SEPARATOR			' '
@@ -64,7 +64,6 @@ struct points_list
 	PTLIST			*	next;
 	int64_t				count;
 	double				vals[PTLIST_SIZE];
-	double				sentinel;
 };
 
 

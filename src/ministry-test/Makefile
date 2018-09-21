@@ -7,11 +7,13 @@ OBJS   = $(FILES:%=%.o)
 HDRS   = $(HEADS:%=%.h)
 RKVS   = ../shared/app_shared.a
 
+EARGS ?=
+
 WFLAGS = -Wall -Wshadow
 IFLAGS = -I. -I../shared/
 DFLAGS = -g -pg -ggdb3 -DDEBUG
 TFLAGS = -pthread
-CFLAGS = $(TFLAGS) $(IFLAGS)
+CFLAGS = $(TFLAGS) $(IFLAGS) $(EARGS)
 LFLAGS = $(TFLAGS) $(IFLAGS) -lm -lcurl -lmicrohttpd
 
 BINDIR = $(DESTDIR)/usr/bin

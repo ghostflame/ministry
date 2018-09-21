@@ -8,12 +8,14 @@ OBJS   = $(FILES:%=%.o)
 HDRS   = $(HEADS:%=%.h)
 RKVS   = ../shared/app_shared.a
 
+EARGS ?=
+
 WFLAGS = -Wall -Wshadow
 IFLAGS = -I. -I../shared
 #DFLAGS = -g -pg -ggdb3 -DDEBUG -DDEBUG_LOOPS -DDEBUG_SYNTH -DDEBUG_IO -DDEBUG_ENV
 DFLAGS = -g -pg -ggdb3 -DDEBUG
 TFLAGS = -pthread
-CFLAGS = $(TFLAGS) $(IFLAGS) -DLOCK_DHASH_MUTEX
+CFLAGS = $(TFLAGS) $(IFLAGS) -DLOCK_DHASH_MUTEX $(EARGS)
 LFLAGS = $(TFLAGS) $(IFLAGS) -lm -lcurl -lmicrohttpd
 
 BINDIR = $(DESTDIR)/usr/bin

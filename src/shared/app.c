@@ -177,6 +177,10 @@ void app_ready( void )
 	// run mem check / prealloc
 	mem_startup( );
 
+#ifdef MTYPE_TRACING
+	info( "Memory call stats enabled." );
+#endif
+
 	get_time( );
 	ts_diff( _proc->curr_time, _proc->init_time, &diff );
 

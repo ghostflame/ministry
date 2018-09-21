@@ -725,17 +725,18 @@ uint64_t lockless_fetch( LLCT *l )
 }
 
 
-int read_file( char *path, char **buf, int *len, size_t max, int perm, char *desc )
+int read_file( char *path, char **buf, int *len, int perm, char *desc )
 {
+	int l, max, r, fd;
 	struct stat sb;
-	FILE *h;
-	int l;
 
 	if( !buf || !len )
 	{
 		err( "Need a buffer and length parameter in read_file." );
 		return 1;
 	}
+
+	max = *len;
 
 	if( !desc )
 		desc = "file";
@@ -759,15 +760,18 @@ int read_file( char *path, char **buf, int *len, size_t max, int perm, char *des
 	}
 
 	l = (int) sb.st_size;
-	*len = l;
 
-	if( l > (int) max )
+	// files in /proc stat as 0 bytes, helpfully
+	if( l > 0 )
+		*len = l;
+
+	if( l > max )
 	{
 		err( "Size of %s %s is too big at %d bytes.", desc, path, l );
 		return -4;
 	}
 
-	if( !( h = fopen( path, "r" ) ) )
+	if( ( fd = open( path, O_RDONLY ) ) < 0 )
 	{
 		err( "Cannot open %s %s: %s", desc, path, Err );
 		return -5;
@@ -775,19 +779,28 @@ int read_file( char *path, char **buf, int *len, size_t max, int perm, char *des
 
 	if( !*buf )
 	{
+		// we need a buffer if you want to read from /proc
 		*buf = ( perm ) ? perm_str( l + 1 ) : (char *) allocz( l + 1 );
 		debug( "Creating buffer of %d bytes for %s.", 1 + *len, desc );
 	}
+	else
+		memset( *buf, 0, max );
 
-	if( !fread( *buf, l, 1, h ) || ferror( h ) )
+	// with /proc we just read what we can get
+	if( l == 0 && max > 0 )
+		r = max;
+	else
+		r = l;
+
+	if( ( *len = read( fd, *buf, r ) ) < 0 )
 	{
 		err( "Could not read %s %s: %s", desc, path, Err );
-		fclose( h );
+		close( fd );
 		*len = 0;
 		return -6;
 	}
 
-	fclose( h );
+	close( fd );
 	return 0;
 }
 

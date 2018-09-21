@@ -63,16 +63,16 @@ void __mtype_report_counts( MTYPE *mt )
 {
 #ifdef MTYPE_TRACING
 	info( "Mtype %12s:  Flist %p   Fcount %10d    Alloc: calls %12d sum %12d   Free: calls %12d sum %12d",
-		mt->name, mt->flist, mt->fcount,
-		mt->a_call_ctr, mt->a_call_sum,
-		mt->f_call_ctr, mt->f_call_sum );
+		mt->name, mt->flist, mt->ctrs.fcount,
+		mt->ctrs.all.ctr, mt->ctrs.all.sum,
+		mt->ctrs.fre.ctr, mt->ctrs.fre.sum );
 #endif
 }
 
 
 // grab some more memory of the proper size
 // must be called inside a lock
-void __mtype_alloc_free( MTYPE *mt, int count )
+void __mtype_alloc_free( MTYPE *mt, int count, int prefetch )
 {
 	MTBLANK *p, *list;
 	void *vp;
@@ -83,19 +83,19 @@ void __mtype_alloc_free( MTYPE *mt, int count )
 
 	if( !mt->flist )
 	{
-		if( mt->fcount > 0 )
+		if( mt->ctrs.fcount > 0 )
 		{
-			err( "Mtype %s flist null but fcount %d.", mt->name, mt->fcount );
+			err( "Mtype %s flist null but fcount %d.", mt->name, mt->ctrs.fcount );
 			__mtype_report_counts( mt );
-			//mt->fcount = 0;
+			//mt->ctrs.fcount = 0;
 		}
 	}
-	else if( !mt->fcount )
+	else if( !mt->ctrs.fcount )
 	{
 		err( "Mtype %s flist set but fcount 0.", mt->name );
 		__mtype_report_counts( mt );
 		//for( i = 0, p = mt->flist; p; p = p->next; i++ );
-		//mt->fcount = i;
+		//mt->ctrs.fcount = i;
 	}
 
 	list = (MTBLANK *) allocz( mt->alloc_sz * count );
@@ -103,8 +103,21 @@ void __mtype_alloc_free( MTYPE *mt, int count )
 	if( !list )
 		fatal( "Failed to allocate %d * %d bytes.", mt->alloc_sz, count );
 
-	mt->fcount += count;
-	mt->total  += count;
+	mt->ctrs.fcount += count;
+	mt->ctrs.total  += count;
+
+#ifdef MTYPE_TRACING
+	if( prefetch )
+	{
+		mt->ctrs.pre.ctr++;
+		mt->ctrs.pre.sum += count;
+	}
+	else
+	{
+		mt->ctrs.ref.ctr++;
+		mt->ctrs.ref.sum += count;
+	}
+#endif
 
 	// the last one needs next -> flist so decrement count
 	count--;
@@ -147,17 +160,17 @@ inline void *mtype_new( MTYPE *mt )
 
 	mem_lock( mt );
 
-	if( !mt->fcount || !mt->flist )
-		__mtype_alloc_free( mt, 0 );
+	if( !mt->ctrs.fcount || !mt->flist )
+		__mtype_alloc_free( mt, 0, 0 );
 
 	b = mt->flist;
 	mt->flist = b->next;
 
-	--(mt->fcount);
+	--(mt->ctrs.fcount);
 
 #ifdef MTYPE_TRACING
-	mt->a_call_ctr++;
-	mt->a_call_sum++;
+	mt->ctrs.all.ctr++;
+	mt->ctrs.all.sum++;
 #endif
 
 	mem_unlock( mt );
@@ -181,8 +194,8 @@ inline void *mtype_new_list( MTYPE *mt, int count )
 	mem_lock( mt );
 
 	// get enough
-	while( mt->fcount < c )
-		__mtype_alloc_free( mt, 0 );
+	while( mt->ctrs.fcount < c )
+		__mtype_alloc_free( mt, 0, 0 );
 
 	top = end = mt->flist;
 
@@ -191,12 +204,12 @@ inline void *mtype_new_list( MTYPE *mt, int count )
 		end = end->next;
 
 	// end is now the last in the list we want
-	mt->flist   = end->next;
-	mt->fcount -= c;
+	mt->flist = end->next;
+	mt->ctrs.fcount -= c;
 
 #ifdef MTYPE_TRACING
-	mt->a_call_ctr++;
-	mt->a_call_sum += c;
+	mt->ctrs.all.ctr++;
+	mt->ctrs.all.sum += c;
 #endif
 
 	mem_unlock( mt );
@@ -216,11 +229,11 @@ inline void mtype_free( MTYPE *mt, void *p )
 
 	b->next   = mt->flist;
 	mt->flist = p;
-	++(mt->fcount);
+	++(mt->ctrs.fcount);
 
 #ifdef MTYPE_TRACING
-	mt->f_call_ctr++;
-	mt->f_call_sum++;
+	mt->ctrs.fre.ctr++;
+	mt->ctrs.fre.sum++;
 #endif
 
 	mem_unlock( mt );
@@ -233,18 +246,17 @@ inline void mtype_free_list( MTYPE *mt, int count, void *first, void *last )
 
 	mem_lock( mt );
 
-	l->next     = mt->flist;
-	mt->flist   = first;
-	mt->fcount += count;
+	l->next   = mt->flist;
+	mt->flist = first;
+	mt->ctrs.fcount += count;
 
 #ifdef MTYPE_TRACING
-	mt->f_call_ctr++;
-	mt->f_call_sum += count;
+	mt->ctrs.fre.ctr++;
+	mt->ctrs.fre.sum += count;
 #endif
 
 	mem_unlock( mt );
 }
-
 
 
 
@@ -257,7 +269,7 @@ void mem_prealloc_one( MTYPE *mt )
 		return;
 
 	act = (double) mt->alloc_ct;
-	fct = (double) mt->fcount;
+	fct = (double) mt->ctrs.fcount;
 
 	add = 2 * mt->alloc_ct;
 	tot = 0;
@@ -267,12 +279,12 @@ void mem_prealloc_one( MTYPE *mt )
 	while( ( fct / act ) < mt->threshold )
 	{
 		mem_lock( mt );
-		__mtype_alloc_free( mt, add );
+		__mtype_alloc_free( mt, add, 1 );
 		mem_unlock( mt );
 		tot += add;
 
-		act = (double) mt->total;
-		fct = (double) mt->fcount;
+		act = (double) mt->ctrs.total;
+		fct = (double) mt->ctrs.fcount;
 	}
 
 	if( tot > 0 )
@@ -298,14 +310,37 @@ void mem_prealloc( int64_t tval, void *arg )
 
 void mem_check( int64_t tval, void *arg )
 {
+	MCHK *m = (MCHK *) arg;
+	int kb, sz = 2048;
 	struct rusage ru;
 
+
+	// OK, this appears to be total crap sometimes
 	getrusage( RUSAGE_SELF, &ru );
+	info( "getrusage reports %d KB", ru.ru_maxrss );
+	m->curr_kb = ru.ru_maxrss;
 
-	_mem->curr_kb = ru.ru_maxrss;
+	// lets try reading /proc
+	if( read_file( "/proc/self/stat", &(m->buf), &sz, 0, "memory file" ) != 0 )
+	{
+		err( "Cannot read /proc/self/stat, so cannot assess memory." );
+		return;
+	}
+	if( strwords( m->w, m->buf, sz, ' ' ) < 24 )
+	{
+		err( "File /proc/self/stat not in expected format." );
+		return;
+	}
 
-	if( _mem->curr_kb > _mem->max_kb )
+	kb = atoi( m->w->wd[23] ) * m->psize;
+	info( "/proc/self/stat[23] reports %d KB", kb );
+	m->curr_kb = kb;
+
+	if( m->curr_kb > m->max_kb )
+	{
+		warn( "Memory usage (%ld KB) exceeds configured maximum (%ld KB), exiting.", m->curr_kb, m->max_kb );
 		loop_end( "Memory usage exceeds configured maximum." );
+	}
 }
 
 
@@ -319,10 +354,15 @@ void *mem_prealloc_loop( void *arg )
 
 void *mem_check_loop( void *arg )
 {
-	// do it now - for stats
-	mem_check( 0, NULL );
+	MCHK *m = _mem->mcheck;
 
-	loop_control( "memory control", mem_check, NULL, 1000 * _mem->interval, LOOP_TRIM, 0 );
+	m->buf = (char *) allocz( 2048 );
+	m->w   = (WORDS *) allocz( sizeof( WORDS ) );
+
+	// do it now - for stats
+	mem_check( 0, m );
+
+	loop_control( "memory control", mem_check, m, 1000 * m->interval, LOOP_TRIM, 0 );
 
 	free( (THRD *) arg );
 	return NULL;
@@ -342,17 +382,17 @@ int mem_config_line( AVP *av )
 		// just the singles
 		if( attIs( "maxMb" ) || attIs( "maxSize" ) )
 		{
-			av_int( _mem->max_kb );
-			_mem->max_kb <<= 10;
+			av_int( _mem->mcheck->max_kb );
+			_mem->mcheck->max_kb <<= 10;
 		}
 		else if( attIs( "maxKb") )
-			av_int( _mem->max_kb );
+			av_int( _mem->mcheck->max_kb );
 		else if( attIs( "interval" ) || attIs( "msec" ) )
-			av_int( _mem->interval );
+			av_int( _mem->mcheck->interval );
+		else if( attIs( "doChecks" ) )
+			_mem->mcheck->checks = config_bool( av );
 		else if( attIs( "prealloc" ) || attIs( "preallocInterval" ) )
 			av_int( _mem->prealloc );
-		else if( attIs( "doChecks" ) )
-			_mem->do_checks = config_bool( av );
 		else if( attIs( "stackSize" ) )
 		{
 			// gets converted to KB
@@ -440,7 +480,7 @@ void mem_shutdown( void )
 // do we do checks?
 void mem_startup( void )
 {
-	if( _mem->do_checks )
+	if( _mem->mcheck->checks )
 		thread_throw( &mem_check_loop, NULL, 0 );
 
 	thread_throw( &mem_prealloc_loop, NULL, 0 );
@@ -466,7 +506,7 @@ MTYPE *mem_type_declare( char *name, int sz, int ct, int extra, uint32_t pre )
 	_mem->types[mt->id] = mt;
 
 	// and alloc some already
-	__mtype_alloc_free( mt, 4 * mt->alloc_ct );
+	__mtype_alloc_free( mt, 4 * mt->alloc_ct, 1 );
 
 	// init the mutex
 	pthread_mutex_init( &(mt->lock), &(_proc->mtxa) );
@@ -484,14 +524,13 @@ int mem_type_stats( int id, MTSTAT *ms )
 	if( id >= _mem->type_ct )
 		return -1;
 
+	// grab the stats
 	mem_lock( m );
-
-	ms->freec = m->fcount;
-	ms->alloc = m->total;
-	ms->bytes = (uint64_t) m->stats_sz * (uint64_t) m->total;
-
+	memcpy( &(ms->ctrs), &(m->ctrs), sizeof( MTCTR ) );
 	mem_unlock( m );
 
+	// these can be after the unlock
+	ms->bytes = (uint64_t) m->stats_sz * (uint64_t) ms->ctrs.total;
 	ms->name = m->name;
 
 	return 0;
@@ -499,23 +538,29 @@ int mem_type_stats( int id, MTSTAT *ms )
 
 int64_t mem_curr_kb( void )
 {
-	return _mem->curr_kb;
+	info( "_mem->mcheck->curr_kb reports %d KB.", _mem->mcheck->curr_kb );
+	return _mem->mcheck->curr_kb;
 }
 
 
 
 MEM_CTL *mem_config_defaults( void )
 {
-	_mem = (MEM_CTL *) allocz( sizeof( MEM_CTL ) );
+	MCHK * mc = (MCHK *) allocz( sizeof( MCHK ) );
 
-	_mem->max_kb       = DEFAULT_MEM_MAX_KB;
-	_mem->interval     = DEFAULT_MEM_CHECK_INTV;
-	_mem->stacksize    = DEFAULT_MEM_STACK_SIZE;
-	_mem->stackhigh    = DEFAULT_MEM_STACK_HIGH;
-	_mem->prealloc     = DEFAULT_MEM_PRE_INTV;
+	mc->max_kb        = DEFAULT_MEM_MAX_KB;
+	mc->interval      = DEFAULT_MEM_CHECK_INTV;
+	mc->psize         = getpagesize( ) >> 10;
+	mc->checks        = 0;
 
-	_mem->iobufs       = mem_type_declare( "iobufs", sizeof( IOBUF ), MEM_ALLOCSZ_IOBUF, IO_BUF_SZ, 1 );
-	_mem->iobps        = mem_type_declare( "iobps",  sizeof( IOBP ),  MEM_ALLOCSZ_IOBP,  0, 1 );
+	_mem              = (MEM_CTL *) allocz( sizeof( MEM_CTL ) );
+	_mem->mcheck      = mc;
+	_mem->stacksize   = DEFAULT_MEM_STACK_SIZE;
+	_mem->stackhigh   = DEFAULT_MEM_STACK_HIGH;
+	_mem->prealloc    = DEFAULT_MEM_PRE_INTV;
+
+	_mem->iobufs      = mem_type_declare( "iobufs", sizeof( IOBUF ), MEM_ALLOCSZ_IOBUF, IO_BUF_SZ, 1 );
+	_mem->iobps       = mem_type_declare( "iobps",  sizeof( IOBP ),  MEM_ALLOCSZ_IOBP,  0, 1 );
 
 	return _mem;
 }
