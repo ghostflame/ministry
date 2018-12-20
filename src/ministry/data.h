@@ -59,7 +59,7 @@ struct data_point
 };
 
 
-struct points_list
+struct points_list		// 8192
 {
 	PTLIST			*	next;
 	int64_t				count;
@@ -67,7 +67,7 @@ struct points_list
 };
 
 
-struct data_hash_vals
+struct data_hash_vals	// size 24
 {
 	PTLIST			*	points;
 	double				total;
@@ -75,7 +75,7 @@ struct data_hash_vals
 };
 
 
-struct data_hash_entry
+struct data_hash_entry	// size 104
 {
 	DHASH			*	next;
 	char			*	path;

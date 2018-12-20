@@ -1,5 +1,4 @@
 TARGET  = all
-
 VERS    = $(shell sed -rn 's/^Version:\t(.*)/\1/p' ministry.spec)
 
 # set some defaults if they are not in the environment

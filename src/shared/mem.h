@@ -68,6 +68,7 @@ struct mem_type_counters
 #endif
 };
 
+
 struct mem_type
 {
 	MTBLANK			*	flist;
@@ -102,9 +103,12 @@ struct mem_check
 	char			*	buf;
 	WORDS			*	w;
 	int64_t				psize;
+	int64_t				bsize;
 	int64_t				checks;
 	int64_t				interval;	// msec
 	int64_t				curr_kb;
+	int64_t				rusage_kb;
+	int64_t				proc_kb;
 	int64_t				max_kb;
 };
 
@@ -126,9 +130,13 @@ struct mem_control
 };
 
 
-
-
+// memory management
 uint32_t mem_alloc_size( int len );
+
+// zero'd memory
+void *allocz( size_t size );
+
+
 void *mem_reverse_list( void *list_in );
 void *mtype_new( MTYPE *mt );
 void *mtype_new_list( MTYPE *mt, int count );

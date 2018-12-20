@@ -806,7 +806,7 @@ void config_args( int ac, char **av, char *optstr, help_fn *hfp )
 
 
 
-PROC_CTL *config_defaults( char *app_name )
+PROC_CTL *config_defaults( char *app_name, char *conf_dir )
 {
 	_proc            = (PROC_CTL *) allocz( sizeof( PROC_CTL ) );
 	_proc->version   = strdup( VERSION_STRING );
@@ -816,9 +816,9 @@ PROC_CTL *config_defaults( char *app_name )
 	snprintf( _proc->app_upper, CONF_LINE_MAX, "%s", app_name );
 	_proc->app_upper[0] = toupper( _proc->app_upper[0] );
 
-	snprintf( _proc->basedir,  CONF_LINE_MAX, "/etc/ministry" );
-	snprintf( _proc->cfg_file, CONF_LINE_MAX, "/etc/ministry/%s.conf", app_name );
-	snprintf( _proc->pidfile,  CONF_LINE_MAX, "/var/run/ministry/%s.pid", app_name );
+	snprintf( _proc->basedir,  CONF_LINE_MAX, "/etc/%s", conf_dir );
+	snprintf( _proc->cfg_file, CONF_LINE_MAX, "/etc/%s/%s.conf", conf_dir, app_name );
+	snprintf( _proc->pidfile,  CONF_LINE_MAX, "/var/run/%s/%s.pid", conf_dir, app_name );
 
 	config_set_env_prefix( app_name );
 

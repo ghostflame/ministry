@@ -318,7 +318,9 @@ void __report_array( double *arr, int64_t ct )
 void stats_report_one( ST_THR *t, DHASH *d )
 {
 	int64_t i, ct, idx;
+	//int64_t mdct, mdmx;
 	double sum, mean;
+	//double mode, mtmp;
 	PTLIST *list, *p;
 	ST_THOLD *thr;
 
@@ -385,12 +387,44 @@ void stats_report_one( ST_THR *t, DHASH *d )
 	else
 		sort_radix11( t, (int32_t) ct );
 
-
 	bprintf( t, "%s.count %d",  d->path, ct );
 	bprintf( t, "%s.mean %f",   d->path, mean );
 	bprintf( t, "%s.upper %f",  d->path, t->wkspc[ct-1] );
 	bprintf( t, "%s.lower %f",  d->path, t->wkspc[0] );
 	bprintf( t, "%s.median %f", d->path, t->wkspc[idx] );
+
+	/* Do we want the mode?
+	// figure out the mode
+	mdmx = 0;
+	mdct = 0;
+	mtmp = t->wkspc[0] - 1;
+	for( i = 0; i < ct; i++ )
+	{
+		if( t->wkspc[i] == mtmp )
+			mtct++;
+		else
+		{
+			if( mtct > mdmx )
+			{
+				mdmx = mtct;
+				mode = mtmp;
+			}
+			mtct = 0;
+			mtmp = t->wkspc[i];
+		}
+	}
+	if( mtct > mdmx )
+	{
+		mdmx = mtct;
+		mode = mtmp;
+	}
+
+	if( mdmx > 1 )
+	{
+		bprintf( t, "%s.mode %f",    d->path, mode );
+		bprintf( t, "%s.mode_ct %f", d->path, mdmx );
+	}
+	*/
 
 	// variable thresholds
 	for( thr = ctl->stats->thresholds; thr; thr = thr->next )

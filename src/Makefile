@@ -2,7 +2,8 @@ DIRS   = shared ministry ministry-test carbon-copy
 TARGET = unknown
 VERS  ?= 0.0.1
 
-EARGS  = -DMTYPE_TRACING
+#EARGS  = -DMTYPE_TRACING
+EARGS  =
 
 all: TARGET = all
 all: subdirs

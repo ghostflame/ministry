@@ -40,6 +40,53 @@ uint32_t mem_alloc_size( int len )
 }
 
 
+/*
+ * This is a chunk of memory we hand back if calloc failed.
+ *
+ * The idea is that we hand back this highly distinctive chunk
+ * of space.  Any pointer using it will fail.  Any attempt to
+ * write to it should fail.
+ *
+ * So it should give us a core dump at once, right at the
+ * problem.  Of course, threads will "help"...
+ */
+
+#ifdef USE_MEM_SIGNAL_ARRAY
+static const uint8_t mem_signal_array[128] = {
+	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0,
+	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0,
+	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0,
+	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0,
+	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0,
+	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0,
+	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0,
+	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0,
+	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0,
+	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0,
+	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0,
+	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0,
+	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0,
+	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0,
+	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0,
+	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0
+};
+#endif
+
+
+// zero'd memory
+void *allocz( size_t size )
+{
+	void *p = calloc( 1, size );
+
+#ifdef USE_MEM_SIGNAL_ARRAY
+	if( !p )
+		p = &mem_signal_array;
+#endif
+
+	return p;
+}
+
+
 void *mem_reverse_list( void *list_in )
 {
 	MTBLANK *one, *list, *ret = NULL;
@@ -310,16 +357,17 @@ void mem_prealloc( int64_t tval, void *arg )
 
 void mem_check( int64_t tval, void *arg )
 {
-	MCHK *m = (MCHK *) arg;
-	int kb, sz = 2048;
+	MCHK *m = _mem->mcheck;
+	int kb, sz = m->bsize;
 	struct rusage ru;
 
 
 	// OK, this appears to be total crap sometimes
 	getrusage( RUSAGE_SELF, &ru );
-	info( "getrusage reports %d KB", ru.ru_maxrss );
-	m->curr_kb = ru.ru_maxrss;
+	//info( "getrusage reports %d KB", ru.ru_maxrss );
+	m->rusage_kb = ru.ru_maxrss;
 
+	// as does this
 	// lets try reading /proc
 	if( read_file( "/proc/self/stat", &(m->buf), &sz, 0, "memory file" ) != 0 )
 	{
@@ -333,8 +381,10 @@ void mem_check( int64_t tval, void *arg )
 	}
 
 	kb = atoi( m->w->wd[23] ) * m->psize;
-	info( "/proc/self/stat[23] reports %d KB", kb );
-	m->curr_kb = kb;
+	//info( "/proc/self/stat[23] reports %d KB", kb );
+	m->proc_kb = kb;
+
+	m->curr_kb = ( m->rusage_kb > m->proc_kb ) ? m->rusage_kb : m->proc_kb;
 
 	if( m->curr_kb > m->max_kb )
 	{
@@ -356,13 +406,14 @@ void *mem_check_loop( void *arg )
 {
 	MCHK *m = _mem->mcheck;
 
-	m->buf = (char *) allocz( 2048 );
-	m->w   = (WORDS *) allocz( sizeof( WORDS ) );
+	m->bsize = 2048;
+	m->buf   = (char *) allocz( m->bsize );
+	m->w     = (WORDS *) allocz( sizeof( WORDS ) );
 
 	// do it now - for stats
-	mem_check( 0, m );
+	mem_check( 0, NULL );
 
-	loop_control( "memory control", mem_check, m, 1000 * m->interval, LOOP_TRIM, 0 );
+	loop_control( "memory control", mem_check, NULL, 1000 * m->interval, LOOP_TRIM, 0 );
 
 	free( (THRD *) arg );
 	return NULL;
@@ -536,9 +587,10 @@ int mem_type_stats( int id, MTSTAT *ms )
 	return 0;
 }
 
+
 int64_t mem_curr_kb( void )
 {
-	info( "_mem->mcheck->curr_kb reports %d KB.", _mem->mcheck->curr_kb );
+	//info( "_mem->mcheck->curr_kb reports %d KB.", _mem->mcheck->curr_kb );
 	return _mem->mcheck->curr_kb;
 }
 
@@ -546,7 +598,7 @@ int64_t mem_curr_kb( void )
 
 MEM_CTL *mem_config_defaults( void )
 {
-	MCHK * mc = (MCHK *) allocz( sizeof( MCHK ) );
+	MCHK *mc = (MCHK *) allocz( sizeof( MCHK ) );
 
 	mc->max_kb        = DEFAULT_MEM_MAX_KB;
 	mc->interval      = DEFAULT_MEM_CHECK_INTV;

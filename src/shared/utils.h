@@ -108,9 +108,6 @@ struct av_pair
 
 // FUNCTIONS
 
-// zero'd memory
-void *allocz( size_t size );
-
 void get_time( void );
 int64_t get_time64( void );
 

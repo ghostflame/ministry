@@ -73,10 +73,10 @@ int set_limits( void )
 
 
 
-int app_init( char *name )
+int app_init( char *name, char *cfgdir )
 {
 	// create some stuff
-	config_defaults( name );
+	config_defaults( name, cfgdir );
 
 	log_config_defaults( );
 	mem_config_defaults( );

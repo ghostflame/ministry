@@ -37,7 +37,7 @@
 
 
 
-struct host_data
+struct host_data	// size 160+
 {
 	HOST				*	next;
 	SOCK				*	net;

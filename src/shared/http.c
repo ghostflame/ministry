@@ -73,21 +73,25 @@ int http_add_handler( char *path, int fixed, http_handler *fp, char *desc, void 
 
 int http_unused_policy( void *cls, const struct sockaddr *addr, socklen_t addrlen )
 {
+	info( "Called: http_unused_policy." );
 	return MHD_YES;
 }
 
 ssize_t http_unused_reader( void *cls, uint64_t pos, char *buf, size_t max )
 {
+	info( "Called: http_unused_reader." );
 	return -1;
 }
 
 void http_unused_reader_free( void *cls )
 {
+	info( "Called: http_unused_reader_free." );
 	return;
 }
 
 int http_unused_kv( void *cls, HTTP_VAL kind, const char *key, const char *value )
 {
+	info( "Called: http_unused_kv." );
 	return MHD_NO;
 }
 
@@ -95,6 +99,7 @@ int http_unused_post( void *cls, HTTP_VAL kind, const char *key, const char *fil
                       const char *content_type, const char *transfer_encoding, const char *data,
                       uint64_t off, size_t size )
 {
+	info( "Called: http_unused_post." );
 	return MHD_NO;
 }
 
@@ -344,7 +349,10 @@ int http_start( void )
 	if( h->ssl->enabled )
 	{
 		if( http_ssl_setup( h->ssl ) )
+		{
+			err( "Failed to load TLS certificates." );
 			return -1;
+		}
 
 		port = h->ssl->port;
 		h->proto = "https";
@@ -356,7 +364,7 @@ int http_start( void )
 		h->proto = "http";
 	}
 
-	// you wan to disable this in config if you are writing your own
+	// you want to disable this in config if you are writing your own
 	if( h->stats )
 		http_add_handler( "/stats", h->statsBufSize, &http_handler_stats,  "Internal stats", NULL );
 

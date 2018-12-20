@@ -54,11 +54,6 @@
 #endif
 
 
-// break up alloc calls
-#define shalloc( _s )		allocz( _s )
-#define mealloc( _s )		allocz( _s )
-
-
 // makes it easier and remove some order-dependence
 #include "typedefs.h"
 

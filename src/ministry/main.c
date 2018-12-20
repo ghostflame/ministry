@@ -105,7 +105,7 @@ int main( int ac, char **av, char **env )
 	int oc;
 
 	// start the app up
-	app_init( "ministry" );
+	app_init( "ministry", "ministry" );
 
 	// make our combined arg string
 	if( !( optstr = config_arg_string( "p:" ) ) )

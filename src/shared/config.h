@@ -122,6 +122,6 @@ void config_set_main_file( char *path );
 void config_set_env_prefix( char *prefix );
 void config_set_pid_file( char *path );
 
-PROC_CTL *config_defaults( char *app_name );
+PROC_CTL *config_defaults( char *app_name, char *conf_dir );
 
 #endif
