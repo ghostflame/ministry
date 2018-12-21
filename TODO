@@ -1,15 +1,11 @@
 Refactor
-    Consider how to reduce the amount of calls to poll()
-        It returns as soon as any fd is ready
-        So with multiple fd's active it is hitting one and returning
-            then we have to poll again to catch the next one
-        How can we have a small interval then check them all?
     Looks like prealloc isn't working.
-	Change the synthetics processing to lock around a pthread_cont_t  https://gist.github.com/rtv/4989304
+	#Change the synthetics processing to lock around a pthread_cont_t  https://gist.github.com/rtv/4989304
 
 HTTP
 	Accept submissions via HTTP
 	Prometheus metrics (requires significant memory)
+    # tidy up ssl password in memory
 
 Network
 	More granular token control
@@ -28,4 +24,5 @@ Monitoring
 Operational Readiness
 	Pen Testing
     review:  https://cwe.mitre.org/data/definitions/658.html
+		done:	https://cwe.mitre.org/data/definitions/14.html
 
