@@ -108,9 +108,6 @@ struct av_pair
 
 // FUNCTIONS
 
-// zero'd memory
-void *allocz( size_t size );
-
 void get_time( void );
 int64_t get_time64( void );
 
@@ -165,11 +162,21 @@ int setlimit( int res, int64_t val );
 uint64_t lockless_fetch( LLCT *l );
 
 // read a file into memory
-int read_file( char *path, char **buf, int *len, size_t max, int perm, char *desc );
+int read_file( char *path, char **buf, int *len, int perm, char *desc );
 
 // handle any number type
 // returns the type it thought it was
 int parse_number( char *str, int64_t *iv, double *dv );
+
+// is this an http url
+enum str_url_types
+{
+	STR_URL_NO = 0,
+	STR_URL_YES,
+	STR_URL_SSL
+};
+int is_url( char *str );
+
 
 // easier av reads
 #define av_int( _v )		parse_number( av->val, &(_v), NULL )

@@ -12,11 +12,6 @@
 
 #include "../shared/shared.h"
 
-#ifndef VERSION_STRING
-#define VERSION_STRING "unknown"
-#endif
-
-
 // crazy control
 #include "typedefs.h"
 

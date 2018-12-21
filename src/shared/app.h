@@ -15,7 +15,7 @@
 int set_signals( void );
 int set_limits( void );
 
-int app_init( char *name );
+int app_init( char *name, char *cfgdir );
 int app_start( int writePid );
 void app_ready( void );
 void app_finish( int exval );

@@ -73,10 +73,10 @@ int set_limits( void )
 
 
 
-int app_init( char *name )
+int app_init( char *name, char *cfgdir )
 {
 	// create some stuff
-	config_defaults( name );
+	config_defaults( name, cfgdir );
 
 	log_config_defaults( );
 	mem_config_defaults( );
@@ -176,6 +176,10 @@ void app_ready( void )
 
 	// run mem check / prealloc
 	mem_startup( );
+
+#ifdef MTYPE_TRACING
+	info( "Memory call stats enabled." );
+#endif
 
 	get_time( );
 	ts_diff( _proc->curr_time, _proc->init_time, &diff );

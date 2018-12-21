@@ -37,7 +37,7 @@
 
 
 
-struct host_data
+struct host_data	// size 160+
 {
 	HOST				*	next;
 	SOCK				*	net;
@@ -45,6 +45,7 @@ struct host_data
 	NET_TYPE			*	type;
 	NET_PORT			*	port;
 	line_fn				*	parser;
+	add_fn				*	handler;
 
 	struct sockaddr_in	*	peer;
 

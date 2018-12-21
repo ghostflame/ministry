@@ -56,6 +56,9 @@ void main_loop( void )
 	net_start_type( ctl->net->gauge );
 	net_start_type( ctl->net->compat );
 
+	// and any fetch loops
+	fetch_init( );
+
 	// and wait
 	while( RUNNING( ) )
 		sleep( 1 );
@@ -84,11 +87,13 @@ void main_create_conf( void )
 	ctl->stats      = stats_config_defaults( );
 	ctl->synth      = synth_config_defaults( );
 	ctl->tgt        = targets_config_defaults( );
+	ctl->fetch      = fetch_config_defaults( );
 
 	config_register_section( "network", &net_config_line );
 	config_register_section( "gc",      &gc_config_line );
 	config_register_section( "stats",   &stats_config_line );
 	config_register_section( "synth",   &synth_config_line );
+	config_register_section( "fetch",   &fetch_config_line );
 
 	target_set_type_fn( &targets_set_type );
 }
@@ -100,7 +105,7 @@ int main( int ac, char **av, char **env )
 	int oc;
 
 	// start the app up
-	app_init( "ministry" );
+	app_init( "ministry", "ministry" );
 
 	// make our combined arg string
 	if( !( optstr = config_arg_string( "p:" ) ) )

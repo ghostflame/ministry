@@ -5,6 +5,7 @@ Refactor
             then we have to poll again to catch the next one
         How can we have a small interval then check them all?
     Looks like prealloc isn't working.
+	Change the synthetics processing to lock around a pthread_cont_t  https://gist.github.com/rtv/4989304
 
 HTTP
 	Accept submissions via HTTP

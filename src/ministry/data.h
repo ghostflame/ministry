@@ -13,7 +13,7 @@
 #define MINISTRY_DATA_H
 
 // rounds the structure to 16k with a spare space
-#define PTLIST_SIZE				2045
+#define PTLIST_SIZE				2046
 
 #define LINE_SEPARATOR			'\n'
 #define FIELD_SEPARATOR			' '
@@ -38,9 +38,10 @@ struct data_type_params
 	uint16_t			port;
 	int64_t				thrd;
 	char			*	sock;
+	NET_TYPE		*	nt;
 };
 
-extern const DTYPE data_type_defns[];
+extern DTYPE data_type_defns[];
 
 
 #define dp_set( _dp, t, v )			_dp.ts = t; _dp.val = v
@@ -58,16 +59,15 @@ struct data_point
 };
 
 
-struct points_list
+struct points_list		// 8192
 {
 	PTLIST			*	next;
 	int64_t				count;
 	double				vals[PTLIST_SIZE];
-	double				sentinel;
 };
 
 
-struct data_hash_vals
+struct data_hash_vals	// size 24
 {
 	PTLIST			*	points;
 	double				total;
@@ -75,7 +75,7 @@ struct data_hash_vals
 };
 
 
-struct data_hash_entry
+struct data_hash_entry	// size 104
 {
 	DHASH			*	next;
 	char			*	path;
@@ -105,13 +105,13 @@ struct data_hash_entry
 };
 
 
+uint64_t data_path_hash_wrap( char *path, int len );
+
 DHASH *data_locate( char *path, int len, int type );
 
 add_fn data_point_stats;
 add_fn data_point_adder;
 add_fn data_point_gauge;
-
-void data_point_adder( char *path, int len, char *dat );
 
 line_fn data_line_ministry;
 line_fn data_line_token;
@@ -119,7 +119,10 @@ line_fn data_line_compat;
 line_fn data_line_min_prefix;
 line_fn data_line_com_prefix;
 
+curlw_cb data_fetch_cb;
+
 void data_parse_buf( HOST *h, IOBUF *b );
+
 void data_start( NET_TYPE *nt );
 
 #endif

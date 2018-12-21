@@ -1,20 +1,19 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-VERS  ?= 0.0.1
-
 FILES  = targets metric main
 HEADS  = targets metric typedefs ministry_test
-#VERS   = $(shell sed -rn 's/^Version:\t(.*)/\1/p' ../../ministry.spec)
 
 OBJS   = $(FILES:%=%.o)
 HDRS   = $(HEADS:%=%.h)
 RKVS   = ../shared/app_shared.a
 
+EARGS ?=
+
 WFLAGS = -Wall -Wshadow
 IFLAGS = -I. -I../shared/
 DFLAGS = -g -pg -ggdb3 -DDEBUG
 TFLAGS = -pthread
-CFLAGS = $(TFLAGS) $(IFLAGS) -DVERSION_STRING='"$(VERS)"'
+CFLAGS = $(TFLAGS) $(IFLAGS) $(EARGS)
 LFLAGS = $(TFLAGS) $(IFLAGS) -lm -lcurl -lmicrohttpd
 
 BINDIR = $(DESTDIR)/usr/bin

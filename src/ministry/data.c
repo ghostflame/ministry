@@ -11,7 +11,7 @@
 #include "ministry.h"
 
 
-const DTYPE data_type_defns[DATA_TYPE_MAX] =
+DTYPE data_type_defns[DATA_TYPE_MAX] =
 {
 	{
 		.type = DATA_TYPE_STATS,
@@ -22,7 +22,8 @@ const DTYPE data_type_defns[DATA_TYPE_MAX] =
 		.tokn = TOKEN_TYPE_STATS,
 		.port = DEFAULT_STATS_PORT,
 		.thrd = TCP_THRD_DSTATS,
-		.sock = "ministry stats socket"
+		.sock = "ministry stats socket",
+		.nt   = NULL
 	},
 	{
 		.type = DATA_TYPE_ADDER,
@@ -33,7 +34,8 @@ const DTYPE data_type_defns[DATA_TYPE_MAX] =
 		.tokn = TOKEN_TYPE_ADDER,
 		.port = DEFAULT_ADDER_PORT,
 		.thrd = TCP_THRD_DADDER,
-		.sock = "ministry adder socket"
+		.sock = "ministry adder socket",
+		.nt   = NULL
 	},
 	{
 		.type = DATA_TYPE_GAUGE,
@@ -44,7 +46,8 @@ const DTYPE data_type_defns[DATA_TYPE_MAX] =
 		.tokn = TOKEN_TYPE_GAUGE,
 		.port = DEFAULT_GAUGE_PORT,
 		.thrd = TCP_THRD_DGAUGE,
-		.sock = "ministry gauge socket"
+		.sock = "ministry gauge socket",
+		.nt   = NULL
 	},
 	{
 		.type = DATA_TYPE_COMPAT,
@@ -55,7 +58,8 @@ const DTYPE data_type_defns[DATA_TYPE_MAX] =
 		.tokn = 0,
 		.port = DEFAULT_COMPAT_PORT,
 		.thrd = TCP_THRD_DCOMPAT,
-		.sock = "statsd compat socket"
+		.sock = "statsd compat socket",
+		.nt   = NULL
 	},
 };
 
@@ -118,6 +122,12 @@ __attribute__((hot)) static inline uint64_t data_path_hash( char *str, int len )
 		sum += *str++ * data_path_hash_primes[rem];
 
 	return sum;
+}
+
+
+uint64_t data_path_hash_wrap( char *str, int len )
+{
+	return data_path_hash( str, len );
 }
 
 
@@ -524,7 +534,7 @@ __attribute__((hot)) void data_line_min_prefix( HOST *h, char *line, int len )
 	h->workbuf[plen] = '\0';
 
 	// and deal with it
-	(*(h->type->handler))( h->workbuf, plen, ep );
+	(*(h->handler))( h->workbuf, plen, ep );
 }
 
 
@@ -548,7 +558,7 @@ __attribute__((hot)) void data_line_ministry( HOST *h, char *line, int len )
 	h->points++;
 
 	// and put that in
-	(*(h->type->handler))( line, plen, ep );
+	(*(h->handler))( line, plen, ep );
 }
 
 
@@ -673,5 +683,10 @@ __attribute__((hot)) void data_parse_buf( HOST *h, IOBUF *b )
 }
 
 
+void data_fetch_cb( void *arg, IOBUF *b )
+{
+	FETCH *f = (FETCH *) arg;
 
+	data_parse_buf( f->host, b );
+}
 

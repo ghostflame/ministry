@@ -12,18 +12,6 @@
 #include "shared.h"
 
 
-// curl options check
-// can't use verify below 7.41.0
-#if LIBCURL_VERSION_MAJOR > 7 || \
-  ( LIBCURL_VERSION_MAJOR == 7 && \
-    LIBCURL_VERSION_MINOR > 40 )
-	#define _LCURL_CAN_VERIFY 1
-#else
-	#define _LCURL_CAN_VERIFY 0
-#endif
-
-
-
 
 CCTXT *ctxt_top = NULL;
 CCTXT *context  = NULL;
@@ -385,76 +373,38 @@ int config_read_file( char *path )
 
 
 
-#define CErr		curl_easy_strerror( cc )
-
 
 int config_read_url( char *url )
 {
-	int ret = 0;
-	CURLcode cc;
-	FILE *fh;
-	CURL *c;
+	CURLWH ch;
+	int ret;
 
 	debug( "Opening config url '%s', section %s",
 		url, context->section->name );
 
-	// set up our new context
-	if( !( c = curl_easy_init( ) ) )
+	memset( &ch, 0, sizeof( CURLWH ) );
+
+	ch.url = url;
+
+	if( context->is_ssl )
+		setCurlFl( ch, SSL );
+	
+	if( chkcfFlag( SEC_VALIDATE ) )
+		setCurlFl( ch, VALIDATE );
+
+	// force to file
+	setCurlFl( ch, TOFILE );
+
+	if( curlw_fetch( &ch ) )
 	{
-		err( "Could not init curl for url fetch -- %s", Err );
+		err( "Could not fetch target url '%s'" );
 		return -1;
 	}
 
-	curl_easy_setopt( c, CURLOPT_URL, url );
-	curl_easy_setopt( c, CURLOPT_TIMEOUT_MS, 10000 );
-	curl_easy_setopt( c, CURLOPT_CONNECTTIMEOUT_MS, 5000 );
-
-#if _LCURL_CAN_VERIFY > 0
-	if( context->is_ssl )
-	{
-		if( chkcfFlag( SEC_VALIDATE ) )
-		{
-			curl_easy_setopt( c, CURLOPT_SSL_VERIFYPEER,   1L );
-			curl_easy_setopt( c, CURLOPT_SSL_VERIFYHOST,   1L );
-			curl_easy_setopt( c, CURLOPT_SSL_VERIFYSTATUS, 1L );
-		}
-		else
-		{
-			curl_easy_setopt( c, CURLOPT_SSL_VERIFYPEER,   0L );
-			curl_easy_setopt( c, CURLOPT_SSL_VERIFYHOST,   0L );
-			curl_easy_setopt( c, CURLOPT_SSL_VERIFYSTATUS, 0L );
-		}
-	}
-#endif
-
-	// make a temporary file
-	if( !( fh = tmpfile( ) ) )
-	{
-		err( "Could not create a temporary file for fetching '%s' -- %s",
-			url, Err );
-		ret = -2;
-		goto CRU_CLEANUP;
-	}
-
-	// and set the file handle
-	curl_easy_setopt( c, CURLOPT_WRITEDATA, (void *) fh );
-
-	// and go get it
-	if( ( cc = curl_easy_perform( c ) ) != CURLE_OK )
-	{
-		err( "Could not curl target url '%s' -- %s", url, CErr );
-		ret = -1;
-		goto CRU_CLEANUP;
-	}
-
-	// and go back to the beginning
-	fseek( fh, 0L, SEEK_SET );
-
 	// and read that file
-	ret = __config_read_file( fh );
+	ret = __config_read_file( ch.fh );
+	fclose( ch.fh );
 
-CRU_CLEANUP:
-	curl_easy_cleanup( c );
 	return ret;
 }
 
@@ -464,7 +414,7 @@ CRU_CLEANUP:
 
 int config_read( char *inpath, WORDS *w )
 {
-	int ret = 0, p_url = 0, p_ssl = 0;
+	int ret = 0, p_url = 0, p_ssl = 0, s;
 	char *path;
 
 	// prune the path
@@ -481,9 +431,12 @@ int config_read( char *inpath, WORDS *w )
 	// set up our new context
 	context = config_make_context( path, w );
 
-	if( !strncmp( path, "http://", 7 ) )
+	// is that a url?
+	s = is_url( path );
+
+	if( s == STR_URL_YES )
 		context->is_url = 1;
-	else if( !strncmp( path, "https://", 8 ) )
+	else if( s == STR_URL_SSL )
 	{
 		context->is_url = 1;
 		context->is_ssl = 1;
@@ -694,7 +647,7 @@ void config_set_main_file( char *path )
 
 void config_set_env_prefix( char *prefix )
 {
-	char *p, prev;
+	char *p, prev = ' ';
 	int i;
 
 	// it needs to be uppercase
@@ -749,7 +702,8 @@ char *config_help( void )
  -i            Allow insecure URI's\n\
  -I            Allow secure URI's to include insecure URI's\n", 
 #if _LCURL_CAN_VERIFY
-" -T            Validate certificates from config hosts (if available)\n"
+" -T            Validate certificates for HTTPS (if available)\n\
+ -W            Permit invalid certificates from fetch targets\n"
 #else
 ""
 #endif
@@ -762,7 +716,7 @@ char *config_help( void )
 }
 
 
-const char *config_args_opt_string = "HhDVvtsUuiIETFdC:c:";
+const char *config_args_opt_string = "HhDVvtsUuiIETWFdC:c:";
 char config_args_opt_merged[CONF_LINE_MAX];
 
 char *config_arg_string( char *argstr )
@@ -833,6 +787,9 @@ void config_args( int ac, char **av, char *optstr, help_fn *hfp )
 			case 'T':
 				setcfFlag( SEC_VALIDATE );
 				break;
+			case 'W':
+				setcfFlag( SEC_VALIDATE_F );
+				break;
 #endif
 			case 'E':
 				cutcfFlag( READ_ENV );
@@ -849,7 +806,7 @@ void config_args( int ac, char **av, char *optstr, help_fn *hfp )
 
 
 
-PROC_CTL *config_defaults( char *app_name )
+PROC_CTL *config_defaults( char *app_name, char *conf_dir )
 {
 	_proc            = (PROC_CTL *) allocz( sizeof( PROC_CTL ) );
 	_proc->version   = strdup( VERSION_STRING );
@@ -859,9 +816,9 @@ PROC_CTL *config_defaults( char *app_name )
 	snprintf( _proc->app_upper, CONF_LINE_MAX, "%s", app_name );
 	_proc->app_upper[0] = toupper( _proc->app_upper[0] );
 
-	snprintf( _proc->basedir,  CONF_LINE_MAX, "/etc/ministry" );
-	snprintf( _proc->cfg_file, CONF_LINE_MAX, "/etc/ministry/%s.conf", app_name );
-	snprintf( _proc->pidfile,  CONF_LINE_MAX, "/var/run/ministry/%s.pid", app_name );
+	snprintf( _proc->basedir,  CONF_LINE_MAX, "/etc/%s", conf_dir );
+	snprintf( _proc->cfg_file, CONF_LINE_MAX, "/etc/%s/%s.conf", conf_dir, app_name );
+	snprintf( _proc->pidfile,  CONF_LINE_MAX, "/var/run/%s/%s.pid", conf_dir, app_name );
 
 	config_set_env_prefix( app_name );
 

@@ -53,6 +53,7 @@
 #define Err strerror( errno )
 #endif
 
+
 // makes it easier and remove some order-dependence
 #include "typedefs.h"
 
@@ -60,6 +61,7 @@
 #include "log.h"
 #include "loop.h"
 #include "utils.h"
+#include "curlw.h"
 #include "regexp.h"
 #include "net.h"
 #include "iplist.h"

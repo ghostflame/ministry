@@ -22,6 +22,7 @@
 #define CONF_FLAG_URL_INC_URL		0x00000200
 #define CONF_FLAG_SEC_INC_INSEC		0x00000400
 #define CONF_FLAG_SEC_VALIDATE		0x00001000
+#define CONF_FLAG_SEC_VALIDATE_F	0x00002000
 #define CONF_FLAG_TEST_ONLY			0x10000000
 #define CONF_FLAG_FILE_OPT			0x20000000
 
@@ -121,6 +122,6 @@ void config_set_main_file( char *path );
 void config_set_env_prefix( char *prefix );
 void config_set_pid_file( char *path );
 
-PROC_CTL *config_defaults( char *app_name );
+PROC_CTL *config_defaults( char *app_name, char *conf_dir );
 
 #endif

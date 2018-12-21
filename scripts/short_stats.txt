@@ -1,0 +1,10 @@
+Have.a.Random.Stats.value 25845
+Have.a.Random.Stats.value 8742
+Have.a.Random.Stats.value 9178
+Have.a.Random.Stats.value 30083
+Have.a.Random.Stats.value 8837
+Have.a.Random.Stats.value 31793
+Have.a.Random.Stats.value 9888
+Have.a.Random.Stats.value 28922
+Have.a.Random.Stats.value 24338
+Have.a.Random.Stats.value 14812

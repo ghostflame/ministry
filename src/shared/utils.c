@@ -9,52 +9,6 @@
 
 #include "shared.h"
 
-/*
- * This is a chunk of memory we hand back if calloc failed.
- *
- * The idea is that we hand back this highly distinctive chunk
- * of space.  Any pointer using it will fail.  Any attempt to
- * write to it should fail.
- *
- * So it should give us a core dump at once, right at the
- * problem.  Of course, threads will "help"...
- */
-
-#ifdef USE_MEM_SIGNAL_ARRAY
-static const uint8_t mem_signal_array[128] = {
-	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0,
-	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0,
-	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0,
-	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0,
-	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0,
-	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0,
-	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0,
-	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0,
-	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0,
-	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0,
-	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0,
-	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0,
-	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0,
-	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0,
-	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0,
-	0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0, 0xd0
-};
-#endif
-
-
-// zero'd memory
-void *allocz( size_t size )
-{
-	void *p = calloc( 1, size );
-
-#ifdef USE_MEM_SIGNAL_ARRAY
-	if( !p )
-		p = &mem_signal_array;
-#endif
-
-	return p;
-}
-
 
 
 void get_time( void )
@@ -91,7 +45,9 @@ char *perm_str( int len )
 
 	// just malloc big blocks
 	if( len >= ( PERM_SPACE_BLOCK >> 8 ) )
+	{
 		return (char *) allocz( len );
+	}
 
 	if( len > perm_space_left )
 	{
@@ -137,13 +93,14 @@ char *str_copy( char *src, int len )
 BUF *strbuf( uint32_t size )
 {
 	BUF *b = (BUF *) allocz( sizeof( BUF ) );
+	size_t sz;
 
 	if( size )
 	{
 		// make a little room
-		size    += 24;
-		b->space = (char *) allocz( size );
-		b->sz    = size;
+		sz       = mem_alloc_size( 24 + size );
+		b->space = (char *) allocz( sz );
+		b->sz    = (uint32_t) sz;
 	}
 
 	b->buf = b->space;
@@ -725,17 +682,18 @@ uint64_t lockless_fetch( LLCT *l )
 }
 
 
-int read_file( char *path, char **buf, int *len, size_t max, int perm, char *desc )
+int read_file( char *path, char **buf, int *len, int perm, char *desc )
 {
+	int l, max, r, fd;
 	struct stat sb;
-	FILE *h;
-	int l;
 
 	if( !buf || !len )
 	{
 		err( "Need a buffer and length parameter in read_file." );
 		return 1;
 	}
+
+	max = *len;
 
 	if( !desc )
 		desc = "file";
@@ -759,15 +717,18 @@ int read_file( char *path, char **buf, int *len, size_t max, int perm, char *des
 	}
 
 	l = (int) sb.st_size;
-	*len = l;
 
-	if( l > (int) max )
+	// files in /proc stat as 0 bytes, helpfully
+	if( l > 0 )
+		*len = l;
+
+	if( l > max )
 	{
 		err( "Size of %s %s is too big at %d bytes.", desc, path, l );
 		return -4;
 	}
 
-	if( !( h = fopen( path, "r" ) ) )
+	if( ( fd = open( path, O_RDONLY ) ) < 0 )
 	{
 		err( "Cannot open %s %s: %s", desc, path, Err );
 		return -5;
@@ -775,19 +736,28 @@ int read_file( char *path, char **buf, int *len, size_t max, int perm, char *des
 
 	if( !*buf )
 	{
+		// we need a buffer if you want to read from /proc
 		*buf = ( perm ) ? perm_str( l + 1 ) : (char *) allocz( l + 1 );
 		debug( "Creating buffer of %d bytes for %s.", 1 + *len, desc );
 	}
+	else
+		memset( *buf, 0, max );
 
-	if( !fread( *buf, l, 1, h ) || ferror( h ) )
+	// with /proc we just read what we can get
+	if( l == 0 && max > 0 )
+		r = max;
+	else
+		r = l;
+
+	if( ( *len = read( fd, *buf, r ) ) < 0 )
 	{
 		err( "Could not read %s %s: %s", desc, path, Err );
-		fclose( h );
+		close( fd );
 		*len = 0;
 		return -6;
 	}
 
-	fclose( h );
+	close( fd );
 	return 0;
 }
 
@@ -846,6 +816,12 @@ uint64_t hash_size( char *str )
 		return 0;
 	}
 
+	if( !strcasecmp( str, "nano" ) )
+		return MEM_HSZ_NANO;
+
+	if( !strcasecmp( str, "micro" ) )
+		return MEM_HSZ_MICRO;
+
 	if( !strcasecmp( str, "tiny" ) )
 		return MEM_HSZ_TINY;
 
@@ -871,6 +847,23 @@ uint64_t hash_size( char *str )
 	}
 
 	return (uint64_t) v;
+}
+
+
+int is_url( char *str )
+{
+	int l = strlen( str );	
+
+	if( l < 8 )
+		return STR_URL_NO;
+
+	if( !strncasecmp( str, "http://", 7 ) )
+		return STR_URL_YES;
+
+	if( !strncasecmp( str, "https://", 8 ) )
+		return STR_URL_SSL;
+
+	return STR_URL_NO;
 }
 
 
