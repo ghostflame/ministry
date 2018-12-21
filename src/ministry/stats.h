@@ -54,6 +54,7 @@ enum stats_types
 #define DEFAULT_GAUGE_PREFIX		""
 
 #define DEFAULT_MOM_MIN				30L
+#define DEFAULT_MODE_MIN			30L
 
 #define TSBUF_SZ					32
 #define PREFIX_SZ					512
@@ -161,6 +162,7 @@ struct stats_control
 
 	ST_THOLD		*	thresholds;
 	ST_MOM			*	mom;
+	ST_MOM			*	mode;
 	ST_PRED			*	pred;
 
 	// for new sorting
