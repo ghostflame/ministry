@@ -651,7 +651,7 @@ void stats_adder_pass( ST_THR *t )
 
 	// say we are ready
 	lock_synth( );
-	info( "[%02d] Adder thread has got lock, signalling readiness.", t->id );
+	//info( "[%02d] Adder thread has got lock, signalling readiness.", t->id );
 	sc->tready++;
 	pthread_cond_signal( &(sc->threads_ready) );
 	unlock_synth( );
@@ -660,13 +660,13 @@ void stats_adder_pass( ST_THR *t )
 	lock_synth( );
 	while( sc->tproceed <= 0 )
 	{
-		info( "[%02d] Adder thread waiting to proceed.", t->id );
+		//info( "[%02d] Adder thread waiting to proceed.", t->id );
 		pthread_cond_wait( &(sc->threads_done), &(ctl->locks->synth) );
-		info( "[%02d] Adder thread was awoken.", t->id );
+		//info( "[%02d] Adder thread was awoken.", t->id );
 	}
 	// decrement the counter - it hits zero once every thread has done this
 	sc->tproceed--;
-	info( "[%02d] Adder thread is clear to proceed.", t->id );
+	//info( "[%02d] Adder thread is clear to proceed.", t->id );
 	unlock_synth( );
 
 #ifdef DEBUG
