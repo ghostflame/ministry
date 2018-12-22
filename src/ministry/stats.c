@@ -295,6 +295,44 @@ void stats_report_moments( ST_THR *t, DHASH *d, int64_t ct, double mean )
 }
 
 
+void stats_report_mode( ST_THR *t, DHASH *d, int64_t ct )
+{
+	int64_t i, mdct, mdmx;
+	double mode, mtmp;
+
+	mdmx = 0;
+	mdct = 0;
+
+	mtmp = t->wkspc[0] - 1;
+
+	for( i = 0; i < ct; i++ )
+	{
+		if( t->wkspc[i] == mtmp )
+			mdct++;
+		else
+		{
+			if( mdct > mdmx )
+			{
+				mdmx = mdct;
+				mode = mtmp;
+			}
+			mdct = 0;
+			mtmp = t->wkspc[i];
+		}
+	}
+	if( mdct > mdmx )
+	{
+		mdmx = mdct;
+		mode = mtmp;
+	}
+
+	if( mdmx > 1 )
+	{
+		bprintf( t, "%s.mode %f",    d->path, mode );
+		bprintf( t, "%s.mode_ct %f", d->path, mdmx );
+	}
+}
+
 void __report_array( double *arr, int64_t ct )
 {
 	char abuf[8192];
@@ -317,8 +355,8 @@ void __report_array( double *arr, int64_t ct )
 
 void stats_report_one( ST_THR *t, DHASH *d )
 {
-	int64_t i, ct, idx, mdct, mdmx;
-	double sum, mean, mode, mtmp;
+	int64_t i, ct, idx;
+	double sum, mean;
 	PTLIST *list, *p;
 	ST_THOLD *thr;
 
@@ -390,40 +428,6 @@ void stats_report_one( ST_THR *t, DHASH *d )
 	bprintf( t, "%s.lower %f",  d->path, t->wkspc[0] );
 	bprintf( t, "%s.median %f", d->path, t->wkspc[idx] );
 
-	// Do we want the mode?
-	if( dhash_do_mode( d ) && ct >= ctl->stats->mode->min_pts )
-	{
-		mdmx = 0;
-		mdct = 0;
-		mtmp = t->wkspc[0] - 1;
-		for( i = 0; i < ct; i++ )
-		{
-			if( t->wkspc[i] == mtmp )
-				mdct++;
-			else
-			{
-				if( mdct > mdmx )
-				{
-					mdmx = mdct;
-					mode = mtmp;
-				}
-				mdct = 0;
-				mtmp = t->wkspc[i];
-			}
-		}
-		if( mdct > mdmx )
-		{
-			mdmx = mdct;
-			mode = mtmp;
-		}
-
-		if( mdmx > 1 )
-		{
-			bprintf( t, "%s.mode %f",    d->path, mode );
-			bprintf( t, "%s.mode_ct %f", d->path, mdmx );
-		}
-	}
-
 	// variable thresholds
 	for( thr = ctl->stats->thresholds; thr; thr = thr->next )
 	{
@@ -435,6 +439,10 @@ void stats_report_one( ST_THR *t, DHASH *d )
 	// are we doing std deviation and friends?
 	if( dhash_do_moments( d ) && ctl->stats->mom->min_pts <= ct )
 		stats_report_moments( t, d, ct, mean );
+
+	// Do we want the mode?
+	if( dhash_do_mode( d ) && ct >= ctl->stats->mode->min_pts )
+		stats_report_mode( t, d, ct );
 
 	mem_free_point_list( list );
 
