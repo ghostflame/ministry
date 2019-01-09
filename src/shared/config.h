@@ -98,6 +98,9 @@ struct process_control
 
 	int64_t					limits[RLIMIT_NLIMITS];
 	int8_t					setlim[RLIMIT_NLIMITS];
+
+	// string stores
+	SSTR				*	stores;
 };
 
 

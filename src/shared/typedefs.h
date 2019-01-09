@@ -44,6 +44,8 @@ typedef struct av_pair              AVP;
 typedef struct lockless_counter     LLCT;
 typedef struct regex_entry          RGX;
 typedef struct regex_list           RGXL;
+typedef struct string_store_entry   SSTE;
+typedef struct string_store         SSTR;
 
 typedef struct http_path            HTPATH;
 typedef struct http_callbacks       HTTP_CB;

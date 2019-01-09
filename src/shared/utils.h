@@ -78,6 +78,29 @@ struct words_data
 	int						wc;
 };
 
+struct string_store_entry
+{
+	SSTE				*	next;
+	char				*	str;
+	int32_t					len;
+	int32_t					val;	// if you want to store something here
+	void				*	ptr;	// if you want to store something here
+};
+
+
+struct string_store
+{
+	SSTR				*	next;		// in case the caller wants a list
+	SSTR				*	_proc_next;	// a list to live in _proc
+	SSTE				**	hashtable;
+
+	int64_t					hsz;
+	int64_t					entries;
+	int32_t					val_default;
+
+	pthread_mutex_t			mtx;
+};
+
 
 struct string_buffer
 {
@@ -207,5 +230,22 @@ int is_url( char *str );
 // hash size lookup
 uint64_t hash_size( char *str );
 
+
+
+// string store - store strings as keys with optional values
+// they cannot be removed, but you can use the val as a removal bit
+
+// pass either an int or a char size.  Default is "medium"
+SSTR *string_store_create( int64_t sz, char *size );
+
+// add a string.  Adding stuff onto them is your problem
+SSTE *string_store_add( SSTR *store, char *str, int len );
+
+// search for a string - setting val_set means a 0 value in the
+// val position is considered INVALID, and skipped over
+SSTE *string_store_look( SSTR *store, char *str, int len, int val_set );
+
+// clean up those mutexes
+void string_store_cleanup( SSTR *list );
 
 #endif

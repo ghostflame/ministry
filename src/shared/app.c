@@ -218,6 +218,8 @@ void app_finish( int exval )
 
 	io_stop( );
 
+	string_store_cleanup( _proc->stores );
+
 	pthread_mutex_destroy( &(_proc->loop_lock) );
 	mem_shutdown( );
 

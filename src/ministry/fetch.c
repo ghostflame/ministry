@@ -260,6 +260,15 @@ int fetch_config_line( AVP *av )
 		f->metrics = config_bool( av );
 		__fetch_config_state = 1;
 	}
+	else if( attIs( "profile" ) )
+	{
+		if( f->profile )
+			free( f->profile );
+
+		f->profile = str_copy( av->val, av->vlen );
+		f->metrics = 1;
+		__fetch_config_state = 1;
+	}
 	else if( attIs( "typehash" ) )
 	{
 		if( parse_number( av->val, &v, NULL ) == NUM_INVALID )
@@ -337,9 +346,8 @@ int fetch_config_line( AVP *av )
 	}
 	else if( attIs( "attribute" ) )
 	{
-		__fetch_config_state = 1;
 		// prometheus attribute map
-		return metrics_add_attr( f->metdata, av->val, av->vlen );
+		__fetch_config_state = 1;
 	}
 	else if( attIs( "done" ) )
 	{

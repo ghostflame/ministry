@@ -22,6 +22,7 @@ struct fetch_target
 	char			*	name;
 	char			*	remote;
 	char			*	path;
+	char			*	profile;
 
 	CURLWH			*	ch;
 
@@ -37,7 +38,6 @@ struct fetch_target
 	int64_t				bufsz;
 
 	int					metrics;	// is it a metrics type?
-	int					attct;		// attribute map count
 	int					mtypesz;	// size of the mtypes hash
 
 	uint16_t			port;

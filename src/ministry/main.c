@@ -31,6 +31,13 @@ It submits data using a graphite format.\n\n" );
 
 void main_loop( void )
 {
+	// sort out the metrics attribute maps
+	if( metrics_init( ) )
+	{
+		fatal( "Could not resolve all metric attribute config." );
+		return;
+	}
+
 	// and the tset/target loops
 	// must happen before stats_start
 	targets_start( );
@@ -88,12 +95,14 @@ void main_create_conf( void )
 	ctl->synth      = synth_config_defaults( );
 	ctl->tgt        = targets_config_defaults( );
 	ctl->fetch      = fetch_config_defaults( );
+	ctl->metric     = metrics_config_defaults( );
 
 	config_register_section( "network", &net_config_line );
 	config_register_section( "gc",      &gc_config_line );
 	config_register_section( "stats",   &stats_config_line );
 	config_register_section( "synth",   &synth_config_line );
 	config_register_section( "fetch",   &fetch_config_line );
+	config_register_section( "metrics", &metrics_config_line );
 
 	target_set_type_fn( &targets_set_type );
 }

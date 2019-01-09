@@ -47,29 +47,62 @@ const METTY metrics_types_defns[METR_TYPE_MAX] =
 
 int metrics_cmp_attrs( const void *ap1, const void *ap2 )
 {
-	METMP *m1 = *((METMP **) ap1);
-	METMP *m2 = *((METMP **) ap2);
+	METAT *m1 = *((METAT **) ap1);
+	METAT *m2 = *((METAT **) ap2);
 
 	return ( m1->order < m2->order ) ? -1 : ( m1->order == m2->order ) ? 0 : 1;
 }
 
+int metrics_cmp_maps( const void *ap1, const void *ap2 )
+{
+	METMP *m1 = *((METMP **) ap1);
+	METMP *m2 = *((METMP **) ap2);
 
-void metrics_sort_attrs( MDATA *md )
+	return ( m1->id < m2->id ) ? -1 : ( m1->id == m2->id ) ? 0 : 1;
+}
+
+
+void metrics_profile_sort_maps( METPR *p )
 {
 	METMP **list, *m;
 	int i = 0, j;
 
-	if( !md->attrs )
+	if( !p->maps )
 		return;
 
-	list = (METMP **) allocz( md->attct * sizeof( METMP * ) );
-	for( m = md->attrs; m; m = m->next )
+	list = (METMP **) allocz( p->mapct * sizeof( METMP * ) );
+	for( m = p->maps; m; m = m->next )
 		list[i++] = m;
 
-	qsort( list, md->attct, sizeof( METMP * ), metrics_cmp_attrs );
+	qsort( list, p->mapct, sizeof( METPR * ), metrics_cmp_maps );
+
+	// relink them
+	j = p->mapct - 1;
+	for( i = 0; i < j; i++ )
+		list[i]->next = list[i+1];
+
+	list[j]->next = NULL;
+	p->maps = list[0];
+	free( list );
+}
+
+
+void metrics_sort_attrs( METAL *a )
+{
+	METAT **list, *m;
+	int i = 0, j;
+
+	if( !a->ats )
+		return;
+
+	list = (METAT **) allocz( a->atct * sizeof( METAT * ) );
+	for( m = a->ats; m; m = m->next )
+		list[i++] = m;
+
+	qsort( list, a->atct, sizeof( METAT * ), metrics_cmp_attrs );
 
 	// relink them and normalise the ordering
-	j = md->attct - 1;
+	j = a->atct - 1;
 	for( i = 0; i < j; i++ )
 	{
 		list[i]->next  = list[i+1];
@@ -78,12 +111,15 @@ void metrics_sort_attrs( MDATA *md )
 	list[j]->next  = NULL;
 	list[j]->order = j;
 
-	md->attrs = list[0];
+	a->ats = list[0];
 	free( list );
 
+	/* TODO
+	 * Needs moving to the metric-to-list resolver
 	// leave room for quantile or le and a bucket
-	md->aps = (char **) allocz( ( 2 + md->attct ) * sizeof( char * ) );
-	md->apl = (int16_t *) allocz( ( 2 + md->attct ) * sizeof( int16_t ) );
+	md->aps = (char **) allocz( ( 2 + a->atct ) * sizeof( char * ) );
+	md->apl = (int16_t *) allocz( ( 2 + a->atct ) * sizeof( int16_t ) );
+	*/
 }
 
 
@@ -190,7 +226,7 @@ static inline int metrics_check_attr( MDATA *m, int which, char *attr, int order
 {
 	register char *p, *q;
 	int i, l, k;
-	METMP *a;
+	METAT *a;
 
 	p = m->wds->wd[which];
 	l = m->wds->len[which];
@@ -238,8 +274,8 @@ static inline int metrics_check_attr( MDATA *m, int which, char *attr, int order
 
 	// go looking for it in the order
 	// capture a pointer to it and its length
-	for( a = m->attrs; a; a = a->next )
-		if( a->alen == k && !memcmp( a->attr, p, k ) )
+	for( a = m->attrs->ats; a; a = a->next )
+		if( a->len == k && !memcmp( a->name, p, k ) )
 		{
 			//info( "Matched attribute '%s', order %d.", a->attr, a->order );
 			m->aps[a->order] = q;
@@ -511,8 +547,7 @@ void metrics_parse_buf( FETCH *f, IOBUF *b )
 
 void metrics_fetch_cb( void *arg, IOBUF *b )
 {
-	FETCH *f = (FETCH *) arg;
-	metrics_parse_buf( f, b );
+	metrics_parse_buf( (FETCH *) arg, b );
 }
 
 
@@ -527,19 +562,57 @@ void metrics_init_data( MDATA *m )
 
 	// a metric buffer
 	m->buf = (char *) allocz( METR_BUF_SZ );
-
-	// and sort our attrs
-	metrics_sort_attrs( m );
 }
 
 
-
-int metrics_add_attr( MDATA *m, char *str, int len )
+// we are expecting path:list-name
+int metrics_add_path( METPR *p, char *str, int len )
 {
-	METMP tmp, *a;
+	char *cl;
+	SSTE *e;
+	int l;
+
+	if( !( cl = memchr( str, ':', len ) ) )
+		return -1;
+
+	l = len - ( cl - str );
+	*cl++ = '\0';
+
+	if( !p->paths )
+		p->paths = string_store_create( 0, "small", 1 );
+
+	if( !( e = string_store_add( p->paths, str, len ) ) )
+		return -1;
+
+	// copy the name of the list for now
+	// we will have to resolve them later
+	e->ptr = str_copy( cl, l );
+
+	return 0;
+}
+
+METAL *metrics_get_alist( char *name )
+{
+	METAL *m;
+	int l;
+
+	l = strlen( name );
+
+	for( m = ctl->metric->alists; m; m = m->next )
+		if( l == m->len && !strncasecmp( m->name, name, l ) )
+			return m;
+
+	err( "Could not resolve matrics attribute list for name '%s'", name );
+
+	return NULL;
+}
+
+int metrics_add_attr( METAL *m, char *str, int len )
+{
+	METAT tmp, *a;
 	char *cl;
 
-	memset( &tmp, 0, sizeof( METMP ) );
+	memset( &tmp, 0, sizeof( METAT ) );
 
 	// were we given an order?
 	if( ( cl = memchr( str, ':', len ) ) )
@@ -551,7 +624,7 @@ int metrics_add_attr( MDATA *m, char *str, int len )
 	}
 	// if not use order of processing
 	else
-		tmp.order = m->attct;
+		tmp.order = m->atct;
 
 	if( !len )
 	{
@@ -559,17 +632,287 @@ int metrics_add_attr( MDATA *m, char *str, int len )
 		return -1;
 	}
 
-	tmp.attr = str_dup( str, len );
-	tmp.alen = len;
+	tmp.name = str_dup( str, len );
+	tmp.len  = len;
 
-	a = (METMP *) allocz( sizeof( METMP ) );
-	memcpy( a, &tmp, sizeof( METMP ) );
+	a = (METAT *) allocz( sizeof( METAT ) );
+	memcpy( a, &tmp, sizeof( METAT ) );
 
-	a->next  = m->attrs;
-	m->attrs = a;
-	m->attct++;
+	a->next = m->ats;
+	m->ats  = a;
+	m->atct++;
 
 	return 0;
 }
 
+/*
+ * Go through each metrics attr lists and sort them
+ */
+int metrics_init( void )
+{
+	METAL *a;
+	METPR *p;
+	METMP *m;
+
+	// sort the attributes in our attr lists
+	for( a = ctl->metric->alists; a; a = a->next )
+		metrics_sort_attrs( a );
+
+	// resolve the attr list names in our profiles
+	for( p = ctl->metric->profiles; p; p = p->next )
+	{
+		if( p->default_att
+		 && !( p->default_attrs = metrics_get_alist( p->default_att ) ) )
+			return -1;
+
+		for( m = p->maps; m; m = m->next )
+			if( !( m->list = metrics_get_alist( m->lname ) ) )
+				return -2;
+	}
+
+	return 0;
+}
+
+
+
+MET_CTL *metrics_config_defaults( void )
+{
+	MET_CTL *m = (MET_CTL *) allocz( sizeof( MET_CTL ) );
+
+	// what here?
+
+	return m;
+}
+
+
+static METAL __metrics_metal_tmp;
+static int __metrics_metal_state = 0;
+
+static METPR __metrics_prof_tmp;
+static int __metrics_prof_state = 0;
+
+#define _m_inter	{ err( "Metrics attr list and profile config interleaved." ); return -1; }
+#define _m_mt_chk	if( __metrics_metal_state ) _m_inter
+#define _m_ps_chk	if( __metrics_prof_state )  _m_inter
+
+int metrics_config_line( AVP *av )
+{
+	METAL *na, *a = &__metrics_metal_tmp;
+	METPR *np, *p = &__metrics_prof_tmp;
+	METAT *ap;
+	METMP *mp;
+	int64_t v;
+
+	if( !__metrics_metal_state )
+	{
+		if( a->name )
+			free( a->name );
+		while( ( ap = a->ats ) )
+		{
+			if( ap->attr )
+				free( ap->attr );
+			a->ats = ap->next;
+			free( ap );
+		}
+		memset( a, 0, sizeof( METAT ) );
+	}
+	if( !__metrics_prof_state )
+	{
+		if( p->name )
+			free( p->name );
+		memset( p, 0, sizeof( METPR ) );
+		p->_id_ctr = 1024;
+	}
+
+	if( attIs( "list" ) )
+	{
+		_m_ps_chk;
+
+		if( a->name )
+		{
+			warn( "Attribute map '%s' already had a name.", a->name );
+			free( a->name );
+		}
+
+		a->name = str_copy( av->val, av->vlen );
+		a->nlen = av->vlen;
+		__metrics_metal_state = 1;
+	}
+	else if( attIs( "attribute" ) || attIs( "attr" ) )
+	{
+		_m_ps_chk;
+		__metrics_metal_state = 1;
+		return metrics_add_attr( a, av->val, av->vlen );
+	}
+
+	// profile values
+	else if( attIs( "profile" ) )
+	{
+		_m_mt_chk;
+
+		if( p->name )
+		{
+			warn( "Profile '%s' already had a name.", p->name );
+			free( p->name );
+		}
+
+		p->name = str_copy( av->val, av->vlen );
+		p->nlen = av->vlen;
+		__metrics_prof_state = 1;
+	}
+	else if( attIs( "default" ) )
+	{
+		_m_mt_chk;
+
+		if( p->default_att )
+			free( p->default_att );
+
+		p->default_att = str_copy( av->val, av->vlen );
+	}
+	else if( attIs( "path" ) )
+	{
+		_m_mt_chk;
+		__metrics_prof_state = 1;
+		return metrics_add_path( p, av->val, av->vlen );
+	}
+	else if( !strncasecmp( av->att, "map.", 4 ) )
+	{
+		_m_mt_chk;
+
+		av->att  += 4;
+		av->alen -= 4;
+
+		if( attIs( "begin" ) )
+		{
+			mp = (METMP *) allocz( sizeof( METMP ) );
+			mp->next = p->maps;
+			p->maps  = mp;
+
+			mp->id = p->_id_ctr++;
+			mp->enable = 1;
+			p->mapct++;
+		}
+		else if( attIs( "enable" ) )
+		{
+			p->maps->enable = config_bool( av );
+		}
+		else if( attIs( "list" ) )
+		{
+			if( p->maps->lname )
+				free( p->maps->lname );
+
+			p->maps->lname = str_copy( av->val, av->vlen );
+		}
+		else if( attIs( "id" ) )
+		{
+			av_int( v );
+			p->maps->id = (int) v;
+		}
+		else if( attIs( "last" ) )
+		{
+			p->maps->last = config_bool( av );
+		}
+		else if( !strncasecmp( av->att, "regex.", 6 ) )
+		{
+			av->att  += 6;
+			av->alen -= 6;
+
+			if( !p->maps->rlist )
+				p->maps->rlist = regex_list_create( 1 );
+
+			if( attIs( "fallbackMatch" ) )
+			{
+				regex_list_set_fallback( config_bool( av ), p->maps->rlist );
+			}
+			else if( attIs( "match" ) )
+			{
+				return regex_list_add( av->val, 0, p->maps->rlist );
+			}
+			else if( attIs( "fail" ) )
+			{
+				return regex_list_add( av->val, 1, p->maps->rlist );
+			}
+		}
+
+		__metrics_prof_state = 1;
+	}
+
+	else if( attIs( "done" ) )
+	{
+		// work out which one it is
+		if( __metrics_metal_state )
+		{
+			if( !a->name )
+			{
+				err( "Cannot proceed with unnamed metrics attribute list." );
+				return -1;
+			}
+
+			na = (METAL *) allocz( sizeof( METAL ) );
+			memcpy( na, a, sizeof( METAL ) );
+
+			na->next = ctl->metric->alists;
+			ctl->metal->alists = na;
+			ctl->metal->alist_ct++;
+
+			__metrics_metal_state = 0;
+		}
+		else if( __metrics_prof_state )
+		{
+			if( !p->name )
+			{
+				err( "Cannot proceed with unnamed metrics profile." );
+				return -1;
+			}
+
+			if( !p->maps || !p->paths || !p->paths->entries )
+			{
+				err( "Metrics profile '%s' will not match anything.  Aborting." );
+				return -1;
+			}
+
+			// sort the maps into ID order
+			metrics_profile_order_maps( p );
+
+			for( mp = p->maps; mp; mp = mp->next )
+				if( !mp->lname )
+				{
+					if( p->default_att )
+					{
+						info( "Metrics profile '%s', map id %d falling back to default attr list '%s'.",
+							p->name, mp->id, p->default_att );
+						mp->lname = p->default_att;
+					}
+					else
+					{
+						err( "Metrics profile '%s', map id %d, has no attribute list target name.", p->name, mp->id );
+						return -1;
+					}
+				}
+
+			np = (METPR *) allocz( sizeof( METPR ) );
+			memcpy( np, p, sizeof( METPR ) );
+
+			np->next = ctl->metric->profiles;
+			ctl->metric->profiles = np;
+			ctl->metric->prof_ct++;
+
+			__metric_prof_state = 0;
+		}
+		else
+		{
+			err( "Done called in metrics config for neither an attribute list nor a profile." );
+			return -1;
+		}
+	}
+	else
+		return -1;
+
+	return 0;
+}
+
+
+#undef _m_inter
+#undef _m_mt_chk
+#undef _m_ps_chk
 
