@@ -53,6 +53,13 @@ struct synth_control
 	SYNTH			*	list;
 	int					scount;
 	int					wait_usec;
+
+	int					tcount;
+	int					tready;
+	int					tproceed;
+
+	pthread_cond_t		threads_ready;
+	pthread_cond_t      threads_done;
 };
 
 

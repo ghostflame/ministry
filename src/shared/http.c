@@ -335,6 +335,22 @@ int http_ssl_setup( SSL_CONF *s )
 
 
 
+// stomp on our password/length
+void http_clean_password( HTTP_CTL *h )
+{
+	if( h->ssl->password )
+	{
+		if( h->ssl->passlen )
+			memset( (void *) h->ssl->password, 0, h->ssl->passlen );
+
+		free( (void *) h->ssl->password );
+	}
+
+	h->ssl->password = NULL;
+	h->ssl->passlen = 0;
+}
+
+
 
 #define mop( _o )		MHD_OPTION_ ## _o
 
@@ -344,13 +360,17 @@ int http_start( void )
 	uint16_t port;
 
 	if( !h->enabled )
+	{
+		http_clean_password( h );
 		return 0;
+	}
 
 	if( h->ssl->enabled )
 	{
 		if( http_ssl_setup( h->ssl ) )
 		{
 			err( "Failed to load TLS certificates." );
+			http_clean_password( h );
 			return -1;
 		}
 
@@ -391,6 +411,9 @@ int http_start( void )
 			mop( HTTPS_MEM_CERT ),           (const char *) h->ssl->cert.content,
 			mop( END )
 		);
+
+	// clean up the password variable
+	http_clean_password( h );
 
 	if( !h->server )
 	{
@@ -559,14 +582,13 @@ int http_config_line( AVP *av )
 		}
 		else if( dIs( "keyPass" ) || dIs( "pass" ) || dIs( "password" ) )
 		{
-			if( h->ssl->password )
-			{
-				free( h->ssl->password );
-				h->ssl->password = NULL;
-			}
+		  	http_clean_password( h );
 			
 			if( !valIs( "null" ) && !valIs( "-" ) )
+			{
 				h->ssl->password = str_copy( av->val, av->vlen );
+				h->ssl->passlen  = (uint16_t) av->vlen;
+			}
 		}
 		else if( dIs( "enable" ) )
 		{
@@ -588,4 +610,63 @@ int http_config_line( AVP *av )
 }
 
 #undef dIs
+
+int http_ask_password( void )
+{
+	static struct termios oldt, newt;
+	HTTP_CTL *h = _http;
+	volatile char *p;
+	size_t bsz;
+	int l;
+
+	// can we even ask?
+	if( !isatty( STDIN_FILENO ) )
+	{
+		err( "Cannot get a password - stdin is not a tty." );
+		return 1;
+	}
+
+	// clear out any existing
+	http_clean_password( h );
+	h->ssl->password = (volatile char *) allocz( MAX_SSL_PASS_SIZE );
+
+	printf( "Enter SSL key password: " );
+	fflush( stdout );
+
+	// save terminal settings
+	tcgetattr( STDIN_FILENO, &oldt );
+	newt = oldt;
+
+	// unset echoing
+	newt.c_lflag &= ~(ECHO);
+
+	// set terminal attributes
+	tcsetattr( STDIN_FILENO, TCSANOW, &newt );
+
+	// go get it - buffer is already zerod
+	bsz = MAX_SSL_PASS_SIZE;
+	l = (int) getline( (char **) &(h->ssl->password), &bsz, stdin );
+
+	// and fix the terminal
+	tcsetattr( STDIN_FILENO, TCSANOW, &oldt );
+
+	// and give us a fresh new line
+	printf( "\n" );
+	fflush( stdout );
+
+	debug( "Password retrieved from command line." );
+
+	// stomp on any newline and carriage return
+	// and get the length
+	p = h->ssl->password + l - 1;
+	while( l > 0 && ( *p == '\n' || *p == '\r' ) )
+	{
+		l--;
+		*p-- = '\0';
+	}
+	h->ssl->passlen = l;
+
+	return 0;
+}
+
 

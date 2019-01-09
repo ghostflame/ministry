@@ -201,6 +201,38 @@ DHASH *data_locate( char *path, int len, int type )
 }
 
 
+__attribute__((hot)) static inline void data_get_dhash_extras( DHASH *d )
+{
+	switch( d->type )
+	{
+		case DATA_TYPE_STATS:
+			if( ctl->stats->mom->enabled
+			 && regex_list_test( d->path, ctl->stats->mom->rgx ) == 0 )
+			{
+				//debug( "Path %s will get moments processing.", d->path );
+				d->checks |= DHASH_CHECK_MOMENTS;
+			}
+			if( ctl->stats->mode->enabled
+			 && regex_list_test( d->path, ctl->stats->mode->rgx ) == 0 )
+			{
+				//debug( "Path %s will get mode processing.", d->path );
+				d->checks |= DHASH_CHECK_MODE;
+			}
+			break;
+
+		case DATA_TYPE_ADDER:
+			if( ctl->stats->pred->enabled
+			 && regex_list_test( d->path, ctl->stats->pred->rgx ) == 0 )
+			{
+				//debug( "Path %s will get linear regression prediction.", d->path );
+				d->checks |= DHASH_CHECK_PREDICT;
+				d->predict = mem_new_pred( );
+			}
+			break;
+	}
+}
+
+
 
 __attribute__((hot)) static inline DHASH *data_get_dhash( char *path, int len, ST_CFG *c )
 {
@@ -239,28 +271,7 @@ __attribute__((hot)) static inline DHASH *data_get_dhash( char *path, int len, S
 		if( crt )
 		{
 			d->id = data_get_id( c );
-
-			// might we do moment filtering on this?
-			if( c->dtype == DATA_TYPE_STATS && ctl->stats->mom->enabled )
-			{
-				if( regex_list_test( d->path, ctl->stats->mom->rgx ) == 0 )
-				{
-				//	debug( "Path %s will get moments processing.", d->path );
-					d->mom_check = 1;
-				}
-				//else
-				//	debug( "Path %s will not get moments processing.", d->path );
-			}
-			else if( c->dtype == DATA_TYPE_ADDER && ctl->stats->pred->enabled )
-			{
-				if( regex_list_test( d->path, ctl->stats->pred->rgx ) == 0 )
-				{
-				//	debug( "Path %s will get linear regression prediction.", d->path );
-					d->predict = mem_new_pred( );
-				}
-				//else
-				//	debug( "Path %s will not get prediction.", d->path );
-			}
+			data_get_dhash_extras( d );
 		}
 	}
 

@@ -35,6 +35,7 @@
 #include <pthread.h>
 #include <sys/ipc.h>
 #include <sys/sem.h>
+#include <termios.h>
 #include <features.h>
 #include <sys/stat.h>
 #include <sys/time.h>

@@ -125,6 +125,12 @@ int app_start( int writePid )
 		exit( 0 );
 	}
 
+	if( chkcfFlag( KEY_PASSWORD ) )
+	{
+		if( http_ask_password( ) )
+			fatal( "Failed to get password interactively." );
+	}
+
 	if( set_limits( ) )
 		fatal( "Failed to set limits." );
 
@@ -160,6 +166,10 @@ int app_start( int writePid )
 
 	// start up io
 	io_init( );
+
+	// and http
+	if( http_start( ) )
+		fatal( "Failed to start http server." );
 
 	runf_add( RUN_APP_START );
 

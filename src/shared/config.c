@@ -698,6 +698,7 @@ char *config_help( void )
  -P <prefix>   Set environment variable prefix\n\
  -F            Disable reading a config file (env only)\n\
  -U            Disable all reading of URI's\n\
+ -K            Interactively ask for an SSL key password\n\
  -u            Disable URI config including other URI's\n\
  -i            Allow insecure URI's\n\
  -I            Allow secure URI's to include insecure URI's\n", 
@@ -716,7 +717,7 @@ char *config_help( void )
 }
 
 
-const char *config_args_opt_string = "HhDVvtsUuiIETWFdC:c:";
+const char *config_args_opt_string = "HhDVvtsUuiIEKTWFdC:c:";
 char config_args_opt_merged[CONF_LINE_MAX];
 
 char *config_arg_string( char *argstr )
@@ -776,6 +777,9 @@ void config_args( int ac, char **av, char *optstr, help_fn *hfp )
 				break;
 			case 'u':
 				cutcfFlag( URL_INC_URL );
+				break;
+			case 'K':
+				setcfFlag( KEY_PASSWORD );
 				break;
 			case 'i':
 				setcfFlag( URL_INSEC );
