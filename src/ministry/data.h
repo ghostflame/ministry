@@ -18,6 +18,11 @@
 #define LINE_SEPARATOR			'\n'
 #define FIELD_SEPARATOR			' '
 
+#define DHASH_CHECK_MOMENTS		0x01
+#define DHASH_CHECK_MODE		0x02
+#define DHASH_CHECK_PREDICT		0x04
+
+
 enum data_conn_type
 {
 	DATA_TYPE_STATS = 0,
@@ -51,6 +56,12 @@ extern DTYPE data_type_defns[];
 #define dpp_set( __dp, t, v )		__dp->ts = t; __dp->val = v
 #define dpp_get_t( __dp )			__dp->ts
 #define dpp_get_v( __dp )			__dp->val
+
+
+#define dhash_do_moments( _d )		( _d->checks & DHASH_CHECK_MOMENTS )
+#define dhash_do_mode( _d )			( _d->checks & DHASH_CHECK_MODE )
+#define dhash_do_predict( _d )		( ( _d->checks & DHASH_CHECK_PREDICT ) && _d->predict )
+
 
 struct data_point
 {
@@ -100,7 +111,7 @@ struct data_hash_entry	// size 104
 	uint8_t				valid;
 	uint8_t				do_pass;
 	uint8_t				type;
-	uint8_t				mom_check;
+	uint8_t				checks;
 	int32_t				empty;
 };
 

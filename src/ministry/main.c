@@ -157,10 +157,6 @@ int main( int ac, char **av, char **env )
 	if( net_start( ) )
 		fatal( "Failed to start networking." );
 
-	// light up http server if configured
-	if( http_start( ) )
-		fatal( "Failed to start HTTP server." );
-
 	// say we are up
 	app_ready( );
 

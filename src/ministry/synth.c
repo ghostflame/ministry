@@ -210,68 +210,59 @@ void synth_generate( SYNTH *s )
 }
 
 
-
-
 void synth_pass( int64_t tval, void *arg )
 {
-	ST_THR *t;
+	SYN_CTL *sc = ctl->synth;
 	SYNTH *s;
 
-	debug_synth( "Attempting to get adder thread locks." );
-
-	// try to get the adder locks
-	// this should block until they are ready
-	for( t = ctl->stats->adder->ctls; t; t = t->next )
-		lock_stthr( t );
-
-	debug_synth( "Generating synthetics." );
-
-	// run the list
-	for( s = ctl->synth->list; s; s = s->next )
-		synth_generate( s );
-
-	debug_synth( "Unlocking synth." );
-
-	// unlock ourself
-	unlock_synth( );
-
-	debug_synth( "Unlocking adder thread locks." );
-
-	// release those locks so the adder threads can carry on
-	for( t = ctl->stats->adder->ctls; t; t = t->next )
-		unlock_stthr( t );
-
-	debug_synth( "Synth sleeping %d usec.", ctl->synth->wait_usec );
-
-	// we have to make sure the adder threads have all called lock_synth before
-	// this does - so we deliberately yield a little while
-	// TODO device a more robust mechanism - another lock?
-	usleep( ctl->synth->wait_usec );
-
-	debug_synth( "Relocking synth." );
-
-	// and relock ourself for next time
 	lock_synth( );
 
-	debug_synth( "Synth relocked after pass." );
+	while( sc->tready < sc->tcount )
+	{
+		//info( "Synth waiting: %d / %d ready.", sc->tready, sc->tcount );
+		pthread_cond_wait( &(sc->threads_ready), &(ctl->locks->synth) );
+		//info( "Synth was awoken." );
+	}
+
+	// we are a go
+
+	sc->tready = 0;
+	debug( "Generating synthetics." );
+
+	for( s = sc->list; s; s = s->next )
+		synth_generate( s );
+
+	// tell everyone to proceed
+	sc->tproceed = sc->tcount;
+
+	//debug( "Waking the adder threads." );
+	pthread_cond_broadcast( &(sc->threads_done) );
+
+	// and release them
+	unlock_synth( );
 }
+
 
 
 
 void *synth_loop( void *arg )
 {
-	// a tenth of the adder period
-	ctl->synth->wait_usec = ctl->stats->adder->period / 10;
+	SYN_CTL *sc = ctl->synth;
 
-	lock_synth( );
+	// we don't use this
+	free( (THRD *) arg );
+
+	// locking
+	sc->tcount = ctl->stats->adder->threads;
+	pthread_cond_init( &(sc->threads_ready), NULL );
+	pthread_cond_init( &(sc->threads_done),  NULL );
 
 	// and loop
 	loop_control( "synthetics", synth_pass, NULL, ctl->stats->adder->period, LOOP_SYNC, ctl->stats->adder->offset );
 
-	// and lock ourself
-	unlock_synth( );
+	pthread_cond_destroy( &(sc->threads_ready) );
+	pthread_cond_destroy( &(sc->threads_done)  );
 
-	free( (THRD *) arg );
 	return NULL;
 }
 

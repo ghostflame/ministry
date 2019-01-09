@@ -295,6 +295,44 @@ void stats_report_moments( ST_THR *t, DHASH *d, int64_t ct, double mean )
 }
 
 
+void stats_report_mode( ST_THR *t, DHASH *d, int64_t ct )
+{
+	int64_t i, mdct, mdmx;
+	double mode, mtmp;
+
+	mdmx = 0;
+	mdct = 0;
+
+	mtmp = t->wkspc[0] - 1;
+
+	for( i = 0; i < ct; i++ )
+	{
+		if( t->wkspc[i] == mtmp )
+			mdct++;
+		else
+		{
+			if( mdct > mdmx )
+			{
+				mdmx = mdct;
+				mode = mtmp;
+			}
+			mdct = 0;
+			mtmp = t->wkspc[i];
+		}
+	}
+	if( mdct > mdmx )
+	{
+		mdmx = mdct;
+		mode = mtmp;
+	}
+
+	if( mdmx > 1 )
+	{
+		bprintf( t, "%s.mode %f",    d->path, mode );
+		bprintf( t, "%s.mode_ct %f", d->path, mdmx );
+	}
+}
+
 void __report_array( double *arr, int64_t ct )
 {
 	char abuf[8192];
@@ -318,9 +356,7 @@ void __report_array( double *arr, int64_t ct )
 void stats_report_one( ST_THR *t, DHASH *d )
 {
 	int64_t i, ct, idx;
-	//int64_t mdct, mdmx;
 	double sum, mean;
-	//double mode, mtmp;
 	PTLIST *list, *p;
 	ST_THOLD *thr;
 
@@ -380,7 +416,6 @@ void stats_report_one( ST_THR *t, DHASH *d )
 	// and the mean
 	mean = sum / (double) ct;
 
-
 	// and sort them
 	if( ct < ctl->stats->qsort_thresh )
 		sort_qsort_dbl( t, (int32_t) ct );
@@ -393,39 +428,6 @@ void stats_report_one( ST_THR *t, DHASH *d )
 	bprintf( t, "%s.lower %f",  d->path, t->wkspc[0] );
 	bprintf( t, "%s.median %f", d->path, t->wkspc[idx] );
 
-	/* Do we want the mode?
-	// figure out the mode
-	mdmx = 0;
-	mdct = 0;
-	mtmp = t->wkspc[0] - 1;
-	for( i = 0; i < ct; i++ )
-	{
-		if( t->wkspc[i] == mtmp )
-			mtct++;
-		else
-		{
-			if( mtct > mdmx )
-			{
-				mdmx = mtct;
-				mode = mtmp;
-			}
-			mtct = 0;
-			mtmp = t->wkspc[i];
-		}
-	}
-	if( mtct > mdmx )
-	{
-		mdmx = mtct;
-		mode = mtmp;
-	}
-
-	if( mdmx > 1 )
-	{
-		bprintf( t, "%s.mode %f",    d->path, mode );
-		bprintf( t, "%s.mode_ct %f", d->path, mdmx );
-	}
-	*/
-
 	// variable thresholds
 	for( thr = ctl->stats->thresholds; thr; thr = thr->next )
 	{
@@ -435,8 +437,12 @@ void stats_report_one( ST_THR *t, DHASH *d )
 	}
 
 	// are we doing std deviation and friends?
-	if( d->mom_check && ctl->stats->mom->min_pts <= ct )
+	if( dhash_do_moments( d ) && ctl->stats->mom->min_pts <= ct )
 		stats_report_moments( t, d, ct, mean );
+
+	// Do we want the mode?
+	if( dhash_do_mode( d ) && ct >= ctl->stats->mode->min_pts )
+		stats_report_mode( t, d, ct );
 
 	mem_free_point_list( list );
 
@@ -592,6 +598,7 @@ void stats_predictor( ST_THR *t, DHASH *d )
 
 void stats_adder_pass( ST_THR *t )
 {
+	SYN_CTL *sc = ctl->synth;
 	uint64_t i;
 	DHASH *d;
 
@@ -618,7 +625,7 @@ void stats_adder_pass( ST_THR *t )
 
 					unlock_adder( d );
 				}
-				else if( d->predict
+				else if( dhash_do_predict( d )
 					  && d->predict->valid
 					  && d->predict->pcount < ctl->stats->pred->pmax )
 				{
@@ -642,25 +649,25 @@ void stats_adder_pass( ST_THR *t )
 
 	st_thr_time( wait );
 
-	debug_synth( "[%02d] Unlocking adder lock.", t->id );
-
-	// synth thread is waiting for this
-	unlock_stthr( t );
-
-	debug_synth( "[%02d] Trying to lock synth.", t->id );
-
-	// try to lock the synth thread
+	// say we are ready
 	lock_synth( );
-
-	debug_synth( "[%02d] Unlocking synth.", t->id );
-
-	// and then unlock it
+	//info( "[%02d] Adder thread has got lock, signalling readiness.", t->id );
+	sc->tready++;
+	pthread_cond_signal( &(sc->threads_ready) );
 	unlock_synth( );
 
-	debug_synth( "[%02d] Trying to get our own lock back.", t->id );
-
-	// and lock our own again
-	lock_stthr( t );
+	// wait for the go
+	lock_synth( );
+	while( sc->tproceed <= 0 )
+	{
+		//info( "[%02d] Adder thread waiting to proceed.", t->id );
+		pthread_cond_wait( &(sc->threads_done), &(ctl->locks->synth) );
+		//info( "[%02d] Adder thread was awoken.", t->id );
+	}
+	// decrement the counter - it hits zero once every thread has done this
+	sc->tproceed--;
+	//info( "[%02d] Adder thread is clear to proceed.", t->id );
+	unlock_synth( );
 
 #ifdef DEBUG
 	//debug( "[%02d] Adder report", t->id );
@@ -677,7 +684,7 @@ void stats_adder_pass( ST_THR *t )
 					if( d->empty > 0 )
 						d->empty = 0;
 
-					if( d->predict )
+					if( dhash_do_predict( d ) )
 						stats_predictor( t, d );
 					else
 						bprintf( t, "%s %f", d->path, d->proc.total );
@@ -812,7 +819,7 @@ void *stats_loop( void *arg )
 	loop_control( cf->name, thread_pass, c, cf->period, LOOP_SYNC, cf->offset );
 
 	// and unlock ourself
-	unlock_stthr( c );
+	//unlock_stthr( c );
 
 	free( t );
 	return NULL;
@@ -925,10 +932,10 @@ void stats_init_control( ST_CFG *c, int alloc_data )
 			t->counters = (uint32_t *) allocz( 6 * sizeof( uint32_t ) * F8_SORT_HIST_SIZE );
 		}
 
-		pthread_mutex_init( &(t->lock), NULL );
+		//pthread_mutex_init( &(t->lock), NULL );
 
 		// and that starts locked
-		lock_stthr( t );
+		//lock_stthr( t );
 	}
 }
 
@@ -1008,6 +1015,12 @@ STAT_CTL *stats_config_defaults( void )
 	s->mom->min_pts   = DEFAULT_MOM_MIN;
 	s->mom->enabled   = 0;
 	s->mom->rgx       = regex_list_create( 1 );
+
+	// mode checks are off by default
+	s->mode           = (ST_MOM *) allocz( sizeof( ST_MOM ) );
+	s->mode->min_pts  = DEFAULT_MODE_MIN;
+	s->mode->enabled  = 0;
+	s->mode->rgx      = regex_list_create( 1 );
 
 	// predictions are off by default
 	s->pred           = (ST_PRED *) allocz( sizeof( ST_PRED ) );
@@ -1162,6 +1175,38 @@ int stats_config_line( AVP *av )
 			if( regex_list_add( av->val, 1, s->mom->rgx ) )
 				return -1;
 			debug( "Added moments blacklist regex: %s", av->val );
+		}
+		else
+			return -1;
+
+		return 0;
+	}
+	else if( !strncasecmp( av->att, "mode.", 5 ) )
+	{
+		if( !strcasecmp( d, "enable" ) )
+		{
+			s->mode->enabled = config_bool( av );
+		}
+		else if( !strcasecmp( d, "minimum" ) )
+		{
+			av_int( s->mode->min_pts );
+		}
+		else if( !strcasecmp( d, "fallbackMatch" ) )
+		{
+			t = config_bool( av );
+			regex_list_set_fallback( t, s->mode->rgx );
+		}
+		else if( !strcasecmp( d, "whitelist" ) )
+		{
+			if( regex_list_add( av->val, 0, s->mode->rgx ) )
+				return -1;
+			debug( "Added mode whitelist regex: %s", av->val );
+		}
+		else if( !strcasecmp( d, "blacklist" ) )
+		{
+			if( regex_list_add( av->val, 1, s->mode->rgx ) )
+				return -1;
+			debug( "Added mode blacklist regex: %s", av->val );
 		}
 		else
 			return -1;
