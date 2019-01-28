@@ -42,13 +42,13 @@ void main_loop( void )
 	stats_start( ctl->stats->self );
 
 	// and a synthetics loop
-	thread_throw( &synth_loop, NULL, 0 );
+	thread_throw_named( &synth_loop, NULL, 0, "synth_loop" );
 
 	// and gc
-	thread_throw( &gc_loop, NULL, 0 );
+	thread_throw_named( &gc_loop, NULL, 0, "gc_loop" );
 
 	// and token cleanup
-	thread_throw( &token_loop, NULL, 0 );
+	thread_throw_named( &token_loop, NULL, 0, "token_loop" );
 
 	// throw the data listener loop
 	net_start_type( ctl->net->stats );

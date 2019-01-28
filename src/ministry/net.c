@@ -111,7 +111,7 @@ void net_start_type( NET_TYPE *nt )
 		(*(nt->tcp_setup))( nt );
 
 		// and start watching the socket
-		thread_throw( tcp_loop, nt->tcp, 0 );
+		thread_throw_named( tcp_loop, nt->tcp, 0, "tcp_loop" );
 	}
 
 	if( nt->flags & NTYPE_UDP_ENABLED )
@@ -122,7 +122,9 @@ void net_start_type( NET_TYPE *nt )
 			fp = &udp_loop_flat;
 
 		for( i = 0; i < nt->udp_count; i++ )
-			thread_throw( fp, nt->udp[i], i );
+		{
+			thread_throw_named_i( fp, nt->udp[i], i, "udp_loop" );
+		}
 	}
 
 	info( "Started listening for data on %s", nt->label );

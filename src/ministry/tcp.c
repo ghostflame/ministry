@@ -36,7 +36,7 @@ void tcp_choose_thread( HOST *h )
 
 void tcp_throw_thread( HOST *h )
 {
-	thread_throw( &tcp_thrd_thread, h, 0 );
+	thread_throw_named( &tcp_thrd_thread, h, 0, "tcp_thread" );
 }
 
 

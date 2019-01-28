@@ -840,7 +840,7 @@ void stats_start( ST_CFG *cf )
 	// throw each of the threads
 	// high stack size - they'll be doing qsort
 	for( i = 0; i < cf->threads; i++ )
-		thread_throw( &stats_loop, &(cf->ctls[i]), i );
+		thread_throw_named_i( &stats_loop, &(cf->ctls[i]), i, (char *) cf->name );
 
 	info( "Started %s data processing loops.", cf->name );
 }
