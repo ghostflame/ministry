@@ -36,7 +36,13 @@ void tcp_choose_thread( HOST *h )
 
 void tcp_throw_thread( HOST *h )
 {
-	thread_throw_named( &tcp_thrd_thread, h, 0, "tcp_thread" );
+	char buf[16];
+
+	snprintf( buf, 16, "%c_%08x:%04x",
+		*(h->type->name), ntohl( h->net->peer.sin_addr.s_addr ),
+		ntohs( h->net->peer.sin_port ) );
+
+	thread_throw_named( &tcp_thrd_thread, h, 0, buf );
 }
 
 
