@@ -100,6 +100,7 @@ int net_set_host_parser( HOST *h, int token_check, int prefix_check )
 void net_start_type( NET_TYPE *nt )
 {
 	throw_fn *fp;
+	char buf[16];
 	int i;
 
 	if( !( nt->flags & NTYPE_ENABLED ) )
@@ -111,7 +112,8 @@ void net_start_type( NET_TYPE *nt )
 		(*(nt->tcp_setup))( nt );
 
 		// and start watching the socket
-		thread_throw_named( tcp_loop, nt->tcp, 0, "tcp_loop" );
+		snprintf( buf, 16, "tcp_loop_%hu", nt->tcp->port );
+		thread_throw_named( tcp_loop, nt->tcp, 0, buf );
 	}
 
 	if( nt->flags & NTYPE_UDP_ENABLED )
@@ -123,7 +125,8 @@ void net_start_type( NET_TYPE *nt )
 
 		for( i = 0; i < nt->udp_count; i++ )
 		{
-			thread_throw_named_i( fp, nt->udp[i], i, "udp_loop" );
+			snprintf( buf, 16, "udp_loop_%hu", nt->udp[i]->port );
+			thread_throw_named( fp, nt->udp[i], i, buf );
 		}
 	}
 

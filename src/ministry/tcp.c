@@ -38,6 +38,7 @@ void tcp_throw_thread( HOST *h )
 {
 	char buf[16];
 
+	// name the thread after the type and remote host
 	snprintf( buf, 16, "%c_%08x:%04x",
 		*(h->type->name), ntohl( h->net->peer.sin_addr.s_addr ),
 		ntohs( h->net->peer.sin_port ) );

@@ -196,7 +196,7 @@ void app_ready( void )
 
 	info( "%s started up in %.3fs.", _proc->app_upper, diff );
 
-	thread_throw_named( &loop_timer, NULL, 0, "loop_timer" );
+	thread_throw_named( &loop_timer, NULL, 0, "timer_loop" );
 
 	runf_add( RUN_APP_READY );
 	runf_add( RUN_LOOP );
