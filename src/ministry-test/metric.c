@@ -337,6 +337,7 @@ void metric_set_target_params( METRIC *m )
 
 void metric_init_group( MGRP *g )
 {
+	char buf[16];
 	METRIC *m;
 
 	// get ourselves a buffer
@@ -388,11 +389,14 @@ void metric_init_group( MGRP *g )
 
 	// start up the group
 	debug( "Starting group %s with %d metrics @ interval %ld.", g->name, g->mcount, g->rep_intv );
-	thread_throw( metric_group_update_loop, g, 0 );
-	thread_throw( metric_group_report_loop, g, 0 );
+	snprintf( buf, 16, "met_%s", g->name );
+	thread_throw_named( metric_group_update_loop, g, 0, buf );
+	snprintf( buf, 16, "rep_%s", g->name );
+	thread_throw_named( metric_group_report_loop, g, 0, buf );
 
 	// and a loop to handle io max_age
-	thread_throw( metric_group_io_loop, g, 0 );
+	snprintf( buf, 16, "iol_%s", g->name );
+	thread_throw_named( metric_group_io_loop, g, 0, buf );
 }
 
 

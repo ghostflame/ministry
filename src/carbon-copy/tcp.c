@@ -260,6 +260,7 @@ __attribute__((hot)) void *tcp_connection( void *arg )
 void *tcp_loop( void *arg )
 {
 	struct pollfd p;
+	char buf[16];
 	NET_PORT *n;
 	THRD *t;
 	HOST *h;
@@ -291,7 +292,12 @@ void *tcp_loop( void *arg )
 		if( p.revents & POLL_EVENTS )
 		{
 			if( ( h = tcp_get_host( p.fd, n ) ) )
-				thread_throw( tcp_connection, h, 0 );
+			{
+				snprintf( buf, 16, "h_%08x:%04x",
+					ntohl( h->net->peer.sin_addr.s_addr ),
+					ntohs( h->net->peer.sin_port ) );
+				thread_throw_named( tcp_connection, h, 0, buf );
+			}
 		}
 	}
 

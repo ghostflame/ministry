@@ -60,13 +60,17 @@ int net_set_host_prefix( HOST *h, IPNET *n )
 void net_start_type( NET_TYPE *nt )
 {
 	throw_fn *fp;
+	char buf[16];
 	int i;
 
 	if( !( nt->flags & NTYPE_ENABLED ) )
 		return;
 
 	if( nt->flags & NTYPE_TCP_ENABLED )
-		thread_throw( tcp_loop, nt->tcp, 0 );
+	{
+		snprintf( buf, 16, "tcp_loop_%hu", nt->tcp->port );
+		thread_throw_named( tcp_loop, nt->tcp, 0, buf );
+	}
 
 	if( nt->flags & NTYPE_UDP_ENABLED )
 	{
@@ -76,7 +80,10 @@ void net_start_type( NET_TYPE *nt )
 			fp = &udp_loop_flat;
 
 		for( i = 0; i < nt->udp_count; i++ )
-			thread_throw( fp, nt->udp[i], i );
+		{
+			snprintf( buf, 16, "udp_loop_%hu", nt->udp[i]->port );
+			thread_throw_named( fp, nt->udp[i], i, buf );
+		}
 	}
 
 	info( "Started listening for data on %s", nt->label );
