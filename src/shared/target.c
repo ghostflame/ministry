@@ -96,7 +96,7 @@ int target_run_one( TGT *t, int enabled_check, int idx )
 	target_set_id( t );
 
 	// start a loop for each one
-	thread_throw( target_loop, t, idx );
+	thread_throw_named( target_loop, t, idx, "target_loop" );
 	return 0;
 }
 

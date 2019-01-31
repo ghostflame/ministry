@@ -532,9 +532,9 @@ void mem_shutdown( void )
 void mem_startup( void )
 {
 	if( _mem->mcheck->checks )
-		thread_throw( &mem_check_loop, NULL, 0 );
+		thread_throw_named( &mem_check_loop, NULL, 0, "mem_check_loop" );
 
-	thread_throw( &mem_prealloc_loop, NULL, 0 );
+	thread_throw_named( &mem_prealloc_loop, NULL, 0, "mem_prealloc" );
 }
 
 

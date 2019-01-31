@@ -71,4 +71,51 @@ pthread_t thread_throw_watched( throw_fn *watcher, throw_fn *fp, void *arg, int6
 	return __thread_throw( watcher, fp, arg, &tt_attr, num );
 }
 
+pthread_t thread_throw_named( throw_fn *fp, void *arg, int64_t num, char *name )
+{
+	pthread_t tid;
+	char buf[16];
+	int l;
+
+	tid = __thread_throw( fp, fp, arg, &tt_attr, num );
+
+	if( !name )
+		return tid;
+
+	memset( buf, 0, 16 );
+
+	l = strlen( name );
+	if( l > 15 )
+		l = 15;
+
+	memcpy( buf, name, l );
+
+	// complain if it fails
+	if( pthread_setname_np( tid, (const char *) buf ) )
+		warn( "Could not set thread name to '%s' -- %s.", buf, Err );
+
+	return tid;
+}
+
+pthread_t thread_throw_named_i( throw_fn *fp, void *arg, int64_t num, char *name )
+{
+	char fbuf[12], fmt[16], buf[16];
+	int l;
+
+	memset( fbuf, 0, 12 );
+	memset( buf,  0, 16 );
+	memset( fmt,  0, 16 );
+
+	l = strlen( name );
+	if( l > 11 )
+		l = 11;
+
+	memcpy( fbuf, name, l );
+
+	snprintf( fmt, 16, "%s_%%ld", fbuf );
+	snprintf( buf, 16, fmt, num );
+
+	return thread_throw_named( fp, arg, num, buf );
+}
+
 
