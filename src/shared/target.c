@@ -332,14 +332,14 @@ int target_config_line( AVP *av )
 	if( attIs( "target" ) )
 	{
 		// all in one go
-		if( !target_create_str( av->val, av->vlen, ':' ) )
+		if( !target_create_str( av->vptr, av->vlen, ':' ) )
 			return -1;
 
 		__tgt_cfg_state = 0;
 	}
 	else if( attIs( "list" ) )
 	{
-		t->list = __target_list_find_create( av->val );
+		t->list = __target_list_find_create( av->vptr );
 		__tgt_cfg_state = 1;
 	}
 	else if( attIs( "name" ) )
@@ -347,23 +347,23 @@ int target_config_line( AVP *av )
 		if( t->name )
 			free( t->name );
 
-		t->name = str_copy( av->val, av->vlen );
+		t->name = str_copy( av->vptr, av->vlen );
 		__tgt_cfg_state = 1;
 	}
 	else if( attIs( "host" ) )
 	{
-		if( __target_set_host( t, av->val ) )
+		if( __target_set_host( t, av->vptr ) )
 			return -1;
 		__tgt_cfg_state = 1;
 	}
 	else if( attIs( "port" ) )
 	{
-		t->port = (uint16_t) strtoul( av->val, NULL, 10 );
+		t->port = (uint16_t) strtoul( av->vptr, NULL, 10 );
 		__tgt_cfg_state = 1;
 	}
 	else if( attIs( "maxWaiting" ) || attIs( "max" ) )
 	{
-		if( __target_set_maxw( t, av->val ) )
+		if( __target_set_maxw( t, av->vptr ) )
 			return -1;
 		__tgt_cfg_state = 1;
 	}
@@ -374,7 +374,7 @@ int target_config_line( AVP *av )
 	}
 	else if( attIs( "protocol" ) )
 	{
-		if( __target_set_protocol( t, av->val ) )
+		if( __target_set_protocol( t, av->vptr ) )
 			return -1;
 		__tgt_cfg_state = 1;
 	}
@@ -385,11 +385,11 @@ int target_config_line( AVP *av )
 			warn( "Target already has a type set." );
 			free( t->typestr );
 		}
-		t->typestr = str_copy( av->val, av->vlen );
+		t->typestr = str_copy( av->vptr, av->vlen );
 
 		if( _tgt->type_fn )
 		{
-			if( (*(_tgt->type_fn))( t, av->val, av->vlen ) )
+			if( (*(_tgt->type_fn))( t, av->vptr, av->vlen ) )
 				return -1;
 		}
 		else
@@ -401,7 +401,7 @@ int target_config_line( AVP *av )
 	{
 		if( _tgt->data_fn )
 		{
-			if( (*(_tgt->data_fn))( t, av->val, av->vlen ) )
+			if( (*(_tgt->data_fn))( t, av->vptr, av->vlen ) )
 				return -1;
 		}
 		else

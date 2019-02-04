@@ -428,7 +428,7 @@ int mem_config_line( AVP *av )
 	char *d;
 	int i;
 
-	if( !( d = strchr( av->att, '.' ) ) )
+	if( !( d = strchr( av->aptr, '.' ) ) )
 	{
 		// just the singles
 		if( attIs( "maxMb" ) || attIs( "maxSize" ) )
@@ -478,7 +478,10 @@ int mem_config_line( AVP *av )
 	if( !mt )
 		return -1;
 
-	if( !strcasecmp( d, "block" ) )
+	av->alen -= d - av->aptr;
+	av->aptr  = d;
+
+	if( attIs( "block" ) )
 	{
 		av_int( t );
 		if( t > 0 )
@@ -487,12 +490,12 @@ int mem_config_line( AVP *av )
 			debug( "Allocation block for %s set to %u", mt->name, mt->alloc_ct );
 		}
 	}
-	else if( !strcasecmp( d, "prealloc" ) )
+	else if( attIs( "prealloc" ) )
 	{
 		mt->prealloc = 0;
 		debug( "Preallocation disabled for %s", mt->name );
 	}
-	else if( !strcasecmp( d, "threshold" ) )
+	else if( attIs( "threshold" ) )
 	{
 		av_dbl( mt->threshold );
 		if( mt->threshold < 0 || mt->threshold >= 1 )

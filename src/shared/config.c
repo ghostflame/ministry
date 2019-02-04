@@ -108,7 +108,7 @@ int config_get_line( FILE *f, AVP *av )
 		if( av->status == VV_LINE_ATTVAL )
 		{
 			// but do args substitution first
-			config_args_substitute( av->val, &(av->vlen) );
+			config_args_substitute( av->vptr, &(av->vlen) );
 
 			return 0;
 		}
@@ -137,7 +137,7 @@ int config_ignore_section( FILE *fh )
 
 int config_bool( AVP *av )
 {
-	if( valIs( "true" ) || valIs( "yes" ) || valIs( "y" ) || ( atoi( av->val ) != 0 ) )
+	if( valIs( "true" ) || valIs( "yes" ) || valIs( "y" ) || ( atoi( av->vptr ) != 0 ) )
 		return 1;
 
 	return 0;
@@ -227,11 +227,11 @@ int config_line( AVP *av )
 	char *d;
 	int res;
 
-	if( ( d = strchr( av->att, '.' ) ) )
+	if( ( d = strchr( av->aptr, '.' ) ) )
 	{
 		d++;
 
-		if( !strncasecmp( av->att, "limits.", 7 ) )
+		if( !strncasecmp( av->aptr, "limits.", 7 ) )
 		{
 			if( !strcasecmp( d, "procs" ) )
 				res = RLIMIT_NPROC;
@@ -240,7 +240,7 @@ int config_line( AVP *av )
 			else
 				return -1;
 
-			config_set_limit( _proc, res, atoll( av->val ) );
+			config_set_limit( _proc, res, atoll( av->vptr ) );
 		}
 		else
 			return -1;
@@ -262,11 +262,11 @@ int config_line( AVP *av )
 	}
 	else if( attIs( "pidFile" ) )
 	{
-		snprintf( _proc->pidfile, CONF_LINE_MAX, "%s", av->val );
+		snprintf( _proc->pidfile, CONF_LINE_MAX, "%s", av->vptr );
 	}
 	else if( attIs( "baseDir" ) )
 	{
-		snprintf( _proc->basedir, CONF_LINE_MAX, "%s", av->val );
+		snprintf( _proc->basedir, CONF_LINE_MAX, "%s", av->vptr );
 	}
 	return 0;
 }
@@ -312,13 +312,13 @@ int __config_read_file( FILE *fh )
 			continue;
 
 		// spot includes - they inherit context
-		if( !strcasecmp( av.att, "include" ) )
+		if( !strcasecmp( av.aptr, "include" ) )
 		{
-			strwords( &w, av.val, av.vlen, ' ' );
+			strwords( &w, av.vptr, av.vlen, ' ' );
 
 			if( config_read( w.wd[0], &w ) != 0 )
 			{
-				err( "Included config file '%s' is not valid.", av.val );
+				err( "Included config file '%s' is not valid.", av.vptr );
 				ret = -1;
 				break;
 			}
@@ -333,7 +333,7 @@ int __config_read_file( FILE *fh )
 		if( lrv )
 		{
 			err( "Bad config in file '%s', line %d", context->source, context->lineno );
-			info( "Bad line: %s = %s", av.att, av.val );
+			info( "Bad line: %s = %s", av.aptr, av.vptr );
 			break;
 		}
 	}
@@ -592,12 +592,10 @@ int config_env_path( char *path, int len )
 
 	// and try it
 	if( (*(context->section->fp))( &av ) )
-	{
-		debug( "Found env [%s] %s -> %s", sec, av.att, av.val );
-		return 0;
-	}
+		return -1;
 
-	return -1;
+	debug( "Found env [%s] %s -> %s", sec, av.att, av.val );
+	return 0;
 }
 
 
@@ -623,6 +621,7 @@ int config_read_env( char **env )
 
 		if( l < ( _proc->env_prfx_len + 2 ) || memcmp( buf, _proc->env_prfx, _proc->env_prfx_len ) )
 			continue;
+		debug("Env Entry: %s", buf);
 
 		if( config_env_path( buf + _proc->env_prfx_len, l - _proc->env_prfx_len ) )
 		{

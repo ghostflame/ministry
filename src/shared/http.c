@@ -500,18 +500,18 @@ int http_config_line( AVP *av )
 	HTTP_CTL *h = _http;
 	char *d;
 
-	if( !( d = strchr( av->att, '.' ) ) )
+	if( !( d = strchr( av->aptr, '.' ) ) )
 	{
 		if( attIs( "port" ) )
 		{
-			h->port = (uint16_t) ( strtoul( av->val, NULL, 10 ) & 0xffffUL );
+			h->port = (uint16_t) ( strtoul( av->vptr, NULL, 10 ) & 0xffffUL );
 			debug( "Http port set to %hu.", h->port );
 		}
 		else if( attIs( "bind" ) )
 		{
 			if( h->addr )
 				free( h->addr );
-			h->addr = str_copy( av->val, av->vlen );
+			h->addr = str_copy( av->vptr, av->vlen );
 
 			if( !inet_aton( h->addr, &(h->sin->sin_addr) ) )
 			{
@@ -549,36 +549,36 @@ int http_config_line( AVP *av )
 	// then its conns. or ssl.
 	d++;
 
-	if( !strncasecmp( av->att, "conns.", 6 ) )
+	if( !strncasecmp( av->aptr, "conns.", 6 ) )
 	{
 		if( dIs( "max" ) )
 		{
-			h->conns_max = (unsigned int) strtoul( av->val, NULL, 10 );
+			h->conns_max = (unsigned int) strtoul( av->vptr, NULL, 10 );
 		}
 		else if( dIs( "maxPerIp" ) || dIs( "maxPerHost" ) )
 		{
-			h->conns_max_ip = (unsigned int) strtoul( av->val, NULL, 10 );
+			h->conns_max_ip = (unsigned int) strtoul( av->vptr, NULL, 10 );
 		}
 		else if( dIs( "timeout" ) || dIs( "tmout" ) )
 		{
-			h->conns_tmout = (unsigned int) strtoul( av->val, NULL, 10 );
+			h->conns_tmout = (unsigned int) strtoul( av->vptr, NULL, 10 );
 		}
 		else
 			return -1;
 	}
-	else if( !strncasecmp( av->att, "ssl.", 4 ) )
+	else if( !strncasecmp( av->aptr, "ssl.", 4 ) )
 	{
 		if( dIs( "certFile" ) || dIs( "cert" ) )
 		{
 			if( h->ssl->cert.path )
 				free( h->ssl->cert.path );
-			h->ssl->cert.path = str_copy( av->val, av->vlen );
+			h->ssl->cert.path = str_copy( av->vptr, av->vlen );
 		}
 		else if( dIs( "keyFile" ) || dIs( "key" ) )
 		{
 			if( h->ssl->key.path )
 				free( h->ssl->key.path );
-			h->ssl->key.path = str_copy( av->val, av->vlen );
+			h->ssl->key.path = str_copy( av->vptr, av->vlen );
 		}
 		else if( dIs( "keyPass" ) || dIs( "pass" ) || dIs( "password" ) )
 		{
@@ -586,7 +586,7 @@ int http_config_line( AVP *av )
 			
 			if( !valIs( "null" ) && !valIs( "-" ) )
 			{
-				h->ssl->password = str_copy( av->val, av->vlen );
+				h->ssl->password = str_copy( av->vptr, av->vlen );
 				h->ssl->passlen  = (uint16_t) av->vlen;
 			}
 		}
@@ -599,7 +599,7 @@ int http_config_line( AVP *av )
 		}
 		else if( dIs( "port" ) )
 		{
-			h->ssl->port = (uint16_t) strtoul( av->val, NULL, 10 );
+			h->ssl->port = (uint16_t) strtoul( av->vptr, NULL, 10 );
 			debug( "SSL port set to %hu.", h->ssl->port );
 		}
 	}

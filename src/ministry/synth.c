@@ -356,7 +356,7 @@ int synth_config_path( SYNTH *s, AVP *av )
 		return -1;
 	}
 
-	s->paths[s->parts] = str_copy( av->val, av->vlen );
+	s->paths[s->parts] = str_copy( av->vptr, av->vlen );
 	s->plens[s->parts] = av->vlen;
 
 	s->parts++;
@@ -387,7 +387,7 @@ int synth_config_line( AVP *av )
 		if( s->target_path )
 			free( s->target_path );
 
-		s->target_path = str_copy( av->val, av->vlen );
+		s->target_path = str_copy( av->vptr, av->vlen );
 		__synth_cfg_state = 1;
 	}
 	else if( attIs( "source" ) )
@@ -404,12 +404,12 @@ int synth_config_line( AVP *av )
 	}
 	else if( attIs( "factor" ) )
 	{
-		s->factor = strtod( av->val, NULL );
+		s->factor = strtod( av->vptr, NULL );
 		__synth_cfg_state = 1;
 	}
 	else if( attIs( "maxAbsent" ) )
 	{
-		s->max_absent = atoi( av->val );
+		s->max_absent = atoi( av->vptr );
 		__synth_cfg_state = 1;
 	}
 	else if( attIs( "operation" ) )
@@ -427,7 +427,7 @@ int synth_config_line( AVP *av )
 
 		if( !def )
 		{
-			err( "Synthetic operation %s not recognised.", av->val );
+			err( "Synthetic operation %s not recognised.", av->vptr );
 			return -1;
 		}
 

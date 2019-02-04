@@ -37,8 +37,8 @@
 
 
 // used all over - so all the config line fns have an AVP called 'av'
-#define attIs( s )      !strcasecmp( av->att, s )
-#define valIs( s )      !strcasecmp( av->val, s )
+#define attIs( s )      !strcasecmp( av->aptr, s )
+#define valIs( s )      !strcasecmp( av->vptr, s )
 
 
 struct config_section

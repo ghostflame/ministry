@@ -643,7 +643,7 @@ int metric_config_line( AVP *av )
 
 	if( attIs( "maxAge" ) )
 	{
-		if( parse_number( av->val, &v, NULL ) == NUM_INVALID )
+		if( parse_number( av->vptr, &v, NULL ) == NUM_INVALID )
 			return -1;
 		ctl->metric->max_age = v;
 	}
@@ -679,13 +679,13 @@ int metric_config_line( AVP *av )
 			return -1;
 		}
 
-		strbuf_copy( g->prefix, av->val, av->vlen );
+		strbuf_copy( g->prefix, av->vptr, av->vlen );
 	}
 	else if( attIs( "parent" ) )
 	{
-		if( !( g->parent = metric_find_group_parent( av->val, av->vlen ) ) )
+		if( !( g->parent = metric_find_group_parent( av->vptr, av->vlen ) ) )
 		{
-			err( "Parent %s not found for group %s", av->val, g->name );
+			err( "Parent %s not found for group %s", av->vptr, g->name );
 			return -1;
 		}
 	}
@@ -713,7 +713,7 @@ int metric_config_line( AVP *av )
 			g->tgttype = METRIC_TYPE_COMPAT;
 		else
 		{
-			err( "Unrecognised target type %s.", av->val );
+			err( "Unrecognised target type %s.", av->vptr );
 			return -1;
 		}
 	}
@@ -725,9 +725,9 @@ int metric_config_line( AVP *av )
 			return -1;
 		}
 
-		if( metric_get_interval( av->val, &(g->upd_intv) ) )
+		if( metric_get_interval( av->vptr, &(g->upd_intv) ) )
 		{
-			err( "Invalid update interval for group %s: %s", g->name, av->val );
+			err( "Invalid update interval for group %s: %s", g->name, av->vptr );
 			return -1;
 		}
 	}
@@ -739,9 +739,9 @@ int metric_config_line( AVP *av )
 			return -1;
 		}
 
-		if( metric_get_interval( av->val, &(g->rep_intv) ) )
+		if( metric_get_interval( av->vptr, &(g->rep_intv) ) )
 		{
-			err( "Invalid report interval for group %s: %s", g->name, av->val );
+			err( "Invalid report interval for group %s: %s", g->name, av->vptr );
 			return -1;
 		}
 	}
@@ -755,7 +755,7 @@ int metric_config_line( AVP *av )
 
 		if( av_int( g->repeat ) == NUM_INVALID )
 		{
-			err( "Invalid repeat count for group %s: %s", g->name, av->val );
+			err( "Invalid repeat count for group %s: %s", g->name, av->vptr );
 			return -1;
 		}
 	}
@@ -767,7 +767,7 @@ int metric_config_line( AVP *av )
 			return -1;
 		}
 
-		return metric_add( g, av->val, av->vlen );
+		return metric_add( g, av->vptr, av->vlen );
 	}
 	else if( attIs( "done" ) )
 	{

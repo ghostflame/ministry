@@ -1050,13 +1050,13 @@ int stats_config_line( AVP *av )
 
 	s = ctl->stats;
 
-	if( !( d = strchr( av->att, '.' ) ) )
+	if( !( d = strchr( av->aptr, '.' ) ) )
 	{
 		if( attIs( "thresholds" ) )
 		{
-			if( strwords( &wd, av->val, av->vlen, ',' ) <= 0 )
+			if( strwords( &wd, av->vptr, av->vlen, ',' ) <= 0 )
 			{
-				warn( "Invalid thresholds string: %s", av->val );
+				warn( "Invalid thresholds string: %s", av->vptr );
 				return -1;
 			}
 			if( wd.wc > 20 )
@@ -1140,90 +1140,99 @@ int stats_config_line( AVP *av )
 
 	d++;
 
-	if( !strncasecmp( av->att, "stats.", 6 ) )
+	if( !strncasecmp( av->aptr, "stats.", 6 ) )
 		sc = s->stats;
-	else if( !strncasecmp( av->att, "adder.", 6 ) )
+	else if( !strncasecmp( av->aptr, "adder.", 6 ) )
 		sc = s->adder;
 	// because I'm nice that way (plus, I keep mis-typing it...)
-	else if( !strncasecmp( av->att, "gauge.", 6 ) || !strncasecmp( av->att, "guage.", 6 ) )
+	else if( !strncasecmp( av->aptr, "gauge.", 6 ) || !strncasecmp( av->aptr, "guage.", 6 ) )
 		sc = s->gauge;
-	else if( !strncasecmp( av->att, "self.", 5 ) )
+	else if( !strncasecmp( av->aptr, "self.", 5 ) )
 		sc = s->self;
-	else if( !strncasecmp( av->att, "moments.", 8 ) )
+	else if( !strncasecmp( av->aptr, "moments.", 8 ) )
 	{
-		if( !strcasecmp( d, "enable" ) )
+		av->alen -= 8;
+		av->aptr += 8;
+
+		if( attIs( "enable" ) )
 		{
 			s->mom->enabled = config_bool( av );
 		}
-		else if( !strcasecmp( d, "minimum" ) )
+		else if( attIs( "minimum" ) )
 		{
 			av_int( s->mom->min_pts );
 		}
-		else if( !strcasecmp( d, "fallbackMatch" ) )
+		else if( attIs( "fallbackMatch" ) )
 		{
 			t = config_bool( av );
 			regex_list_set_fallback( t, s->mom->rgx );
 		}
-		else if( !strcasecmp( d, "whitelist" ) )
+		else if( attIs( "whitelist" ) )
 		{
-			if( regex_list_add( av->val, 0, s->mom->rgx ) )
+			if( regex_list_add( av->vptr, 0, s->mom->rgx ) )
 				return -1;
-			debug( "Added moments whitelist regex: %s", av->val );
+			debug( "Added moments whitelist regex: %s", av->vptr );
 		}
-		else if( !strcasecmp( d, "blacklist" ) )
+		else if( attIs( "blacklist" ) )
 		{
-			if( regex_list_add( av->val, 1, s->mom->rgx ) )
+			if( regex_list_add( av->vptr, 1, s->mom->rgx ) )
 				return -1;
-			debug( "Added moments blacklist regex: %s", av->val );
+			debug( "Added moments blacklist regex: %s", av->vptr );
 		}
 		else
 			return -1;
 
 		return 0;
 	}
-	else if( !strncasecmp( av->att, "mode.", 5 ) )
+	else if( !strncasecmp( av->aptr, "mode.", 5 ) )
 	{
-		if( !strcasecmp( d, "enable" ) )
+		av->alen -= 5;
+		av->aptr += 5;
+
+		if( attIs( "enable" ) )
 		{
 			s->mode->enabled = config_bool( av );
 		}
-		else if( !strcasecmp( d, "minimum" ) )
+		else if( attIs( "minimum" ) )
 		{
 			av_int( s->mode->min_pts );
 		}
-		else if( !strcasecmp( d, "fallbackMatch" ) )
+		else if( attIs( "fallbackMatch" ) )
 		{
 			t = config_bool( av );
 			regex_list_set_fallback( t, s->mode->rgx );
 		}
-		else if( !strcasecmp( d, "whitelist" ) )
+		else if( attIs( "whitelist" ) )
 		{
-			if( regex_list_add( av->val, 0, s->mode->rgx ) )
+			if( regex_list_add( av->vptr, 0, s->mode->rgx ) )
 				return -1;
-			debug( "Added mode whitelist regex: %s", av->val );
+			debug( "Added mode whitelist regex: %s", av->vptr );
 		}
-		else if( !strcasecmp( d, "blacklist" ) )
+		else if( attIs( "blacklist" ) )
 		{
-			if( regex_list_add( av->val, 1, s->mode->rgx ) )
+			if( regex_list_add( av->vptr, 1, s->mode->rgx ) )
 				return -1;
-			debug( "Added mode blacklist regex: %s", av->val );
+			debug( "Added mode blacklist regex: %s", av->vptr );
 		}
 		else
 			return -1;
 
 		return 0;
 	}
-	else if( !strncasecmp( av->att, "predict.", 8 ) )
+	else if( !strncasecmp( av->aptr, "predict.", 8 ) )
 	{
-		if( !strcasecmp( d, "enable" ) )
+		av->alen -= 8;
+		av->aptr += 8;
+
+		if( attIs( "enable" ) )
 		{
 			s->pred->enabled = config_bool( av );
 		}
-		else if( !strcasecmp( d, "size" ) )
+		else if( attIs( "size" ) )
 		{
 			if( av_int( v ) == NUM_INVALID )
 			{
-				err( "Invalid linear regression size '%s'", av->val );
+				err( "Invalid linear regression size '%s'", av->vptr );
 				return -1;
 			}
 			if( v < MIN_MATHS_PREDICT || v > MAX_MATHS_PREDICT )
@@ -1236,22 +1245,22 @@ int stats_config_line( AVP *av )
 			s->pred->vsize = (uint16_t) v;
 			s->pred->pmax  = s->pred->vsize / 3;
 		}
-		else if( !strcasecmp( d, "fallbackMatch" ) )
+		else if( attIs( "fallbackMatch" ) )
 		{
 			t = config_bool( av );
 			regex_list_set_fallback( t, s->pred->rgx );
 		}
-		else if( !strcasecmp( d, "whitelist" ) )
+		else if( attIs( "whitelist" ) )
 		{
-			if( regex_list_add( av->val, 0, s->pred->rgx ) )
+			if( regex_list_add( av->vptr, 0, s->pred->rgx ) )
 				return -1;
-			debug( "Added prediction whitelist regex: %s", av->val );
+			debug( "Added prediction whitelist regex: %s", av->vptr );
 		}
-		else if( !strcasecmp( d, "blacklist" ) )
+		else if( attIs( "blacklist" ) )
 		{
-			if( regex_list_add( av->val, 1, s->pred->rgx ) )
+			if( regex_list_add( av->vptr, 1, s->pred->rgx ) )
 				return -1;
-			debug( "Added prediction blacklist regex: %s", av->val );
+			debug( "Added prediction blacklist regex: %s", av->vptr );
 		}
 		else
 			return -1;
@@ -1261,7 +1270,10 @@ int stats_config_line( AVP *av )
 	else
 		return -1;
 
-	if( !strcasecmp( d, "threads" ) )
+	av->alen -= d - av->aptr;
+	av->aptr  = d;
+
+	if( attIs( "threads" ) )
 	{
 		av_int( v );
 		if( v > 0 )
@@ -1269,17 +1281,17 @@ int stats_config_line( AVP *av )
 		else
 			warn( "Stats threads must be > 0, value %d given.", v );
 	}
-	else if( !strcasecmp( d, "enable" ) )
+	else if( attIs( "enable" ) )
 	{
 		if( !( sc->enable = config_bool( av ) ) )
 			debug( "Stats type %s disabled.", sc->name );
 	}
-	else if( !strcasecmp( d, "prefix" ) )
+	else if( attIs( "prefix" ) )
 	{
-		stats_prefix( sc, av->val );
+		stats_prefix( sc, av->vptr );
 		debug( "%s prefix set to '%s'", sc->name, sc->prefix->buf );
 	}
-	else if( !strcasecmp( d, "period" ) )
+	else if( attIs( "period" ) )
 	{
 		av_int( v );
 		if( v > 0 )
@@ -1287,7 +1299,7 @@ int stats_config_line( AVP *av )
 		else
 			warn( "Stats period must be > 0, value %d given.", v );
 	}
-	else if( !strcasecmp( d, "offset" ) || !strcasecmp( d, "delay" ) )
+	else if( attIs( "offset" ) || attIs( "delay" ) )
 	{
 		av_int( v );
 		if( v > 0 )
@@ -1295,10 +1307,10 @@ int stats_config_line( AVP *av )
 		else
 			warn( "Stats offset must be > 0, value %d given.", v );
 	}
-	else if( !strcasecmp( d, "size" ) || !strcasecmp( d, "hashSize" ) )
+	else if( attIs( "size" ) || attIs( "hashSize" ) )
 	{
 		// 0 means default
-		if( !( sc->hsize = hash_size( av->val ) ) )
+		if( !( sc->hsize = hash_size( av->vptr ) ) )
 			return -1;
 	}
 	else

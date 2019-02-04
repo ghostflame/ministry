@@ -252,32 +252,32 @@ int net_config_line( AVP *av )
 
 	nt = ctl->net->relay;
 
-	if( !( d = strchr( av->att, '.' ) ) )
+	if( !( d = strchr( av->aptr, '.' ) ) )
 	{
 		if( attIs( "timeout" ) )
 		{
-			ctl->net->dead_time = (time_t) atoi( av->val );
+			ctl->net->dead_time = (time_t) atoi( av->vptr );
 			debug( "Dead connection timeout set to %d sec.", ctl->net->dead_time );
 		}
 		else if( attIs( "rcv_tmout" ) )
 		{
-			ctl->net->rcv_tmout = (unsigned int) atoi( av->val );
+			ctl->net->rcv_tmout = (unsigned int) atoi( av->vptr );
 			debug( "Receive timeout set to %u sec.", ctl->net->rcv_tmout );
 		}
 		else if( attIs( "flush_msec" ) )
 		{
-			ctl->net->flush_nsec = 1000000 * atoll( av->val );
+			ctl->net->flush_nsec = 1000000 * atoll( av->vptr );
 			if( ctl->net->flush_nsec < 0 )
 				ctl->net->flush_nsec = 1000000 * NET_FLUSH_MSEC;
 			debug( "Host flush time set to %ld usec.", ctl->net->flush_nsec / 1000 );
 		}
 		else if( attIs( "prefixList" ) )
 		{
-			ctl->net->prefix_list = str_copy( av->val, av->vlen );
+			ctl->net->prefix_list = str_copy( av->vptr, av->vlen );
 		}
 		else if( attIs( "filterList" ) )
 		{
-			ctl->net->filter_list = str_copy( av->val, av->vlen );
+			ctl->net->filter_list = str_copy( av->vptr, av->vlen );
 		}
 		else
 			return -1;
@@ -288,14 +288,17 @@ int net_config_line( AVP *av )
 	/* then it's tcp or udp */
 	d++;
 
-	if( !strncasecmp( av->att, "udp.", 4 ) )
+	if( !strncasecmp( av->aptr, "udp.", 4 ) )
 		tcp = 0;
-	else if( !strncasecmp( av->att, "tcp.", 4 ) )
+	else if( !strncasecmp( av->aptr, "tcp.", 4 ) )
 		tcp = 1;
 	else
 		return -1;
 
-	if( !strcasecmp( d, "enable" ) )
+	av->alen -= d - av->aptr;
+	av->aptr  = d;
+
+	if( attIs( "enable" ) )
 	{
 		if( tcp )
 		{
@@ -306,39 +309,39 @@ int net_config_line( AVP *av )
 			ntflag( UDP_ENABLED );
 		}
 	}
-	else if( !strcasecmp( d, "checks" ) )
+	else if( attIs( "checks" ) )
 	{
 		if( tcp )
 			warn( "To disable prefix checks on TCP, set enable 0 on prefixes." );
 		else
 			ntflag( UDP_CHECKS );
 	}
-	else if( !strcasecmp( d, "bind" ) )
+	else if( attIs( "bind" ) )
 	{
-		inet_aton( av->val, &ina );
+		inet_aton( av->vptr, &ina );
 		if( tcp )
 			nt->tcp->ip = ina.s_addr;
 		else
 			nt->udp_bind = ina.s_addr;
 	}
-	else if( !strcasecmp( d, "backlog" ) )
+	else if( attIs( "backlog" ) )
 	{
 		if( tcp )
-			nt->tcp->back = (unsigned short) strtoul( av->val, NULL, 10 );
+			nt->tcp->back = (unsigned short) strtoul( av->vptr, NULL, 10 );
 		else
 			warn( "Cannot set a backlog for a udp connection." );
 	}
-	else if( !strcasecmp( d, "port" ) || !strcasecmp( d, "ports" ) )
+	else if( attIs( "port" ) || attIs( "ports" ) )
 	{
 		if( tcp )
-			nt->tcp->port = (unsigned short) strtoul( av->val, NULL, 10 );
+			nt->tcp->port = (unsigned short) strtoul( av->vptr, NULL, 10 );
 		else
 		{
 			char *cp;
 			WORDS w;
 
 			// work out how many ports we have
-			cp = strdup( av->val );
+			cp = strdup( av->vptr );
 			strwords( &w, cp, 0, ',' );
 			if( w.wc > 0 )
 			{

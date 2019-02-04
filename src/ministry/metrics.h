@@ -41,17 +41,6 @@ struct metrics_attr
 	int					order;
 };
 
-struct metrics_entry
-{
-	METRY			*	next;
-	METRY			*	parent;
-	char			*	metric;
-	METTY			*	mtype;
-	DTYPE			*	dtype;
-	add_fn			*	afp;
-	int32_t				len;
-	int32_t				sz;
-};
 
 
 // one attributes list
@@ -107,8 +96,25 @@ struct metrics_profile
 	int					nlen;
 	int					mapct;
 	int					_idctr;
+	int					is_default;
 };
 
+
+
+struct metrics_entry
+{
+	METRY			*	next;
+	METRY			*	parent;
+	char			*	metric;
+	METTY			*	mtype;
+	DTYPE			*	dtype;
+	add_fn			*	afp;
+	METAL			*	attrs;
+	char			**  aps;
+	int16_t			*	apl;
+	int32_t				len;
+	int32_t				sz;
+};
 
 
 struct metrics_data
@@ -116,9 +122,8 @@ struct metrics_data
 	METRY			**	entries;
 	WORDS			*	wds;
 	char			*	buf;
-	char			**	aps;
-	char			*	attrs;
-	int16_t			*	apl;
+	char			*	profile_name;
+	METPR			*	profile;
 
 	uint64_t			hsz;
 
@@ -149,9 +154,11 @@ void metrics_parse_buf( FETCH *f, IOBUF *b );
 void metrics_add_entry( FETCH *f, METRY *parent );
 
 void metrics_init_data( MDATA *m );
-int metrics_add_attr( MDATA *m, char *str, int len );
+int metrics_add_attr( METAL *m, char *str, int len );
 
 int metrics_init( void );
+
+METPR *metrics_find_profile( char *name );
 
 conf_line_fn metrics_config_line;
 MET_CTL *metrics_config_defaults( void );
