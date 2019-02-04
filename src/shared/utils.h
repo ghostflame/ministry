@@ -12,11 +12,6 @@
 #define SHARED_UTILS_H
 
 
-// for fast string allocation, free not possible
-#define PERM_SPACE_BLOCK	0x1000000	// 1M
-
-// for breaking up strings on a delimiter
-#define STRWORDS_MAX		339			// makes for a 4k struct
 
 enum num_types
 {
@@ -68,48 +63,6 @@ enum num_types
 #define timedbl( _t )		( ( (double) tvalts( _t ) ) + ( (double) tvalns( _t ) / BILLIONF ) )
 
 
-struct words_data
-{
-	char				*	wd[STRWORDS_MAX];
-	char				*	end;
-	int						len[STRWORDS_MAX];
-	int						end_len;
-	int						in_len;
-	int						wc;
-};
-
-struct string_store_entry
-{
-	SSTE				*	next;
-	char				*	str;
-	int32_t					len;
-	int32_t					val;	// if you want to store something here
-	void				*	ptr;	// if you want to store something here
-};
-
-
-struct string_store
-{
-	SSTR				*	next;		// in case the caller wants a list
-	SSTR				*	_proc_next;	// a list to live in _proc
-	SSTE				**	hashtable;
-
-	int64_t					hsz;
-	int64_t					entries;
-	int32_t					val_default;
-
-	pthread_mutex_t			mtx;
-};
-
-
-struct string_buffer
-{
-	char				*	space;
-	char				*	buf;
-	uint32_t				len;
-	uint32_t				sz;
-};
-
 
 struct lockless_counter
 {
@@ -122,6 +75,8 @@ struct av_pair
 {
 	char					att[AVP_MAX_ATT];
 	char					val[AVP_MAX_VAL];
+	char				*	aptr;
+	char				*	vptr;
 	int						alen;
 	int						vlen;
 	int						status;
@@ -134,39 +89,9 @@ struct av_pair
 void get_time( void );
 int64_t get_time64( void );
 
-// allocation of strings that can't be freed
-char *perm_str( int len );
-char *str_dup( char *src, int len );
-
-#define dup_val( )						str_dup( av->val, av->vlen )
-
-// this can be freed
-char *str_copy( char *src, int len );
-
-// get a buffer
-BUF *strbuf( uint32_t size );
-BUF *strbuf_create( char *str, int len );
-int strbuf_copy( BUF *b, char *str, int len );
-int strbuf_add( BUF *b, char *str, int len );
-
-// these work as macros
-#define strbuf_printf( b, ... )			b->len = snprintf( b->buf, b->sz, ##__VA_ARGS__ )
-#define strbuf_aprintf( b, ... )		b->len += snprintf( b->buf + b->len, b->sz - b->len, ##__VA_ARGS__ )
-#define strbuf_empty( b )				b->len = 0; b->buf[0] = '\0'
-#define strbuf_chop( b )				if( b->len > 0 ) { b->len--; b->buf[b->len] = '\0'; }
-#define strbuf_lastchar( b )			( ( b->len ) ? b->buf[b->len - 1] : '\0' )
-
-// get string length, up to a maximum
-int str_nlen( char *src, int max );
 
 // processing a config line in variable/value
 int var_val( char *line, int len, AVP *av, int flags );
-
-// break up potentially quoted string by delimiter
-int strqwords( WORDS *w, char *src, int len, char sep );
-
-// break up a string by delimiter
-int strwords( WORDS *w, char *src, int len, char sep );
 
 // handle our pidfile
 void pidfile_write( void );
@@ -202,8 +127,8 @@ int is_url( char *str );
 
 
 // easier av reads
-#define av_int( _v )		parse_number( av->val, &(_v), NULL )
-#define av_dbl( _v )		parse_number( av->val, NULL, &(_v) )
+#define av_int( _v )		parse_number( av->vptr, &(_v), NULL )
+#define av_dbl( _v )		parse_number( av->vptr, NULL, &(_v) )
 
 #define av_intk( _v )		av_int( _v ); _v *= 1000
 #define av_intK( _v )		av_int( _v ); _v <<= 10
@@ -230,22 +155,5 @@ int is_url( char *str );
 // hash size lookup
 uint64_t hash_size( char *str );
 
-
-
-// string store - store strings as keys with optional values
-// they cannot be removed, but you can use the val as a removal bit
-
-// pass either an int or a char size.  Default is "medium"
-SSTR *string_store_create( int64_t sz, char *size );
-
-// add a string.  Adding stuff onto them is your problem
-SSTE *string_store_add( SSTR *store, char *str, int len );
-
-// search for a string - setting val_set means a 0 value in the
-// val position is considered INVALID, and skipped over
-SSTE *string_store_look( SSTR *store, char *str, int len, int val_set );
-
-// clean up those mutexes
-void string_store_cleanup( SSTR *list );
 
 #endif
