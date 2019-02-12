@@ -127,14 +127,14 @@ void fetch_loop( THRD *t )
 
 int fetch_init( void )
 {
-	int i = 0;
 	FETCH *f;
+	int i;
 
 	// fix the order, for what it matters
 	ctl->fetch->targets = mem_reverse_list( ctl->fetch->targets );
 
 	for( i = 0, f = ctl->fetch->targets; f; i++, f = f->next )
-		thread_throw_named_i( fetch_loop, f, i, "fetch_loop" );
+		thread_throw_named_f( fetch_loop, f, i, "fetch_loop_%d" );
 
 	return ctl->fetch->fcount;
 }

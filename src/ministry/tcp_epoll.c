@@ -215,7 +215,7 @@ void tcp_epoll_setup( NET_TYPE *nt )
 		pthread_mutex_init( &(th->lock), NULL );
 		nt->tcp->threads[i] = th;
 
-		thread_throw_named_i( tcp_epoll_thread, th, i, "tcp_epoll" );
+		thread_throw_named_f( tcp_epoll_thread, th, i, "tcp_epoll_%d" );
 	}
 }
 

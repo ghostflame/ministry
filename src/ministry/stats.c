@@ -832,7 +832,7 @@ void stats_start( ST_CFG *cf )
 	// throw each of the threads
 	// high stack size - they'll be doing qsort
 	for( i = 0; i < cf->threads; i++ )
-		thread_throw_named_i( &stats_loop, &(cf->ctls[i]), i, (char *) cf->name );
+		thread_throw_named_f( &stats_loop, &(cf->ctls[i]), i, cf->thrfmt );
 
 	info( "Started %s data processing loops.", cf->name );
 }
@@ -880,6 +880,8 @@ void stats_init_control( ST_CFG *c, int alloc_data )
 		c->hsize = MEM_HSZ_LARGE;
 
 	debug( "Hash size set to %d for %s", c->hsize, c->name );
+
+	snprintf( c->thrfmt, 16, "%s_%%d", c->name );
 
 	// create the hash structure
 	if( alloc_data )
