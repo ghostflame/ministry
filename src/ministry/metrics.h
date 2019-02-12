@@ -24,6 +24,7 @@ enum metric_type_ids
 };
 
 
+// METTY
 struct metrics_type
 {
 	char			*	name;
@@ -33,6 +34,7 @@ struct metrics_type
 };
 
 
+// METAT
 struct metrics_attr
 {
 	METAT			*	next;
@@ -44,6 +46,7 @@ struct metrics_attr
 
 
 // one attributes list
+// METAL
 struct metrics_attr_list
 {
 	METAL			*	next;
@@ -66,6 +69,7 @@ struct metrics_attr_list
  * interesting labels.
  */
 
+// METMP
 struct metrics_attr_map
 {
 	METMP			*	next;
@@ -82,6 +86,7 @@ struct metrics_attr_map
 };
 
 
+// METPR
 struct metrics_profile
 {
 	METPR			*	next;
@@ -100,7 +105,7 @@ struct metrics_profile
 };
 
 
-
+// METRY
 struct metrics_entry
 {
 	METRY			*	next;
@@ -117,6 +122,7 @@ struct metrics_entry
 };
 
 
+// MDATA
 struct metrics_data
 {
 	METRY			**	entries;
@@ -136,6 +142,7 @@ struct metrics_data
 };
 
 
+// MET_CTL
 struct metrics_control
 {
 	METAL			*	alists;

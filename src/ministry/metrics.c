@@ -990,7 +990,7 @@ int metrics_config_line( AVP *av )
 					{
 						info( "Metrics profile '%s', map id %d falling back to default attr list '%s'.",
 							p->name, mp->id, p->default_att );
-						mp->lname = p->default_att;
+						mp->lname = str_copy( p->default_att, 0 );
 					}
 					else
 					{
