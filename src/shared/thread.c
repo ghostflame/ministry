@@ -37,8 +37,20 @@ void thread_throw_init_attr( void )
 }
 
 
+// wraps all thrown threads
+void *__thread_wrapper( void *arg )
+{
+	THRD *t = (THRD *) arg;
 
-pthread_t __thread_throw( throw_fn *call, throw_fn *farg, void *arg, pthread_attr_t **tt_a, int64_t num )
+	(*(t->call))( arg );
+	free( t );
+
+	pthread_exit( NULL );
+	return NULL;
+}
+
+
+pthread_t __thread_throw( throw_fn *call, void *arg, pthread_attr_t **tt_a, int64_t num )
 {
 	THRD *t;
 
@@ -46,11 +58,11 @@ pthread_t __thread_throw( throw_fn *call, throw_fn *farg, void *arg, pthread_att
 		thread_throw_init_attr( );
 
 	t = (THRD *) allocz( sizeof( THRD ) );
-	t->arg = arg;
-	t->num = num;
-	t->fp  = farg;
+	t->arg  = arg;
+	t->num  = num;
+	t->call = call;
 
-	pthread_create( &(t->id), *tt_a, call, t );
+	pthread_create( &(t->id), *tt_a, __thread_wrapper, t );
 
 	return t->id;
 }
@@ -58,18 +70,14 @@ pthread_t __thread_throw( throw_fn *call, throw_fn *farg, void *arg, pthread_att
 
 pthread_t thread_throw( throw_fn *fp, void *arg, int64_t num )
 {
-	return __thread_throw( fp, fp, arg, &tt_attr, num );
+	return __thread_throw( fp, arg, &tt_attr, num );
 }
 
 pthread_t thread_throw_high_stack( throw_fn *fp, void *arg, int64_t num )
 {
-	return __thread_throw( fp, fp, arg, &tt_high, num );
+	return __thread_throw( fp, arg, &tt_high, num );
 }
 
-pthread_t thread_throw_watched( throw_fn *watcher, throw_fn *fp, void *arg, int64_t num )
-{
-	return __thread_throw( watcher, fp, arg, &tt_attr, num );
-}
 
 pthread_t thread_throw_named( throw_fn *fp, void *arg, int64_t num, char *name )
 {
@@ -77,7 +85,7 @@ pthread_t thread_throw_named( throw_fn *fp, void *arg, int64_t num, char *name )
 	char buf[16];
 	int l;
 
-	tid = __thread_throw( fp, fp, arg, &tt_attr, num );
+	tid = __thread_throw( fp, arg, &tt_attr, num );
 
 	if( !name )
 		return tid;

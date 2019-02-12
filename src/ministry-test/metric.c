@@ -216,48 +216,29 @@ void metric_group_io( int64_t tval, void *arg )
 
 
 
-void *metric_group_update_loop( void *arg )
+void metric_group_update_loop( THRD *t )
 {
-	MGRP *g;
-	THRD *t;
-
-	t = (THRD *) arg;
-	g = (MGRP *) t->arg;
+	MGRP *g = (MGRP *) t->arg;
 
 	loop_control( "group-update", metric_update_group, g, g->upd_intv, LOOP_SYNC, 0 );
-
-	free( t );
-	return NULL;
 }
 
-void *metric_group_report_loop( void *arg )
+void metric_group_report_loop( THRD *t )
 {
+	MGRP *g = (MGRP *) t->arg;
 	int64_t offset;
-	MGRP *g;
-	THRD *t;
-
-	t = (THRD *) arg;
-	g = (MGRP *) t->arg;
 
 	// select a randomized offset
 	offset = 30000 + ( (int64_t) ( 40000 * metrandM( ) ) );
 
 	loop_control( "group-report", metric_report_group, g, g->rep_intv, LOOP_SYNC, offset );
-
-	free( t );
-	return NULL;
 }
 
 
-void *metric_group_io_loop( void *arg )
+void metric_group_io_loop( THRD *t )
 {
-	THRD *t = (THRD *) arg;
-
 	// just make sure things don't age out too badly.
 	loop_control( "group-io", metric_group_io, t->arg, 10000, 0, 0 );
-
-	free( t );
-	return NULL;
 }
 
 

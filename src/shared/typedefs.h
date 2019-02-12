@@ -58,7 +58,7 @@ typedef struct curlw_handle         CURLWH;
 
 // function types
 typedef void loop_call_fn ( int64_t, void * );
-typedef void * throw_fn ( void * );
+typedef void throw_fn ( THRD * );
 typedef int conf_line_fn ( AVP * );
 typedef int http_handler ( uint32_t, char **, int, void * );
 typedef void help_fn ( void );

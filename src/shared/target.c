@@ -12,15 +12,13 @@
 TGT_CTL *_tgt;
 
 
-void *target_loop( void *arg )
+void target_loop( THRD *th )
 {
 	struct sockaddr_in sa;
 	int64_t fires = 0, r;
-	THRD *d;
 	TGT *t;
 
-	d = (THRD *) arg;
-	t = (TGT *) d->arg;
+	t = (TGT *) th->arg;
 
 	if( t->to_stdout )
 	{
@@ -31,8 +29,7 @@ void *target_loop( void *arg )
 		if( net_lookup_host( t->host, &sa ) )
 		{
 			loop_end( "Unable to look up network target." );
-			free( d );
-			return NULL;
+			return;
 		}
 
 		if( t->proto == TARGET_PROTO_UDP )
@@ -76,11 +73,7 @@ void *target_loop( void *arg )
 
 	// disconnect
 	io_disconnect( t->sock );
-
 	io_lock_destroy( t->lock );
-
-	free( d );
-	return NULL;
 }
 
 

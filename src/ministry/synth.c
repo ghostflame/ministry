@@ -245,12 +245,9 @@ void synth_pass( int64_t tval, void *arg )
 
 
 
-void *synth_loop( void *arg )
+void synth_loop( THRD *t )
 {
 	SYN_CTL *sc = ctl->synth;
-
-	// we don't use this
-	free( (THRD *) arg );
 
 	// locking
 	sc->tcount = ctl->stats->adder->threads;
@@ -262,8 +259,6 @@ void *synth_loop( void *arg )
 
 	pthread_cond_destroy( &(sc->threads_ready) );
 	pthread_cond_destroy( &(sc->threads_done)  );
-
-	return NULL;
 }
 
 

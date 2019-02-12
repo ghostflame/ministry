@@ -805,24 +805,16 @@ void thread_pass( int64_t tval, void *arg )
 
 
 
-void *stats_loop( void *arg )
+void stats_loop( THRD *t )
 {
 	ST_CFG *cf;
 	ST_THR *c;
-	THRD *t;
 
-	t  = (THRD *) arg;
 	c  = (ST_THR *) t->arg;
 	cf = c->conf;
 
 	// and then loop round
 	loop_control( cf->name, thread_pass, c, cf->period, LOOP_SYNC, cf->offset );
-
-	// and unlock ourself
-	//unlock_stthr( c );
-
-	free( t );
-	return NULL;
 }
 
 

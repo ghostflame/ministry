@@ -128,12 +128,9 @@ void gc_pass( int64_t tval, void *arg )
 
 
 
-void *gc_loop( void *arg )
+void gc_loop( THRD *t )
 {
 	int64_t usec;
-
-	// we don't use that
-	free( (THRD *) arg );
 
 	// we only loop if we are gc-enabled
 	// otherwise exit straight away
@@ -141,8 +138,6 @@ void *gc_loop( void *arg )
 		usec = (int64_t) ( ( (double) ctl->stats->self->period ) * 1.72143698 );
 		loop_control( "gc", &gc_pass, NULL, usec, LOOP_TRIM, 0 );
 	}
-
-	return NULL;
 }
 
 

@@ -394,15 +394,12 @@ void mem_check( int64_t tval, void *arg )
 }
 
 
-void *mem_prealloc_loop( void *arg )
+void mem_prealloc_loop( THRD *t )
 {
 	loop_control( "memory pre-alloc", mem_prealloc, NULL, 1000 * _mem->prealloc, LOOP_TRIM, 0 );
-
-	free( (THRD *) arg );
-	return NULL;
 }
 
-void *mem_check_loop( void *arg )
+void mem_check_loop( THRD *t )
 {
 	MCHK *m = _mem->mcheck;
 
@@ -414,9 +411,6 @@ void *mem_check_loop( void *arg )
 	mem_check( 0, NULL );
 
 	loop_control( "memory control", mem_check, NULL, 1000 * m->interval, LOOP_TRIM, 0 );
-
-	free( (THRD *) arg );
-	return NULL;
 }
 
 

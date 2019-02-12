@@ -46,16 +46,10 @@ void fetch_make_url( FETCH *f )
 
 
 
-void *fetch_loop( void *arg )
+void fetch_loop( THRD *t )
 {
+	FETCH *f = (FETCH *) t->arg;
 	struct sockaddr_in sin;
-	FETCH *f;
-	THRD *t;
-
-	t = (THRD *) arg;
-	f = (FETCH *) t->arg;
-	// we don't use this again
-	free( t );
 
 	// clip the offset to the size of the period
 	if( f->offset >= f->period )
@@ -81,7 +75,7 @@ void *fetch_loop( void *arg )
 
 	// resolve the IP address
 	if( net_lookup_host( f->remote, &sin ) )
-		return NULL;	// abort this thread
+		return;	// abort this thread
 
 	sin.sin_port = htons( f->port );
 
@@ -89,7 +83,7 @@ void *fetch_loop( void *arg )
 	if( !( f->host = mem_new_host( &sin, (uint32_t) f->bufsz ) ) )
 	{
 		fatal( "Could not allocate buffer memory or host structure for fetch %s.", f->name );
-		return NULL;
+		return;
 	}
 
 	// it's the in side that has the buffer on the host
@@ -118,7 +112,7 @@ void *fetch_loop( void *arg )
 		if( net_set_host_parser( f->host, 0, 1 ) )
 		{
 			mem_free_host( &(f->host) );
-			return NULL;
+			return;
 		}
 
 		f->ch->cb = &data_fetch_cb;
@@ -126,7 +120,7 @@ void *fetch_loop( void *arg )
 
 	// and run the loop
 	loop_control( "fetch", &fetch_single, f, f->period, LOOP_SYNC, f->offset );
-	return NULL;
+	return;
 }
 
 

@@ -76,7 +76,7 @@ void udp_add_phost( void *arg, IPNET *ip )
 
 
 
-void *udp_loop_checks( void *arg )
+void udp_loop_checks( THRD *t )
 {
 	struct sockaddr_in sa;
 	struct sockaddr *sp;
@@ -84,11 +84,9 @@ void *udp_loop_checks( void *arg )
 	NET_PORT *n;
 	IPNET *ipn;
 	IOBUF *b;
-	THRD *t;
 	HOST *h;
 	int sz;
 
-	t = (THRD *) arg;
 	n = (NET_PORT *) t->arg;
 
 	sa.sin_family = AF_INET;
@@ -164,26 +162,21 @@ void *udp_loop_checks( void *arg )
 	loop_mark_done( "udp", 0, 0 );
 
 	mem_free_host( &h );
-
-	free( t );
-	return NULL;
 }
 
 
 
 
-void *udp_loop_flat( void *arg )
+void udp_loop_flat( THRD *t )
 {
 	struct sockaddr_in sa;
 	struct sockaddr *sp;
 	socklen_t sl;
 	NET_PORT *n;
 	IOBUF *b;
-	THRD *t;
 	HOST *h;
 	int sz;
 
-	t = (THRD *) arg;
 	n = (NET_PORT *) t->arg;
 
 	sa.sin_family = AF_INET;
@@ -239,9 +232,6 @@ void *udp_loop_flat( void *arg )
 	loop_mark_done( "udp", 0, 0 );
 
 	mem_free_host( &h );
-
-	free( t );
-	return NULL;
 }
 
 
