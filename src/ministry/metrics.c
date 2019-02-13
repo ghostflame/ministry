@@ -408,6 +408,8 @@ void metrics_parse_line( FETCH *f, char *line, int len )
 		len -= q - r;
 		l = r - p;
 	}
+	else
+		q = r;
 
 	*q++ = '\0';
 	len--;
@@ -727,10 +729,6 @@ int metrics_init( void )
 	SSTE *e;
 	int i;
 
-	// sort the attributes in our attr lists
-	for( a = ctl->metric->alists; a; a = a->next )
-		metrics_sort_attrs( a );
-
 	// resolve the attr list names in our profiles
 	for( p = ctl->metric->profiles; p; p = p->next )
 	{
@@ -959,6 +957,12 @@ int metrics_config_line( AVP *av )
 
 			na = (METAL *) allocz( sizeof( METAL ) );
 			memcpy( na, a, sizeof( METAL ) );
+
+			// take everything off the tmp structure, na owns it now
+			memset( a, 0, sizeof( METAL ) );
+
+			// sort the attrs
+			metrics_sort_attrs( na );
 
 			na->next = ctl->metric->alists;
 			ctl->metric->alists = na;
