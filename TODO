@@ -1,11 +1,9 @@
 Refactor
     Looks like prealloc isn't working.
 	
-
 HTTP
 	Accept submissions via HTTP
 	Prometheus metrics (requires significant memory)
-		Currently crashing
 
 Network
 	More granular token control
