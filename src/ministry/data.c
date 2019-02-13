@@ -207,13 +207,13 @@ __attribute__((hot)) static inline void data_get_dhash_extras( DHASH *d )
 	{
 		case DATA_TYPE_STATS:
 			if( ctl->stats->mom->enabled
-			 && regex_list_test( d->path, ctl->stats->mom->rgx ) == 0 )
+			 && regex_list_test( d->path, ctl->stats->mom->rgx ) == REGEX_MATCH )
 			{
 				//debug( "Path %s will get moments processing.", d->path );
 				d->checks |= DHASH_CHECK_MOMENTS;
 			}
 			if( ctl->stats->mode->enabled
-			 && regex_list_test( d->path, ctl->stats->mode->rgx ) == 0 )
+			 && regex_list_test( d->path, ctl->stats->mode->rgx ) == REGEX_MATCH )
 			{
 				//debug( "Path %s will get mode processing.", d->path );
 				d->checks |= DHASH_CHECK_MODE;
@@ -222,7 +222,7 @@ __attribute__((hot)) static inline void data_get_dhash_extras( DHASH *d )
 
 		case DATA_TYPE_ADDER:
 			if( ctl->stats->pred->enabled
-			 && regex_list_test( d->path, ctl->stats->pred->rgx ) == 0 )
+			 && regex_list_test( d->path, ctl->stats->pred->rgx ) == REGEX_MATCH )
 			{
 				//debug( "Path %s will get linear regression prediction.", d->path );
 				d->checks |= DHASH_CHECK_PREDICT;

@@ -179,59 +179,57 @@ void metrics_add_entry( FETCH *f, METRY *parent )
 
 	hval = data_path_hash_wrap( pm, lm ) % m->hsz;
 
+	// do we already have it?
 	for( e = m->entries[hval]; e; e = e->next )
 		if( e->len == lm && !memcmp( pm, e->metric, lm ) )
+		 	return;
+
+	// find the type
+	for( t = metrics_types_defns, i = 0; i < METR_TYPE_MAX; i++, t++ )
+		if( lt == t->nlen && !strncasecmp( pt, t->name, lt ) )
 			break;
 
-	if( !e )
+	if( i == METR_TYPE_MAX )
 	{
-		// find the type
-		for( t = metrics_types_defns, i = 0; i < METR_TYPE_MAX; i++, t++ )
-			if( lt == t->nlen && !strncasecmp( pt, t->name, lt ) )
-				break;
+		warn( "Invalid metric type '%s' from fetch block %s.", pt, f->name );
+		return;
+	}
 
-		if( i == METR_TYPE_MAX )
+	e = mem_new_metry( pm, lm );
+	e->mtype  = (METTY *) t;
+	e->dtype  = data_type_defns + t->dtype;
+	e->afp    = e->dtype->af;
+	e->next   = m->entries[hval];
+	e->parent = parent;
+	m->entries[hval] = e;
+	m->entct++;
+
+	debug( "Added entry '%s', type %s, for fetch block %s.", e->metric, e->mtype->name, f->name );
+
+	// for summaries we need to create the _sum and _count entries too, parented off the main one
+	// and histograms need a _bucket too, and don't even use the main type.  WTF prometheus.
+	if( ( e->mtype->type == METR_TYPE_SUMMARY || e->mtype->type == METR_TYPE_HISTOGRAM )
+	 && !e->parent )
+	{
+		char pathbuf[2048];
+
+		m->wds->wd[2]  = pathbuf;
+		m->wds->wd[3]  = "counter";
+		m->wds->len[3] = 7;
+
+		m->wds->len[2] = snprintf( pathbuf, 2048, "%s_sum", pm );
+		metrics_add_entry( f, e );
+
+		m->wds->len[2] = snprintf( pathbuf, 2048, "%s_count", pm );
+		metrics_add_entry( f, e );
+
+		if( e->mtype->type == METR_TYPE_HISTOGRAM )
 		{
-			warn( "Invalid metric type '%s' from fetch block %s.", pt, f->name );
-			return;
-		}
+			m->wds->wd[3]  = "histogram";
+			m->wds->len[3] = 9;
 
-		e = mem_new_metry( pm, lm );
-		e->mtype  = (METTY *) t;
-		e->dtype  = data_type_defns + t->dtype;
-		e->afp    = e->dtype->af;
-		e->next   = m->entries[hval];
-		e->parent = parent;
-		m->entries[hval] = e;
-		m->entct++;
-
-		debug( "Added entry '%s', type %s, for fetch block %s.", e->metric, e->mtype->name, f->name );
-
-		// for summaries we need to create the _sum and _count entries too, parented off the main one
-		// and histograms need a _bucket too, and don't even use the main type.  WTF prometheus.
-		if( ( e->mtype->type == METR_TYPE_SUMMARY || e->mtype->type == METR_TYPE_HISTOGRAM )
-		 && !e->parent )
-		{
-			char pathbuf[2048];
-
-			m->wds->wd[2]  = pathbuf;
-			m->wds->wd[3]  = "counter";
-			m->wds->len[3] = 7;
-
-			m->wds->len[2] = snprintf( pathbuf, 2048, "%s_sum", pm );
+			m->wds->len[2] = snprintf( pathbuf, 2048, "%s_bucket", pm );
 			metrics_add_entry( f, e );
-
-			m->wds->len[2] = snprintf( pathbuf, 2048, "%s_count", pm );
-			metrics_add_entry( f, e );
-
-			if( e->mtype->type == METR_TYPE_HISTOGRAM )
-			{
-				m->wds->wd[3]  = "histogram";
-				m->wds->len[3] = 9;
-
-				m->wds->len[2] = snprintf( pathbuf, 2048, "%s_bucket", pm );
-				metrics_add_entry( f, e );
-			}
 		}
 	}
 
@@ -248,7 +246,7 @@ void metrics_add_entry( FETCH *f, METRY *parent )
 	// ok, let's try the maps
 	for( map = pr->maps; map; map = map->next )
 	{
-		if( regex_list_test( e->metric, map->rlist ) )
+		if( regex_list_test( e->metric, map->rlist ) == REGEX_MATCH )
 		{
 			e->attrs = map->list;
 			if( map->last )
