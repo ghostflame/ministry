@@ -14,7 +14,7 @@
 void regex_list_set_fallback( int fallback_match, RGXL *list )
 {
 	if( list )
-		list->fb = ( fallback_match ) ? 0 : 1;
+		list->fb = ( fallback_match ) ? REGEX_MATCH : REGEX_FAIL;
 }
 
 
@@ -52,7 +52,7 @@ int regex_list_add( char *str, int negate, RGXL *rl )
 
 	rg->slen = strlen( str );
 	rg->src  = str_dup( str, rg->slen );
-	rg->ret  = ( negate ) ? 1 : 0;
+	rg->ret  = ( negate ) ? REGEX_FAIL : REGEX_MATCH;
 
 	rl->count++;
 
@@ -76,7 +76,7 @@ int regex_list_test( char *str, RGXL *rl )
 
 	// no list means MATCH
 	if( !rl )
-		return 0;
+		return REGEX_MATCH;
 
 	for( r = rl->list; r; r = r->next )
 	{

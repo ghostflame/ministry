@@ -10,6 +10,14 @@
 #ifndef SHARED_REGEXP_H
 #define SHARED_REGEXP_H
 
+
+enum regex_responses
+{
+	REGEX_MATCH = 0,
+	REGEX_FAIL = 1
+};
+
+
 struct regex_entry
 {
 	RGX					*	next;
