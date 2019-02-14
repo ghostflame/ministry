@@ -124,16 +124,14 @@ __attribute__((hot)) void tcp_pool_handler( TCPTH *th, struct pollfd *p, HOST *h
 //  to push back to the start of the buffer.
 //
 
-__attribute__((hot)) void *tcp_pool_thread( void *arg )
+__attribute__((hot)) void tcp_pool_thread( THRD *td )
 {
 	struct pollfd *pf;
 	int64_t i, max;
 	TCPTH *th;
-	THRD *td;
 	HOST *h;
 	int rv;
 
-	td = (THRD *) arg;
 	th = (TCPTH *) td->arg;
 
 	// grab our thread id and number
@@ -222,9 +220,6 @@ __attribute__((hot)) void *tcp_pool_thread( void *arg )
 		if( ( h = th->hosts[i] ) )
 			tcp_close_active_host( h );
 	}
-
-	free( td );
-	return NULL;
 }
 
 
@@ -253,7 +248,7 @@ void tcp_pool_setup( NET_TYPE *nt )
 		pthread_mutex_init( &(th->lock), NULL );
 		nt->tcp->threads[i] = th;
 
-		thread_throw_named_i( tcp_pool_thread, th, i, "tcp_pool" );
+		thread_throw_named_f( tcp_pool_thread, th, i, "tcp_pool_%d" );
 	}
 }
 

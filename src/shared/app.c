@@ -184,9 +184,6 @@ void app_ready( void )
 	if( !runf_has( RUN_APP_START ) )
 		fatal( "App has not been started yet." );
 
-	// run mem check / prealloc
-	mem_startup( );
-
 #ifdef MTYPE_TRACING
 	info( "Memory call stats enabled." );
 #endif
@@ -196,10 +193,15 @@ void app_ready( void )
 
 	info( "%s started up in %.3fs.", _proc->app_upper, diff );
 
-	thread_throw_named( &loop_timer, NULL, 0, "timer_loop" );
-
 	runf_add( RUN_APP_READY );
 	runf_add( RUN_LOOP );
+
+	// now we can throw loops
+
+	// run mem check / prealloc
+	mem_startup( );
+
+	thread_throw_named( &loop_timer, NULL, 0, "timer_loop" );
 }
 
 
@@ -227,6 +229,8 @@ void app_finish( int exval )
 		notice( "Shutting down without thread completion." );
 
 	io_stop( );
+
+	string_store_cleanup( _proc->stores );
 
 	pthread_mutex_destroy( &(_proc->loop_lock) );
 	mem_shutdown( );

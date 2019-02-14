@@ -24,6 +24,7 @@ enum metric_type_ids
 };
 
 
+// METTY
 struct metrics_type
 {
 	char			*	name;
@@ -33,14 +34,78 @@ struct metrics_type
 };
 
 
-struct metrics_map
+// METAT
+struct metrics_attr
 {
-	METMP			*	next;
-	char			*	attr;
-	int					alen;
+	METAT			*	next;
+	char			*	name;
+	int					len;
 	int					order;
 };
 
+
+
+// one attributes list
+// METAL
+struct metrics_attr_list
+{
+	METAL			*	next;
+	METAT			*	ats;
+	char			*	name;
+
+	int32_t				atct;
+	int16_t				nlen;
+	int16_t				refs;
+};
+
+
+/*
+ * A metrics profile links incoming metrics to attribute maps
+ *
+ * It uses the normal regex lists, or direct entries
+ *
+ * You can pass the entire string in, not just the metric name,
+ * depending on which function you call.  This lets you catch
+ * interesting labels.
+ */
+
+// METMP
+struct metrics_attr_map
+{
+	METMP			*	next;
+
+	RGXL			*	rlist;
+
+	char			*	lname;
+	METAL			*	list;
+
+	int					id;
+	int					last;
+	int					whole;
+	int					enable;
+};
+
+
+// METPR
+struct metrics_profile
+{
+	METPR			*	next;
+
+	METMP			*	maps;
+	SSTR			*	paths;
+
+	char			*	default_att;
+	METAL			*	default_attrs;
+
+	char			*	name;
+	int					nlen;
+	int					mapct;
+	int					_idctr;
+	int					is_default;
+};
+
+
+// METRY
 struct metrics_entry
 {
 	METRY			*	next;
@@ -49,19 +114,22 @@ struct metrics_entry
 	METTY			*	mtype;
 	DTYPE			*	dtype;
 	add_fn			*	afp;
+	METAL			*	attrs;
+	char			**  aps;
+	int16_t			*	apl;
 	int32_t				len;
 	int32_t				sz;
 };
 
 
+// MDATA
 struct metrics_data
 {
 	METRY			**	entries;
-	METMP			*	attrs;
 	WORDS			*	wds;
 	char			*	buf;
-	char			**	aps;
-	int16_t			*	apl;
+	char			*	profile_name;
+	METPR			*	profile;
 
 	uint64_t			hsz;
 
@@ -74,13 +142,32 @@ struct metrics_data
 };
 
 
+// MET_CTL
+struct metrics_control
+{
+	METAL			*	alists;
+	METPR			*	profiles;
+
+	int32_t				alist_ct;
+	int32_t				prof_ct;
+};
+
+
+
+
 curlw_cb metrics_fetch_cb;
 
 void metrics_parse_buf( FETCH *f, IOBUF *b );
-
 void metrics_add_entry( FETCH *f, METRY *parent );
 
 void metrics_init_data( MDATA *m );
-int metrics_add_attr( MDATA *m, char *str, int len );
+int metrics_add_attr( METAL *m, char *str, int len );
+
+int metrics_init( void );
+
+METPR *metrics_find_profile( char *name );
+
+conf_line_fn metrics_config_line;
+MET_CTL *metrics_config_defaults( void );
 
 #endif

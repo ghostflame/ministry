@@ -37,8 +37,8 @@
 
 
 // used all over - so all the config line fns have an AVP called 'av'
-#define attIs( s )      !strcasecmp( av->att, s )
-#define valIs( s )      !strcasecmp( av->val, s )
+#define attIs( s )      !strcasecmp( av->aptr, s )
+#define valIs( s )      !strcasecmp( av->vptr, s )
 
 
 struct config_section
@@ -99,6 +99,9 @@ struct process_control
 
 	int64_t					limits[RLIMIT_NLIMITS];
 	int8_t					setlim[RLIMIT_NLIMITS];
+
+	// string stores
+	SSTR				*	stores;
 };
 
 

@@ -22,17 +22,15 @@
 //  to push back to the start of the buffer.
 //
 
-__attribute__((hot)) void *tcp_thrd_thread( void *arg )
+__attribute__((hot)) void tcp_thrd_thread( THRD *t )
 {
 	struct pollfd pf;
-	THRD *td;
 	SOCK *n;
 	HOST *h;
 	int rv;
 
-	td = (THRD *) arg;
-	h  = (HOST *) td->arg;
-	n  = h->net;
+	h = (HOST *) t->arg;
+	n = h->net;
 
 	pf.fd     = h->net->fd;
 	pf.events = POLL_EVENTS;
@@ -110,9 +108,6 @@ __attribute__((hot)) void *tcp_thrd_thread( void *arg )
 
 	// close everything!
 	tcp_close_active_host( h );
-
-	free( td );
-	return NULL;
 }
 
 

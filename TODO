@@ -1,11 +1,9 @@
 Refactor
     Looks like prealloc isn't working.
-	#Change the synthetics processing to lock around a pthread_cont_t  https://gist.github.com/rtv/4989304
-
+	
 HTTP
 	Accept submissions via HTTP
 	Prometheus metrics (requires significant memory)
-    # tidy up ssl password in memory
 
 Network
 	More granular token control

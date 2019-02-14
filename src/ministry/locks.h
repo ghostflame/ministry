@@ -13,19 +13,19 @@
 #define HASHT_MUTEX_COUNT		0x20	// 32
 #define HASHT_MUTEX_MASK		0x1f
 
-#ifdef LOCK_DHASH_MUTEX
-
-typedef pthread_mutex_t			dhash_lock_t;
-#define lock_dhash( d )			pthread_mutex_lock( d->lock )
-#define unlock_dhash( d )		pthread_mutex_unlock( d->lock )
-#define linit_dhash( d )		pthread_mutex_init( d->lock, &(ctl->proc->mtxa) )
-
-#else
+#ifdef LOCK_DHASH_SPIN
 
 typedef pthread_spinlock_t		dhash_lock_t;
 #define lock_dhash( d )			pthread_spin_lock( d->lock )
 #define unlock_dhash( d )		pthread_spin_unlock( d->lock )
 #define linit_dhash( d )		pthread_spin_init( d->lock, PTHREAD_PROCESS_PRIVATE )
+
+#else
+
+typedef pthread_mutex_t			dhash_lock_t;
+#define lock_dhash( d )			pthread_mutex_lock( d->lock )
+#define unlock_dhash( d )		pthread_mutex_unlock( d->lock )
+#define linit_dhash( d )		pthread_mutex_init( d->lock, &(ctl->proc->mtxa) )
 
 #endif
 

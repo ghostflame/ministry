@@ -46,16 +46,10 @@ void fetch_make_url( FETCH *f )
 
 
 
-void *fetch_loop( void *arg )
+void fetch_loop( THRD *t )
 {
+	FETCH *f = (FETCH *) t->arg;
 	struct sockaddr_in sin;
-	FETCH *f;
-	THRD *t;
-
-	t = (THRD *) arg;
-	f = (FETCH *) t->arg;
-	// we don't use this again
-	free( t );
 
 	// clip the offset to the size of the period
 	if( f->offset >= f->period )
@@ -81,7 +75,7 @@ void *fetch_loop( void *arg )
 
 	// resolve the IP address
 	if( net_lookup_host( f->remote, &sin ) )
-		return NULL;	// abort this thread
+		return;	// abort this thread
 
 	sin.sin_port = htons( f->port );
 
@@ -89,7 +83,7 @@ void *fetch_loop( void *arg )
 	if( !( f->host = mem_new_host( &sin, (uint32_t) f->bufsz ) ) )
 	{
 		fatal( "Could not allocate buffer memory or host structure for fetch %s.", f->name );
-		return NULL;
+		return;
 	}
 
 	// it's the in side that has the buffer on the host
@@ -104,9 +98,10 @@ void *fetch_loop( void *arg )
 	// set up prometheus metrics bits
 	if( f->metrics )
 	{
-		metrics_init_data( f->metdata );
-
 		f->ch->cb = &metrics_fetch_cb;
+		f->metdata->profile_name = f->profile;
+
+		metrics_init_data( f->metdata );
 	}
 	// and regular ministry data parser
 	else
@@ -117,7 +112,7 @@ void *fetch_loop( void *arg )
 		if( net_set_host_parser( f->host, 0, 1 ) )
 		{
 			mem_free_host( &(f->host) );
-			return NULL;
+			return;
 		}
 
 		f->ch->cb = &data_fetch_cb;
@@ -125,21 +120,21 @@ void *fetch_loop( void *arg )
 
 	// and run the loop
 	loop_control( "fetch", &fetch_single, f, f->period, LOOP_SYNC, f->offset );
-	return NULL;
+	return;
 }
 
 
 
 int fetch_init( void )
 {
-	int i = 0;
 	FETCH *f;
+	int i;
 
 	// fix the order, for what it matters
 	ctl->fetch->targets = mem_reverse_list( ctl->fetch->targets );
 
 	for( i = 0, f = ctl->fetch->targets; f; i++, f = f->next )
-		thread_throw_named_i( fetch_loop, f, i, "fetch_loop" );
+		thread_throw_named_f( fetch_loop, f, i, "fetch_loop_%d" );
 
 	return ctl->fetch->fcount;
 }
@@ -185,7 +180,7 @@ int fetch_config_line( AVP *av )
 	if( attIs( "name" ) )
 	{
 		free( f->name );
-		f->name = str_copy( av->val, av->vlen );
+		f->name = str_copy( av->vptr, av->vlen );
 		__fetch_config_state = 1;
 	}
 	else if( attIs( "host" ) )
@@ -196,14 +191,14 @@ int fetch_config_line( AVP *av )
 			free( f->remote );
 		}
 
-		f->remote = str_copy( av->val, av->vlen );
+		f->remote = str_copy( av->vptr, av->vlen );
 		__fetch_config_state = 1;
 	}
 	else if( attIs( "port" ) )
 	{
-		if( parse_number( av->val, &v, NULL ) == NUM_INVALID )
+		if( parse_number( av->vptr, &v, NULL ) == NUM_INVALID )
 		{
-			err( "Invalid remote port for fetch block %s: '%s'", f->name, av->val );
+			err( "Invalid remote port for fetch block %s: '%s'", f->name, av->vptr );
 			return -1;
 		}
 
@@ -218,12 +213,12 @@ int fetch_config_line( AVP *av )
 			free( f->path );
 		}
 
-		if( av->val[0] == '/' )
-			f->path = str_copy( av->val, av->vlen );
+		if( av->vptr[0] == '/' )
+			f->path = str_copy( av->vptr, av->vlen );
 		else
 		{
 			f->path = (char *) allocz( av->vlen + 2 );
-			memcpy( f->path + 1, av->val, av->vlen );
+			memcpy( f->path + 1, av->vptr, av->vlen );
 			f->path[0] = '/';
 		}
 		__fetch_config_state = 1;
@@ -260,11 +255,20 @@ int fetch_config_line( AVP *av )
 		f->metrics = config_bool( av );
 		__fetch_config_state = 1;
 	}
+	else if( attIs( "profile" ) )
+	{
+		if( f->profile )
+			free( f->profile );
+
+		f->profile = str_copy( av->vptr, av->vlen );
+		f->metrics = 1;
+		__fetch_config_state = 1;
+	}
 	else if( attIs( "typehash" ) )
 	{
-		if( parse_number( av->val, &v, NULL ) == NUM_INVALID )
+		if( parse_number( av->vptr, &v, NULL ) == NUM_INVALID )
 		{
-			err( "Invalid metric type hash size: %s", av->val );
+			err( "Invalid metric type hash size: %s", av->vptr );
 			return -1;
 		}
 
@@ -276,7 +280,7 @@ int fetch_config_line( AVP *av )
 		f->dtype = NULL;
 
 		for( i = 0, d = (DTYPE *) data_type_defns; i < DATA_TYPE_MAX; i++, d++ )
-			if( !strcasecmp( d->name, av->val ) )
+			if( !strcasecmp( d->name, av->vptr ) )
 			{
 				f->dtype = d;
 				break;
@@ -284,7 +288,7 @@ int fetch_config_line( AVP *av )
 
 		if( !f->dtype )
 		{
-			err( "Type '%s' not recognised.", av->val );
+			err( "Type '%s' not recognised.", av->vptr );
 			return -1;
 		}
 		if( f->metrics )
@@ -294,9 +298,9 @@ int fetch_config_line( AVP *av )
 	}
 	else if( attIs( "period" ) )
 	{
-		if( parse_number( av->val, &v, NULL ) == NUM_INVALID )
+		if( parse_number( av->vptr, &v, NULL ) == NUM_INVALID )
 		{
-			err( "Invalid fetch period in block %s: %s", f->name, av->val );
+			err( "Invalid fetch period in block %s: %s", f->name, av->vptr );
 			return -1;
 		}
 
@@ -305,9 +309,9 @@ int fetch_config_line( AVP *av )
 	}
 	else if( attIs( "offset" ) )
 	{
-		if( parse_number( av->val, &v, NULL ) == NUM_INVALID )
+		if( parse_number( av->vptr, &v, NULL ) == NUM_INVALID )
 		{
-			err( "Invalid fetch offset in block %s: %s", f->name, av->val );
+			err( "Invalid fetch offset in block %s: %s", f->name, av->vptr );
 			return -1;
 		}
 
@@ -316,9 +320,9 @@ int fetch_config_line( AVP *av )
 	}
 	else if( attIs( "buffer" ) )
 	{
-		if( parse_number( av->val, &v, NULL ) == NUM_INVALID )
+		if( parse_number( av->vptr, &v, NULL ) == NUM_INVALID )
 		{
-			err( "Invalid buffer size for block %s: %s", f->name, av->val );
+			err( "Invalid buffer size for block %s: %s", f->name, av->vptr );
 			return -1;
 		}
 
@@ -337,9 +341,8 @@ int fetch_config_line( AVP *av )
 	}
 	else if( attIs( "attribute" ) )
 	{
-		__fetch_config_state = 1;
 		// prometheus attribute map
-		return metrics_add_attr( f->metdata, av->val, av->vlen );
+		__fetch_config_state = 1;
 	}
 	else if( attIs( "done" ) )
 	{
@@ -353,6 +356,8 @@ int fetch_config_line( AVP *av )
 			err( "Fetch block %s has no type!", f->name );
 			return -1;
 		}
+
+		debug( "Adding fetch block: %s", f->name );
 
 		// copy it
 		n = (FETCH *) allocz( sizeof( FETCH ) );

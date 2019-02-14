@@ -320,7 +320,7 @@ int log_config_line( AVP *av )
 	if( attIs( "filename" ) || attIs( "file" ) || attIs( "logfile" ) )
 	{
 	 	free( _logger->filename );
-		_logger->filename = strdup( av->val );
+		_logger->filename = strdup( av->vptr );
 
 		// are we still using stdout/stderr?
 		_logger->use_std = ( strcmp( _logger->filename, "-" ) ) ? 0 : 1;
@@ -331,7 +331,7 @@ int log_config_line( AVP *av )
 	else if( attIs( "level" ) )
 	{
 		// get the log level
-		lvl = log_get_level( av->val );
+		lvl = log_get_level( av->vptr );
 		if( _proc->run_flags & RUN_DEBUG )
 			lvl = LOG_LEVEL_DEBUG;
 
@@ -344,9 +344,9 @@ int log_config_line( AVP *av )
 		_logger->notify_re = config_bool( av );
 	else if( attIs( "facility" ) )
 	{
-		if( ( fac = log_get_facility( av->val ) ) < 0 )
+		if( ( fac = log_get_facility( av->vptr ) ) < 0 )
 		{
-			warn( "Unrecognised syslog facility '%s'", av->val );
+			warn( "Unrecognised syslog facility '%s'", av->vptr );
 			return -1;
 		}
 		_logger->facility = fac;
@@ -354,7 +354,7 @@ int log_config_line( AVP *av )
 	else if( attIs( "identifier" ) )
 	{
 		free( _logger->identifier );
-		_logger->identifier = strdup( av->val );
+		_logger->identifier = strdup( av->vptr );
 	}
 	else
 		return -1;

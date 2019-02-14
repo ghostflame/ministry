@@ -287,16 +287,11 @@ void token_purge( int64_t tval, void *arg )
 
 
 
-void *token_loop( void *arg )
+void token_loop( THRD *t )
 {
-	THRD *t = (THRD *) arg;
-
 	// loop every second, about, purging tokens
 	if( ctl->net->tokens->enable )
 		loop_control( "token purge", &token_purge, NULL, 1010203, 0, 0 );
-
-	free( t );
-	return NULL;
 }
 
 

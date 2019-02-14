@@ -216,48 +216,29 @@ void metric_group_io( int64_t tval, void *arg )
 
 
 
-void *metric_group_update_loop( void *arg )
+void metric_group_update_loop( THRD *t )
 {
-	MGRP *g;
-	THRD *t;
-
-	t = (THRD *) arg;
-	g = (MGRP *) t->arg;
+	MGRP *g = (MGRP *) t->arg;
 
 	loop_control( "group-update", metric_update_group, g, g->upd_intv, LOOP_SYNC, 0 );
-
-	free( t );
-	return NULL;
 }
 
-void *metric_group_report_loop( void *arg )
+void metric_group_report_loop( THRD *t )
 {
+	MGRP *g = (MGRP *) t->arg;
 	int64_t offset;
-	MGRP *g;
-	THRD *t;
-
-	t = (THRD *) arg;
-	g = (MGRP *) t->arg;
 
 	// select a randomized offset
 	offset = 30000 + ( (int64_t) ( 40000 * metrandM( ) ) );
 
 	loop_control( "group-report", metric_report_group, g, g->rep_intv, LOOP_SYNC, offset );
-
-	free( t );
-	return NULL;
 }
 
 
-void *metric_group_io_loop( void *arg )
+void metric_group_io_loop( THRD *t )
 {
-	THRD *t = (THRD *) arg;
-
 	// just make sure things don't age out too badly.
 	loop_control( "group-io", metric_group_io, t->arg, 10000, 0, 0 );
-
-	free( t );
-	return NULL;
 }
 
 
@@ -337,6 +318,7 @@ void metric_set_target_params( METRIC *m )
 
 void metric_init_group( MGRP *g )
 {
+	char buf[16];
 	METRIC *m;
 
 	// get ourselves a buffer
@@ -388,11 +370,14 @@ void metric_init_group( MGRP *g )
 
 	// start up the group
 	debug( "Starting group %s with %d metrics @ interval %ld.", g->name, g->mcount, g->rep_intv );
-	thread_throw( metric_group_update_loop, g, 0 );
-	thread_throw( metric_group_report_loop, g, 0 );
+	snprintf( buf, 16, "met_%s", g->name );
+	thread_throw_named( metric_group_update_loop, g, 0, buf );
+	snprintf( buf, 16, "rep_%s", g->name );
+	thread_throw_named( metric_group_report_loop, g, 0, buf );
 
 	// and a loop to handle io max_age
-	thread_throw( metric_group_io_loop, g, 0 );
+	snprintf( buf, 16, "iol_%s", g->name );
+	thread_throw_named( metric_group_io_loop, g, 0, buf );
 }
 
 
@@ -639,7 +624,7 @@ int metric_config_line( AVP *av )
 
 	if( attIs( "maxAge" ) )
 	{
-		if( parse_number( av->val, &v, NULL ) == NUM_INVALID )
+		if( parse_number( av->vptr, &v, NULL ) == NUM_INVALID )
 			return -1;
 		ctl->metric->max_age = v;
 	}
@@ -675,13 +660,13 @@ int metric_config_line( AVP *av )
 			return -1;
 		}
 
-		strbuf_copy( g->prefix, av->val, av->vlen );
+		strbuf_copy( g->prefix, av->vptr, av->vlen );
 	}
 	else if( attIs( "parent" ) )
 	{
-		if( !( g->parent = metric_find_group_parent( av->val, av->vlen ) ) )
+		if( !( g->parent = metric_find_group_parent( av->vptr, av->vlen ) ) )
 		{
-			err( "Parent %s not found for group %s", av->val, g->name );
+			err( "Parent %s not found for group %s", av->vptr, g->name );
 			return -1;
 		}
 	}
@@ -709,7 +694,7 @@ int metric_config_line( AVP *av )
 			g->tgttype = METRIC_TYPE_COMPAT;
 		else
 		{
-			err( "Unrecognised target type %s.", av->val );
+			err( "Unrecognised target type %s.", av->vptr );
 			return -1;
 		}
 	}
@@ -721,9 +706,9 @@ int metric_config_line( AVP *av )
 			return -1;
 		}
 
-		if( metric_get_interval( av->val, &(g->upd_intv) ) )
+		if( metric_get_interval( av->vptr, &(g->upd_intv) ) )
 		{
-			err( "Invalid update interval for group %s: %s", g->name, av->val );
+			err( "Invalid update interval for group %s: %s", g->name, av->vptr );
 			return -1;
 		}
 	}
@@ -735,9 +720,9 @@ int metric_config_line( AVP *av )
 			return -1;
 		}
 
-		if( metric_get_interval( av->val, &(g->rep_intv) ) )
+		if( metric_get_interval( av->vptr, &(g->rep_intv) ) )
 		{
-			err( "Invalid report interval for group %s: %s", g->name, av->val );
+			err( "Invalid report interval for group %s: %s", g->name, av->vptr );
 			return -1;
 		}
 	}
@@ -751,7 +736,7 @@ int metric_config_line( AVP *av )
 
 		if( av_int( g->repeat ) == NUM_INVALID )
 		{
-			err( "Invalid repeat count for group %s: %s", g->name, av->val );
+			err( "Invalid repeat count for group %s: %s", g->name, av->vptr );
 			return -1;
 		}
 	}
@@ -763,7 +748,7 @@ int metric_config_line( AVP *av )
 			return -1;
 		}
 
-		return metric_add( g, av->val, av->vlen );
+		return metric_add( g, av->vptr, av->vlen );
 	}
 	else if( attIs( "done" ) )
 	{

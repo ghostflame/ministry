@@ -166,15 +166,13 @@ HOST *tcp_get_host( int sock, NET_PORT *np )
 
 
 
-void *tcp_loop( void *arg )
+void tcp_loop( THRD *t )
 {
 	struct pollfd p;
 	NET_PORT *n;
-	THRD *t;
 	HOST *h;
 	int rv;
 
-	t = (THRD *) arg;
 	n = (NET_PORT *) t->arg;
 
 	p.fd     = n->fd;
@@ -205,9 +203,6 @@ void *tcp_loop( void *arg )
 	}
 
 	loop_mark_done( "tcp", 0, 0 );
-
-	free( t );
-	return NULL;
 }
 
 

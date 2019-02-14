@@ -99,16 +99,14 @@ __attribute__((hot)) void tcp_epoll_handler( TCPTH *th, struct epoll_event *e, H
 //  to push back to the start of the buffer.
 //
 
-__attribute__((hot)) void *tcp_epoll_thread( void *arg )
+__attribute__((hot)) void tcp_epoll_thread( THRD *td )
 {
 	struct epoll_event *ep;
 	HOST *h, *prv, *nxt;
 	int64_t i;
 	TCPTH *th;
-	THRD *td;
 	int rv;
 
-	td = (THRD *) arg;
 	th = (TCPTH *) td->arg;
 
 	// grab our thread id and number
@@ -191,9 +189,6 @@ __attribute__((hot)) void *tcp_epoll_thread( void *arg )
 		tcp_close_active_host( h );
 		th->curr--;
 	}
-
-	free( td );
-	return NULL;
 }
 
 
@@ -220,7 +215,7 @@ void tcp_epoll_setup( NET_TYPE *nt )
 		pthread_mutex_init( &(th->lock), NULL );
 		nt->tcp->threads[i] = th;
 
-		thread_throw_named_i( tcp_epoll_thread, th, i, "tcp_epoll" );
+		thread_throw_named_f( tcp_epoll_thread, th, i, "tcp_epoll_%d" );
 	}
 }
 

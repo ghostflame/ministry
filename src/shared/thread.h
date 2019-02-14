@@ -16,15 +16,14 @@ struct thread_data
 	THRD				*	next;
 	pthread_t				id;
 	void				*	arg;
-	throw_fn			*	fp;		// for watched threads
+	throw_fn			*	call;
 	int64_t					num;
+	const char				name[16];
 };
 
 pthread_t thread_throw( throw_fn *fp, void *arg, int64_t num );
 pthread_t thread_throw_named( throw_fn *fp, void *arg, int64_t num, char *name );
-pthread_t thread_throw_named_i( throw_fn *fp, void *arg, int64_t num, char *name );
-pthread_t thread_throw_high_stack( throw_fn *fp, void *arg, int64_t num );
-pthread_t thread_throw_watched( throw_fn *watcher, throw_fn *fp, void *arg, int64_t num );
+pthread_t thread_throw_named_f( throw_fn *fp, void *arg, int64_t num, char *fmt );
 
 
 #endif

@@ -383,7 +383,7 @@ int iplist_config_line( AVP *av )
 	{
 		if( l->name )
 			free( l->name );
-		l->name = str_copy( av->val, av->vlen );
+		l->name = str_copy( av->vptr, av->vlen );
 		_iplist_cfg_set = 1;
 	}
 	else if( attIs( "default" ) )
@@ -398,7 +398,7 @@ int iplist_config_line( AVP *av )
 	}
 	else if( attIs( "hashsize" ) )
 	{
-		hs = (uint32_t) hash_size( av->val );
+		hs = (uint32_t) hash_size( av->vptr );
 		if( l->ips )
 			warn( "Hashsize %d ignored - already used default (%d).  Set it before adding entries for it to take effect.", hs, l->hashsz );
 		else
@@ -408,17 +408,17 @@ int iplist_config_line( AVP *av )
 	else if( attIs( "match" ) || attIs( "whitelist" ) )
 	{
 		_iplist_cfg_set = 1;
-		return iplist_add_entry( l, IPLIST_POSITIVE, av->val, av->vlen );
+		return iplist_add_entry( l, IPLIST_POSITIVE, av->vptr, av->vlen );
 	}
 	else if( attIs( "miss" ) || attIs( "blacklist" ) )
 	{
 		_iplist_cfg_set = 1;
-		return iplist_add_entry( l, IPLIST_NEGATIVE, av->val, av->vlen );
+		return iplist_add_entry( l, IPLIST_NEGATIVE, av->vptr, av->vlen );
 	}
 	else if( attIs( "entry" ) )
 	{
 		_iplist_cfg_set = 1;
-		return iplist_add_entry( l, IPLIST_NEITHER, av->val, av->vlen );
+		return iplist_add_entry( l, IPLIST_NEITHER, av->vptr, av->vlen );
 	}
 	else if( attIs( "done" ) )
 	{

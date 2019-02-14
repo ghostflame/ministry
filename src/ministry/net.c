@@ -331,14 +331,14 @@ int net_config_line( AVP *av )
 {
 	NET_CTL *n = ctl->net;
 	struct in_addr ina;
-	char *d, *p, *cp;
+	char *d, *cp;
 	NET_TYPE *nt;
 	int i, tcp;
 	int64_t v;
 	WORDS *w;
 
 
-	if( !( d = strchr( av->att, '.' ) ) )
+	if( !( d = strchr( av->aptr, '.' ) ) )
 	{
 		if( attIs( "timeout" ) )
 		{
@@ -354,11 +354,11 @@ int net_config_line( AVP *av )
 		}
 		else if( attIs( "prefixList" ) )
 		{
-			n->prefix_list = str_copy( av->val, av->vlen );
+			n->prefix_list = str_copy( av->vptr, av->vlen );
 		}
 		else if( attIs( "filterList" ) )
 		{
-			n->filter_list = str_copy( av->val, av->vlen );
+			n->filter_list = str_copy( av->vptr, av->vlen );
 		}
 		else
 			return -1;
@@ -367,24 +367,27 @@ int net_config_line( AVP *av )
 	}
 
 	/* then it's data., statsd. or adder. (or ipcheck) */
-	p = d + 1;
+	d++;
 
 	// the names changed, so support both
-	if( !strncasecmp( av->att, "stats.", 6 ) || !strncasecmp( av->att, "data.", 5 ) )
+	if( !strncasecmp( av->aptr, "stats.", 6 ) || !strncasecmp( av->aptr, "data.", 5 ) )
 		nt = n->stats;
-	else if( !strncasecmp( av->att, "adder.", 6 ) )
+	else if( !strncasecmp( av->aptr, "adder.", 6 ) )
 		nt = n->adder;
-	else if( !strncasecmp( av->att, "gauge.", 6 ) || !strncasecmp( av->att, "guage.", 6 ) )
+	else if( !strncasecmp( av->aptr, "gauge.", 6 ) || !strncasecmp( av->aptr, "guage.", 6 ) )
 		nt = n->gauge;
-	else if( !strncasecmp( av->att, "compat.", 7 ) || !strncasecmp( av->att, "statsd.", 7 ) )
+	else if( !strncasecmp( av->aptr, "compat.", 7 ) || !strncasecmp( av->aptr, "statsd.", 7 ) )
 		nt = n->compat;
-	else if( !strncasecmp( av->att, "tokens.", 7 ) )
+	else if( !strncasecmp( av->aptr, "tokens.", 7 ) )
 	{
-		if( !strcasecmp( p, "enable" ) )
+		av->alen -= 7;
+		av->aptr += 7;
+
+		if( attIs( "enable" ) )
 			n->tokens->enable = config_bool( av );
-		else if( !strcasecmp( p, "msec" ) || !strcasecmp( p, "lifetime" ) )
+		else if( attIs( "msec" ) || attIs( "lifetime" ) )
 		{
-			i = atoi( av->val );
+			i = atoi( av->vptr );
 			if( i < 10 )
 			{
 				i = DEFAULT_TOKEN_LIFETIME;
@@ -392,21 +395,21 @@ int net_config_line( AVP *av )
 			}
 			n->tokens->lifetime = i;
 		}
-		else if( !strcasecmp( p, "hashsize" ) )
+		else if( attIs( "hashsize" ) )
 		{
-			if( !( n->tokens->hsize = hash_size( av->val ) ) )
+			if( !( n->tokens->hsize = hash_size( av->vptr ) ) )
 				return -1;
 		}
-		else if( !strcasecmp( p, "mask" ) )
+		else if( attIs( "mask" ) )
 		{
 			av_int( n->tokens->mask );
 		}
-		else if( !strcasecmp( p, "filter" ) )
+		else if( attIs( "filter" ) )
 		{
 			if( n->tokens->filter_name )
 				free( n->tokens->filter_name );
 
-			n->tokens->filter_name = str_copy( av->val, av->vlen );
+			n->tokens->filter_name = str_copy( av->vptr, av->vlen );
 		}
 		else
 			return -1;
@@ -416,18 +419,21 @@ int net_config_line( AVP *av )
 	else
 		return -1;
 
+	av->alen -= d - av->aptr;
+	av->aptr  = d;
+
 	// only a few single-words per connection type
-	if( !( d = strchr( p, '.' ) ) )
+	if( !strchr( av->aptr, '.' ) )
 	{
-		if( !strcasecmp( p, "enable" ) )
+		if( attIs( "enable" ) )
 		{
 			ntflag( ENABLED );
 			debug( "Networking %s for %s", ( nt->flags & NTYPE_ENABLED ) ? "enabled" : "disabled", nt->label );
 		}
-		else if( !strcasecmp( p, "label" ) )
+		else if( attIs( "label" ) )
 		{
 			free( nt->label );
-			nt->label = strdup( av->val );
+			nt->label = strdup( av->vptr );
 		}
 		else
 			return -1;
@@ -435,17 +441,18 @@ int net_config_line( AVP *av )
 		return 0;
 	}
 
-	d++;
-
 	// which port struct are we working with?
-	if( !strncasecmp( p, "udp.", 4 ) )
+	if( !strncasecmp( av->aptr, "udp.", 4 ) )
 		tcp = 0;
-	else if( !strncasecmp( p, "tcp.", 4 ) )
+	else if( !strncasecmp( av->aptr, "tcp.", 4 ) )
 		tcp = 1;
 	else
 		return -1;
 
-	if( !strcasecmp( d, "enable" ) )
+	av->alen -= 4;
+	av->aptr += 4;
+
+	if( attIs( "enable" ) )
 	{
 		if( tcp )
 		{
@@ -456,15 +463,15 @@ int net_config_line( AVP *av )
 			ntflag( UDP_ENABLED );
 		}
 	}
-	else if( !strcasecmp( d, "threads" ) )
+	else if( attIs( "threads" ) )
 	{
 		if( !tcp )
 			warn( "Threads is only for TCP connections - there is one thread per UDP port." );
 		else
 		{
-			if( parse_number( av->val, &v, NULL ) == NUM_INVALID )
+			if( parse_number( av->vptr, &v, NULL ) == NUM_INVALID )
 			{
-				err( "Invalid TCP thread count: %s", av->val );
+				err( "Invalid TCP thread count: %s", av->vptr );
 				return -1;
 			}
 			if( v < 1 || v > 1024 )
@@ -476,15 +483,15 @@ int net_config_line( AVP *av )
 			nt->threads = v;
 		}
 	}
-	else if( !strcasecmp( d, "pollMax" ) )
+	else if( attIs( "pollMax" ) )
 	{
 		if( !tcp )
 			warn( "Pollmax is only for TCP connections." );
 		else
 		{
-			if( parse_number( av->val, &v, NULL ) == NUM_INVALID )
+			if( parse_number( av->vptr, &v, NULL ) == NUM_INVALID )
 			{
-				err( "Invalid TCP pollmax count: %s", av->val );
+				err( "Invalid TCP pollmax count: %s", av->vptr );
 				return -1;
 			}
 			if( v < 1 || v > 1024 )
@@ -496,26 +503,26 @@ int net_config_line( AVP *av )
 			nt->pollmax = v;
 		}
 	}
-	else if( !strcasecmp( d, "style" ) )
+	else if( attIs( "style" ) )
 	{
 		if( tcp )
 		{
 			// do we recognise it?
 			for( i = 0; i < TCP_STYLE_MAX; i++ )
-				if( !strcasecmp( av->val, tcp_styles[i].name ) )
+				if( !strcasecmp( av->vptr, tcp_styles[i].name ) )
 				{
-					debug( "TCP handling style set to %s", av->val );
+					debug( "TCP handling style set to %s", av->vptr );
 					nt->tcp_style = tcp_styles[i].style;
 					return 0;
 				}
 
-			err( "TCP style '%s' not recognised.", av->val );
+			err( "TCP style '%s' not recognised.", av->vptr );
 			return -1;
 		}
 		else
 			warn( "Cannot set a handling style on UDP handling." );
 	}
-	else if( !strcasecmp( d, "checks" ) )
+	else if( attIs( "checks" ) )
 	{
 		if( tcp )
 			warn( "To disable prefix checks on TCP, set enable 0 on prefixes." );
@@ -524,15 +531,15 @@ int net_config_line( AVP *av )
 			ntflag( UDP_CHECKS );
 		}
 	}
-	else if( !strcasecmp( d, "bind" ) )
+	else if( attIs( "bind" ) )
 	{
-		inet_aton( av->val, &ina );
+		inet_aton( av->vptr, &ina );
 		if( tcp )
 			nt->tcp->ip = ina.s_addr;
 		else
 			nt->udp_bind = ina.s_addr;
 	}
-	else if( !strcasecmp( d, "backlog" ) )
+	else if( attIs( "backlog" ) )
 	{
 		if( tcp )
 		{
@@ -542,7 +549,7 @@ int net_config_line( AVP *av )
 		else
 			warn( "Cannot set a backlog for a UDP connection." );
 	}
-	else if( !strcasecmp( d, "port" ) || !strcasecmp( d, "ports" ) )
+	else if( attIs( "port" ) || attIs( "ports" ) )
 	{
 		if( tcp )
 		{
@@ -553,7 +560,7 @@ int net_config_line( AVP *av )
 		{
 			// work out how many ports we have
 			w  = (WORDS *) allocz( sizeof( WORDS ) );
-			cp = strdup( av->val );
+			cp = strdup( av->vptr );
 			strwords( w, cp, 0, ',' );
 			if( w->wc > 0 )
 			{

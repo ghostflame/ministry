@@ -394,15 +394,12 @@ void mem_check( int64_t tval, void *arg )
 }
 
 
-void *mem_prealloc_loop( void *arg )
+void mem_prealloc_loop( THRD *t )
 {
 	loop_control( "memory pre-alloc", mem_prealloc, NULL, 1000 * _mem->prealloc, LOOP_TRIM, 0 );
-
-	free( (THRD *) arg );
-	return NULL;
 }
 
-void *mem_check_loop( void *arg )
+void mem_check_loop( THRD *t )
 {
 	MCHK *m = _mem->mcheck;
 
@@ -414,9 +411,6 @@ void *mem_check_loop( void *arg )
 	mem_check( 0, NULL );
 
 	loop_control( "memory control", mem_check, NULL, 1000 * m->interval, LOOP_TRIM, 0 );
-
-	free( (THRD *) arg );
-	return NULL;
 }
 
 
@@ -428,7 +422,7 @@ int mem_config_line( AVP *av )
 	char *d;
 	int i;
 
-	if( !( d = strchr( av->att, '.' ) ) )
+	if( !( d = strchr( av->aptr, '.' ) ) )
 	{
 		// just the singles
 		if( attIs( "maxMb" ) || attIs( "maxSize" ) )
@@ -478,7 +472,10 @@ int mem_config_line( AVP *av )
 	if( !mt )
 		return -1;
 
-	if( !strcasecmp( d, "block" ) )
+	av->alen -= d - av->aptr;
+	av->aptr  = d;
+
+	if( attIs( "block" ) )
 	{
 		av_int( t );
 		if( t > 0 )
@@ -487,12 +484,12 @@ int mem_config_line( AVP *av )
 			debug( "Allocation block for %s set to %u", mt->name, mt->alloc_ct );
 		}
 	}
-	else if( !strcasecmp( d, "prealloc" ) )
+	else if( attIs( "prealloc" ) )
 	{
 		mt->prealloc = 0;
 		debug( "Preallocation disabled for %s", mt->name );
 	}
-	else if( !strcasecmp( d, "threshold" ) )
+	else if( attIs( "threshold" ) )
 	{
 		av_dbl( mt->threshold );
 		if( mt->threshold < 0 || mt->threshold >= 1 )

@@ -66,6 +66,7 @@ struct ministry_control
 	SYN_CTL				*	synth;
 	TGTS_CTL			*	tgt;
 	FTCH_CTL			*	fetch;
+	MET_CTL				*	metric;
 };
 
 

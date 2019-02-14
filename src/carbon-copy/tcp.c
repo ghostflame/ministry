@@ -137,16 +137,14 @@ HOST *tcp_get_host( int sock, NET_PORT *np )
 //  to push back to the start of the buffer.
 //
 
-__attribute__((hot)) void *tcp_connection( void *arg )
+__attribute__((hot)) void tcp_connection( THRD *t )
 {
 	int rv, quiet, quietmax;
 	int64_t ts, last;
 	struct pollfd p;
 	SOCK *n;
-	THRD *t;
 	HOST *h;
 
-	t = (THRD *) arg;
 	h = (HOST *) t->arg;
 	n = h->net;
 
@@ -250,22 +248,18 @@ __attribute__((hot)) void *tcp_connection( void *arg )
 	unlock_ntype( h->type );
 
 	tcp_close_host( h );
-
-	free( t );
-	return NULL;
 }
 
 
 
-void *tcp_loop( void *arg )
+void tcp_loop( THRD *t )
 {
 	struct pollfd p;
+	char buf[16];
 	NET_PORT *n;
-	THRD *t;
 	HOST *h;
 	int rv;
 
-	t = (THRD *) arg;
 	n = (NET_PORT *) t->arg;
 
 	p.fd     = n->fd;
@@ -291,14 +285,16 @@ void *tcp_loop( void *arg )
 		if( p.revents & POLL_EVENTS )
 		{
 			if( ( h = tcp_get_host( p.fd, n ) ) )
-				thread_throw( tcp_connection, h, 0 );
+			{
+				snprintf( buf, 16, "h_%08x:%04x",
+					ntohl( h->net->peer.sin_addr.s_addr ),
+					ntohs( h->net->peer.sin_port ) );
+				thread_throw_named( tcp_connection, h, 0, buf );
+			}
 		}
 	}
 
 	loop_mark_done( "tcp", 0, 0 );
-
-	free( t );
-	return NULL;
 }
 
 

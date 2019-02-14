@@ -20,6 +20,7 @@ typedef struct synth_control		SYN_CTL;
 typedef struct http_control			HTTP_CTL;
 typedef struct targets_control		TGTS_CTL;
 typedef struct fetch_control		FTCH_CTL;
+typedef struct metrics_control		MET_CTL;
 
 typedef struct net_in_port			NET_PORT;
 typedef struct net_type				NET_TYPE;
@@ -46,10 +47,13 @@ typedef struct token_data			TOKEN;
 typedef struct token_info			TOKENS;
 typedef struct tcp_thread			TCPTH;
 typedef struct fetch_target			FETCH;
-typedef struct metrics_data         MDATA;
-typedef struct metrics_map			METMP;
 typedef struct metrics_type			METTY;
+typedef struct metrics_attr			METAT;
+typedef struct metrics_attr_list	METAL;
+typedef struct metrics_attr_map		METMP;
+typedef struct metrics_profile		METPR;
 typedef struct metrics_entry		METRY;
+typedef struct metrics_data			MDATA;
 
 
 // function types

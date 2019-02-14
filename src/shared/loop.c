@@ -53,15 +53,10 @@ void loop_set_time( int64_t tval, void *arg )
 }
 
 
-void *loop_timer( void *arg )
+void loop_timer( THRD *t )
 {
-	THRD *t = (THRD *) arg;
-
 	// this just gather sets the time and doesn't exit
 	loop_control( "time set", &loop_set_time, NULL, _proc->tick_usec, LOOP_SYNC|LOOP_SILENT, 0 );
-
-	free( t );
-	return NULL;
 }
 
 

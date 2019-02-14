@@ -390,7 +390,7 @@ int relay_config_line( AVP *av )
 			free( r->name );
 		}
 
-		r->name = str_copy( av->val, av->vlen );
+		r->name = str_copy( av->vptr, av->vlen );
 		__relay_cfg_state = 1;
 	}
 	else if( attIs( "regex" ) )
@@ -402,7 +402,7 @@ int relay_config_line( AVP *av )
 			return -1;
 		}
 
-		s = av->val;
+		s = av->vptr;
 		if( *s == '!' )
 		{
 			r->invert[r->mcount] = 1;
@@ -412,7 +412,7 @@ int relay_config_line( AVP *av )
 		if( regcomp( r->matches + r->mcount, s, REG_EXTENDED|REG_ICASE|REG_NOSUB ) )
 		{
 			err( "Invalid regex for relay block '%s': '%s'",
-				r->name, av->val );
+				r->name, av->vptr );
 			return -1;
 		}
 
@@ -450,7 +450,7 @@ int relay_config_line( AVP *av )
 			r->hfp = &hash_fnv1a;
 		else
 		{
-			err( "Unrecognised hash type: %s", av->val );
+			err( "Unrecognised hash type: %s", av->vptr );
 			return -1;
 		}
 		r->type = RTYPE_HASH;
@@ -458,7 +458,7 @@ int relay_config_line( AVP *av )
 	}
 	else if( attIs( "target" ) || attIs( "targets" ) )
 	{
-		r->target_str = str_copy( av->val, av->vlen );
+		r->target_str = str_copy( av->vptr, av->vlen );
 		__relay_cfg_state = 1;
 	}
 	else if( attIs( "done" ) )

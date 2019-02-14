@@ -44,6 +44,8 @@ typedef struct av_pair              AVP;
 typedef struct lockless_counter     LLCT;
 typedef struct regex_entry          RGX;
 typedef struct regex_list           RGXL;
+typedef struct string_store_entry   SSTE;
+typedef struct string_store         SSTR;
 
 typedef struct http_path            HTPATH;
 typedef struct http_callbacks       HTTP_CB;
@@ -56,7 +58,7 @@ typedef struct curlw_handle         CURLWH;
 
 // function types
 typedef void loop_call_fn ( int64_t, void * );
-typedef void * throw_fn ( void * );
+typedef void throw_fn ( THRD * );
 typedef int conf_line_fn ( AVP * );
 typedef int http_handler ( uint32_t, char **, int, void * );
 typedef void help_fn ( void );

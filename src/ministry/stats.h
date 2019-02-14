@@ -117,6 +117,7 @@ struct stat_config
 	int64_t				period;		// msec config, converted to usec
 	int64_t				offset;		// msec config, converted to usec
 	stats_fn		*	statfn;
+	char				thrfmt[16];
 
 	// and the data
 	DHASH			**	data;

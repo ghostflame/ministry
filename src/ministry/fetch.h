@@ -22,6 +22,7 @@ struct fetch_target
 	char			*	name;
 	char			*	remote;
 	char			*	path;
+	char			*	profile;
 
 	CURLWH			*	ch;
 
@@ -35,14 +36,12 @@ struct fetch_target
 	int64_t				period;		// msec config, converted to usec
 	int64_t				offset;		// msec config, converted to usec
 	int64_t				bufsz;
-
-	int					metrics;	// is it a metrics type?
-	int					attct;		// attribute map count
-	int					mtypesz;	// size of the mtypes hash
-
-	uint16_t			port;
+	int64_t				tval;		// current time
 
 	struct sockaddr_in	dst;
+
+	int16_t				metrics;	// is it a metrics type?
+	uint16_t			port;
 };
 
 
