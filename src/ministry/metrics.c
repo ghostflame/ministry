@@ -14,7 +14,7 @@ const METTY metrics_types_defns[METR_TYPE_MAX] =
 {
 	{
 		.name  = "Untyped",
-		.nlen  = 0,
+		.nlen  = 7,
 		.type  = METR_TYPE_UNTYPED,
 		.dtype = DATA_TYPE_ADDER,
 	},
