@@ -71,12 +71,15 @@ pthread_t thread_throw_named( throw_fn *fp, void *arg, int64_t num, char *name )
 	return __thread_throw( fp, arg, num, name );
 }
 
-pthread_t thread_throw_named_f( throw_fn *fp, void *arg, int64_t num, char *fmt )
+pthread_t thread_throw_named_f( throw_fn *fp, void *arg, int64_t num, char *fmt, ... )
 {
 	char buf[16];
+	va_list args;
 
 	memset( buf, 0, 16 );
-	snprintf( buf, 16, fmt, num );
+	va_start( args, fmt );
+	vsnprintf( buf, 16, fmt, args );
+	va_end( args );
 
 	return __thread_throw( fp, arg, num, buf );
 }

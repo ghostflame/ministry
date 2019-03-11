@@ -255,7 +255,6 @@ __attribute__((hot)) void tcp_connection( THRD *t )
 void tcp_loop( THRD *t )
 {
 	struct pollfd p;
-	char buf[16];
 	NET_PORT *n;
 	HOST *h;
 	int rv;
@@ -286,10 +285,9 @@ void tcp_loop( THRD *t )
 		{
 			if( ( h = tcp_get_host( p.fd, n ) ) )
 			{
-				snprintf( buf, 16, "h_%08x:%04x",
+				thread_throw_named_f( tcp_connection, h, 0, "h_%08x:%04x",
 					ntohl( h->net->peer.sin_addr.s_addr ),
 					ntohs( h->net->peer.sin_port ) );
-				thread_throw_named( tcp_connection, h, 0, buf );
 			}
 		}
 	}
