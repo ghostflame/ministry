@@ -9,7 +9,7 @@
 
 #include "shared.h"
 
-IO_CTL *_io;
+IO_CTL *_io = NULL;
 
 
 __attribute__((hot)) int io_read_data( SOCK *s )

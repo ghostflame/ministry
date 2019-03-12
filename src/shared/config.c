@@ -750,12 +750,12 @@ void config_args( int ac, char **av, char *optstr, help_fn *hfp )
 				runf_add( RUN_DAEMON );
 				break;
 			case 'D':
-				_logger->level = LOG_LEVEL_DEBUG;
+				log_set_level( LOG_LEVEL_DEBUG );
 				runf_add( RUN_DEBUG );
 				break;
 			case 'V':
 				runf_add( RUN_TGT_STDOUT );
-				_logger->force_stdout = 1;
+				log_set_force_stdout( 1 );
 				break;
 			case 'v':
 				printf( "%s version: %s\n", _proc->app_upper, _proc->version );

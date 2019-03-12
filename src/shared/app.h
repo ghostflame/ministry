@@ -20,5 +20,6 @@ int app_start( int writePid );
 void app_ready( void );
 void app_finish( int exval );
 
+PROC_CTL *app_control( void );
 
 #endif

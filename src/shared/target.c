@@ -9,11 +9,12 @@
 
 #include "shared.h"
 
-TGT_CTL *_tgt;
+TGT_CTL *_tgt = NULL;
 
 
 void target_loop( THRD *th )
 {
+	IO_CTL *io = _proc->io;
 	struct sockaddr_in sa;
 	int64_t fires = 0, r;
 	TGT *t;
@@ -44,9 +45,9 @@ void target_loop( THRD *th )
 	// make a socket with no buffers of its own
 	t->sock = io_make_sock( 0, 0, &sa );
 
-	r = 1000 * _io->rc_msec;
-	t->rc_limit = r / _io->send_usec;
-	if( r % _io->send_usec )
+	r = 1000 * io->rc_msec;
+	t->rc_limit = r / io->send_usec;
+	if( r % io->send_usec )
 		t->rc_limit++;
 
 	// make sure we have a non-zero max
@@ -63,7 +64,7 @@ void target_loop( THRD *th )
 	// now loop around sending
 	while( RUNNING( ) )
 	{
-		usleep( _io->send_usec );
+		usleep( io->send_usec );
 
 		// call the io_fn
 		fires += (*(t->iofp))( t );
@@ -187,6 +188,8 @@ int __target_set_maxw( TGT *t, char *max )
 
 int __target_set_host( TGT *t, char *host )
 {
+	IO_CTL *io = _proc->io;
+
 	if( strchr( host, ' ' ) )
 	{
 		err( "Target hosts may not have spaces in them: %s", host );
@@ -196,14 +199,14 @@ int __target_set_host( TGT *t, char *host )
 	// special value, stdout
 	if( !strcmp( host, "-" ) )
 	{
-		if( _io->stdout_count > 0 )
+		if( io->stdout_count > 0 )
 		{
 			err( "Can only have one target writing to stdout." );
 			return -1;
 		}
 
 		t->to_stdout = 1;
-		_io->stdout_count++;
+		io->stdout_count++;
 		debug( "Target writing to stdout." );
 	}
 
@@ -243,6 +246,11 @@ TGTL *__target_list_find_create( char *name )
 TGTL *target_list_create( char *name )
 {
 	return __target_list_find_create( name );
+}
+
+TGTL *target_list_all( void )
+{
+	return _tgt->lists;
 }
 
 

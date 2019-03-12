@@ -132,7 +132,7 @@ int targets_init( void )
 	int i;
 
 	// create the target sets
-	for( l = ctl->target->lists; l; l = l->next )
+	for( l = target_list_all( ); l; l = l->next )
 	{
 		s = (TSET *) allocz( sizeof( TSET ) );
 		s->targets = l;

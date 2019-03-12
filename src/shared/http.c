@@ -18,6 +18,8 @@
   #endif
 #endif
 
+HTTP_CTL *_http = NULL;
+
 
 int http_add_handler( char *path, int fixed, http_handler *fp, char *desc, void *arg )
 {
@@ -166,7 +168,7 @@ int http_handler_stats( uint32_t ip, char **buf, int max, void *arg )
 
 	_jfielda( "  ", "memtypes" );
 
-	for( j = 0; j < _mem->type_ct; j++ )
+	for( j = 0; j < _proc->mem->type_ct; j++ )
 	{
 		if( mem_type_stats( j, &ms ) != 0 )
 			continue;

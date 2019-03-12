@@ -9,6 +9,8 @@
 
 #include "shared.h"
 
+LOG_CTL *_logger = NULL;
+
 char *log_level_strings[LOG_LEVEL_MAX] =
 {
 	"FATAL",
@@ -74,6 +76,21 @@ int8_t log_get_level( char *str )
 
 	warn( "Unrecognised log level string '%s'", str );
 	return LOG_LEVEL_DEBUG;
+}
+
+
+int log_set_level( int8_t level )
+{
+	if( level < 0 || level >= LOG_LEVEL_MAX )
+		return -1;
+
+	_logger->level = level;
+	return 0;
+}
+
+void log_set_force_stdout( int set )
+{
+	_logger->force_stdout = ( set ) ? 1 : 0;
 }
 
 
@@ -277,6 +294,8 @@ int log_start( void )
 		_logger->notify_re = 0;
 		return 0;
 	}
+
+	debug( "Starting logging - no more logs to stdout." );
 
 	if( _logger->use_syslog )
 	{

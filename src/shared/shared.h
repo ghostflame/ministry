@@ -76,14 +76,8 @@
 #include "app.h"
 
 
-// some globals
-extern LOG_CTL *_logger;
-extern MEM_CTL *_mem;
+// process control global
 extern PROC_CTL *_proc;
-extern HTTP_CTL *_http;
-extern IPL_CTL *_iplist;
-extern IO_CTL *_io;
-extern TGT_CTL *_tgt;
 
 
 #endif

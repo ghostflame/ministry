@@ -46,8 +46,7 @@ void main_loop( void )
 void main_create_conf( void )
 {
 	ctl				= (RCTL *) allocz( sizeof( RCTL ) );
-	ctl->proc		= _proc;
-	ctl->log		= _logger;
+	ctl->proc		= app_control( );
 	ctl->mem		= memt_config_defaults( );
 	ctl->net		= net_config_defaults( );
 	ctl->relay		= relay_config_defaults( );

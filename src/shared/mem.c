@@ -9,6 +9,8 @@
 
 #include "shared.h"
 
+MEM_CTL *_mem = NULL;
+
 static uint8_t mem_alloc_size_vals[16] =
 {
 	0, 1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4

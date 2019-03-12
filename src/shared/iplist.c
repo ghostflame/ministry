@@ -9,7 +9,7 @@
 
 #include "shared.h"
 
-IPL_CTL *_iplist;
+IPL_CTL *_iplist = NULL;
 
 // TESTING
 

@@ -400,7 +400,7 @@ void metric_start_all( void )
 	TGTL *l;
 	TGT *t;
 
-	for( l = ctl->target->lists; l; l = l->next )
+	for( l = target_list_all( ); l; l = l->next )
 	{
 		notice( "Target dump : List : %2d / %s", l->count, l->name );
 		for( t = l->targets; t; t = t->next )

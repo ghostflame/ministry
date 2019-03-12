@@ -59,6 +59,8 @@ int log_line( int8_t level, const char *file, const int line, const char *fn, ch
 int log_close( void );
 void log_reopen( int sig );
 int log_start( void );
+int log_set_level( int8_t level );
+void log_set_force_stdout( int set );
 
 // config
 LOG_CTL *log_config_defaults( void );
