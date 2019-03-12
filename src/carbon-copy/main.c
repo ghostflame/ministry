@@ -50,7 +50,6 @@ void main_create_conf( void )
 	ctl->mem		= memt_config_defaults( );
 	ctl->net		= net_config_defaults( );
 	ctl->relay		= relay_config_defaults( );
-	ctl->target     = target_config_defaults( );
 
 	config_register_section( "network", &net_config_line );
 	config_register_section( "relay",   &relay_config_line );
