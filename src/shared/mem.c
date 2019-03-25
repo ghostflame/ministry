@@ -388,7 +388,7 @@ void mem_prealloc( int64_t tval, void *arg )
 void mem_check( int64_t tval, void *arg )
 {
 	MCHK *m = _mem->mcheck;
-	int kb, sz = m->bsize;
+	int sz = m->bsize;
 	struct rusage ru;
 
 
@@ -410,10 +410,13 @@ void mem_check( int64_t tval, void *arg )
 		return;
 	}
 
-	kb = atoi( m->w->wd[23] ) * m->psize;
-	//info( "/proc/self/stat[23] reports %d KB", kb );
-	m->proc_kb = kb;
+	m->proc_kb = atoi( m->w->wd[23] ) * m->psize;
+	//info( "/proc/self/stat[23] reports %d KB", m->proc_kb );
 
+	// get our virtual size - comes in bytes, turn into kb
+	m->virt_kb = atoi( m->w->wd[22] ) >> 10;
+
+	// use the higher of the two
 	m->curr_kb = ( m->rusage_kb > m->proc_kb ) ? m->rusage_kb : m->proc_kb;
 
 	if( m->curr_kb > m->max_kb )
@@ -609,6 +612,10 @@ int64_t mem_curr_kb( void )
 	return _mem->mcheck->curr_kb;
 }
 
+int64_t mem_virt_kb( void )
+{
+	return _mem->mcheck->virt_kb;
+}
 
 
 MEM_CTL *mem_config_defaults( void )
