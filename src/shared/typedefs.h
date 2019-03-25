@@ -20,6 +20,7 @@ typedef struct target_control       TGT_CTL;
 
 typedef struct config_section       CSECT;
 typedef struct config_context       CCTXT;
+typedef struct config_iterator      CITER;
 typedef struct mem_type_blank       MTBLANK;
 typedef struct mem_call_counters    MCCTR;
 typedef struct mem_type_counters    MTCTR;

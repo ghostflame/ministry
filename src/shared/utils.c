@@ -95,6 +95,8 @@ int var_val( char *line, int len, AVP *av, int flags )
 		{
 			v  = "1";
 			av->vlen = 1;
+			// say we found it blank
+			av->blank = 1;
 		}
 		else
 			v = "";
@@ -120,6 +122,7 @@ int var_val( char *line, int len, AVP *av, int flags )
 				av->alen = s - p;
 				v        = "1";
 				av->vlen = 1;
+				av->blank = 1;
 				goto vv_finish;
 			}
 

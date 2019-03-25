@@ -299,10 +299,129 @@ char *config_relative_path( char *inpath )
 }
 
 
+
+
+int __config_iterator_next( CITER *iter, char **arg, int *len )
+{
+	if( iter->numeric )
+	{
+		if( iter->val > iter->finish )
+			return -1;
+
+		*len = snprintf( iter->numbuf, 32, iter->fmtbuf, iter->val );
+		*arg = iter->numbuf;
+
+		iter->val += iter->step;
+		return 0;
+	}
+
+	if( iter->curr >= iter->w.wc )
+		return -1;
+
+	*len = iter->w.len[iter->curr];
+	*arg = iter->w.wd[iter->curr];
+
+	iter->curr++;
+	return 0;
+}
+
+void __config_iterator_clean( CITER *iter )
+{
+	free( iter->data );
+	memset( iter, 0, sizeof( CITER ) );
+}
+
+
+void __config_iterator_data( AVP *av, CITER *iter )
+{
+	int64_t itmp;
+
+	memset( iter, 0, sizeof( CITER ) );
+	iter->step = 1;
+
+	iter->data = str_copy( av->vptr, av->vlen );
+	iter->dlen = av->vlen;
+
+	// original AV now safe again
+
+	strwords( &(iter->w), iter->data, iter->dlen, ' ' );
+
+	// spot a range: XX - YY [ZZ]
+	if( ( iter->w.wc == 3 || iter->w.wc == 4 )
+	 && !strcmp( iter->w.wd[1], "-" )
+	 && ( parse_number( iter->w.wd[0], &(iter->start),  NULL ) != NUM_INVALID )
+	 && ( parse_number( iter->w.wd[2], &(iter->finish), NULL ) != NUM_INVALID ) )
+	{
+		// reverse backwards lists
+		if( iter->start > iter->finish )
+		{
+			itmp = iter->start;
+			iter->start = iter->finish;
+			iter->finish = itmp;
+		}
+
+		// get the longest number
+		itmp = snprintf( iter->numbuf, 32, "%ld", iter->finish );
+		iter->flen = (int) itmp;
+		itmp = snprintf( iter->numbuf, 32, "%ld", iter->start );
+		if( itmp > iter->flen )
+			iter->flen = (int) itmp;
+
+		// and set the format
+		snprintf( iter->fmtbuf, 16, "%%0%dld", iter->flen );
+
+		if( iter->w.wc == 4 )
+		{
+			if( parse_number( iter->w.wd[3], &itmp, NULL ) == NUM_INVALID )
+				warn( "Invalid step value '%s' - ignoring.", iter->w.wd[3] );
+			else
+			{
+
+				if( itmp == 0 )
+					warn( "Invalid step value 0 - ignoring." );
+				else
+					// and take the abs value of the step
+					iter->step = llabs( itmp );
+			}
+		}
+
+		iter->val = iter->start;
+		iter->numeric = 1;
+	}
+}
+
+
+
+
+int __config_handle_line( AVP *av )
+{
+	// spot includes - they inherit context
+	if( !strcasecmp( av->aptr, "include" ) )
+	{
+		WORDS w;
+
+		strwords( &w, av->vptr, av->vlen, ' ' );
+
+		if( config_read( w.wd[0], &w ) != 0 )
+		{
+			err( "Included config file '%s' is not valid.", av->vptr );
+			return -1;
+		}
+
+		return 0;
+	}
+
+	// then dispatch to the correct handler
+	return (*(context->section->fp))( av );
+}
+
+
+
 int __config_read_file( FILE *fh )
 {
-	int rv, lrv, ret = 0;
-	WORDS w;
+	int rv, lrv, ret = 0, alen, tlen;
+	char *arg, *ptr;
+	CITER itr;
 	AVP av;
 
 	while( ( rv = config_get_line( fh, &av ) ) != -1 )
@@ -311,30 +430,65 @@ int __config_read_file( FILE *fh )
 		if( rv > 0 )
 			continue;
 
-		// spot includes - they inherit context
-		if( !strcasecmp( av.aptr, "include" ) )
+		// repeat the next line based on other args
+		if( !strcasecmp( av.aptr, "foreach" ) )
 		{
-			strwords( &w, av.vptr, av.vlen, ' ' );
+			__config_iterator_data( &av, &itr );
 
-			if( config_read( w.wd[0], &w ) != 0 )
-			{
-				err( "Included config file '%s' is not valid.", av.vptr );
-				ret = -1;
+			// get the next line
+			if( ( rv = config_get_line( fh, &av ) ) < 0 )
 				break;
+
+			if( av.blank )
+			{
+				av.vlen = 0;
+				av.vptr[0] = '\0';
+				ptr = av.vptr;
+				tlen = 0;
+			}
+			else
+			{
+				tlen = av.vlen + 1;
+				ptr = av.vptr + av.vlen;
+				*ptr++ = ' ';
 			}
 
-			continue;
+			while( __config_iterator_next( &itr, &arg, &alen ) == 0 )
+			{
+				// drop the arg on the end
+				memcpy( ptr, arg, alen );
+				ptr[alen] = '\0';
+				// fix the vlen
+				av.vlen = tlen + alen;
+
+				lrv = __config_handle_line( &av );
+
+				ret += lrv;
+				if( lrv )
+				{
+					err( "Bad config in file '%s', line %d (repeat arg %s)",
+						context->source, context->lineno, arg );
+					info( "Bad line: %s = %s", av.aptr, av.vptr );
+					break;
+				}
+			}
+
+			__config_iterator_clean( &itr );
+
+			if( ret )
+				break;
 		}
-
-		// and dispatch it
-		lrv = (*(context->section->fp))( &av );
-		ret += lrv;
-
-		if( lrv )
+		else
 		{
-			err( "Bad config in file '%s', line %d", context->source, context->lineno );
-			info( "Bad line: %s = %s", av.aptr, av.vptr );
-			break;
+			lrv = __config_handle_line( &av );
+			ret += lrv;
+
+			if( lrv )
+			{
+				err( "Bad config in file '%s', line %d", context->source, context->lineno );
+				info( "Bad line: %s = %s", av.aptr, av.vptr );
+				break;
+			}
 		}
 	}
 
