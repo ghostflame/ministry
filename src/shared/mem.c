@@ -107,6 +107,34 @@ void *mem_reverse_list( void *list_in )
 	return (void *) ret;
 }
 
+void mem_sort_list( void **list, int count, sort_fn *cmp )
+{
+	MTBLANK **tmp, *m;
+	int i, j;
+
+	if( !list || !*list )
+		return;
+
+	if( count == 1 )
+		return;
+
+	tmp = (MTBLANK **) allocz( count * sizeof( MTBLANK * ) );
+	for( i = 0, m = (MTBLANK *) *list; m; m = m->next )
+		tmp[i++] = m;
+
+	qsort( tmp, count, sizeof( MTBLANK * ), cmp );
+
+	// relink them
+	j = count - 1;
+	for( i = 0; i < j; i++ )
+		tmp[i]->next = tmp[i+1];
+
+	tmp[j]->next = NULL;
+	*list = tmp[0];
+
+	free( tmp );
+}
+
 
 void __mtype_report_counts( MTYPE *mt )
 {
@@ -440,18 +468,6 @@ int mem_config_line( AVP *av )
 			_mem->mcheck->checks = config_bool( av );
 		else if( attIs( "prealloc" ) || attIs( "preallocInterval" ) )
 			av_int( _mem->prealloc );
-		else if( attIs( "stackSize" ) )
-		{
-			// gets converted to KB
-			av_int( _mem->stacksize );
-			debug( "Stack size set to %d KB.", _mem->stacksize );
-		}
-		else if( attIs( "stackHighSize" ) )
-		{
-			// gets converted to KB
-			av_int( _mem->stackhigh );
-			debug( "Stack high size set to %d KB.", _mem->stackhigh );
-		}
 		else
 			return -1;
 
@@ -606,12 +622,11 @@ MEM_CTL *mem_config_defaults( void )
 
 	_mem              = (MEM_CTL *) allocz( sizeof( MEM_CTL ) );
 	_mem->mcheck      = mc;
-	_mem->stacksize   = DEFAULT_MEM_STACK_SIZE;
-	_mem->stackhigh   = DEFAULT_MEM_STACK_HIGH;
 	_mem->prealloc    = DEFAULT_MEM_PRE_INTV;
 
 	_mem->iobufs      = mem_type_declare( "iobufs", sizeof( IOBUF ), MEM_ALLOCSZ_IOBUF, IO_BUF_SZ, 1 );
 	_mem->iobps       = mem_type_declare( "iobps",  sizeof( IOBP ),  MEM_ALLOCSZ_IOBP,  0, 1 );
+	_mem->htreq       = mem_type_declare( "htreqs", sizeof( HTREQ ), MEM_ALLOCSZ_HTREQ, 2048, 0 );
 
 	return _mem;
 }
@@ -735,5 +750,41 @@ void mem_free_iobp( IOBP **b )
 	p->prev = NULL;
 
 	mtype_free( _mem->iobps, p );
+}
+
+
+HTREQ *mem_new_request( void )
+{
+	return (HTREQ *) mtype_new( _mem->htreq );
+}
+
+
+void mem_free_request( HTREQ **h )
+{
+	HTTP_POST *p = NULL;
+	BUF *b = NULL;
+	HTREQ *r;
+
+	r  = *h;
+	*h = NULL;
+
+	b = r->text;
+	p = r->post;
+
+	memset( r, 0, sizeof( HTREQ ) );
+
+	if( p )
+		memset( p, 0, sizeof( HTTP_POST ) );
+
+	if( b )
+	{
+		b->buf[0] = '\0';
+		b->len = 0;
+	}
+
+	r->text = b;
+	r->post = p;
+
+	mtype_free( _mem->htreq, r );
 }
 

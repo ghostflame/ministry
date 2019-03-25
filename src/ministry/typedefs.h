@@ -54,7 +54,6 @@ typedef struct metrics_attr_map		METMP;
 typedef struct metrics_profile		METPR;
 typedef struct metrics_entry		METRY;
 typedef struct metrics_data			MDATA;
-typedef struct post_data            POST;
 
 
 // function types
@@ -67,6 +66,5 @@ typedef void synth_fn( SYNTH * );
 typedef void pred_fn ( ST_THR *, DHASH * );
 typedef void tcp_setup_fn ( NET_TYPE * );
 typedef void tcp_fn ( HOST * );
-typedef void post_fn ( POST * );
 
 #endif

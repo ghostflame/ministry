@@ -21,10 +21,37 @@
 HTTP_CTL *_http = NULL;
 
 
-int http_add_handler( char *path, int fixed, http_handler *fp, char *desc, void *arg )
+
+HTPATH *http_find_callback( const char *url, int rlen, HTHDLS *hd )
 {
 	HTPATH *p;
+
+	for( p = hd->list; p; p = p->next )
+	{
+		debug( "Comparing url '%s' against path '%s'", url, p->path );
+		if( p->plen == rlen && !memcmp( p->path, url, rlen ) )
+			return p;
+	}
+
+	return NULL;
+}
+
+
+int http_add_handler( char *path, char *desc, void *arg, int method, http_callback *fp, http_callback *init, http_callback *fini )
+{
+	HTHDLS *hd;
+	HTPATH *p;
 	int len;
+
+	if( method == HTTP_METH_GET )
+		hd = _http->get_h;
+	else if( method == HTTP_METH_POST )
+		hd = _http->post_h;
+	else
+	{
+		err( "Only GET and POST are supported (%d - %s)", method, path );
+		return -1;
+	}
 
 	if( !path || !*path || !fp )
 	{
@@ -43,34 +70,38 @@ int http_add_handler( char *path, int fixed, http_handler *fp, char *desc, void 
 
 	len = strlen( path );
 
-	for( p = _http->handlers; p; p = p->next )
-		if( len == p->plen && !memcmp( path, p->path, len ) )
-		{
-			err( "Duplicate path handler provided for '%s'.", path );
-			return -1;
-		}
-
-	p = (HTPATH *) allocz( sizeof( HTPATH ) );
-	p->plen = strlen( path );
-	p->path = str_dup( path, p->plen );
-	p->desc = str_dup( desc, 0 );
-	p->fp   = fp;
-	p->arg  = arg;
-
-	if( fixed )
+	if( http_find_callback( path, len, hd ) )
 	{
-		p->blen = fixed;
-		p->buf  = (char *) allocz( fixed );
+		err( "Duplicate path (%s) handler provided for '%s'.", hd->method, path );
+		return -1;
 	}
 
-	p->next = _http->handlers;
-	_http->handlers = p;
+	p = (HTPATH *) allocz( sizeof( HTPATH ) );
+	p->plen  = len;
+	p->path  = str_dup( path, len );
+	p->desc  = str_dup( desc, 0 );
+	p->arg   = arg;
+	p->list  = hd;
+
+	p->req   = fp;
+	p->init  = init;
+	p->fini  = fini;
+
+	p->next  = hd->list;
+	hd->list = p;
+
+	hd->count++;
 	_http->hdlr_count++;
 
-	debug( "Added url handler: (%hu) %s  ->  %s", _http->hdlr_count, p->path, p->desc );
+	// re-sort that list
+	mem_sort_list( (void **) &(hd->list), hd->count, __http_cmp_handlers );
+	debug( "Added %s handler: (%d/%hu) %s  ->  %s", hd->method, hd->count, _http->hdlr_count, p->path, p->desc );
 
 	return 0;
 }
+
+
+
 
 
 int http_unused_policy( void *cls, const struct sockaddr *addr, socklen_t addrlen )
@@ -134,16 +165,16 @@ void http_log( void *arg, const char *fm, va_list ap )
 	info( "[HTTP] %s", lbuf );
 }
 
-#define _jstr( s )				l += snprintf( b + l, max - l, "%s\r\n", s )
-#define _jfielda( p, f )		l += snprintf( b + l, max - l, p "\"%s\": [\r\n", f )
-#define _jfieldo( p, f )		l += snprintf( b + l, max - l, p "\"%s\": {\r\n", f )
-#define _jfields( p, f, v )		l += snprintf( b + l, max - l, p "\"%s\": \"%s\",\r\n", f, v )
-#define _jfieldd( p, f, v )		l += snprintf( b + l, max - l, p "\"%s\": %f,\r\n", f, v )
-#define _jfield4( p, f, v )		l += snprintf( b + l, max - l, p "\"%s\": %d,\r\n", f, v )
-#define _jfield8( p, f, v )		l += snprintf( b + l, max - l, p "\"%s\": %ld,\r\n", f, v )
-#define _jfieldu( p, f, v )		l += snprintf( b + l, max - l, p "\"%s\": %u,\r\n", f, v )
-#define _jfieldl( p, f, v )		l += snprintf( b + l, max - l, p "\"%s\": %lu,\r\n", f, v )
-#define _jprunecma( )			if( b[l-3] == ',' ) { l--; b[l-2] = '\r'; b[l-1] = '\n'; } else notice( "Jprune called on %c.", b[l-3] )
+#define _jstr( s )				strbuf_aprintf( b, "%s\r\n", s )
+#define _jfielda( p, f )		strbuf_aprintf( b, p "\"%s\": [\r\n", f )
+#define _jfieldo( p, f )		strbuf_aprintf( b, p "\"%s\": {\r\n", f )
+#define _jfields( p, f, v )		strbuf_aprintf( b, p "\"%s\": \"%s\",\r\n", f, v )
+#define _jfieldd( p, f, v )		strbuf_aprintf( b, p "\"%s\": %f,\r\n", f, v )
+#define _jfield4( p, f, v )		strbuf_aprintf( b, p "\"%s\": %d,\r\n", f, v )
+#define _jfield8( p, f, v )		strbuf_aprintf( b, p "\"%s\": %ld,\r\n", f, v )
+#define _jfieldu( p, f, v )		strbuf_aprintf( b, p "\"%s\": %u,\r\n", f, v )
+#define _jfieldl( p, f, v )		strbuf_aprintf( b, p "\"%s\": %lu,\r\n", f, v )
+#define _jprunecma( )			if( strbuf_lastchar( b ) == '\n' ) { strbuf_chopn( b, 3 ); }
 
 #define _jmtype( n, mc )		snprintf( tmp, 16, "%s_calls", n ); \
 								_jfieldl( "      ", tmp, mc.ctr ); \
@@ -151,14 +182,16 @@ void http_log( void *arg, const char *fm, va_list ap )
 								_jfieldl( "      ", tmp, mc.sum )
 
 
-int http_handler_stats( uint32_t ip, char **buf, int max, void *arg )
+int http_handler_stats( HTREQ *req )
 {
-	char *b = *buf;
-	int j, l = 0;
 #ifdef MTYPE_TRACING
 	char tmp[16];
 #endif
 	MTSTAT ms;
+	BUF *b;
+	int j;
+
+	b = ( req->text = strbuf_resize( req->text, _http->statsBufSize ) );
 
 	_jstr( "{" );
 
@@ -191,7 +224,7 @@ int http_handler_stats( uint32_t ip, char **buf, int max, void *arg )
 	_jstr( "  ]" );
 	_jstr( "}" );
 
-	return l;
+	return 0;
 }
 
 #undef _jstr
@@ -205,109 +238,201 @@ int http_handler_stats( uint32_t ip, char **buf, int max, void *arg )
 #undef _jfieldl
 #undef _jprunecma
 
-int http_handler_usage( uint32_t ip, char **buf, int max, void *arg )
+
+int __http_cmp_handlers( const void *h1, const void *h2 )
 {
-	int len = 0;
-	HTPATH *p;
+	HTPATH *p1 = *((HTPATH **) h1);
+	HTPATH *p2 = *((HTPATH **) h2);
 
-	for( p = _http->handlers; p; p = p->next )
-		len += snprintf( *buf + len, max - len, "%-16s %s\n",
-				p->path, p->desc );
-
-	return len;
+	return ( p1->plen < p2->plen ) ? -1 : ( p1->plen == p2->plen ) ? 0 : 1;
 }
 
 
-int http_send_response( char *buf, int len, HTTP_CONN *conn, unsigned int code, int freeBuf )
+void __http_handler_usage_type( HTHDLS *hd, BUF *b )
 {
+	HTPATH *p;
+
+	if( hd->count )
+	{
+		strbuf_aprintf( b, "[%s]\n", hd->method );
+
+		for( p = hd->list; p; p = p->next )
+			strbuf_aprintf( b, "%-16s %s\n", p->path, p->desc );
+	}
+}
+
+
+int http_handler_usage( HTREQ *req )
+{
+	req->text = strbuf_resize( req->text, 8100 );
+	strbuf_empty( req->text );
+
+	__http_handler_usage_type( _http->get_h,  req->text );
+	__http_handler_usage_type( _http->post_h, req->text );
+
+	return 0;
+}
+
+
+int http_send_response( HTREQ *req )
+{
+	int ret = MHD_YES;
 	HTTP_RESP *resp;
-	int ret;
+	BUF *b;
 
-	if( !len )
-		len = strlen( buf );
+	if( req->sent )
+	{
+		warn( "http_send_response called twice." );
+		return ret;
+	}
 
-	resp = MHD_create_response_from_buffer( len, (void *) buf, MHD_RESPMEM_MUST_COPY );
+	if( ( b = req->text ) )
+	{
+		resp = MHD_create_response_from_buffer( b->len, (void *) b->buf, MHD_RESPMEM_MUST_COPY );
+		strbuf_empty( b );
+	}
+	else
+	{
+		resp = MHD_create_response_from_buffer( 0, "", MHD_RESPMEM_MUST_COPY );
+	}
 
-	if( freeBuf )
-		free( buf );
-
-	ret = MHD_queue_response( conn, code, resp );
+	ret = MHD_queue_response( req->conn, req->code, resp );
 	MHD_destroy_response( resp );
+
+	req->sent = 1;
 
 	return ret;
 }
 
 
 
+
+void http_request_complete( void *cls, HTTP_CONN *conn,
+	void **arg, HTTP_CODE toe )
+{
+	HTREQ *req;
+
+	if( !( req = (HTREQ *) *arg ) )
+		return;
+
+	debug( "Complete with req arg value as %p.", req );
+
+	if( req->sent == 0 )
+		http_send_response( req );
+
+	if( req->post && req->post->valid )
+		(req->path->fini)( req );
+
+	mem_free_request( &req );
+
+	*arg = NULL;
+}
+
+
 int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
 	const char *method, const char *version, const char *upload_data,
 	size_t *upload_data_size, void **con_cls )
 {
-	int len, blen, rlen, code, doFree;
 	union MHD_ConnectionInfo *ci;
-	uint32_t ip;
-	HTPATH *p;
-	char *buf;
+	HTREQ *req;
+	HTHDLS *hd;
+	int rlen;
 
-	// we only support GET right now
-	if( strcasecmp( method, "GET" ) )
-		return http_send_response( "Only GET is supported.", 0, conn, MHD_HTTP_METHOD_NOT_ALLOWED, 0 );
+	debug( "Req: %p|%p|%d  %s -> %s", con_cls, *con_cls, *upload_data_size, method, url );
 
-	// see who we are talking to
-	ci = (union MHD_ConnectionInfo *) MHD_get_connection_info( conn, MHD_CONNECTION_INFO_CLIENT_ADDRESS );
-	ip = ((struct sockaddr_in *) (ci->client_addr))->sin_addr.s_addr;
-
-	code = MHD_HTTP_OK;
-	rlen = strlen( url );
-	len  = 0;
-
-	hit_counter( _http->requests );
-
-	for( p = _http->handlers; p; p = p->next )
+	// WHISKEY TANGO FOXTROT, libmicrohttpd?
+	if( ((int64_t) *con_cls) < 0xff )
 	{
-		debug( "Comparing url '%s' against path '%s'", url, p->path );
-		if( p->plen == rlen && !memcmp( p->path, url, rlen ) )
-			break;
+		warn( "Flattening bizarre arg value %p.", *con_cls );
+		*con_cls = NULL;
 	}
 
-	// don't recognise that url
-	if( !p )
+	// do we have an object?
+	if( !( req = (HTREQ *) *con_cls ) )
 	{
-		buf = "That url is not recognised.\r\n";
-		len = strlen( buf );
-		code = MHD_HTTP_NOT_FOUND;
-		doFree = 0;
-	}
-	else
-	{
-		// right - fixed buffer?
-		if( ( blen = p->blen ) )
+		req = mem_new_request( );
+		req->conn = conn;
+		req->code = MHD_HTTP_OK;
+
+		*con_cls = req;
+
+		rlen = strlen( url );
+
+		if( !strcasecmp( method, MHD_HTTP_METHOD_GET ) )
 		{
-			buf = p->buf;
-			doFree = 0;
+			req->meth = HTTP_METH_GET;
+			hd = _http->get_h;
 		}
-		// OK, you will make one
+		else if( !strcasecmp( method, MHD_HTTP_METHOD_POST ) )
+		{
+			req->meth = HTTP_METH_POST;
+			hd = _http->post_h;
+		}
 		else
 		{
-			buf = NULL;
-			doFree = 1;
+			req->text = strbuf_create( "Method not supported.", 0 );
+			req->code = MHD_HTTP_METHOD_NOT_ALLOWED;
+			http_send_response( req );
+			return MHD_YES;
 		}
 
-		// keep count
-		hit_counter( p->hits );
+		// find the handler
+		if( !( req->path = http_find_callback( url, rlen, hd ) ) )
+		{
+			req->text = strbuf_create( "That url is not recognised.", 0 );
+			req->code = MHD_HTTP_NOT_FOUND;
+			http_send_response( req );
+			return MHD_YES;
+		}
 
-		len = (*(p->fp))( ip, &buf, blen, p->arg );
+		hit_counter( req->path->hits );
+
+		ci = (union MHD_ConnectionInfo *) MHD_get_connection_info( conn, MHD_CONNECTION_INFO_CLIENT_ADDRESS );
+		req->sin = (struct sockaddr_in *) (ci->client_addr);
+
+		if( req->meth == HTTP_METH_POST )
+		{
+			// and create the post data object
+			req->post = (HTTP_POST *) allocz( sizeof( HTTP_POST ) );
+			(req->path->init)( req );
+			req->first = 1;
+		}
 	}
 
-	return http_send_response( buf, len, conn, code, doFree );
+	switch( req->meth )
+	{
+		case HTTP_METH_GET:
+			// gets are easy
+			(req->path->req)( req );
+			http_send_response( req );
+			return MHD_YES;
+
+		case HTTP_METH_POST:
+			if( req->first )
+			{
+				req->first = 0;
+				return MHD_YES;
+			}
+			req->post->data   = upload_data;
+			req->post->bytes  = *upload_data_size;
+			req->post->total += req->post->bytes;
+			req->post->calls++;
+
+			if( req->post->bytes )
+			{
+				if( (req->path->req)( req ) < 0 )
+					req->err = 1;
+			}
+			else
+				http_send_response( req );
+
+			return MHD_YES;
+	}
+
+	warn( "How did the request logic get here?" );
+	return MHD_NO;
 }
 
-
-void http_request_complete( void *cls, HTTP_CONN *conn,
-	void **con_cls, HTTP_CODE toe )
-{
-	return;
-}
 
 
 
@@ -388,10 +513,7 @@ int http_start( void )
 
 	// you want to disable this in config if you are writing your own
 	if( h->stats )
-		http_add_handler( "/stats", h->statsBufSize, &http_handler_stats,  "Internal stats", NULL );
-
-	// reverse the list of handlers
-	_http->handlers = (HTPATH *) mem_reverse_list( _http->handlers );
+		http_add_handler( "/stats", "Internal stats", NULL, HTTP_METH_GET, &http_handler_stats, NULL, NULL );
 
 	h->sin->sin_port = htons( port );
 
@@ -403,6 +525,7 @@ int http_start( void )
 			mop( SOCK_ADDR ),                (struct sockaddr *) h->sin,
 			mop( URI_LOG_CALLBACK ),         h->calls->reqlog, NULL,
 			mop( EXTERNAL_LOGGER ),          h->calls->log, (void *) h,
+			mop( NOTIFY_COMPLETED ),         h->calls->complete, NULL,
 			mop( CONNECTION_LIMIT ),         h->conns_max,
 			mop( PER_IP_CONNECTION_LIMIT ),  h->conns_max_ip,
 			mop( CONNECTION_TIMEOUT ),       h->conns_tmout,
@@ -489,7 +612,14 @@ HTTP_CTL *http_config_defaults( void )
 
 	_http = h;
 
-	http_add_handler( "/",  8192, &http_handler_usage,  "Usage information", NULL );
+	// and handler structures
+	h->get_h          = (HTHDLS *) allocz( sizeof( HTHDLS ) );
+	h->get_h->method  = "GET";
+	h->post_h         = (HTHDLS *) allocz( sizeof( HTHDLS ) );
+	h->post_h->method = "POST";
+
+	// and our default - help
+	http_add_handler( "/", "Usage information", NULL, HTTP_METH_GET, &http_handler_usage, NULL, NULL );
 
 	return _http;
 }

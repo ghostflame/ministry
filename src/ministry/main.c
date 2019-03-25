@@ -48,6 +48,9 @@ void main_loop( void )
 	stats_start( ctl->stats->gauge );
 	stats_start( ctl->stats->self );
 
+	// and init posts
+	post_init( );
+
 	// and a synthetics loop
 	thread_throw_named( &synth_loop, NULL, 0, "synth_loop" );
 

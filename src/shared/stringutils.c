@@ -53,6 +53,7 @@ char *str_dup( char *src, int len )
 
 	p = perm_str( len + 1 );
 	memcpy( p, src, len );
+	p[len] = '\0';
 
 	return p;
 }
@@ -79,12 +80,43 @@ BUF *strbuf( uint32_t size )
 	if( size )
 	{
 		// make a little room
-		sz       = mem_alloc_size( 24 + size );
+		if( size < 128 )
+			size += 24;
+
+		sz       = mem_alloc_size( size );
 		b->space = (char *) allocz( sz );
 		b->sz    = (uint32_t) sz;
 	}
 
 	b->buf = b->space;
+	return b;
+}
+
+BUF *strbuf_resize( BUF *b, uint32_t size )
+{
+	size_t sz;
+
+	if( !size )
+		return NULL;
+
+	if( !b )
+		return strbuf( size );
+
+	if( size < 128 )
+		size += 24;
+
+	sz = mem_alloc_size( size );
+
+	if( sz > b->sz )
+	{
+		free( b->space );
+		b->space  = (char *) allocz( sz );
+		b->sz     = sz;
+		b->buf    = b->space;
+		b->len    = 0;
+		b->buf[0] = '\0';
+	}
+
 	return b;
 }
 

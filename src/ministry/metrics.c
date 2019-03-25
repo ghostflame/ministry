@@ -62,29 +62,6 @@ int metrics_cmp_maps( const void *ap1, const void *ap2 )
 }
 
 
-void metrics_profile_sort_maps( METPR *p )
-{
-	METMP **list, *m;
-	int i, j;
-
-	if( !p->maps )
-		return;
-
-	list = (METMP **) allocz( p->mapct * sizeof( METMP * ) );
-	for( i = 0, m = p->maps; m; m = m->next )
-		list[i++] = m;
-
-	qsort( list, p->mapct, sizeof( METPR * ), metrics_cmp_maps );
-
-	// relink them
-	j = p->mapct - 1;
-	for( i = 0; i < j; i++ )
-		list[i]->next = list[i+1];
-
-	list[j]->next = NULL;
-	p->maps = list[0];
-	free( list );
-}
 
 METPR *metrics_find_profile( char *name )
 {
@@ -110,30 +87,15 @@ METPR *metrics_find_profile( char *name )
 
 void metrics_sort_attrs( METAL *a )
 {
-	METAT **list, *m;
-	int i, j;
+	int o = 0;
+	METAT *m;
 
-	if( !a->ats )
-		return;
+	// sort them
+	mem_sort_list( (void **) a->ats, a->atct, metrics_cmp_attrs );
 
-	list = (METAT **) allocz( a->atct * sizeof( METAT * ) );
-	for( i = 0, m = a->ats; m; m = m->next )
-		list[i++] = m;
-
-	qsort( list, a->atct, sizeof( METAT * ), metrics_cmp_attrs );
-
-	// relink them and normalise the ordering
-	j = a->atct - 1;
-	for( i = 0; i < j; i++ )
-	{
-		list[i]->next  = list[i+1];
-		list[i]->order = i;
-	}
-	list[j]->next  = NULL;
-	list[j]->order = j;
-
-	a->ats = list[0];
-	free( list );
+	// normalise the ordering
+	for( m = a->ats; m; m = m->next )
+		m->order = o++;
 }
 
 
@@ -983,7 +945,7 @@ int metrics_config_line( AVP *av )
 			}
 
 			// sort the maps into ID order
-			metrics_profile_sort_maps( p );
+			mem_sort_list( (void **) p->maps, p->mapct, metrics_cmp_maps );
 
 			for( mp = p->maps; mp; mp = mp->next )
 				if( !mp->lname )

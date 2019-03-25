@@ -48,6 +48,10 @@ typedef struct string_store_entry   SSTE;
 typedef struct string_store         SSTR;
 
 typedef struct http_path            HTPATH;
+typedef struct http_handlers        HTHDLS;
+typedef struct http_req_data        HTREQ;
+typedef struct http_post_state      HTTP_POST;
+
 typedef struct http_callbacks       HTTP_CB;
 typedef struct http_ssl             SSL_CONF;
 typedef struct http_ssl_file        SSL_FILE;
@@ -60,11 +64,12 @@ typedef struct curlw_handle         CURLWH;
 typedef void loop_call_fn ( int64_t, void * );
 typedef void throw_fn ( THRD * );
 typedef int conf_line_fn ( AVP * );
-typedef int http_handler ( uint32_t, char **, int, void * );
+typedef int http_callback ( HTREQ * );
 typedef void help_fn ( void );
 typedef int64_t io_fn( TGT * );
 typedef int target_cfg_fn( TGT *, char *, int );
 typedef void curlw_cb( void *, IOBUF *b );
+typedef int sort_fn( const void *, const void * );
 
 typedef void iplist_data_fn( void *, IPNET * );
 

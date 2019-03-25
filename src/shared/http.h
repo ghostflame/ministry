@@ -16,6 +16,7 @@ typedef struct MHD_Connection           HTTP_CONN;
 typedef enum MHD_RequestTerminationCode HTTP_CODE;
 typedef enum MHD_ValueKind              HTTP_VAL;
 typedef struct MHD_Response             HTTP_RESP;
+typedef struct MHD_PostProcessor		HTTP_PPROC;
 
 typedef void (*cb_RequestLogger) ( void *cls, const char *uri, HTTP_CONN *conn );
 
@@ -31,6 +32,14 @@ typedef void (*cb_RequestLogger) ( void *cls, const char *uri, HTTP_CONN *conn )
 
 #define MAX_SSL_FILE_SIZE				65536
 #define MAX_SSL_PASS_SIZE				512
+
+
+enum http_method_shortcuts
+{
+	HTTP_METH_GET = 0,
+	HTTP_METH_POST = 1,
+	HTTP_METH_OTHER,
+};
 
 
 struct http_ssl_file
@@ -71,17 +80,56 @@ struct http_callbacks
 };
 
 
+struct http_post_state
+{
+	void				*	obj;
+
+	const char			*	data;	// this post
+	size_t					bytes;	// this post size
+
+	size_t					total;
+
+	int						calls;
+	int						valid;
+};
+
+struct http_req_data
+{
+	HTREQ				*	next;
+	HTPATH				*	path;
+	HTTP_CONN			*	conn;
+	BUF					*	text;
+	struct sockaddr_in	*	sin;
+	HTTP_POST			*	post;
+	int						code;
+	int						meth;
+	int						err;
+	int						sent;
+	int						first;
+};
+
+
+
 struct http_path
 {
 	HTPATH				*	next;
-	http_handler		*	fp;
+	HTHDLS				*	list;
+	http_callback		*	req;
+	http_callback		*	init;
+	http_callback		*	fini;
 	char				*	path;
 	char				*	desc;
-	char				*	buf;
 	void				*	arg;
 	int64_t					hits;
 	int						plen;
-	int						blen;
+};
+
+
+struct http_handlers
+{
+	HTPATH				*	list;
+	char				*	method;
+	int						count;
 };
 
 
@@ -98,10 +146,11 @@ struct http_control
 	HTTP_CB				*	calls;
 	SSL_CONF			*	ssl;
 
-	HTPATH				*	handlers;
+	HTHDLS				*	get_h;
+	HTHDLS				*	post_h;
 
 	unsigned int			flags;
-	unsigned int            hflags;
+	unsigned int			hflags;
 	unsigned int			conns_max;
 	unsigned int			conns_max_ip;
 	unsigned int			conns_tmout;
@@ -124,8 +173,9 @@ struct http_control
 };
 
 
+sort_fn __http_cmp_handlers;
 
-int http_add_handler( char *path, int fixed, http_handler *fp, char *desc, void *arg );
+int http_add_handler( char *path, char *desc, void *arg, int method, http_callback *fp, http_callback *init, http_callback *fini );
 
 int http_start( void );
 void http_stop( void );

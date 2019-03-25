@@ -11,20 +11,10 @@
 #define MINISTRY_POST_H
 
 
-struct post_response
-{
-	POST			*	next;
-	HOST			*	h;
-};
 
-
-
-int post_handle_buffer( POST *p, NET_TYPE *n );
-
-post_fn post_handle_adder;
-post_fn post_handle_stats;
-post_fn post_handle_gauge;
-post_fn post_handle_compat;
+http_callback post_handle_data;
+http_callback post_handle_init;
+http_callback post_handle_finish;
 
 
 

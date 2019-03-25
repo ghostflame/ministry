@@ -754,6 +754,15 @@ int metric_config_line( AVP *av )
 			return -1;
 		}
 
+		// special prefix: -
+		// copies the group name, adds .
+		if( !strcmp( g->prefix, "-" ) )
+		{
+			strbuf_printf( g->prefix, "%s", g->name );
+			if( strbuf_lastchar( g->prefix ) != '.' )
+				strbuf_add( g->prefix, ".", 1 );
+		}
+
 		// close config of this group
 		g->closed = 1;
 

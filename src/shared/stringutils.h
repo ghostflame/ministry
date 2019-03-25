@@ -77,6 +77,7 @@ char *str_copy( char *src, int len );
 
 // get a buffer
 BUF *strbuf( uint32_t size );
+BUF *strbuf_resize( BUF *b, uint32_t size );
 BUF *strbuf_create( char *str, int len );
 int strbuf_copy( BUF *b, char *str, int len );
 int strbuf_add( BUF *b, char *str, int len );
@@ -86,6 +87,7 @@ int strbuf_add( BUF *b, char *str, int len );
 #define strbuf_aprintf( b, ... )		b->len += snprintf( b->buf + b->len, b->sz - b->len, ##__VA_ARGS__ )
 #define strbuf_empty( b )				b->len = 0; b->buf[0] = '\0'
 #define strbuf_chop( b )				if( b->len > 0 ) { b->len--; b->buf[b->len] = '\0'; }
+#define strbuf_chopn( b, n )			if( b->len > n ) { b->len -= n; b->buf[b->len] = '\0'; } else { strbuf_empty( b ); }
 #define strbuf_lastchar( b )			( ( b->len ) ? b->buf[b->len - 1] : '\0' )
 
 // get string length, up to a maximum

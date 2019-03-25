@@ -29,6 +29,7 @@
 #include "udp.h"
 #include "tcp.h"
 #include "fetch.h"
+#include "post.h"
 #include "token.h"
 #include "targets.h"
 #include "data.h"
