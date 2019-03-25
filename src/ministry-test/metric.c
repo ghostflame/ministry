@@ -756,7 +756,7 @@ int metric_config_line( AVP *av )
 
 		// special prefix: -
 		// copies the group name, adds .
-		if( !strcmp( g->prefix, "-" ) )
+		if( !strcmp( g->prefix->buf, "-" ) )
 		{
 			strbuf_printf( g->prefix, "%s", g->name );
 			if( strbuf_lastchar( g->prefix ) != '.' )
