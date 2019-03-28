@@ -20,34 +20,64 @@ CSECT config_sections[CONF_SECT_MAX];
 
 #define CFG_VV_FLAGS	(VV_AUTO_VAL|VV_LOWER_ATT|VV_REMOVE_UDRSCR)
 
+regex_t arg_subs_rgx;
+#define ARG_SUBS_REGEX	"^(.*?)%([1-9]+)%(.*)$"
+
 /*
  * Matches arg substitutions of the form:
  * %N% where N <= argc
  */
-void config_args_substitute( char *str, int *len )
+int config_args_substitute( char **sptr, int *len )
 {
-	int i, l;
+	regmatch_t mtc[4];
+	int i, l, c = 0;
+	char *r, *s;
 
 	l = *len;
 
 	if( !context->argc || l < 3 )
-		return;
+		return 0;
 
-	// 1-indexed
-	if( str[0] == '%' && str[l - 1] == '%'
-	 && ( i = atoi( str + 1 ) ) > 0
-	 && i <= context->argc )
+	// start with a copy
+	s = str_copy( *sptr, *len );
+
+	// args are indexed from 1
+
+	while( regexec( &arg_subs_rgx, s, 4, mtc, 0 ) == 0 )
 	{
-		// it can't be too long, or we could never
-		// have read the include line in the first
-		// place.
-		i--;
-		*len = context->argl[i];
-		memcpy( str, context->argv[i], *len );
-		str[*len] = '\0';
+		// stomp on the %'s
+		s[mtc[1].rm_eo] = '\0';
+		s[mtc[2].rm_eo] = '\0';
 
-		debug( "Config substitution of arg %d: %s", i + 1, str );
+		// read the number section
+		i = atoi( s + mtc[2].rm_so );
+
+		if( i > context->argc )
+		{
+			warn( "Config substitution references non-existent arg %d, aborting.", i );
+			return c;
+		}
+
+		// args are 0-indexed
+		i--;
+
+		// get the new length
+		l = mtc[1].rm_eo + context->argl[i] + ( mtc[3].rm_eo - mtc[3].rm_so );
+		r = (char *) allocz( l + 1 );
+		snprintf( r, l + 1, "%s%s%s", s, context->argv[i], s + mtc[3].rm_so );
+
+		free( s );
+		s = r;
+		c++;
 	}
+
+	if( c > 0 )
+		debug( "Config substitutions (%d): (%s) -> (%s)", c, *sptr, s );
+
+	*sptr = s;
+	*len  = l;
+
+	return c;
 }
 
 
@@ -108,7 +138,8 @@ int config_get_line( FILE *f, AVP *av )
 		if( av->status == VV_LINE_ATTVAL )
 		{
 			// but do args substitution first
-			config_args_substitute( av->vptr, &(av->vlen) );
+			if( config_args_substitute( &(av->vptr), &(av->vlen) ) > 0 )
+				av->doFree = 1;
 
 			return 0;
 		}
@@ -163,7 +194,7 @@ CCTXT *config_make_context( char *path, WORDS *w )
 		ctx->argv = (char **) allocz( ctx->argc * sizeof( char * ) );
 		for( i = 1; i < w->wc; i++ )
 		{
-			str = str_dup( w->wd[i], w->len[i] );
+			str = str_copy( w->wd[i], w->len[i] );
 			ctx->argv[i-1] = str;
 			ctx->argl[i-1] = w->len[i];
 		}
@@ -344,7 +375,7 @@ void __config_iterator_data( AVP *av, CITER *iter )
 
 	// original AV now safe again
 
-	strwords( &(iter->w), iter->data, iter->dlen, ' ' );
+	strmwords( &(iter->w), iter->data, iter->dlen, ' ' );
 
 	// spot a range: XX - YY [ZZ]
 	if( ( iter->w.wc == 3 || iter->w.wc == 4 )
@@ -387,6 +418,9 @@ void __config_iterator_data( AVP *av, CITER *iter )
 
 		iter->val = iter->start;
 		iter->numeric = 1;
+
+		debug( "Config numeric iterator, from %ld to %ld, step %ld.",
+			iter->start, iter->finish, iter->step );
 	}
 }
 
@@ -395,6 +429,8 @@ void __config_iterator_data( AVP *av, CITER *iter )
 
 int __config_handle_line( AVP *av )
 {
+	int ret = 0;
+
 	// spot includes - they inherit context
 	if( !strcasecmp( av->aptr, "include" ) )
 	{
@@ -411,17 +447,22 @@ int __config_handle_line( AVP *av )
 		return 0;
 	}
 
+	debug( "Config line: %s = %s", av->aptr, av->vptr );
+
 	// then dispatch to the correct handler
-	return (*(context->section->fp))( av );
+	ret = (*(context->section->fp))( av );
+
+	if( av->doFree )
+		free( av->vptr );
+
+	return ret;
 }
 
 
 
 int __config_read_file( FILE *fh )
 {
-	int rv, lrv, ret = 0, alen, tlen;
-	char *arg, *ptr;
-	CITER itr;
+	int rv, lrv, ret = 0;
 	AVP av;
 
 	while( ( rv = config_get_line( fh, &av ) ) != -1 )
@@ -433,33 +474,52 @@ int __config_read_file( FILE *fh )
 		// repeat the next line based on other args
 		if( !strcasecmp( av.aptr, "foreach" ) )
 		{
+			char *arg, *ptr, valcpy[AVP_MAX_VAL], itertmp[AVP_MAX_VAL];
+			int tlen, alen;
+			CITER itr;
+
 			__config_iterator_data( &av, &itr );
 
 			// get the next line
 			if( ( rv = config_get_line( fh, &av ) ) < 0 )
 				break;
 
+			// copy the value from the next line
+			tlen = av.vlen;
+			memcpy( valcpy, av.vptr, tlen );
+			valcpy[tlen] = '\0';
+
 			if( av.blank )
 			{
-				av.vlen = 0;
-				av.vptr[0] = '\0';
-				ptr = av.vptr;
+				ptr = valcpy;
+				*ptr = '\0';
 				tlen = 0;
 			}
 			else
 			{
-				tlen = av.vlen + 1;
-				ptr = av.vptr + av.vlen;
+				ptr = valcpy + tlen;
 				*ptr++ = ' ';
+				tlen++;
 			}
 
 			while( __config_iterator_next( &itr, &arg, &alen ) == 0 )
 			{
+				if( ( tlen + alen ) > AVP_MAX_VAL )
+				{
+					err( "Arguments too long - result would be %d bytes (max %d).",
+						( tlen + alen ), AVP_MAX_VAL );
+					return -1;
+				}
+
+				av.vptr = itertmp;
+
 				// drop the arg on the end
 				memcpy( ptr, arg, alen );
 				ptr[alen] = '\0';
 				// fix the vlen
 				av.vlen = tlen + alen;
+
+				debug( "Config iterator calling: %s = %s", av.aptr, av.vptr );
 
 				lrv = __config_handle_line( &av );
 
@@ -511,9 +571,6 @@ int config_read_file( char *path )
 {
 	FILE *fh = NULL;
 
-	debug( "Opening config file %s, section %s",
-		path, context->section->name );
-
 	// die on not reading main config file, warn on others
 	if( !( fh = fopen( path, "r" ) ) )
 	{
@@ -532,9 +589,6 @@ int config_read_url( char *url )
 {
 	CURLWH ch;
 	int ret;
-
-	debug( "Opening config url '%s', section %s",
-		url, context->section->name );
 
 	memset( &ch, 0, sizeof( CURLWH ) );
 
@@ -643,6 +697,11 @@ int config_read( char *inpath, WORDS *w )
 		ret = _proc->strict;
 		goto Read_Done;
 	}
+
+	debug( "Opening config %s '%s', section '%s', %d arg%s.",
+		( context->is_url ) ? "url" : "file", path,
+		context->section->name, context->argc,
+		( context->argc == 1 ) ? "" : "s" );
 
 	// so go do it
 	if( context->is_url )
@@ -1000,6 +1059,13 @@ PROC_CTL *config_defaults( char *app_name, char *conf_dir )
 	XsetcfFlag( _proc, READ_URL );
 	XsetcfFlag( _proc, URL_INC_URL );
 	// but not: sec include non-sec, read non-sec, validate
+
+	// set up the arg substitution regex
+	if( regcomp( &arg_subs_rgx, ARG_SUBS_REGEX, REG_EXTENDED ) != 0 )
+	{
+		fatal( "Failed to compile args substitution regex." );
+		return NULL;
+	}
 
 	return _proc;
 }

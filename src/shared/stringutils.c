@@ -181,6 +181,7 @@ int str_nlen( char *src, int max )
 	return max;
 }
 
+
 int strqwords( WORDS *w, char *src, int len, char sep )
 {
 	register char *p = src;
@@ -292,7 +293,7 @@ int strqwords( WORDS *w, char *src, int len, char sep )
 
 
 
-int strwords( WORDS *w, char *src, int len, char sep )
+int strwords_multi( WORDS *w, char *src, int len, char sep, int8_t multi )
 {
 	register char *p = src;
 	register char *q = NULL;
@@ -330,7 +331,12 @@ int strwords( WORDS *w, char *src, int len, char sep )
 		if( ( q = memchr( p, sep, l ) ) )
 		{
 			w->len[i++] = q - p;
-			*q++ = '\0';
+			if( multi )
+				while( *q == sep )
+					*q++ = '\0';
+			else
+				*q++ = '\0';
+
 			l -= q - p;
 			p = q;
 		}

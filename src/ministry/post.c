@@ -12,8 +12,18 @@
 
 int post_handle_init( HTREQ *req )
 {
-	req->post->obj = mem_new_host( req->sin, MIN_NETBUF_SZ );
+	HOST *h = mem_new_host( req->sin, MIN_NETBUF_SZ );
+
+	req->post->obj = h;
 	req->text = strbuf_resize( req->text, 64 );
+
+	h->type = ((DTYPE *) req->path->arg)->nt;
+
+	if( net_set_host_parser( h, 0, 1 ) )
+	{
+		warn( "Could not select host parsers for POST callback." );
+		return -1;
+	}
 
 	return 0;
 }
@@ -21,19 +31,62 @@ int post_handle_init( HTREQ *req )
 
 int post_handle_finish( HTREQ *req )
 {
-	// bleat about any unprocessed data?
+	HOST *h = (HOST *) req->post->obj;
+	IOBUF *b = h->net->in;
+
+	if( !h )
+	{
+		debug( "There was no host! (finish)" );
+		return -1;
+	}
+
+	// this happens most times, due to the
+	// hwmk check in post_handle_data
+	if( b->len )
+		data_parse_buf( h, b );
+
+	// then free up the host
 	mem_free_host( (HOST **) &(req->post->obj) );
+
 	return 0;
 }
 
 
 int post_handle_data( HTREQ *req )
 {
-	DTYPE *dt = (DTYPE *) req->path->arg;
+	HOST *h = (HOST *) req->post->obj;
+	IOBUF *b = h->net->in;
+	const char *p = req->post->data;
+	int len, l = req->post->bytes;
+
+	if( !h )
+		return -1;
+
+	//debug( "Saw %d new bytes.", l );
+
+	while( l > 0 )
+	{
+		if( ( l + b->len ) > b->sz )
+			len = b->sz - b->len - 1;
+		else
+			len = l;
+
+		if( !len )
+			break;
+
+		memcpy( b->buf + b->len, p, len );
+		b->len += len;
+		b->buf[b->len] = '\0';
+
+		p += len;
+		l -= len;
+
+		data_parse_buf( h, b );
+	}
 
 	strbuf_printf( req->text, "Received %ld bytes.", req->post->total );
+	//debug( "There were %d bytes left over after the callback.", b->len );
 
-	notice( "Saw %ld bytes of %s post.", req->post->bytes , dt->name );
 	return 0;
 }
 

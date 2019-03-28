@@ -24,6 +24,7 @@ typedef struct metrics_control		MET_CTL;
 
 typedef struct net_in_port			NET_PORT;
 typedef struct net_type				NET_TYPE;
+typedef struct net_prefix           NET_PFX;
 typedef struct stat_config			ST_CFG;
 typedef struct stat_thread_ctl		ST_THR;
 typedef struct stat_threshold		ST_THOLD;

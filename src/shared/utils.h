@@ -81,6 +81,7 @@ struct av_pair
 	int						vlen;
 	int						status;
 	int						blank;
+	int						doFree;
 };
 
 

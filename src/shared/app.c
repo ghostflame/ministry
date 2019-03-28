@@ -195,6 +195,9 @@ void app_ready( void )
 	// run mem check / prealloc
 	mem_startup( );
 
+	// and any iplists
+	iplist_init( );
+
 	thread_throw_named( &loop_timer, NULL, 0, "timer_loop" );
 }
 

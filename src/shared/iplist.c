@@ -252,6 +252,8 @@ int iplist_append_net( IPLIST *l, IPNET *n )
 	uint32_t hval;
 	int add = 0;
 
+	n->list = l;
+
 	// hosts are different - check for dupes
 	if( n->bits == 32 )
 	{
@@ -332,6 +334,73 @@ void iplist_add( IPLIST *l )
 	l->next = _iplist->lists;
 	_iplist->lists = l;
 	_iplist->lcount++;
+}
+
+
+
+
+void iplist_init( void )
+{
+	uint32_t i;
+	IPLIST *l;
+	IPNET *n;
+
+	for( l = _iplist->lists; l; l = l->next )
+	{
+		if( l->text )
+		{
+
+			for( n = l->nets; n; n = n->next )
+				if( !n->text )
+				{
+					n->text = l->text;
+					n->tlen = l->tlen;
+				}
+
+			for( i = 0; i < l->hashsz; i++ )
+				for( n = l->ips[i]; n; n = n->next )
+					if( !n->text )
+					{
+						n->text = l->text;
+						n->tlen = l->tlen;
+					}
+		}
+
+		l->init_done = 1;
+	}
+}
+
+
+int iplist_set_text( IPLIST *l, char *str, int len )
+{
+	if( !l )
+	{
+		warn( "No iplist provided." );
+		return -1;
+	}
+
+	if( l->init_done )
+	{
+		warn( "Cannot set text on iplist %s - it has been init'd.",
+			l->name );
+		return -2;
+	}
+
+	if( l->text )
+	{
+		warn( "Text already set on list %s: '%s'",
+			( l->name ) ? l->name : "unknown", l->text );
+		free( l->text );
+		l->tlen = 0;
+	}
+
+	if( str && !len )
+		len = strlen( str );
+
+	if( str )
+		l->text = str_copy( str, len );
+
+	return 0;
 }
 
 
@@ -419,6 +488,11 @@ int iplist_config_line( AVP *av )
 	{
 		_iplist_cfg_set = 1;
 		return iplist_add_entry( l, IPLIST_NEITHER, av->vptr, av->vlen );
+	}
+	else if( attIs( "text" ) )
+	{
+		_iplist_cfg_set = 1;
+		iplist_set_text( l, av->vptr, av->vlen );
 	}
 	else if( attIs( "done" ) )
 	{

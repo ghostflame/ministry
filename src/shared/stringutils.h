@@ -97,9 +97,12 @@ int str_nlen( char *src, int max );
 // break up potentially quoted string by delimiter
 int strqwords( WORDS *w, char *src, int len, char sep );
 
-// break up a string by delimiter
-int strwords( WORDS *w, char *src, int len, char sep );
+// break up a string by delimiter*
+int strwords_multi( WORDS *w, char *src, int len, char sep, int8_t multi );
 
+// with and without multi separate behaviour
+#define strwords( _w, _s, _l, _c )		strwords_multi( _w, _s, _l, _c, 0 )
+#define strmwords( _w, _s, _l, _c )		strwords_multi( _w, _s, _l, _c, 1 )
 
 
 

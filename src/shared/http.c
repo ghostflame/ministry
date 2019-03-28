@@ -28,7 +28,7 @@ HTPATH *http_find_callback( const char *url, int rlen, HTHDLS *hd )
 
 	for( p = hd->list; p; p = p->next )
 	{
-		debug( "Comparing url '%s' against path '%s'", url, p->path );
+		//debug( "Comparing url '%s' against path '%s'", url, p->path );
 		if( p->plen == rlen && !memcmp( p->path, url, rlen ) )
 			return p;
 	}
@@ -282,7 +282,7 @@ int http_send_response( HTREQ *req )
 
 	if( req->sent )
 	{
-		warn( "http_send_response called twice." );
+		notice( "http_send_response called twice." );
 		return ret;
 	}
 
@@ -315,7 +315,7 @@ void http_request_complete( void *cls, HTTP_CONN *conn,
 	if( !( req = (HTREQ *) *arg ) )
 		return;
 
-	debug( "Complete with req arg value as %p.", req );
+	//debug( "Complete with req arg value as %p.", req );
 
 	if( req->sent == 0 )
 		http_send_response( req );
@@ -338,12 +338,10 @@ int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
 	HTHDLS *hd;
 	int rlen;
 
-	debug( "Req: %p|%p|%d  %s -> %s", con_cls, *con_cls, *upload_data_size, method, url );
-
 	// WHISKEY TANGO FOXTROT, libmicrohttpd?
-	if( ((int64_t) *con_cls) < 0xff )
+	if( ((int64_t) *con_cls) < 0x1ff )
 	{
-		warn( "Flattening bizarre arg value %p.", *con_cls );
+		//debug( "Flattening bizarre arg value %p.", *con_cls );
 		*con_cls = NULL;
 	}
 
@@ -424,7 +422,13 @@ int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
 					req->err = 1;
 			}
 			else
+			{
+				notice( "All done, sending response." );
 				http_send_response( req );
+			}
+
+			// say we have processed the data
+			*upload_data_size = 0;
 
 			return MHD_YES;
 	}
@@ -581,8 +585,8 @@ HTTP_CTL *http_config_defaults( void )
 	h->port            = DEFAULT_HTTP_PORT;
 	h->addr            = NULL;
 	h->stats           = 1;
-	//h->flags           = MHD_USE_THREAD_PER_CONNECTION|MHD_USE_POLL|MHD_USE_DEBUG|MHD_USE_ERROR_LOG;
-	h->flags           = MHD_USE_THREAD_PER_CONNECTION|MHD_USE_POLL;
+	h->flags           = MHD_USE_THREAD_PER_CONNECTION|MHD_USE_POLL|MHD_USE_DEBUG|MHD_USE_ERROR_LOG;
+	//h->flags           = MHD_USE_THREAD_PER_CONNECTION|MHD_USE_POLL;
 
 	h->enabled         = 0;
 	h->ssl->enabled    = 0;

@@ -91,7 +91,7 @@ void metrics_sort_attrs( METAL *a )
 	METAT *m;
 
 	// sort them
-	mem_sort_list( (void **) a->ats, a->atct, metrics_cmp_attrs );
+	mem_sort_list( (void **) &(a->ats), a->atct, metrics_cmp_attrs );
 
 	// normalise the ordering
 	for( m = a->ats; m; m = m->next )
