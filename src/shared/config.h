@@ -67,25 +67,6 @@ struct config_context
 	int						argc;
 };
 
-struct config_iterator
-{
-	char		*	data;
-	int				dlen;
-
-	int64_t			start;
-	int64_t			finish;
-	int64_t			step;
-	int64_t			val;
-
-	int				numeric;
-	int				flen;
-	char			fmtbuf[16];
-	char			numbuf[32];
-
-	WORDS			w;
-	int				curr;
-};
-
 
 // main control structure
 struct process_control

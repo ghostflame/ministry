@@ -93,6 +93,8 @@ int strbuf_add( BUF *b, char *str, int len );
 // get string length, up to a maximum
 int str_nlen( char *src, int max );
 
+// substitute args into strings, using %\d%
+int strsub( char **ptr, int *len, int argc, char **argv, int *argl );
 
 // break up potentially quoted string by delimiter
 int strqwords( WORDS *w, char *src, int len, char sep );

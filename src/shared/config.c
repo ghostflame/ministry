@@ -20,64 +20,17 @@ CSECT config_sections[CONF_SECT_MAX];
 
 #define CFG_VV_FLAGS	(VV_AUTO_VAL|VV_LOWER_ATT|VV_REMOVE_UDRSCR)
 
-regex_t arg_subs_rgx;
-#define ARG_SUBS_REGEX	"^(.*?)%([1-9]+)%(.*)$"
 
 /*
  * Matches arg substitutions of the form:
  * %N% where N <= argc
  */
-int config_args_substitute( char **sptr, int *len )
+int config_args_substitute( AVP *av )
 {
-	regmatch_t mtc[4];
-	int i, l, c = 0;
-	char *r, *s;
-
-	l = *len;
-
-	if( !context->argc || l < 3 )
+	if( !context->argc || av->vlen < 3 )
 		return 0;
 
-	// start with a copy
-	s = str_copy( *sptr, *len );
-
-	// args are indexed from 1
-
-	while( regexec( &arg_subs_rgx, s, 4, mtc, 0 ) == 0 )
-	{
-		// stomp on the %'s
-		s[mtc[1].rm_eo] = '\0';
-		s[mtc[2].rm_eo] = '\0';
-
-		// read the number section
-		i = atoi( s + mtc[2].rm_so );
-
-		if( i > context->argc )
-		{
-			warn( "Config substitution references non-existent arg %d, aborting.", i );
-			return c;
-		}
-
-		// args are 0-indexed
-		i--;
-
-		// get the new length
-		l = mtc[1].rm_eo + context->argl[i] + ( mtc[3].rm_eo - mtc[3].rm_so );
-		r = (char *) allocz( l + 1 );
-		snprintf( r, l + 1, "%s%s%s", s, context->argv[i], s + mtc[3].rm_so );
-
-		free( s );
-		s = r;
-		c++;
-	}
-
-	if( c > 0 )
-		debug( "Config substitutions (%d): (%s) -> (%s)", c, *sptr, s );
-
-	*sptr = s;
-	*len  = l;
-
-	return c;
+	return strsub( &(av->vptr), &(av->vlen), context->argc, context->argv, context->argl );
 }
 
 
@@ -138,7 +91,7 @@ int config_get_line( FILE *f, AVP *av )
 		if( av->status == VV_LINE_ATTVAL )
 		{
 			// but do args substitution first
-			if( config_args_substitute( &(av->vptr), &(av->vlen) ) > 0 )
+			if( config_args_substitute( av ) > 0 )
 				av->doFree = 1;
 
 			return 0;
@@ -179,7 +132,6 @@ int config_bool( AVP *av )
 CCTXT *config_make_context( char *path, WORDS *w )
 {
 	CCTXT *ctx, *parent = context;
-	char *str;
 	int i;
 
 	ctx = (CCTXT *) allocz( sizeof( CCTXT ) );
@@ -194,8 +146,7 @@ CCTXT *config_make_context( char *path, WORDS *w )
 		ctx->argv = (char **) allocz( ctx->argc * sizeof( char * ) );
 		for( i = 1; i < w->wc; i++ )
 		{
-			str = str_copy( w->wd[i], w->len[i] );
-			ctx->argv[i-1] = str;
+			ctx->argv[i-1] = str_copy( w->wd[i], w->len[i] );
 			ctx->argl[i-1] = w->len[i];
 		}
 	}
@@ -332,101 +283,6 @@ char *config_relative_path( char *inpath )
 
 
 
-int __config_iterator_next( CITER *iter, char **arg, int *len )
-{
-	if( iter->numeric )
-	{
-		if( iter->val > iter->finish )
-			return -1;
-
-		*len = snprintf( iter->numbuf, 32, iter->fmtbuf, iter->val );
-		*arg = iter->numbuf;
-
-		iter->val += iter->step;
-		return 0;
-	}
-
-	if( iter->curr >= iter->w.wc )
-		return -1;
-
-	*len = iter->w.len[iter->curr];
-	*arg = iter->w.wd[iter->curr];
-
-	iter->curr++;
-	return 0;
-}
-
-void __config_iterator_clean( CITER *iter )
-{
-	free( iter->data );
-	memset( iter, 0, sizeof( CITER ) );
-}
-
-
-void __config_iterator_data( AVP *av, CITER *iter )
-{
-	int64_t itmp;
-
-	memset( iter, 0, sizeof( CITER ) );
-	iter->step = 1;
-
-	iter->data = str_copy( av->vptr, av->vlen );
-	iter->dlen = av->vlen;
-
-	// original AV now safe again
-
-	strmwords( &(iter->w), iter->data, iter->dlen, ' ' );
-
-	// spot a range: XX - YY [ZZ]
-	if( ( iter->w.wc == 3 || iter->w.wc == 4 )
-	 && !strcmp( iter->w.wd[1], "-" )
-	 && ( parse_number( iter->w.wd[0], &(iter->start),  NULL ) != NUM_INVALID )
-	 && ( parse_number( iter->w.wd[2], &(iter->finish), NULL ) != NUM_INVALID ) )
-	{
-		// reverse backwards lists
-		if( iter->start > iter->finish )
-		{
-			itmp = iter->start;
-			iter->start = iter->finish;
-			iter->finish = itmp;
-		}
-
-		// get the longest number
-		itmp = snprintf( iter->numbuf, 32, "%ld", iter->finish );
-		iter->flen = (int) itmp;
-		itmp = snprintf( iter->numbuf, 32, "%ld", iter->start );
-		if( itmp > iter->flen )
-			iter->flen = (int) itmp;
-
-		// and set the format
-		snprintf( iter->fmtbuf, 16, "%%0%dld", iter->flen );
-
-		if( iter->w.wc == 4 )
-		{
-			if( parse_number( iter->w.wd[3], &itmp, NULL ) == NUM_INVALID )
-				warn( "Invalid step value '%s' - ignoring.", iter->w.wd[3] );
-			else
-			{
-
-				if( itmp == 0 )
-					warn( "Invalid step value 0 - ignoring." );
-				else
-					// and take the abs value of the step
-					iter->step = llabs( itmp );
-			}
-		}
-
-		iter->val = iter->start;
-		iter->numeric = 1;
-
-		debug( "Config numeric iterator, from %ld to %ld, step %ld.",
-			iter->start, iter->finish, iter->step );
-	}
-}
-
-
-
-
 int __config_handle_line( AVP *av )
 {
 	int ret = 0;
@@ -474,50 +330,45 @@ int __config_read_file( FILE *fh )
 		// repeat the next line based on other args
 		if( !strcasecmp( av.aptr, "foreach" ) )
 		{
-			char *arg, *ptr, valcpy[AVP_MAX_VAL], itertmp[AVP_MAX_VAL];
-			int tlen, alen;
-			CITER itr;
+			ITER *it = iter_init( NULL, av.vptr, av.vlen );
+			char *vcpy, *vtmp, *arg;
+			int alen, vlen;
 
-			__config_iterator_data( &av, &itr );
-
-			// get the next line
-			if( ( rv = config_get_line( fh, &av ) ) < 0 )
+			// get our next line
+			if( ( rv = config_get_line( fh, &av ) ) )
 				break;
 
-			// copy the value from the next line
-			tlen = av.vlen;
-			memcpy( valcpy, av.vptr, tlen );
-			valcpy[tlen] = '\0';
+			// we need two copies because processing
+			// may alter the input string, and we need
+			// to keep replaying it
+			vlen = av.vlen;
+			vcpy = (char *) allocz( vlen + 2 );
+			vtmp = (char *) allocz( vlen + iter_longest( it ) + 2 );
 
+			memcpy( vcpy, av.vptr, av.vlen );
+			vcpy[av.vlen] = '\0';
+
+			// blanks have an autoassigned '1' we want to ignore
+			// if you really want a 1 with arguments, put a 1
 			if( av.blank )
-			{
-				ptr = valcpy;
-				*ptr = '\0';
-				tlen = 0;
-			}
+				vlen = 0;
 			else
+			 	vtmp[vlen++] = ' ';
+
+			// run while arguments...
+			while( iter_next( it, &arg, &alen ) == 0 )
 			{
-				ptr = valcpy + tlen;
-				*ptr++ = ' ';
-				tlen++;
-			}
+				// copy the base - might be 0, might be base + space
+				memcpy( vtmp, vcpy, vlen );
+				// add the latest arg
+				memcpy( vtmp + vlen, arg, alen );
 
-			while( __config_iterator_next( &itr, &arg, &alen ) == 0 )
-			{
-				if( ( tlen + alen ) > AVP_MAX_VAL )
-				{
-					err( "Arguments too long - result would be %d bytes (max %d).",
-						( tlen + alen ), AVP_MAX_VAL );
-					return -1;
-				}
+				// point the av struct at it
+				av.vptr = vtmp;
+				av.vlen = vlen + alen;
 
-				av.vptr = itertmp;
-
-				// drop the arg on the end
-				memcpy( ptr, arg, alen );
-				ptr[alen] = '\0';
-				// fix the vlen
-				av.vlen = tlen + alen;
+				// and cap it
+				vtmp[av.vlen] = '\0';
 
 				debug( "Config iterator calling: %s = %s", av.aptr, av.vptr );
 
@@ -533,7 +384,9 @@ int __config_read_file( FILE *fh )
 				}
 			}
 
-			__config_iterator_clean( &itr );
+			iter_clean( it, 1 );
+			free( vcpy );
+			free( vtmp );
 
 			if( ret )
 				break;
@@ -1059,13 +912,6 @@ PROC_CTL *config_defaults( char *app_name, char *conf_dir )
 	XsetcfFlag( _proc, READ_URL );
 	XsetcfFlag( _proc, URL_INC_URL );
 	// but not: sec include non-sec, read non-sec, validate
-
-	// set up the arg substitution regex
-	if( regcomp( &arg_subs_rgx, ARG_SUBS_REGEX, REG_EXTENDED ) != 0 )
-	{
-		fatal( "Failed to compile args substitution regex." );
-		return NULL;
-	}
 
 	return _proc;
 }

@@ -63,6 +63,7 @@
 #include "loop.h"
 #include "stringutils.h"
 #include "utils.h"
+#include "iter.h"
 #include "curlw.h"
 #include "regexp.h"
 #include "net.h"

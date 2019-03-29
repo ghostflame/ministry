@@ -1,7 +1,7 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-FILES  = log utils stringutils regexp curlw net iplist target io mem thread config loop http app
-HEADS  = log utils stringutils regexp curlw net iplist target io mem thread config loop http app run
+FILES  = log utils stringutils iter regexp curlw net iplist target io mem thread config loop http app
+HEADS  = log utils stringutils iter regexp curlw net iplist target io mem thread config loop http app run
 
 VERS  ?= 0.1.0
 RKV    = app_shared.a
