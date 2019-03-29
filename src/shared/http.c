@@ -440,25 +440,25 @@ int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
 
 
 
-int http_ssl_load_file( SSL_FILE *sf, char *type )
+int http_tls_load_file( TLS_FILE *sf, char *type )
 {
 	char desc[32];
 
 	sf->type = str_dup( type, 0 );
 
-	snprintf( desc, 32, "SSL %s file", sf->type );
+	snprintf( desc, 32, "TLS %s file", sf->type );
 
-	sf->len = MAX_SSL_FILE_SIZE;
+	sf->len = MAX_TLS_FILE_SIZE;
 
 	return read_file( sf->path, &(sf->content), &(sf->len), 1, desc );
 }
 
 
 
-int http_ssl_setup( SSL_CONF *s )
+int http_tls_setup( TLS_CONF *s )
 {
-	if( http_ssl_load_file( &(s->cert), "cert" )
-	 || http_ssl_load_file( &(s->key),  "key"  ) )
+	if( http_tls_load_file( &(s->cert), "cert" )
+	 || http_tls_load_file( &(s->key),  "key"  ) )
 		return -1;
 
 	return 0;
@@ -469,16 +469,16 @@ int http_ssl_setup( SSL_CONF *s )
 // stomp on our password/length
 void http_clean_password( HTTP_CTL *h )
 {
-	if( h->ssl->password )
+	if( h->tls->password )
 	{
-		if( h->ssl->passlen )
-			memset( (void *) h->ssl->password, 0, h->ssl->passlen );
+		if( h->tls->passlen )
+			memset( (void *) h->tls->password, 0, h->tls->passlen );
 
-		free( (void *) h->ssl->password );
+		free( (void *) h->tls->password );
 	}
 
-	h->ssl->password = NULL;
-	h->ssl->passlen = 0;
+	h->tls->password = NULL;
+	h->tls->passlen = 0;
 }
 
 
@@ -496,18 +496,18 @@ int http_start( void )
 		return 0;
 	}
 
-	if( h->ssl->enabled )
+	if( h->tls->enabled )
 	{
-		if( http_ssl_setup( h->ssl ) )
+		if( http_tls_setup( h->tls ) )
 		{
 			err( "Failed to load TLS certificates." );
 			http_clean_password( h );
 			return -1;
 		}
 
-		port = h->ssl->port;
+		port = h->tls->port;
 		h->proto = "https";
-		flag_add( h->flags, MHD_USE_SSL );
+		flag_add( h->flags, MHD_USE_TLS );
 	}
 	else
 	{
@@ -523,7 +523,9 @@ int http_start( void )
 
 	MHD_set_panic_func( h->calls->panic, (void *) h );
 
-	h->server = MHD_start_daemon( h->flags, 0,
+	if( h->tls->enabled )
+	{
+		h->server = MHD_start_daemon( h->flags, 0,
 			NULL, NULL,
 			h->calls->handler,               (void *) h,
 			mop( SOCK_ADDR ),                (struct sockaddr *) h->sin,
@@ -533,13 +535,30 @@ int http_start( void )
 			mop( CONNECTION_LIMIT ),         h->conns_max,
 			mop( PER_IP_CONNECTION_LIMIT ),  h->conns_max_ip,
 			mop( CONNECTION_TIMEOUT ),       h->conns_tmout,
-			mop( HTTPS_MEM_KEY ),            (const char *) h->ssl->key.content,
+			mop( HTTPS_MEM_KEY ),            (const char *) h->tls->key.content,
+			mop( HTTPS_MEM_CERT ),           (const char *) h->tls->cert.content,
 #if MIN_MHD_PASS > 0
-			mop( HTTPS_KEY_PASSWORD ),       (const char *) h->ssl->password,
+			mop( HTTPS_KEY_PASSWORD ),       (const char *) h->tls->password,
 #endif
-			mop( HTTPS_MEM_CERT ),           (const char *) h->ssl->cert.content,
+			mop( HTTPS_PRIORITIES ),         (const char *) h->tls->priorities,
 			mop( END )
 		);
+	}
+	else
+	{
+		h->server = MHD_start_daemon( h->flags, 0,
+			NULL, NULL,
+			h->calls->handler,               (void *) h,
+			mop( SOCK_ADDR ),                (struct sockaddr *) h->sin,
+			mop( URI_LOG_CALLBACK ),         h->calls->reqlog, NULL,
+			mop( EXTERNAL_LOGGER ),          h->calls->log, (void *) h,
+			mop( NOTIFY_COMPLETED ),         h->calls->complete, NULL,
+			mop( CONNECTION_LIMIT ),         h->conns_max,
+			mop( PER_IP_CONNECTION_LIMIT ),  h->conns_max_ip,
+			mop( CONNECTION_TIMEOUT ),       h->conns_tmout,
+			mop( END )
+		);
+	}
 
 	// clean up the password variable
 	http_clean_password( h );
@@ -576,7 +595,7 @@ HTTP_CTL *http_config_defaults( void )
 	HTTP_CTL *h;
 
 	h                  = (HTTP_CTL *) allocz( sizeof( HTTP_CTL ) );
-	h->ssl             = (SSL_CONF *) allocz( sizeof( SSL_CONF ) );
+	h->tls             = (TLS_CONF *) allocz( sizeof( TLS_CONF ) );
 	h->calls           = (HTTP_CB *) allocz( sizeof( HTTP_CB ) );
 
 	h->conns_max       = DEFAULT_HTTP_CONN_LIMIT;
@@ -585,11 +604,16 @@ HTTP_CTL *http_config_defaults( void )
 	h->port            = DEFAULT_HTTP_PORT;
 	h->addr            = NULL;
 	h->stats           = 1;
-	h->flags           = MHD_USE_THREAD_PER_CONNECTION|MHD_USE_POLL|MHD_USE_DEBUG|MHD_USE_ERROR_LOG;
-	//h->flags           = MHD_USE_THREAD_PER_CONNECTION|MHD_USE_POLL;
+	h->flags           = MHD_USE_THREAD_PER_CONNECTION|MHD_USE_INTERNAL_POLLING_THREAD|MHD_USE_AUTO|MHD_USE_TCP_FASTOPEN;
+#ifdef DEBUG
+	h->flags 		   = h->flags | MHD_USE_DEBUG|MHD_USE_ERROR_LOG;
+#endif
 
 	h->enabled         = 0;
-	h->ssl->enabled    = 0;
+	h->tls->enabled    = 0;
+
+	// only allow 1.3, 1.2 by default
+	h->tls->priorities = str_copy( "SECURE256:!VERS-TLS1.1:!VERS-TLS1.0:!VERS-SSL3.0:%SAFE_RENEGOTIATION", 0 );
 
 	h->calls->handler  = &http_request_handler;
 	h->calls->panic    = &http_server_panic;
@@ -629,14 +653,12 @@ HTTP_CTL *http_config_defaults( void )
 }
 
 
-#define dIs( _str )		!strcasecmp( d, _str )
 
 int http_config_line( AVP *av )
 {
 	HTTP_CTL *h = _http;
-	char *d;
 
-	if( !( d = strchr( av->aptr, '.' ) ) )
+	if( !memchr( av->aptr, '.', av->alen ) )
 	{
 		if( attIs( "port" ) )
 		{
@@ -682,61 +704,71 @@ int http_config_line( AVP *av )
 		return 0;
 	}
 
-	// then its conns. or ssl.
-	d++;
+	// then its conns. or tls.
 
 	if( !strncasecmp( av->aptr, "conns.", 6 ) )
 	{
-		if( dIs( "max" ) )
+		av->alen -= 6;
+		av->aptr += 6;
+
+		if( attIs( "max" ) )
 		{
 			h->conns_max = (unsigned int) strtoul( av->vptr, NULL, 10 );
 		}
-		else if( dIs( "maxPerIp" ) || dIs( "maxPerHost" ) )
+		else if( attIs( "maxPerIp" ) || attIs( "maxPerHost" ) )
 		{
 			h->conns_max_ip = (unsigned int) strtoul( av->vptr, NULL, 10 );
 		}
-		else if( dIs( "timeout" ) || dIs( "tmout" ) )
+		else if( attIs( "timeout" ) || attIs( "tmout" ) )
 		{
 			h->conns_tmout = (unsigned int) strtoul( av->vptr, NULL, 10 );
 		}
 		else
 			return -1;
 	}
-	else if( !strncasecmp( av->aptr, "ssl.", 4 ) )
+	else if( !strncasecmp( av->aptr, "tls.", 4 ) )
 	{
-		if( dIs( "certFile" ) || dIs( "cert" ) )
+		av->alen -= 4;
+		av->aptr += 4;
+
+		if( attIs( "certFile" ) || attIs( "cert" ) )
 		{
-			if( h->ssl->cert.path )
-				free( h->ssl->cert.path );
-			h->ssl->cert.path = str_copy( av->vptr, av->vlen );
+			if( h->tls->cert.path )
+				free( h->tls->cert.path );
+			h->tls->cert.path = str_copy( av->vptr, av->vlen );
 		}
-		else if( dIs( "keyFile" ) || dIs( "key" ) )
+		else if( attIs( "keyFile" ) || attIs( "key" ) )
 		{
-			if( h->ssl->key.path )
-				free( h->ssl->key.path );
-			h->ssl->key.path = str_copy( av->vptr, av->vlen );
+			if( h->tls->key.path )
+				free( h->tls->key.path );
+			h->tls->key.path = str_copy( av->vptr, av->vlen );
 		}
-		else if( dIs( "keyPass" ) || dIs( "pass" ) || dIs( "password" ) )
+		else if( attIs( "keyPass" ) || attIs( "pass" ) || attIs( "password" ) )
 		{
 		  	http_clean_password( h );
 			
 			if( !valIs( "null" ) && !valIs( "-" ) )
 			{
-				h->ssl->password = str_copy( av->vptr, av->vlen );
-				h->ssl->passlen  = (uint16_t) av->vlen;
+				h->tls->password = str_copy( av->vptr, av->vlen );
+				h->tls->passlen  = (uint16_t) av->vlen;
 			}
 		}
-		else if( dIs( "enable" ) )
+		else if( attIs( "priorities" ) )
 		{
-			h->ssl->enabled = config_bool( av );
-
-			if( h->ssl->enabled )
-				debug( "SSL enabled on http server." );
+			free( h->tls->priorities );
+			h->tls->priorities = str_copy( av->vptr, av->vlen );
 		}
-		else if( dIs( "port" ) )
+		else if( attIs( "enable" ) )
 		{
-			h->ssl->port = (uint16_t) strtoul( av->vptr, NULL, 10 );
-			debug( "SSL port set to %hu.", h->ssl->port );
+			h->tls->enabled = config_bool( av );
+
+			if( h->tls->enabled )
+				debug( "TLS enabled on http server." );
+		}
+		else if( attIs( "port" ) )
+		{
+			h->tls->port = (uint16_t) strtoul( av->vptr, NULL, 10 );
+			debug( "HTTPS port set to %hu.", h->tls->port );
 		}
 	}
 	else
@@ -745,7 +777,7 @@ int http_config_line( AVP *av )
 	return 0;
 }
 
-#undef dIs
+
 
 int http_ask_password( void )
 {
@@ -764,9 +796,9 @@ int http_ask_password( void )
 
 	// clear out any existing
 	http_clean_password( h );
-	h->ssl->password = (volatile char *) allocz( MAX_SSL_PASS_SIZE );
+	h->tls->password = (volatile char *) allocz( MAX_TLS_PASS_SIZE );
 
-	printf( "Enter SSL key password: " );
+	printf( "Enter TLS key password: " );
 	fflush( stdout );
 
 	// save terminal settings
@@ -780,8 +812,8 @@ int http_ask_password( void )
 	tcsetattr( STDIN_FILENO, TCSANOW, &newt );
 
 	// go get it - buffer is already zerod
-	bsz = MAX_SSL_PASS_SIZE;
-	l = (int) getline( (char **) &(h->ssl->password), &bsz, stdin );
+	bsz = MAX_TLS_PASS_SIZE;
+	l = (int) getline( (char **) &(h->tls->password), &bsz, stdin );
 
 	// and fix the terminal
 	tcsetattr( STDIN_FILENO, TCSANOW, &oldt );
@@ -794,13 +826,13 @@ int http_ask_password( void )
 
 	// stomp on any newline and carriage return
 	// and get the length
-	p = h->ssl->password + l - 1;
+	p = h->tls->password + l - 1;
 	while( l > 0 && ( *p == '\n' || *p == '\r' ) )
 	{
 		l--;
 		*p-- = '\0';
 	}
-	h->ssl->passlen = l;
+	h->tls->passlen = l;
 
 	return 0;
 }

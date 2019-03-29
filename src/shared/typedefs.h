@@ -55,8 +55,8 @@ typedef struct http_req_data        HTREQ;
 typedef struct http_post_state      HTTP_POST;
 
 typedef struct http_callbacks       HTTP_CB;
-typedef struct http_ssl             SSL_CONF;
-typedef struct http_ssl_file        SSL_FILE;
+typedef struct http_tls             TLS_CONF;
+typedef struct http_tls_file        TLS_FILE;
 
 typedef struct curlw_handle         CURLWH;
 

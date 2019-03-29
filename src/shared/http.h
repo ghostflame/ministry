@@ -30,8 +30,8 @@ typedef void (*cb_RequestLogger) ( void *cls, const char *uri, HTTP_CONN *conn )
 
 #define DEFAULT_STATS_BUF_SZ			8192
 
-#define MAX_SSL_FILE_SIZE				65536
-#define MAX_SSL_PASS_SIZE				512
+#define MAX_TLS_FILE_SIZE				65536
+#define MAX_TLS_PASS_SIZE				512
 
 
 enum http_method_shortcuts
@@ -42,7 +42,7 @@ enum http_method_shortcuts
 };
 
 
-struct http_ssl_file
+struct http_tls_file
 {
 	const char				*	type;
 	char					*	content;
@@ -51,11 +51,12 @@ struct http_ssl_file
 };
 
 
-struct http_ssl
+struct http_tls
 {
-	SSL_FILE					key;
-	SSL_FILE					cert;
+	TLS_FILE					key;
+	TLS_FILE					cert;
 	volatile char			*	password;
+	char					*	priorities;
 	int							enabled;
 
 	uint16_t					port;
@@ -144,7 +145,7 @@ struct http_control
 	HTTP_SVR			*	server;
 
 	HTTP_CB				*	calls;
-	SSL_CONF			*	ssl;
+	TLS_CONF			*	tls;
 
 	HTHDLS				*	get_h;
 	HTHDLS				*	post_h;
