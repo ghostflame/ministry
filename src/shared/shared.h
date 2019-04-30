@@ -73,6 +73,7 @@
 #include "io.h"
 #include "thread.h"
 #include "http.h"
+#include "http_calls.h"
 #include "config.h"
 #include "app.h"
 

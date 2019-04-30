@@ -165,78 +165,6 @@ void http_log( void *arg, const char *fm, va_list ap )
 	info( "[HTTP] %s", lbuf );
 }
 
-#define _jstr( s )				strbuf_aprintf( b, "%s\r\n", s )
-#define _jfielda( p, f )		strbuf_aprintf( b, p "\"%s\": [\r\n", f )
-#define _jfieldo( p, f )		strbuf_aprintf( b, p "\"%s\": {\r\n", f )
-#define _jfields( p, f, v )		strbuf_aprintf( b, p "\"%s\": \"%s\",\r\n", f, v )
-#define _jfieldd( p, f, v )		strbuf_aprintf( b, p "\"%s\": %f,\r\n", f, v )
-#define _jfield4( p, f, v )		strbuf_aprintf( b, p "\"%s\": %d,\r\n", f, v )
-#define _jfield8( p, f, v )		strbuf_aprintf( b, p "\"%s\": %ld,\r\n", f, v )
-#define _jfieldu( p, f, v )		strbuf_aprintf( b, p "\"%s\": %u,\r\n", f, v )
-#define _jfieldl( p, f, v )		strbuf_aprintf( b, p "\"%s\": %lu,\r\n", f, v )
-#define _jprunecma( )			if( strbuf_lastchar( b ) == '\n' ) { strbuf_chopn( b, 3 ); }
-
-#define _jmtype( n, mc )		snprintf( tmp, 16, "%s_calls", n ); \
-								_jfieldl( "      ", tmp, mc.ctr ); \
-								snprintf( tmp, 16, "%s_total", n ); \
-								_jfieldl( "      ", tmp, mc.sum )
-
-
-int http_handler_stats( HTREQ *req )
-{
-#ifdef MTYPE_TRACING
-	char tmp[16];
-#endif
-	MTSTAT ms;
-	BUF *b;
-	int j;
-
-	b = ( req->text = strbuf_resize( req->text, _http->statsBufSize ) );
-
-	_jstr( "{" );
-
-	_jfields( "  ", "app", _proc->app_name );
-	_jfieldd( "  ", "uptime", get_uptime( ) );
-	_jfield8( "  ", "mem", mem_curr_kb( ) );
-
-	_jfielda( "  ", "memtypes" );
-
-	for( j = 0; j < _proc->mem->type_ct; j++ )
-	{
-		if( mem_type_stats( j, &ms ) != 0 )
-			continue;
-
-		_jstr( "    {" );
-		_jfields( "      ", "type", ms.name );
-		_jfieldu( "      ", "free", ms.ctrs.fcount );
-		_jfieldu( "      ", "alloc", ms.ctrs.total );
-		_jfieldl( "      ", "kb", ms.bytes >> 10 );
-#ifdef MTYPE_TRACING
-		_jmtype( "alloc",  ms.ctrs.all );
-		_jmtype( "freed",  ms.ctrs.fre );
-		_jmtype( "preall", ms.ctrs.pre );
-		_jmtype( "refill", ms.ctrs.ref );
-#endif
-		_jprunecma( );
-		_jstr( "    }," );
-	}
-	_jprunecma( );
-	_jstr( "  ]" );
-	_jstr( "}" );
-
-	return 0;
-}
-
-#undef _jstr
-#undef _jfielda
-#undef _jfieldo
-#undef _jfields
-#undef _jfieldd
-#undef _jfield4
-#undef _jfield8
-#undef _jfieldu
-#undef _jfieldl
-#undef _jprunecma
 
 
 int __http_cmp_handlers( const void *h1, const void *h2 )
@@ -247,31 +175,6 @@ int __http_cmp_handlers( const void *h1, const void *h2 )
 	return ( p1->plen < p2->plen ) ? -1 : ( p1->plen == p2->plen ) ? 0 : 1;
 }
 
-
-void __http_handler_usage_type( HTHDLS *hd, BUF *b )
-{
-	HTPATH *p;
-
-	if( hd->count )
-	{
-		strbuf_aprintf( b, "[%s]\n", hd->method );
-
-		for( p = hd->list; p; p = p->next )
-			strbuf_aprintf( b, "%-16s %s\n", p->path, p->desc );
-	}
-}
-
-
-int http_handler_usage( HTREQ *req )
-{
-	req->text = strbuf_resize( req->text, 8100 );
-	strbuf_empty( req->text );
-
-	__http_handler_usage_type( _http->get_h,  req->text );
-	__http_handler_usage_type( _http->post_h, req->text );
-
-	return 0;
-}
 
 
 int http_send_response( HTREQ *req )
@@ -323,8 +226,8 @@ void http_request_complete( void *cls, HTTP_CONN *conn,
 	if( req->post && req->post->valid )
 		(req->path->fini)( req );
 
+	info( "Freeing request %p", req );
 	mem_free_request( &req );
-
 	*arg = NULL;
 }
 
@@ -338,10 +241,24 @@ int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
 	HTHDLS *hd;
 	int rlen;
 
+	req = (HTREQ *) *con_cls;
+	info( "Pointers:\n\t%p  con_cls\n\t%p  *con_cls\n\t%p  cls\n\t%p  conn\n\t%p  _http",
+		con_cls, req, cls, conn, _http );
+
+	// this is leaking massively!
+	// TODO find out what the hell is in con_cls
+
 	// WHISKEY TANGO FOXTROT, libmicrohttpd?
 	if( ((int64_t) *con_cls) < 0x1ff )
 	{
-		//debug( "Flattening bizarre arg value %p.", *con_cls );
+		//info( "Flattening bizarre arg value %p.", *con_cls );
+		*con_cls = NULL;
+	}
+	// what the hell is it putting in con_cls, that's supposed to be
+	// null?
+	else if( req->check != HTTP_CLS_CHECK )
+	{
+		//info( "Flattening weird con_cls %p.", *con_cls );
 		*con_cls = NULL;
 	}
 
@@ -395,14 +312,19 @@ int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
 			(req->path->init)( req );
 			req->first = 1;
 		}
+
+		//info( "Got req (%d).", req->meth );
 	}
 
 	switch( req->meth )
 	{
 		case HTTP_METH_GET:
+			//info( "Get (%d)", req->first );
 			// gets are easy
 			(req->path->req)( req );
+			//info( "Called back (%d)", req->text->len );
 			http_send_response( req );
+			//info( "Sent." );
 			return MHD_YES;
 
 		case HTTP_METH_POST:
@@ -423,7 +345,7 @@ int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
 			}
 			else
 			{
-				notice( "All done, sending response." );
+				//notice( "All done, sending response." );
 				http_send_response( req );
 			}
 
@@ -515,10 +437,6 @@ int http_start( void )
 		h->proto = "http";
 	}
 
-	// you want to disable this in config if you are writing your own
-	if( h->stats )
-		http_add_handler( "/stats", "Internal stats", NULL, HTTP_METH_GET, &http_handler_stats, NULL, NULL );
-
 	h->sin->sin_port = htons( port );
 
 	MHD_set_panic_func( h->calls->panic, (void *) h );
@@ -604,9 +522,9 @@ HTTP_CTL *http_config_defaults( void )
 	h->port            = DEFAULT_HTTP_PORT;
 	h->addr            = NULL;
 	h->stats           = 1;
-	h->flags           = MHD_USE_THREAD_PER_CONNECTION|MHD_USE_INTERNAL_POLLING_THREAD|MHD_USE_AUTO|MHD_USE_TCP_FASTOPEN;
+	h->flags           = MHD_USE_THREAD_PER_CONNECTION|MHD_USE_INTERNAL_POLLING_THREAD|MHD_USE_AUTO|MHD_USE_TCP_FASTOPEN|MHD_USE_ERROR_LOG;
 #ifdef DEBUG
-	h->flags 		   = h->flags | MHD_USE_DEBUG|MHD_USE_ERROR_LOG;
+	h->flags           = h->flags | MHD_USE_DEBUG;
 #endif
 
 	h->enabled         = 0;
@@ -645,9 +563,6 @@ HTTP_CTL *http_config_defaults( void )
 	h->get_h->method  = "GET";
 	h->post_h         = (HTHDLS *) allocz( sizeof( HTHDLS ) );
 	h->post_h->method = "POST";
-
-	// and our default - help
-	http_add_handler( "/", "Usage information", NULL, HTTP_METH_GET, &http_handler_usage, NULL, NULL );
 
 	return _http;
 }

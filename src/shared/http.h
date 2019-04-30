@@ -94,9 +94,12 @@ struct http_post_state
 	int						valid;
 };
 
+#define HTTP_CLS_CHECK		0xdeadbeefdeadbeef
+
 struct http_req_data
 {
 	HTREQ				*	next;
+	uint64_t				check;
 	HTPATH				*	path;
 	HTTP_CONN			*	conn;
 	BUF					*	text;

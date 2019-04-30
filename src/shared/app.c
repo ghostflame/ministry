@@ -131,6 +131,8 @@ int app_start( int writePid )
 	if( set_limits( ) )
 		fatal( "Failed to set limits." );
 
+	http_calls_init( );
+
 	log_start( );
 
 	notice( "%s v%s starting up.", _proc->app_upper, _proc->version );

@@ -762,7 +762,9 @@ void mem_free_iobp( IOBP **b )
 
 HTREQ *mem_new_request( void )
 {
-	return (HTREQ *) mtype_new( _mem->htreq );
+	HTREQ *r = mtype_new( _mem->htreq );
+	r->check = HTTP_CLS_CHECK;
+	return r;
 }
 
 
