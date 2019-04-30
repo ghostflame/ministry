@@ -371,6 +371,11 @@ void io_buf_next( TGT *t )
 	if( !( b = io_buf_fetch( t ) ) )
 		return;
 
+	// don't send anything if we are
+	// silenced
+	if( _io->silent )
+		b->len = 0;
+
 	t->sock->out = b;
 	t->curr_len  = b->len;
 }
@@ -479,6 +484,31 @@ int64_t io_send_file( TGT *t )
 
 
 
+// io control
+int io_silencing( HTREQ *req )
+{
+	AVP *av = &(req->post->kv);
+
+	if( strcasecmp( av->aptr, "silence" ) )
+		return 0;
+
+	if( config_bool( av ) )
+	{
+		// enable IO
+		_io->silent = 0;
+		notice( "Metrics IO silenced." );
+	}
+	else
+	{
+		// disable IO
+		_io->silent = 1;
+		notice( "Metrics IO unsilenced." );
+	}
+
+	return 0;
+}
+
+
 
 // processing control
 
@@ -500,6 +530,9 @@ int io_init( void )
 	}
 
 	io_lock_init( i->idlock );
+
+	// to-do - silencing list
+	http_add_control( "silence", "Silence all metrics output", NULL, io_silencing, NULL );
 
 	return 0;
 }

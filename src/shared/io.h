@@ -87,6 +87,7 @@ struct io_control
 	io_lock_t				idlock;
 
 	int						stdout_count;
+	int						silent;
 };
 
 
@@ -109,6 +110,9 @@ io_fn io_send_net_tcp;
 io_fn io_send_net_udp;
 io_fn io_send_stdout;
 io_fn io_send_file;
+
+// io control
+http_callback io_silencing;
 
 // sockets
 SOCK *io_make_sock( int32_t insz, int32_t outsz, struct sockaddr_in *peer );

@@ -28,9 +28,10 @@ typedef void (*cb_RequestLogger) ( void *cls, const char *uri, HTTP_CONN *conn )
 #define DEFAULT_HTTP_CONN_IP_LIMIT		64
 #define DEFAULT_HTTP_CONN_TMOUT			10
 
-#define DEFAULT_STATS_BUF_SZ			8192
+#define DEFAULT_POST_BUF_SZ				0x4000	// 16k
+#define DEFAULT_STATS_BUF_SZ			0x2000	// 8k
 
-#define MAX_TLS_FILE_SIZE				65536
+#define MAX_TLS_FILE_SIZE				0x10000	// 64k
 #define MAX_TLS_PASS_SIZE				512
 
 
@@ -88,6 +89,8 @@ struct http_post_state
 	const char			*	data;	// this post
 	size_t					bytes;	// this post size
 
+	AVP						kv;		// key-value for post-processor
+
 	size_t					total;
 
 	int						calls;
@@ -105,6 +108,7 @@ struct http_req_data
 	BUF					*	text;
 	struct sockaddr_in	*	sin;
 	HTTP_POST			*	post;
+	HTTP_PPROC			*	pproc;
 	int						code;
 	int						meth;
 	int						err;
@@ -121,11 +125,13 @@ struct http_path
 	http_callback		*	req;
 	http_callback		*	init;
 	http_callback		*	fini;
+	IPLIST				*	srcs;
 	char				*	path;
 	char				*	desc;
 	void				*	arg;
 	int64_t					hits;
 	int						plen;
+	int						ctl;
 };
 
 
@@ -153,6 +159,9 @@ struct http_control
 	HTHDLS				*	get_h;
 	HTHDLS				*	post_h;
 
+	IPLIST				*	web_ips;
+	IPLIST				*	ctl_ips;
+
 	unsigned int			flags;
 	unsigned int			hflags;
 	unsigned int			conns_max;
@@ -179,7 +188,8 @@ struct http_control
 
 sort_fn __http_cmp_handlers;
 
-int http_add_handler( char *path, char *desc, void *arg, int method, http_callback *fp, http_callback *init, http_callback *fini );
+int http_add_handler( char *path, char *desc, void *arg, int method, http_callback *fp, http_callback *init, http_callback *fini, IPLIST *srcs );
+int http_add_control( char *path, char *desc, void *arg, http_callback *fp, IPLIST *srcs );
 
 int http_start( void );
 void http_stop( void );

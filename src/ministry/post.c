@@ -107,7 +107,8 @@ int post_init( void )
 		snprintf( buf1, 24, "/submit/%s", d->name );
 		snprintf( buf2, 24, "Submit %s data", d->name );
 
-		http_add_handler( buf1, buf2, d, HTTP_METH_POST, &post_handle_data, &post_handle_init, &post_handle_finish );
+		// TODO - submission control lists
+		http_add_handler( buf1, buf2, d, HTTP_METH_POST, &post_handle_data, &post_handle_init, &post_handle_finish, NULL );
 	}
 
 	return 0;

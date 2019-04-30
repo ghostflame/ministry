@@ -22,6 +22,22 @@ HTTP_CTL *_http = NULL;
 
 
 
+// called by multiple places, including potentially as policy callback
+int http_access_policy( void *cls, const struct sockaddr *addr, socklen_t addrlen )
+{
+	IPLIST *srcs = (IPLIST *) cls;
+	struct in_addr ina;
+	IPNET *n = NULL;
+
+	ina = ((struct sockaddr_in *) addr)->sin_addr;
+
+	if( iplist_test_ip( srcs, ina.s_addr, &n ) == IPLIST_NEGATIVE )
+		return MHD_NO;
+
+	return MHD_YES;
+}
+
+
 HTPATH *http_find_callback( const char *url, int rlen, HTHDLS *hd )
 {
 	HTPATH *p;
@@ -37,7 +53,7 @@ HTPATH *http_find_callback( const char *url, int rlen, HTHDLS *hd )
 }
 
 
-int http_add_handler( char *path, char *desc, void *arg, int method, http_callback *fp, http_callback *init, http_callback *fini )
+int __http_add_handler( char *path, char *desc, void *arg, int method, http_callback *fp, http_callback *init, http_callback *fini, IPLIST *srcs, int ctl )
 {
 	HTHDLS *hd;
 	HTPATH *p;
@@ -81,11 +97,14 @@ int http_add_handler( char *path, char *desc, void *arg, int method, http_callba
 	p->path  = str_dup( path, len );
 	p->desc  = str_dup( desc, 0 );
 	p->arg   = arg;
+	p->ctl   = ctl;
 	p->list  = hd;
+	p->srcs  = srcs;
 
 	p->req   = fp;
 	p->init  = init;
 	p->fini  = fini;
+
 
 	p->next  = hd->list;
 	hd->list = p;
@@ -95,20 +114,32 @@ int http_add_handler( char *path, char *desc, void *arg, int method, http_callba
 
 	// re-sort that list
 	mem_sort_list( (void **) &(hd->list), hd->count, __http_cmp_handlers );
-	debug( "Added %s handler: (%d/%hu) %s  ->  %s", hd->method, hd->count, _http->hdlr_count, p->path, p->desc );
+	debug( "Added %s%s handler: (%d/%hu) %s  ->  %s", hd->method,
+	        ( p->ctl ) ? " (CONTROL)" : "",
+	        hd->count, _http->hdlr_count, p->path, p->desc );
 
 	return 0;
 }
 
 
-
-
-
-int http_unused_policy( void *cls, const struct sockaddr *addr, socklen_t addrlen )
+int http_add_handler( char *path, char *desc, void *arg, int method, http_callback *fp, http_callback *init, http_callback *fini, IPLIST *srcs )
 {
-	info( "Called: http_unused_policy." );
-	return MHD_YES;
+	return __http_add_handler( path, desc, arg, method, fp, init, fini, srcs, 0 );
 }
+
+int http_add_control( char *path, char *desc, void *arg, http_callback *fp, IPLIST *srcs )
+{
+	char urlbuf[1024];
+
+	if( *path == '/' )
+		path++;
+
+	snprintf( urlbuf, 1024, "/control/%s", path );
+
+	return __http_add_handler( urlbuf, desc, arg, HTTP_METH_POST, fp, &http_calls_ctl_init, http_calls_ctl_done, srcs, 1 );
+}
+
+
 
 ssize_t http_unused_reader( void *cls, uint64_t pos, char *buf, size_t max )
 {
@@ -226,9 +257,26 @@ void http_request_complete( void *cls, HTTP_CONN *conn,
 	if( req->post && req->post->valid )
 		(req->path->fini)( req );
 
-	info( "Freeing request %p", req );
+	debug( "Freeing request %p", req );
 	mem_free_request( &req );
 	*arg = NULL;
+}
+
+
+int http_request_access_check( IPLIST *src, HTREQ *req, struct sockaddr *sa )
+{
+	if( !src )
+		return 1;
+
+	if( http_access_policy( src, sa, 0 ) != MHD_YES )
+	{
+		req->text = strbuf_create( "Access denied.", 0 );
+		req->code = MHD_HTTP_FORBIDDEN;
+		http_send_response( req );
+		return 0;
+	}
+
+	return 1;
 }
 
 
@@ -242,7 +290,7 @@ int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
 	int rlen;
 
 	req = (HTREQ *) *con_cls;
-	info( "Pointers:\n\t%p  con_cls\n\t%p  *con_cls\n\t%p  cls\n\t%p  conn\n\t%p  _http",
+	debug( "Pointers:\n\t%p  con_cls\n\t%p  *con_cls\n\t%p  cls\n\t%p  conn\n\t%p  _http",
 		con_cls, req, cls, conn, _http );
 
 	// this is leaking massively!
@@ -268,6 +316,7 @@ int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
 		req = mem_new_request( );
 		req->conn = conn;
 		req->code = MHD_HTTP_OK;
+		req->first = 1;
 
 		*con_cls = req;
 
@@ -300,17 +349,48 @@ int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
 			return MHD_YES;
 		}
 
-		hit_counter( req->path->hits );
-
 		ci = (union MHD_ConnectionInfo *) MHD_get_connection_info( conn, MHD_CONNECTION_INFO_CLIENT_ADDRESS );
 		req->sin = (struct sockaddr_in *) (ci->client_addr);
 
+		// do we have a separate ip list?
+		// check it's not the generic one
+		// see the commend below
+		if( req->path->srcs != _http->web_ips
+		 && http_request_access_check( req->path->srcs, req, ci->client_addr ) )
+			return MHD_YES;
+
+		hit_counter( req->path->hits );
+
 		if( req->meth == HTTP_METH_POST )
 		{
-			// and create the post data object
-			req->post = (HTTP_POST *) allocz( sizeof( HTTP_POST ) );
-			(req->path->init)( req );
-			req->first = 1;
+			// check this IP is allowed
+			if( req->path->ctl )
+			{
+				// do we have a controls ip check list?
+				// check it's not the generic one
+				//
+				// note, we've now done this twice, once checking
+				// against the generic list, once against the
+				// ctls list.  If a path passes the generic list
+				// in, we've already checked at access policy time,
+				// so we don't check again
+				//
+				// if the path passed the ctls list in, then we
+				// already checked against the controls one on the
+				// per-path check above - as that would not have
+				// equalled the generic list (unless it's the same
+				// list everywhere).
+				if( req->path->srcs != _http->ctl_ips
+				 && !http_request_access_check( _http->ctl_ips, req, ci->client_addr ) )
+					return MHD_YES;
+			}
+
+			if( req->first )
+			{
+				// and create the post data object
+				req->post = (HTTP_POST *) allocz( sizeof( HTTP_POST ) );
+				(req->path->init)( req );
+			}
 		}
 
 		//info( "Got req (%d).", req->meth );
@@ -340,8 +420,16 @@ int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
 
 			if( req->post->bytes )
 			{
-				if( (req->path->req)( req ) < 0 )
-					req->err = 1;
+				if( req->pproc )
+				{
+					if( MHD_post_process( req->pproc, upload_data, *upload_data_size ) != MHD_YES )
+						req->err = 1;
+				}
+				else
+				{
+					if( (req->path->req)( req ) < 0 )
+						req->err = 1;
+				}
 			}
 			else
 			{
@@ -358,6 +446,7 @@ int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
 	warn( "How did the request logic get here?" );
 	return MHD_NO;
 }
+
 
 
 
@@ -418,6 +507,10 @@ int http_start( void )
 		return 0;
 	}
 
+	// are we doing overall connect restriction?
+	if( !h->web_ips )
+		h->calls->policy = NULL;
+
 	if( h->tls->enabled )
 	{
 		if( http_tls_setup( h->tls ) )
@@ -444,7 +537,7 @@ int http_start( void )
 	if( h->tls->enabled )
 	{
 		h->server = MHD_start_daemon( h->flags, 0,
-			NULL, NULL,
+			h->calls->policy,                (void *) h->web_ips,
 			h->calls->handler,               (void *) h,
 			mop( SOCK_ADDR ),                (struct sockaddr *) h->sin,
 			mop( URI_LOG_CALLBACK ),         h->calls->reqlog, NULL,
@@ -534,8 +627,8 @@ HTTP_CTL *http_config_defaults( void )
 	h->tls->priorities = str_copy( "SECURE256:!VERS-TLS1.1:!VERS-TLS1.0:!VERS-SSL3.0:%SAFE_RENEGOTIATION", 0 );
 
 	h->calls->handler  = &http_request_handler;
+	h->calls->policy   = &http_access_policy;
 	h->calls->panic    = &http_server_panic;
-	h->calls->policy   = &http_unused_policy;
 	h->calls->reader   = &http_unused_reader;
 	h->calls->complete = &http_request_complete;
 	h->calls->rfree    = &http_unused_reader_free;

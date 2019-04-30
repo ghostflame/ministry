@@ -408,6 +408,8 @@ int iplist_set_text( IPLIST *l, char *str, int len )
 
 IPL_CTL *iplist_config_defaults( void )
 {
+	char buf[2048];
+	IPLIST *lo;
 	int rv;
 
 	// make our ip network regex
@@ -416,12 +418,21 @@ IPL_CTL *iplist_config_defaults( void )
 
 	if( ( rv = regcomp( _iplist->netrgx, IPLIST_REGEX_NET, REG_EXTENDED|REG_ICASE ) ) )
 	{
-		char errbuf[2048];
-
-		regerror( rv, _iplist->netrgx, errbuf, 2048 );
-		fatal( "Cannot make IP address regex -- %s", errbuf );
+		regerror( rv, _iplist->netrgx, buf, 2048 );
+		fatal( "Cannot make IP address regex -- %s", buf );
 		return NULL;
 	}
+
+	// create a default, localhost-only iplist
+	lo = (IPLIST *) allocz( sizeof( IPLIST ) );
+	lo->name = IPLIST_LOCALONLY;
+	lo->def = IPLIST_NEGATIVE;
+	lo->verbose = 0;
+	lo->hashsz = 3;
+	snprintf( buf, 2048, "127.0.0.1" );
+	iplist_add_entry( lo, IPLIST_POSITIVE, buf, 9 );
+	iplist_set_text( lo, "Matches only localhost.", 0 );
+	iplist_add( lo );
 
 	return _iplist;
 }

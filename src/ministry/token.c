@@ -317,7 +317,8 @@ int token_init( void )
 		iplist_explain( ts->filter, NULL, NULL, "Tokens", NULL );
 	}
 
-	http_add_handler( "/tokens", "Issues tokens", NULL, HTTP_METH_GET, &token_url_handler, NULL, NULL );
+	// no filters?  or do we match the requires-tokens list?
+	http_add_handler( "/tokens", "Issues tokens", NULL, HTTP_METH_GET, &token_url_handler, NULL, NULL, NULL );
 	return 0;
 }
 

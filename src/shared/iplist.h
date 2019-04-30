@@ -20,6 +20,8 @@
 #define IPLIST_NEGATIVE		0
 #define IPLIST_NOMATCH		-1
 
+#define IPLIST_LOCALONLY	"localhost-only"
+
 
 struct iplist_net
 {

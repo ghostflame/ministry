@@ -95,7 +95,7 @@ void __http_calls_usage_type( HTHDLS *hd, BUF *b )
 		strbuf_aprintf( b, "[%s]\n", hd->method );
 
 		for( p = hd->list; p; p = p->next )
-			strbuf_aprintf( b, "%-16s %s\n", p->path, p->desc );
+			strbuf_aprintf( b, "%-24s %s\n", p->path, p->desc );
 	}
 }
 
@@ -112,13 +112,72 @@ int http_calls_usage( HTREQ *req )
 }
 
 
+
+// controls
+int http_calls_ctl_list( HTREQ *req )
+{
+	HTHDLS *h = _proc->http->post_h;
+	HTPATH *p;
+
+	req->text = strbuf_resize( req->text, 8100 );
+	strbuf_empty( req->text );
+
+	for( p = h->list; p; p = p->next )
+		if( p->ctl )
+			strbuf_aprintf( req->text, "%-24s %s\n", p->path, p->desc );
+
+	return 0;
+}
+
+
+
+
+
+
+int http_calls_ctl_init( HTREQ *req )
+{
+	req->pproc = MHD_create_post_processor( req->conn, DEFAULT_POST_BUF_SZ,
+	                 &http_calls_ctl_iterator, req );
+
+	return 0;
+}
+
+int http_calls_ctl_iterator( void *cls, enum MHD_ValueKind kind, const char *key, const char *filename,
+        const char *content_type, const char *transfer_encoding, const char *data, uint64_t off, size_t size )
+{
+	HTREQ *req = (HTREQ *) cls;
+
+	req->post->kv.aptr = (char *) key;
+	req->post->kv.alen = strlen( key );
+
+	req->post->kv.vptr = (char *) data;
+	req->post->kv.vlen = (int) size;
+
+	if( (req->path->req)( req ) < 0 )
+		return MHD_NO;
+
+	return MHD_YES;
+}
+
+
+int http_calls_ctl_done( HTREQ *req )
+{
+	MHD_destroy_post_processor( req->pproc );
+	req->pproc = NULL;
+
+	return 0;
+}
+
+
+
+// setup
 void http_calls_init( void )
 {
-	http_add_handler( "/", "Usage information", NULL, HTTP_METH_GET, &http_calls_usage, NULL, NULL );
+	http_add_handler( "/", "Usage information", NULL, HTTP_METH_GET, &http_calls_usage, NULL, NULL, NULL );
 
 	// you should disable this if you are writing your own
 	if( _proc->http->stats )
-		http_add_handler( "/stats", "Internal stats", NULL, HTTP_METH_GET, &http_calls_stats, NULL, NULL );
+		http_add_handler( "/stats", "Internal stats", NULL, HTTP_METH_GET, &http_calls_stats, NULL, NULL, NULL );
 }
 
 
