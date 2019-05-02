@@ -79,12 +79,28 @@ int8_t log_get_level( char *str )
 }
 
 
-int log_set_level( int8_t level )
+int log_set_level( int8_t level, int8_t both )
 {
-	if( level < 0 || level >= LOG_LEVEL_MAX )
+	// used as a reset to orig
+	if( level < 0 )
+	{
+		if( both )
+		{
+			_logger->level = _logger->orig_level;
+			return 0;
+		}
+		else
+			return -1;
+	}
+
+	if( level >= LOG_LEVEL_MAX )
 		return -1;
 
 	_logger->level = level;
+
+	if( both )
+		_logger->orig_level = level;
+
 	return 0;
 }
 
@@ -280,9 +296,35 @@ void log_reopen( int sig )
 }
 
 
+int log_ctl_setdebug( HTREQ *req )
+{
+	AVP *av = &(req->post->kv);
+
+	if( strcasecmp( av->aptr, "set-debug" ) )
+		return 0;
+
+	if( config_bool( av ) )
+	{
+		// set us to debug
+		log_set_level( LOG_LEVEL_DEBUG, 0 );
+		notice( "Run-time debug logging enabled." );
+	}
+	else
+	{
+		// set us back to where we where
+		log_set_level( -1, 1 );
+		notice( "Run-time debug logging disabled." );
+	}
+
+	return 0;
+}
+
 
 int log_start( void )
 {
+	// add a callback to toggle debugging
+	http_add_control( "set-debug", "Set/unset debug logging", NULL, log_ctl_setdebug, NULL );
+
 	if( !_logger )
 		return -1;
 
@@ -316,6 +358,7 @@ LOG_CTL *log_config_defaults( void )
 	// default to stdout
 	_logger->filename       = strdup( "-" );
 	_logger->level          = LOG_LEVEL_INFO;
+	_logger->orig_level     = LOG_LEVEL_INFO;
 	_logger->ok_fd          = fileno( stdout );
 	_logger->err_fd         = fileno( stderr );
 	_logger->use_std        = 1;

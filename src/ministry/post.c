@@ -32,13 +32,15 @@ int post_handle_init( HTREQ *req )
 int post_handle_finish( HTREQ *req )
 {
 	HOST *h = (HOST *) req->post->obj;
-	IOBUF *b = h->net->in;
+	IOBUF *b;
 
 	if( !h )
 	{
 		debug( "There was no host! (finish)" );
 		return -1;
 	}
+
+	b = h->net->in;
 
 	// this happens most times, due to the
 	// hwmk check in post_handle_data

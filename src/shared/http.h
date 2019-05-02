@@ -85,6 +85,7 @@ struct http_callbacks
 struct http_post_state
 {
 	void				*	obj;
+	void				*	objFree;// this object will be freed by post handler
 
 	const char			*	data;	// this post
 	size_t					bytes;	// this post size
@@ -143,8 +144,8 @@ struct http_handlers
 };
 
 
-#define lock_hits( )		pthread_spin_lock(   &(_http->hitlock) )
-#define unlock_hits( )		pthread_spin_unlock( &(_http->hitlock) )
+#define lock_hits( )		pthread_mutex_lock(   &(_http->hitlock) )
+#define unlock_hits( )		pthread_mutex_unlock( &(_http->hitlock) )
 
 #define hit_counter( _p )	lock_hits( ); (_p)++; unlock_hits( )
 
@@ -170,7 +171,7 @@ struct http_control
 
 	struct sockaddr_in	*	sin;
 
-	pthread_spinlock_t		hitlock;
+	pthread_mutex_t			hitlock;
 
 	uint16_t				hdlr_count;
 

@@ -254,8 +254,18 @@ void http_request_complete( void *cls, HTTP_CONN *conn,
 	if( req->sent == 0 )
 		http_send_response( req );
 
-	if( req->post && req->post->valid )
-		(req->path->fini)( req );
+	if( req->post )
+	{
+		if( req->post->valid )
+			(req->path->fini)( req );
+
+		// free anything on the post object
+		if( req->post->objFree )
+		{
+			free( req->post->objFree );
+			req->post->objFree = NULL;
+		}
+	}
 
 	debug( "Freeing request %p", req );
 	mem_free_request( &req );
@@ -593,7 +603,7 @@ void http_stop( void )
 	if( h->server )
 	{
 		MHD_stop_daemon( h->server );
-		pthread_spin_destroy( &(h->hitlock) );
+		pthread_mutex_destroy( &(h->hitlock) );
 		notice( "Shut down %s server.", h->proto );
 	}
 }
@@ -640,7 +650,7 @@ HTTP_CTL *http_config_defaults( void )
 	h->calls->reqlog   = &http_log_request;
 
 	// lock for hits counters
-	pthread_spin_init( &(h->hitlock), PTHREAD_PROCESS_PRIVATE );
+	pthread_mutex_init( &(h->hitlock), NULL );
 
 	// make the address binding structure
 	sin = (struct sockaddr_in *) allocz( sizeof( struct sockaddr_in ) );

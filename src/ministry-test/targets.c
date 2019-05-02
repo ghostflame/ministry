@@ -30,20 +30,12 @@ int targets_start_one( TGT **tp )
 		return 0;
 	}
 
-	// do we have any metrics for this one?
-	if( !orig->enabled )
-	{
-		info( "Target %s was set, but is not enabled.", orig->name );
-		*tp = NULL;
-		return 0;
-	}
-
 	// make a new target, a clone of the original
 	t = (TGT *) allocz( sizeof( TGT ) );
 	memcpy( t, orig, sizeof( TGT ) );
 
 	// run an io loop
-	target_run_one( t, 0, 0 );
+	target_run_one( t, 0 );
 
 	// and store that in the p2p
 	*tp = t;

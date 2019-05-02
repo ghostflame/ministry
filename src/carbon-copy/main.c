@@ -29,7 +29,7 @@ or carbon-cache (or other copies of carbon-copy).\n\n" );
 void main_loop( void )
 {
 	// and the network io loops
-	target_run( 1 );
+	target_run( );
 
 	// throw the data listener loop
 	net_start_type( ctl->net->relay );

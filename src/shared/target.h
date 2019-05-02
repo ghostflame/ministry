@@ -89,9 +89,11 @@ struct target
 
 	// misc
 	io_lock_t				lock;
+	int64_t					bytes;
 	int						to_stdout;
 	int						enabled;
 	int						proto;
+	int						nlen;
 	int32_t					id;
 	uint16_t				port;
 
@@ -107,6 +109,16 @@ struct target_list
 
 	TGT					*	targets;
 	int						count;
+	int						enabled;
+};
+
+
+struct target_alter
+{
+	TGTL				*	list;
+	TGT					*	tgt;
+	int						state_set;
+	int						state;
 };
 
 
@@ -123,19 +135,24 @@ struct target_control
 
 
 // run targets (list is optional)
-int target_run_one( TGT *t, int enabled_check, int idx );
-int target_run_list( TGTL *list, int enabled_check );
-int target_run( int enabled_check );
+int target_run_one( TGT *t, int idx );
+int target_run_list( TGTL *list );
+int target_run( void );
 
 TGTL *target_list_all( void );
 TGTL *target_list_find( char *name );
 TGTL *target_list_create( char *name );
+TGT *target_list_search( TGTL *l, char *name, int len );
+void target_list_check_enabled( TGTL *l );
 
 TGT *target_create( char *list, char *name, char *proto, char *host, uint16_t port, char *type, int enabled );
 TGT *target_create_str( char *src, int len, char sep );
 
 void target_set_type_fn( target_cfg_fn *fp );
 void target_set_data_fn( target_cfg_fn *fp );
+
+http_callback target_http_toggle;
+http_callback target_http_list;
 
 throw_fn target_loop;
 

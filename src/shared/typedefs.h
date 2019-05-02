@@ -35,6 +35,7 @@ typedef struct io_buf_ptr           IOBP;
 
 typedef struct target               TGT;
 typedef struct target_list          TGTL;
+typedef struct target_alter         TGTALT;
 
 typedef struct iplist_net           IPNET;
 typedef struct iplist               IPLIST;

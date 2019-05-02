@@ -120,7 +120,7 @@ void targets_start( void )
 
 	// start each target set
 	for( s = ctl->tgt->sets; s; s = s->next )
-		target_run_list( s->targets, 0 );
+		target_run_list( s->targets );
 }
 
 

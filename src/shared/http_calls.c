@@ -178,6 +178,10 @@ void http_calls_init( void )
 	// you should disable this if you are writing your own
 	if( _proc->http->stats )
 		http_add_handler( "/stats", "Internal stats", NULL, HTTP_METH_GET, &http_calls_stats, NULL, NULL, NULL );
+
+	// add target control
+	http_add_handler( "/targets", "List metric targets", NULL, HTTP_METH_GET, &target_http_list, NULL, NULL, NULL );
+	http_add_control( "target", "Enable/disable target", NULL, &target_http_toggle, NULL );
 }
 
 

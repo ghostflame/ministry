@@ -816,7 +816,7 @@ void config_args( int ac, char **av, char *optstr, help_fn *hfp )
 				runf_add( RUN_DAEMON );
 				break;
 			case 'D':
-				log_set_level( LOG_LEVEL_DEBUG );
+				log_set_level( LOG_LEVEL_DEBUG, 1 );
 				runf_add( RUN_DEBUG );
 				break;
 			case 'V':
