@@ -78,12 +78,7 @@ conf_line_fn log_config_line;
 #define warn( ... )             LLNZN( WARN,   ## __VA_ARGS__ )
 #define notice( ... )           LLNZN( NOTICE, ## __VA_ARGS__ )
 #define info( ... )             LLNZN( INFO,   ## __VA_ARGS__ )
-
-#ifdef DEBUG
 #define debug( ... )            LLFLF( DEBUG,  ## __VA_ARGS__ )
-#else
-#define debug( ... )            (void) 0
-#endif
 
 
 #endif

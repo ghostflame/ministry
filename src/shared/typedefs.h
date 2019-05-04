@@ -68,6 +68,7 @@ typedef void loop_call_fn ( int64_t, void * );
 typedef void throw_fn ( THRD * );
 typedef int conf_line_fn ( AVP * );
 typedef int http_callback ( HTREQ * );
+typedef int http_reporter ( HTPATH *, void *arg, int64_t, int64_t );
 typedef void help_fn ( void );
 typedef int64_t io_fn( TGT * );
 typedef int target_cfg_fn( TGT *, char *, int );

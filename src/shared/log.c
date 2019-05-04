@@ -299,22 +299,26 @@ void log_reopen( int sig )
 int log_ctl_setdebug( HTREQ *req )
 {
 	AVP *av = &(req->post->kv);
+	int lvl = -1, both = 1;
+	char *str = "dis";
 
 	if( strcasecmp( av->aptr, "set-debug" ) )
 		return 0;
 
 	if( config_bool( av ) )
 	{
-		// set us to debug
-		log_set_level( LOG_LEVEL_DEBUG, 0 );
-		notice( "Run-time debug logging enabled." );
+		lvl = LOG_LEVEL_DEBUG;
+		both = 0;
+		str = "en";
 	}
-	else
-	{
-		// set us back to where we where
-		log_set_level( -1, 1 );
-		notice( "Run-time debug logging disabled." );
-	}
+
+	// set our new level
+	log_set_level( lvl, both );
+	notice( "Run-time debug logging %sabled.", str );
+
+	// and report back
+	req->text = strbuf_resize( req->text, 38 );
+	strbuf_printf( req->text, "Run-time debug logging %sabled.\n", str );
 
 	return 0;
 }
@@ -323,7 +327,7 @@ int log_ctl_setdebug( HTREQ *req )
 int log_start( void )
 {
 	// add a callback to toggle debugging
-	http_add_control( "set-debug", "Set/unset debug logging", NULL, log_ctl_setdebug, NULL );
+	http_add_control( "set-debug", "Set/unset debug logging", NULL, log_ctl_setdebug, NULL, 0 );
 
 	if( !_logger )
 		return -1;

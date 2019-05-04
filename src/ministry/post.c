@@ -94,6 +94,21 @@ int post_handle_data( HTREQ *req )
 
 
 
+int post_handler( HTREQ *req )
+{
+	switch( req->post->state )
+	{
+		case HTTP_POST_START:
+			return post_handle_init( req );
+		case HTTP_POST_BODY:
+			return post_handle_data( req );
+		case HTTP_POST_END:
+			return post_handle_finish( req );
+	}
+
+	return -1;
+}
+
 
 
 int post_init( void )
@@ -110,7 +125,7 @@ int post_init( void )
 		snprintf( buf2, 24, "Submit %s data", d->name );
 
 		// TODO - submission control lists
-		http_add_handler( buf1, buf2, d, HTTP_METH_POST, &post_handle_data, &post_handle_init, &post_handle_finish, NULL );
+		http_add_handler( buf1, buf2, d, HTTP_METH_POST, &post_handler, NULL, 0 );
 	}
 
 	return 0;

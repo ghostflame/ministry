@@ -53,7 +53,7 @@ HTPATH *http_find_callback( const char *url, int rlen, HTHDLS *hd )
 }
 
 
-int __http_add_handler( char *path, char *desc, void *arg, int method, http_callback *fp, http_callback *init, http_callback *fini, IPLIST *srcs, int ctl )
+int __http_add_handler( char *path, char *desc, void *arg, int method, http_callback *fp, IPLIST *srcs, int flags )
 {
 	HTHDLS *hd;
 	HTPATH *p;
@@ -97,14 +97,10 @@ int __http_add_handler( char *path, char *desc, void *arg, int method, http_call
 	p->path  = str_dup( path, len );
 	p->desc  = str_dup( desc, 0 );
 	p->arg   = arg;
-	p->ctl   = ctl;
+	p->flags = flags;
 	p->list  = hd;
 	p->srcs  = srcs;
-
-	p->req   = fp;
-	p->init  = init;
-	p->fini  = fini;
-
+	p->cb    = fp;
 
 	p->next  = hd->list;
 	hd->list = p;
@@ -115,19 +111,19 @@ int __http_add_handler( char *path, char *desc, void *arg, int method, http_call
 	// re-sort that list
 	mem_sort_list( (void **) &(hd->list), hd->count, __http_cmp_handlers );
 	debug( "Added %s%s handler: (%d/%hu) %s  ->  %s", hd->method,
-	        ( p->ctl ) ? " (CONTROL)" : "",
+	        ( p->flags & HTTP_FLAGS_CONTROL ) ? " (CONTROL)" : "",
 	        hd->count, _http->hdlr_count, p->path, p->desc );
 
 	return 0;
 }
 
 
-int http_add_handler( char *path, char *desc, void *arg, int method, http_callback *fp, http_callback *init, http_callback *fini, IPLIST *srcs )
+int http_add_handler( char *path, char *desc, void *arg, int method, http_callback *fp, IPLIST *srcs, int flags )
 {
-	return __http_add_handler( path, desc, arg, method, fp, init, fini, srcs, 0 );
+	return __http_add_handler( path, desc, arg, method, fp, srcs, flags );
 }
 
-int http_add_control( char *path, char *desc, void *arg, http_callback *fp, IPLIST *srcs )
+int http_add_control( char *path, char *desc, void *arg, http_callback *fp, IPLIST *srcs, int flags )
 {
 	char urlbuf[1024];
 
@@ -136,7 +132,7 @@ int http_add_control( char *path, char *desc, void *arg, http_callback *fp, IPLI
 
 	snprintf( urlbuf, 1024, "/control/%s", path );
 
-	return __http_add_handler( urlbuf, desc, arg, HTTP_METH_POST, fp, &http_calls_ctl_init, http_calls_ctl_done, srcs, 1 );
+	return __http_add_handler( urlbuf, desc, arg, HTTP_METH_POST, fp, srcs, flags|HTTP_FLAGS_CONTROL );
 }
 
 
@@ -151,20 +147,6 @@ void http_unused_reader_free( void *cls )
 {
 	info( "Called: http_unused_reader_free." );
 	return;
-}
-
-int http_unused_kv( void *cls, HTTP_VAL kind, const char *key, const char *value )
-{
-	info( "Called: http_unused_kv." );
-	return MHD_NO;
-}
-
-int http_unused_post( void *cls, HTTP_VAL kind, const char *key, const char *filename,
-                      const char *content_type, const char *transfer_encoding, const char *data,
-                      uint64_t off, size_t size )
-{
-	info( "Called: http_unused_post." );
-	return MHD_NO;
 }
 
 
@@ -230,6 +212,10 @@ int http_send_response( HTREQ *req )
 		resp = MHD_create_response_from_buffer( 0, "", MHD_RESPMEM_MUST_COPY );
 	}
 
+	// is it a json method?
+	if( req->path && req->path->flags & HTTP_FLAGS_JSON )
+		MHD_add_response_header( resp, MHD_HTTP_HEADER_CONTENT_TYPE, "application/json; charset=utf-8" );
+
 	ret = MHD_queue_response( req->conn, req->code, resp );
 	MHD_destroy_response( resp );
 
@@ -244,6 +230,7 @@ int http_send_response( HTREQ *req )
 void http_request_complete( void *cls, HTTP_CONN *conn,
 	void **arg, HTTP_CODE toe )
 {
+	int64_t nsec, bytes;
 	HTREQ *req;
 
 	if( !( req = (HTREQ *) *arg ) )
@@ -251,13 +238,22 @@ void http_request_complete( void *cls, HTTP_CONN *conn,
 
 	//debug( "Complete with req arg value as %p.", req );
 
+	bytes = ( req->text ) ? req->text->len : 0;
+
 	if( req->sent == 0 )
 		http_send_response( req );
 
 	if( req->post )
 	{
+		req->post->state = HTTP_POST_END;
+
 		if( req->post->valid )
-			(req->path->fini)( req );
+		{
+			if( req->path->flags & HTTP_FLAGS_CONTROL )
+				http_calls_ctl_done( req );
+			else
+				(req->path->cb)( req );
+		}
 
 		// free anything on the post object
 		if( req->post->objFree )
@@ -267,9 +263,17 @@ void http_request_complete( void *cls, HTTP_CONN *conn,
 		}
 	}
 
+	// call a reporter function if we have one
+	if( _http->rpt_fp && !( req->path->flags & HTTP_FLAGS_NO_REPORT ) )
+	{
+		nsec = get_time64( ) - req->start;
+		(_http->rpt_fp)( req->path, _http->rpt_arg, nsec, bytes );
+	}
+
 	debug( "Freeing request %p", req );
 	mem_free_request( &req );
 	*arg = NULL;
+
 }
 
 
@@ -295,9 +299,9 @@ int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
 	size_t *upload_data_size, void **con_cls )
 {
 	union MHD_ConnectionInfo *ci;
+	int rlen, is_ctl = 0;
 	HTREQ *req;
 	HTHDLS *hd;
-	int rlen;
 
 	req = (HTREQ *) *con_cls;
 	debug( "Pointers:\n\t%p  con_cls\n\t%p  *con_cls\n\t%p  cls\n\t%p  conn\n\t%p  _http",
@@ -327,6 +331,7 @@ int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
 		req->conn = conn;
 		req->code = MHD_HTTP_OK;
 		req->first = 1;
+		req->start = get_time64( );
 
 		*con_cls = req;
 
@@ -359,6 +364,9 @@ int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
 			return MHD_YES;
 		}
 
+		// is this a control call?
+		is_ctl = req->path->flags & HTTP_FLAGS_CONTROL;
+
 		ci = (union MHD_ConnectionInfo *) MHD_get_connection_info( conn, MHD_CONNECTION_INFO_CLIENT_ADDRESS );
 		req->sin = (struct sockaddr_in *) (ci->client_addr);
 
@@ -374,7 +382,7 @@ int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
 		if( req->meth == HTTP_METH_POST )
 		{
 			// check this IP is allowed
-			if( req->path->ctl )
+			if( is_ctl )
 			{
 				// do we have a controls ip check list?
 				// check it's not the generic one
@@ -399,7 +407,12 @@ int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
 			{
 				// and create the post data object
 				req->post = (HTTP_POST *) allocz( sizeof( HTTP_POST ) );
-				(req->path->init)( req );
+				req->post->state = HTTP_POST_START;
+
+				if( is_ctl )
+					http_calls_ctl_init( req );
+				else
+					(req->path->cb)( req );
 			}
 		}
 
@@ -411,7 +424,7 @@ int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
 		case HTTP_METH_GET:
 			//info( "Get (%d)", req->first );
 			// gets are easy
-			(req->path->req)( req );
+			(req->path->cb)( req );
 			//info( "Called back (%d)", req->text->len );
 			http_send_response( req );
 			//info( "Sent." );
@@ -430,6 +443,8 @@ int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
 
 			if( req->post->bytes )
 			{
+				req->post->state = HTTP_POST_BODY;
+
 				if( req->pproc )
 				{
 					if( MHD_post_process( req->pproc, upload_data, *upload_data_size ) != MHD_YES )
@@ -437,7 +452,7 @@ int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
 				}
 				else
 				{
-					if( (req->path->req)( req ) < 0 )
+					if( (req->path->cb)( req ) < 0 )
 						req->err = 1;
 				}
 			}
@@ -568,7 +583,7 @@ int http_start( void )
 	else
 	{
 		h->server = MHD_start_daemon( h->flags, 0,
-			NULL, NULL,
+			h->calls->policy,                (void *) h->web_ips,
 			h->calls->handler,               (void *) h,
 			mop( SOCK_ADDR ),                (struct sockaddr *) h->sin,
 			mop( URI_LOG_CALLBACK ),         h->calls->reqlog, NULL,
@@ -609,6 +624,14 @@ void http_stop( void )
 }
 
 
+// set a reporter function after an http call
+void http_set_reporter( http_reporter *fp, void *arg )
+{
+	_http->rpt_fp  = fp;
+	_http->rpt_arg = arg;
+}
+
+
 
 HTTP_CTL *http_config_defaults( void )
 {
@@ -642,9 +665,6 @@ HTTP_CTL *http_config_defaults( void )
 	h->calls->reader   = &http_unused_reader;
 	h->calls->complete = &http_request_complete;
 	h->calls->rfree    = &http_unused_reader_free;
-
-	h->calls->kv       = &http_unused_kv;
-	h->calls->post     = &http_unused_post;
 
 	h->calls->log      = &http_log;
 	h->calls->reqlog   = &http_log_request;

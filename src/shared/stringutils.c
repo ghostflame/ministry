@@ -113,9 +113,10 @@ BUF *strbuf_resize( BUF *b, uint32_t size )
 		b->space  = (char *) allocz( sz );
 		b->sz     = sz;
 		b->buf    = b->space;
-		b->len    = 0;
-		b->buf[0] = '\0';
 	}
+
+	b->len    = 0;
+	b->buf[0] = '\0';
 
 	return b;
 }

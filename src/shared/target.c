@@ -149,132 +149,6 @@ TGT *target_list_search( TGTL *l, char *name, int len )
 }
 
 
-// http interface
-
-void __target_http_list_one( BUF *b, TGT *t )
-{
-	strbuf_aprintf( b,
-		"{ \"name\": \"%s\", \"endpoint\": \"%s:%hu\", \"type\": \"%s\", \"bytes\": %ld }, ",
-		t->name, t->host, t->port, t->typestr, t->bytes );
-}
-
-
-void __target_http_list( BUF *b, int enval )
-{
-	int e, c;
-	TGTL *l;
-	TGT *t;
-
-	for( c = 0, l = _tgt->lists; l; l = l->next )
-	{
-		// see if we have anything in this list that matches
-		e = 0;
-		for( t = l->targets; t; t = t->next )
-			if( t->enabled == enval )
-			{
-				e = 1;
-				c++;	// to do with tidyup at the end
-				break;
-			}
-
-		if( e )
-		{
-			strbuf_aprintf( b, "\"%s\": [ ", l->name );
-			for( t = l->targets; t; t = t->next )
-			{
-				if( t->enabled == enval )
-					__target_http_list_one( b, t );
-			}
-			strbuf_chopn( b, 2 );
-			strbuf_aprintf( b, " ], " );
-		}
-	}
-
-	if( c > 0 )
-	{
-		strbuf_chopn( b, 2 );
-		strbuf_aprintf( b, " " );
-	}
-}
-
-
-int target_http_list( HTREQ *req )
-{
-	req->text = strbuf_resize( req->text, 32760 );
-
-	strbuf_printf( req->text, "{\"enabled\": { " );
-	__target_http_list( req->text, 1 );
-
-	strbuf_aprintf( req->text, "}, \"disabled\": { " );
-	__target_http_list( req->text, 0 );
-
-	strbuf_aprintf( req->text, "} }\n" );
-
-	return 0;
-}
-
-
-int target_http_toggle( HTREQ *req )
-{
-	AVP *av = &(req->post->kv);
-	TGTALT *ta;
-
-	if( !req->post->objFree )
-	{
-		req->post->objFree = (TGTALT *) allocz( sizeof( TGTALT ) );
-		req->text = strbuf( 250 );
-		strbuf_copy( req->text, "Target not found.\n", 0 );
-	}
-
-	ta = (TGTALT *) req->post->objFree;
-
-	if( !strcasecmp( av->aptr, "enabled" ) )
-	{
-		ta->state = config_bool( av );
-		ta->state_set = 1;
-	}
-	else if( !strcasecmp( av->aptr, "list" ) )
-	{
-		ta->list = target_list_find( av->vptr );
-	}
-	else if( !strcasecmp( av->aptr, "target" ) )
-	{
-		ta->tgt = target_list_search( ta->list, av->vptr, av->vlen );
-	}
-	else
-		return 0;
-
-	// do we have everything?
-	// set the state then
-	if( ta->list
-	 && ta->tgt
-	 && ta->state_set )
-	{
-		if( ta->tgt->enabled != ta->state )
-		{
-			ta->tgt->enabled = ta->state;
-
-			strbuf_printf( req->text, "Target %s/%s %sabled.\n",
-				ta->list->name, ta->tgt->name,
-				( ta->state ) ? "en" : "dis" );
-
-			notice( "Target %s/%s %sabled.",
-				ta->list->name, ta->tgt->name,
-				( ta->state ) ? "en" : "dis" );
-
-			target_list_check_enabled( ta->list );
-		}
-		else
-		{
-			strbuf_printf( req->text, "Target %s/%s was already %sabled.\n",
-				ta->list->name, ta->tgt->name,
-				( ta->state ) ? "en" : "dis" );
-		}
-	}
-
-	return 0;
-}
-
 
 
 
@@ -624,3 +498,132 @@ int target_config_line( AVP *av )
 	return 0;
 }
 
+
+
+
+
+// http interface
+
+void __target_http_list_one( BUF *b, TGT *t )
+{
+	strbuf_aprintf( b,
+		"{ \"name\": \"%s\", \"endpoint\": \"%s:%hu\", \"type\": \"%s\", \"bytes\": %ld }, ",
+		t->name, t->host, t->port, t->typestr, t->bytes );
+}
+
+
+void __target_http_list( BUF *b, int enval )
+{
+	int e, c;
+	TGTL *l;
+	TGT *t;
+
+	for( c = 0, l = _tgt->lists; l; l = l->next )
+	{
+		// see if we have anything in this list that matches
+		e = 0;
+		for( t = l->targets; t; t = t->next )
+			if( t->enabled == enval )
+			{
+				e = 1;
+				c++;	// to do with tidyup at the end
+				break;
+			}
+
+		if( e )
+		{
+			strbuf_aprintf( b, "\"%s\": [ ", l->name );
+			for( t = l->targets; t; t = t->next )
+			{
+				if( t->enabled == enval )
+					__target_http_list_one( b, t );
+			}
+			strbuf_chopn( b, 2 );
+			strbuf_aprintf( b, " ], " );
+		}
+	}
+
+	if( c > 0 )
+	{
+		strbuf_chopn( b, 2 );
+		strbuf_aprintf( b, " " );
+	}
+}
+
+
+int target_http_list( HTREQ *req )
+{
+	req->text = strbuf_resize( req->text, 32760 );
+
+	strbuf_printf( req->text, "{\"enabled\": { " );
+	__target_http_list( req->text, 1 );
+
+	strbuf_aprintf( req->text, "}, \"disabled\": { " );
+	__target_http_list( req->text, 0 );
+
+	strbuf_aprintf( req->text, "} }\n" );
+
+	return 0;
+}
+
+
+int target_http_toggle( HTREQ *req )
+{
+	AVP *av = &(req->post->kv);
+	TGTALT *ta;
+
+	if( !req->post->objFree )
+	{
+		req->post->objFree = (TGTALT *) allocz( sizeof( TGTALT ) );
+		req->text = strbuf( 250 );
+		strbuf_copy( req->text, "Target not found.\n", 0 );
+	}
+
+	ta = (TGTALT *) req->post->objFree;
+
+	if( !strcasecmp( av->aptr, "enabled" ) )
+	{
+		ta->state = config_bool( av );
+		ta->state_set = 1;
+	}
+	else if( !strcasecmp( av->aptr, "list" ) )
+	{
+		ta->list = target_list_find( av->vptr );
+	}
+	else if( !strcasecmp( av->aptr, "target" ) )
+	{
+		ta->tgt = target_list_search( ta->list, av->vptr, av->vlen );
+	}
+	else
+		return 0;
+
+	// do we have everything?
+	// set the state then
+	if( ta->list
+	 && ta->tgt
+	 && ta->state_set )
+	{
+		if( ta->tgt->enabled != ta->state )
+		{
+			ta->tgt->enabled = ta->state;
+
+			strbuf_printf( req->text, "Target %s/%s %sabled.\n",
+				ta->list->name, ta->tgt->name,
+				( ta->state ) ? "en" : "dis" );
+
+			notice( "Target %s/%s %sabled.",
+				ta->list->name, ta->tgt->name,
+				( ta->state ) ? "en" : "dis" );
+
+			target_list_check_enabled( ta->list );
+		}
+		else
+		{
+			strbuf_printf( req->text, "Target %s/%s was already %sabled.\n",
+				ta->list->name, ta->tgt->name,
+				( ta->state ) ? "en" : "dis" );
+		}
+	}
+
+	return 0;
+}

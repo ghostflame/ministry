@@ -35,11 +35,26 @@ typedef void (*cb_RequestLogger) ( void *cls, const char *uri, HTTP_CONN *conn )
 #define MAX_TLS_PASS_SIZE				512
 
 
+
+#define HTTP_FLAGS_CONTROL				0x0001
+#define HTTP_FLAGS_JSON					0x0002
+#define HTTP_FLAGS_NO_REPORT			0x0100
+
+
+
 enum http_method_shortcuts
 {
 	HTTP_METH_GET = 0,
 	HTTP_METH_POST = 1,
 	HTTP_METH_OTHER,
+};
+
+
+enum http_post_states
+{
+	HTTP_POST_START = 0,
+	HTTP_POST_BODY,
+	HTTP_POST_END,
 };
 
 
@@ -76,9 +91,6 @@ struct http_callbacks
 
 	MHD_LogCallback							log;
 	cb_RequestLogger						reqlog;
-
-	MHD_KeyValueIterator					kv;
-	MHD_PostDataIterator					post;
 };
 
 
@@ -96,6 +108,7 @@ struct http_post_state
 
 	int						calls;
 	int						valid;
+	int						state;	// where in the post cycle are we?
 };
 
 #define HTTP_CLS_CHECK		0xdeadbeefdeadbeef
@@ -104,6 +117,7 @@ struct http_req_data
 {
 	HTREQ				*	next;
 	uint64_t				check;
+	int64_t					start;
 	HTPATH				*	path;
 	HTTP_CONN			*	conn;
 	BUF					*	text;
@@ -122,17 +136,20 @@ struct http_req_data
 struct http_path
 {
 	HTPATH				*	next;
-	HTHDLS				*	list;
-	http_callback		*	req;
-	http_callback		*	init;
-	http_callback		*	fini;
+
+	http_callback		*	cb;
+
 	IPLIST				*	srcs;
+	HTHDLS				*	list;
+
 	char				*	path;
 	char				*	desc;
+	char				*	iplist;
 	void				*	arg;
+
 	int64_t					hits;
 	int						plen;
-	int						ctl;
+	int						flags;
 };
 
 
@@ -171,6 +188,9 @@ struct http_control
 
 	struct sockaddr_in	*	sin;
 
+	http_reporter		*	rpt_fp;
+	void				*	rpt_arg;
+
 	pthread_mutex_t			hitlock;
 
 	uint16_t				hdlr_count;
@@ -189,8 +209,14 @@ struct http_control
 
 sort_fn __http_cmp_handlers;
 
-int http_add_handler( char *path, char *desc, void *arg, int method, http_callback *fp, http_callback *init, http_callback *fini, IPLIST *srcs );
-int http_add_control( char *path, char *desc, void *arg, http_callback *fp, IPLIST *srcs );
+int http_add_handler( char *path, char *desc, void *arg, int method, http_callback *fp, IPLIST *srcs, int flags );
+int http_add_control( char *path, char *desc, void *arg, http_callback *fp, IPLIST *srcs, int flags );
+
+// give us a simple call to add get handlers
+#define http_add_simple_get( _p, _d, _c )			http_add_handler( _p, _d, NULL, HTTP_METH_GET, _c, NULL, 0 )
+#define http_add_json_get( _p, _d, _c )				http_add_handler( _p, _d, NULL, HTTP_METH_GET, _c, NULL, HTTP_FLAGS_JSON )
+
+void http_set_reporter( http_reporter *fp, void *arg );
 
 int http_start( void );
 void http_stop( void );

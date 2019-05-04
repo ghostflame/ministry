@@ -687,6 +687,7 @@ int config_read_env( char **env )
 
 		if( l < ( _proc->env_prfx_len + 2 ) || memcmp( buf, _proc->env_prfx, _proc->env_prfx_len ) )
 			continue;
+
 		debug("Env Entry: %s", buf);
 
 		if( config_env_path( buf + _proc->env_prfx_len, l - _proc->env_prfx_len ) )

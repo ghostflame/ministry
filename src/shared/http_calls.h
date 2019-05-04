@@ -11,6 +11,7 @@
 #define SHARED_HTTP_CALLS_H
 
 http_callback http_calls_stats;
+http_callback http_calls_count;
 http_callback http_calls_usage;
 
 int http_calls_ctl_iterator( void *cls, enum MHD_ValueKind kind, const char *key, const char *filename,

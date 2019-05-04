@@ -318,7 +318,7 @@ int token_init( void )
 	}
 
 	// no filters?  or do we match the requires-tokens list?
-	http_add_handler( "/tokens", "Issues tokens", NULL, HTTP_METH_GET, &token_url_handler, NULL, NULL, NULL );
+	http_add_simple_get( "/tokens", "Issues tokens", &token_url_handler );
 	return 0;
 }
 

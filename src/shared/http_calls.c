@@ -12,15 +12,20 @@
 
 
 #define _jstr( s )				strbuf_aprintf( b, "%s\r\n", s )
+
 #define _jfielda( p, f )		strbuf_aprintf( b, p "\"%s\": [\r\n", f )
 #define _jfieldo( p, f )		strbuf_aprintf( b, p "\"%s\": {\r\n", f )
+
 #define _jfields( p, f, v )		strbuf_aprintf( b, p "\"%s\": \"%s\",\r\n", f, v )
 #define _jfieldd( p, f, v )		strbuf_aprintf( b, p "\"%s\": %f,\r\n", f, v )
 #define _jfield4( p, f, v )		strbuf_aprintf( b, p "\"%s\": %d,\r\n", f, v )
 #define _jfield8( p, f, v )		strbuf_aprintf( b, p "\"%s\": %ld,\r\n", f, v )
 #define _jfieldu( p, f, v )		strbuf_aprintf( b, p "\"%s\": %u,\r\n", f, v )
 #define _jfieldl( p, f, v )		strbuf_aprintf( b, p "\"%s\": %lu,\r\n", f, v )
+
 #define _jprunecma( )			if( strbuf_lastchar( b ) == '\n' ) { strbuf_chopn( b, 3 ); }
+#define _jenda( p )				_jprunecma( ); strbuf_aprintf( b, p "],\r\n" )
+#define _jendo( p )				_jprunecma( ); strbuf_aprintf( b, p "},\r\n" )
 
 #define _jmtype( n, mc )		snprintf( tmp, 16, "%s_calls", n ); \
 								_jfieldl( "      ", tmp, mc.ctr ); \
@@ -63,19 +68,63 @@ int http_calls_stats( HTREQ *req )
 		_jmtype( "preall", ms.ctrs.pre );
 		_jmtype( "refill", ms.ctrs.ref );
 #endif
-		_jprunecma( );
-		_jstr( "    }," );
+		_jendo( "    " );
 	}
-	_jprunecma( );
-	_jstr( "  ]" );
+	_jenda( "  " );
 	_jstr( "}" );
 
 	return 0;
 }
 
+
+
+void __http_calls_count_one( BUF *b, HTPATH *pt )
+{
+	_jstr( "    {" );
+	_jfields( "      ", "path", pt->path );
+	_jfields( "      ", "description", pt->desc );
+	_jfields( "      ", "iplist", ( pt->iplist ) ? pt->iplist : "(none)" );
+	_jfield8( "      ", "hits", pt->hits );
+	_jendo( "    " );
+}
+
+
+int http_calls_count( HTREQ *req )
+{
+	HTPATH *pt;
+	BUF *b;
+
+	b = ( req->text = strbuf_resize( req->text, _proc->http->statsBufSize ) );
+
+	_jstr( "{" );
+
+	_jfielda( "  ", "GET" );
+
+	for( pt = _proc->http->get_h->list; pt; pt = pt->next )
+		__http_calls_count_one( b, pt );
+
+	_jenda( "  " );
+	_jfielda( "  ", "POST" );
+
+	for( pt = _proc->http->post_h->list; pt; pt = pt->next )
+		__http_calls_count_one( b, pt );
+
+	_jenda( "  " );
+	_jprunecma( );
+	_jstr( "}" );
+
+	return 0;
+}
+
+
+
+
+
 #undef _jstr
 #undef _jfielda
 #undef _jfieldo
+#undef _jenda
+#undef _jendo
 #undef _jfields
 #undef _jfieldd
 #undef _jfield4
@@ -83,6 +132,9 @@ int http_calls_stats( HTREQ *req )
 #undef _jfieldu
 #undef _jfieldl
 #undef _jprunecma
+
+
+
 
 
 
@@ -123,7 +175,7 @@ int http_calls_ctl_list( HTREQ *req )
 	strbuf_empty( req->text );
 
 	for( p = h->list; p; p = p->next )
-		if( p->ctl )
+		if( p->flags & HTTP_FLAGS_CONTROL )
 			strbuf_aprintf( req->text, "%-24s %s\n", p->path, p->desc );
 
 	return 0;
@@ -153,7 +205,7 @@ int http_calls_ctl_iterator( void *cls, enum MHD_ValueKind kind, const char *key
 	req->post->kv.vptr = (char *) data;
 	req->post->kv.vlen = (int) size;
 
-	if( (req->path->req)( req ) < 0 )
+	if( (req->path->cb)( req ) < 0 )
 		return MHD_NO;
 
 	return MHD_YES;
@@ -173,15 +225,18 @@ int http_calls_ctl_done( HTREQ *req )
 // setup
 void http_calls_init( void )
 {
-	http_add_handler( "/", "Usage information", NULL, HTTP_METH_GET, &http_calls_usage, NULL, NULL, NULL );
+	http_add_simple_get( "/", "Usage information", &http_calls_usage );
 
 	// you should disable this if you are writing your own
 	if( _proc->http->stats )
-		http_add_handler( "/stats", "Internal stats", NULL, HTTP_METH_GET, &http_calls_stats, NULL, NULL, NULL );
+		http_add_json_get( "/stats", "Internal stats", &http_calls_stats );
+
+	http_add_json_get( "/counts", "HTTP request counts", &http_calls_count );
 
 	// add target control
-	http_add_handler( "/targets", "List metric targets", NULL, HTTP_METH_GET, &target_http_list, NULL, NULL, NULL );
-	http_add_control( "target", "Enable/disable target", NULL, &target_http_toggle, NULL );
+	http_add_json_get( "/targets", "List metric targets", &target_http_list );
+	http_add_simple_get( "/control", "List control paths", &http_calls_ctl_list );
+	http_add_control( "target", "Enable/disable target", NULL, &target_http_toggle, NULL, 0 );
 }
 
 

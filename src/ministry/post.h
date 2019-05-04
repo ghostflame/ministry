@@ -12,9 +12,7 @@
 
 
 
-http_callback post_handle_data;
-http_callback post_handle_init;
-http_callback post_handle_finish;
+http_callback post_handler;
 
 
 
