@@ -285,85 +285,66 @@ int http_request_access_check( IPLIST *src, HTREQ *req, struct sockaddr *sa )
 }
 
 
-int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
-	const char *method, const char *version, const char *upload_data,
-	size_t *upload_data_size, void **con_cls )
+HTREQ *http_request_creator( HTTP_CONN *conn, const char *url, const char *method )
 {
 	union MHD_ConnectionInfo *ci;
-	int rlen, is_ctl = 0;
-	HTREQ *req;
+	int rlen, is_ctl;
 	HTHDLS *hd;
+	HTREQ *req;
 
-	// WHISKEY TANGO FOXTROT, libmicrohttpd?
-	if( ((int64_t) *con_cls) < 0x1fff )
+	req = mem_new_request( );
+	req->conn = conn;
+	req->code = MHD_HTTP_OK;
+	req->first = 1;
+	req->start = get_time64( );
+
+	rlen = strlen( url );
+
+	if( !strcasecmp( method, MHD_HTTP_METHOD_GET ) )
 	{
-		//info( "Flattening bizarre arg value %p -> %p.", *con_cls );
-		*con_cls = NULL;
+		req->meth = HTTP_METH_GET;
+		hd = _http->get_h;
+	}
+	else if( !strcasecmp( method, MHD_HTTP_METHOD_POST ) )
+	{
+		req->meth = HTTP_METH_POST;
+		hd = _http->post_h;
+	}
+	else
+	{
+		req->text = strbuf_copy( req->text, "Method not supported.", 0 );
+		req->code = MHD_HTTP_METHOD_NOT_ALLOWED;
+		http_send_response( req );
+		return NULL;
 	}
 
-	// what the hell is it putting in con_cls, that's supposed to be // null?
-	if( ( req = *((HTREQ **) con_cls) ) && req->check != HTTP_CLS_CHECK )
+	// find the handler
+	if( !( req->path = http_find_callback( url, rlen, hd ) ) )
 	{
-		//info( "Flattening weird con_cls %p -> %p.", con_cls, req );
-		*con_cls = NULL;
+		req->text = strbuf_copy( req->text, "That url is not recognised.", 0 );
+		req->code = MHD_HTTP_NOT_FOUND;
+		http_send_response( req );
+		return NULL;
 	}
 
-	// do we have an object?
-	if( !( req = *((HTREQ **) con_cls) ) )
+	// is this a control call?
+	is_ctl = req->path->flags & HTTP_FLAGS_CONTROL;
+
+	ci = (union MHD_ConnectionInfo *) MHD_get_connection_info( conn, MHD_CONNECTION_INFO_CLIENT_ADDRESS );
+	req->sin = *((struct sockaddr_in *) (ci->client_addr));
+
+	// do we have a separate ip list?
+	// check it's not the generic one
+	// see the commend below
+	if( req->path->srcs != _http->web_ips
+	 && http_request_access_check( req->path->srcs, req, ci->client_addr ) )
+		return NULL;
+
+	hit_counter( req->path->hits );
+
+	if( req->meth == HTTP_METH_POST )
 	{
-		req = mem_new_request( );
-		req->conn = conn;
-		req->code = MHD_HTTP_OK;
-		req->first = 1;
-		req->start = get_time64( );
-
-		*con_cls = req;
-
-		rlen = strlen( url );
-
-		if( !strcasecmp( method, MHD_HTTP_METHOD_GET ) )
-		{
-			req->meth = HTTP_METH_GET;
-			hd = _http->get_h;
-		}
-		else if( !strcasecmp( method, MHD_HTTP_METHOD_POST ) )
-		{
-			req->meth = HTTP_METH_POST;
-			hd = _http->post_h;
-		}
-		else
-		{
-			req->text = strbuf_copy( req->text, "Method not supported.", 0 );
-			req->code = MHD_HTTP_METHOD_NOT_ALLOWED;
-			http_send_response( req );
-			return MHD_YES;
-		}
-
-		// find the handler
-		if( !( req->path = http_find_callback( url, rlen, hd ) ) )
-		{
-			req->text = strbuf_copy( req->text, "That url is not recognised.", 0 );
-			req->code = MHD_HTTP_NOT_FOUND;
-			http_send_response( req );
-			return MHD_YES;
-		}
-
-		// is this a control call?
-		is_ctl = req->path->flags & HTTP_FLAGS_CONTROL;
-
-		ci = (union MHD_ConnectionInfo *) MHD_get_connection_info( conn, MHD_CONNECTION_INFO_CLIENT_ADDRESS );
-		req->sin = *((struct sockaddr_in *) (ci->client_addr));
-
-		// do we have a separate ip list?
-		// check it's not the generic one
-		// see the commend below
-		if( req->path->srcs != _http->web_ips
-		 && http_request_access_check( req->path->srcs, req, ci->client_addr ) )
-			return MHD_YES;
-
-		hit_counter( req->path->hits );
-
-		if( req->meth == HTTP_METH_POST )
+		if( req->first )
 		{
 			// check this IP is allowed
 			if( is_ctl )
@@ -384,39 +365,72 @@ int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
 				// list everywhere).
 				if( req->path->srcs != _http->ctl_ips
 				 && !http_request_access_check( _http->ctl_ips, req, ci->client_addr ) )
-					return MHD_YES;
+					return NULL;
 			}
 
-			if( req->first )
-			{
-				// and create the post data object
-				if( !req->post )
-					req->post = (HTTP_POST *) allocz( sizeof( HTTP_POST ) );
+			// and create the post data object
+			if( !req->post )
+				req->post = (HTTP_POST *) allocz( sizeof( HTTP_POST ) );
 
-				req->post->state = HTTP_POST_START;
+			req->post->state = HTTP_POST_START;
 
-				if( is_ctl )
-					http_calls_ctl_init( req );
-				else
-					(req->path->cb)( req );
-			}
+			if( is_ctl )
+				http_calls_ctl_init( req );
+			else
+				(req->path->cb)( req );
 		}
+	}
 
-		//info( "Got req (%d).", req->meth );
+	return req;
+}
+
+
+
+
+int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
+	const char *method, const char *version, const char *upload_data,
+	size_t *upload_data_size, void **con_cls )
+{
+	HTREQ *req;
+
+	// WHISKEY TANGO FOXTROT, libmicrohttpd?
+	if( ((int64_t) *con_cls) < 0x1fff )
+	{
+		//info( "Flattening bizarre arg value %p -> %p.", *con_cls );
+		*con_cls = NULL;
+	}
+
+	// what the hell is it putting in con_cls, that's supposed to be // null?
+	if( ( req = *((HTREQ **) con_cls) ) && req->check != HTTP_CLS_CHECK )
+	{
+		//info( "Flattening weird con_cls %p -> %p.", con_cls, req );
+		*con_cls = NULL;
+	}
+
+	// do we have an object?
+	if( !( req = *((HTREQ **) con_cls) ) )
+	{
+		req = http_request_creator( conn, url, method );
+
+		if( req )
+			*con_cls = req;
+		else
+			return MHD_YES;
 	}
 
 	switch( req->meth )
 	{
 		case HTTP_METH_GET:
-			//info( "Get (%d)", req->first );
 			// gets are easy
 			(req->path->cb)( req );
-			//info( "Called back (%d)", req->text->len );
 			http_send_response( req );
-			//info( "Sent." );
 			return MHD_YES;
 
 		case HTTP_METH_POST:
+			// post arrive as
+			// 1.    first call, no data
+			// 2...  N data calls
+			// 3.    last call, no data
 			if( req->first )
 			{
 				req->first = 0;
@@ -444,7 +458,6 @@ int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
 			}
 			else
 			{
-				//notice( "All done, sending response." );
 				http_send_response( req );
 			}
 
