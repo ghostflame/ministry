@@ -23,7 +23,7 @@ struct thread_data
 
 pthread_t thread_throw( throw_fn *fp, void *arg, int64_t num );
 pthread_t thread_throw_named( throw_fn *fp, void *arg, int64_t num, char *name );
-pthread_t thread_throw_named_f( throw_fn *fp, void *arg, int64_t num, char *fmt );
+pthread_t thread_throw_named_f( throw_fn *fp, void *arg, int64_t num, char *fmt, ... );
 
 
 #endif

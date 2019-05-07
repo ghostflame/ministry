@@ -41,7 +41,7 @@ int net_set_host_prefix( HOST *h, IPNET *n )
 	h->ltarget = h->workbuf + h->plen;
 
 	// report on that?
-	if( ctl->net->prefix->verbose )
+	if( n->list->verbose )
 		info( "Connection from %s:%hu gets prefix %s",
 			inet_ntoa( h->peer->sin_addr ), ntohs( h->peer->sin_port ),
 			h->workbuf );
@@ -56,6 +56,7 @@ int net_set_host_parser( HOST *h, int token_check, int prefix_check )
 {
 	TOKENS *ts = ctl->net->tokens;
 	int set_token = 0;
+	NET_PFX *p;
 	IPNET *n;
 
 	// this is the default
@@ -86,10 +87,11 @@ int net_set_host_parser( HOST *h, int token_check, int prefix_check )
 
 	// do we have a prefix for this host?
 	if( prefix_check )
-	{
-		iplist_test_ip( ctl->net->prefix, h->ip, &n );
-		return net_set_host_prefix( h, n );
-	}
+		for( p = ctl->net->prefix; p; p = p->next )
+		{
+			if( iplist_test_ip( p->list, h->ip, &n ) != IPLIST_NOMATCH )
+				return net_set_host_prefix( h, n );
+		}
 
 	return 0;
 }
@@ -100,7 +102,6 @@ int net_set_host_parser( HOST *h, int token_check, int prefix_check )
 void net_start_type( NET_TYPE *nt )
 {
 	throw_fn *fp;
-	char buf[16];
 	int i;
 
 	if( !( nt->flags & NTYPE_ENABLED ) )
@@ -112,8 +113,7 @@ void net_start_type( NET_TYPE *nt )
 		(*(nt->tcp_setup))( nt );
 
 		// and start watching the socket
-		snprintf( buf, 16, "tcp_loop_%hu", nt->tcp->port );
-		thread_throw_named( tcp_loop, nt->tcp, 0, buf );
+		thread_throw_named_f( tcp_loop, nt->tcp, 0, "tcp_loop_%hu", nt->tcp->port );
 	}
 
 	if( nt->flags & NTYPE_UDP_ENABLED )
@@ -124,10 +124,7 @@ void net_start_type( NET_TYPE *nt )
 			fp = &udp_loop_flat;
 
 		for( i = 0; i < nt->udp_count; i++ )
-		{
-			snprintf( buf, 16, "udp_loop_%hu", nt->udp[i]->port );
-			thread_throw_named( fp, nt->udp[i], i, buf );
-		}
+			thread_throw_named_f( fp, nt->udp[i], i, "udp_loop_%hu", nt->udp[i]->port );
 	}
 
 	info( "Started listening for data on %s", nt->label );
@@ -197,6 +194,7 @@ int net_startup( NET_TYPE *nt )
 int net_start( void )
 {
 	int ret = 0;
+	NET_PFX *p;
 
 	// create our token hash table
 	if( token_init( ) )
@@ -210,12 +208,18 @@ int net_start( void )
 		iplist_explain( ctl->net->filter, NULL, NULL, NULL, NULL );
 	}
 
-	if( ctl->net->prefix_list )
+	if( ctl->net->prefix )
 	{
-		if( !( ctl->net->prefix = iplist_find( ctl->net->prefix_list ) ) )
-			return -1;
+		ctl->net->prefix = (NET_PFX *) mem_reverse_list( ctl->net->prefix );
 
-		iplist_explain( ctl->net->prefix, NULL, NULL, "Prefix", NULL );
+		for( p = ctl->net->prefix; p; p = p->next )
+		{
+			if( !( p->list = iplist_find( p->name ) ) )
+				return -1;
+
+			iplist_set_text( p->list, p->text, p->tlen );
+			iplist_explain( p->list, NULL, NULL, "Prefix", NULL );
+		}
 	}
 
 	notice( "Starting networking." );
@@ -324,6 +328,36 @@ NET_CTL *net_config_defaults( void )
 
 
 
+int net_add_prefixes( char *name, int len )
+{
+	NET_PFX *p;
+	WORDS w;
+
+	strmwords( &w, name, len, ' ' );
+
+	if( w.wc != 2 )
+	{
+		err( "Invalid prefixes spec; format is: <list name> <prefix>" );
+		return -1;
+	}
+
+	// duplicates against one list will mask one of them
+	for( p = ctl->net->prefix; p; p = p->next )
+		if( !strcasecmp( p->name, w.wd[0] ) )
+		{
+			err( "Duplicate prefix list name reference (%s).", p->name );
+			return -1;
+		}
+
+	p = (NET_PFX *) allocz( sizeof( NET_PFX ) );
+	p->name = str_dup( w.wd[0], w.len[0] );
+	p->text = str_dup( w.wd[1], w.len[1] );
+
+	p->next = ctl->net->prefix;
+	ctl->net->prefix = p;
+
+	return 0;
+}
 
 
 
@@ -336,7 +370,6 @@ int net_config_line( AVP *av )
 	int i, tcp;
 	int64_t v;
 	WORDS *w;
-
 
 	if( !( d = strchr( av->aptr, '.' ) ) )
 	{
@@ -352,9 +385,9 @@ int net_config_line( AVP *av )
 			n->rcv_tmout = (unsigned int) v;
 			debug( "Receive timeout set to %u sec.", n->rcv_tmout );
 		}
-		else if( attIs( "prefixList" ) )
+		else if( attIs( "prefix" ) )
 		{
-			n->prefix_list = str_copy( av->vptr, av->vlen );
+			return net_add_prefixes( av->vptr, av->vlen );
 		}
 		else if( attIs( "filterList" ) )
 		{

@@ -27,12 +27,15 @@ typedef struct mem_type             MTYPE;
 typedef struct mem_type_stats       MTSTAT;
 typedef struct mem_check            MCHK;
 
+typedef struct iterator             ITER;
+
 typedef struct io_buffer            IOBUF;
 typedef struct io_socket            SOCK;
 typedef struct io_buf_ptr           IOBP;
 
 typedef struct target               TGT;
 typedef struct target_list          TGTL;
+typedef struct target_alter         TGTALT;
 
 typedef struct iplist_net           IPNET;
 typedef struct iplist               IPLIST;
@@ -48,9 +51,13 @@ typedef struct string_store_entry   SSTE;
 typedef struct string_store         SSTR;
 
 typedef struct http_path            HTPATH;
+typedef struct http_handlers        HTHDLS;
+typedef struct http_req_data        HTREQ;
+typedef struct http_post_state      HTTP_POST;
+
 typedef struct http_callbacks       HTTP_CB;
-typedef struct http_ssl             SSL_CONF;
-typedef struct http_ssl_file        SSL_FILE;
+typedef struct http_tls             TLS_CONF;
+typedef struct http_tls_file        TLS_FILE;
 
 typedef struct curlw_handle         CURLWH;
 
@@ -60,11 +67,13 @@ typedef struct curlw_handle         CURLWH;
 typedef void loop_call_fn ( int64_t, void * );
 typedef void throw_fn ( THRD * );
 typedef int conf_line_fn ( AVP * );
-typedef int http_handler ( uint32_t, char **, int, void * );
+typedef int http_callback ( HTREQ * );
+typedef int http_reporter ( HTPATH *, void *arg, int64_t, int64_t );
 typedef void help_fn ( void );
 typedef int64_t io_fn( TGT * );
 typedef int target_cfg_fn( TGT *, char *, int );
 typedef void curlw_cb( void *, IOBUF *b );
+typedef int sort_fn( const void *, const void * );
 
 typedef void iplist_data_fn( void *, IPNET * );
 

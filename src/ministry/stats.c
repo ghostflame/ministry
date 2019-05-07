@@ -830,9 +830,8 @@ void stats_start( ST_CFG *cf )
 	}
 
 	// throw each of the threads
-	// high stack size - they'll be doing qsort
 	for( i = 0; i < cf->threads; i++ )
-		thread_throw_named_f( &stats_loop, &(cf->ctls[i]), i, cf->thrfmt );
+		thread_throw_named_f( &stats_loop, &(cf->ctls[i]), i, "%s_%d", cf->name, i );
 
 	info( "Started %s data processing loops.", cf->name );
 }
@@ -846,9 +845,6 @@ void stats_prefix( ST_CFG *c, char *s )
 {
 	int len, dot = 0;
 
-	if( !c->prefix )
-		c->prefix = strbuf( PREFIX_SZ );
-
 	len = strlen( s );
 
 	if( len > 0 )
@@ -858,12 +854,16 @@ void stats_prefix( ST_CFG *c, char *s )
 			dot = 1;
 	}
 
-	if( ( strbuf_copy( c->prefix, s, len ) < 0 )
-	 || ( dot && ( strbuf_add(  c->prefix, ".", 1 ) < 0 ) ) )
+	if( ( len + dot ) >= PREFIX_SZ )
 	{
 		fatal( "Prefix is larger than allowed max %d", c->prefix->sz );
 		return;
 	}
+
+	// make a prefix if we've not got one
+	c->prefix = strbuf_copy( c->prefix, s, len );
+	if( dot )
+		strbuf_add( c->prefix, ".", 1 );
 }
 
 
@@ -880,8 +880,6 @@ void stats_init_control( ST_CFG *c, int alloc_data )
 		c->hsize = MEM_HSZ_LARGE;
 
 	debug( "Hash size set to %d for %s", c->hsize, c->name );
-
-	snprintf( c->thrfmt, 16, "%s_%%d", c->name );
 
 	// create the hash structure
 	if( alloc_data )

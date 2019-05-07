@@ -39,6 +39,7 @@ struct log_control
 {
 	char			*	filename;
 	int8_t				level;
+	int8_t				orig_level;
 
 	char			*	identifier;
 	int					facility;
@@ -59,6 +60,10 @@ int log_line( int8_t level, const char *file, const int line, const char *fn, ch
 int log_close( void );
 void log_reopen( int sig );
 int log_start( void );
+int log_set_level( int8_t level, int8_t both );
+void log_set_force_stdout( int set );
+
+http_callback log_ctl_setdebug;
 
 // config
 LOG_CTL *log_config_defaults( void );
@@ -73,12 +78,7 @@ conf_line_fn log_config_line;
 #define warn( ... )             LLNZN( WARN,   ## __VA_ARGS__ )
 #define notice( ... )           LLNZN( NOTICE, ## __VA_ARGS__ )
 #define info( ... )             LLNZN( INFO,   ## __VA_ARGS__ )
-
-#ifdef DEBUG
 #define debug( ... )            LLFLF( DEBUG,  ## __VA_ARGS__ )
-#else
-#define debug( ... )            (void) 0
-#endif
 
 
 #endif

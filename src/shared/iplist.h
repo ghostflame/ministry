@@ -20,10 +20,13 @@
 #define IPLIST_NEGATIVE		0
 #define IPLIST_NOMATCH		-1
 
+#define IPLIST_LOCALONLY	"localhost-only"
+
 
 struct iplist_net
 {
 	IPNET				*	next;
+	IPLIST				*	list;
 	char				*	text;
 	char				*	name;
 	uint32_t				net;
@@ -37,6 +40,7 @@ struct iplist
 {
 	IPLIST				*	next;
 	char				*	name;
+	char				*	text;
 
 	IPNET				**	ips;
 	IPNET				*	nets;
@@ -44,9 +48,11 @@ struct iplist
 	uint32_t				count;
 	uint32_t				hashsz;
 
-	int8_t					enable;
+	int16_t					tlen;
 	int8_t					verbose;
 	int8_t					def;
+	int8_t					enable;
+	int8_t					init_done;
 };
 
 
@@ -67,7 +73,11 @@ void iplist_explain( IPLIST *l, char *pos, char *neg, char *nei, char *pre );
 int iplist_test_ip( IPLIST *l, uint32_t ip, IPNET **p );
 int iplist_test_str( IPLIST *l, char *ip, IPNET **p );
 
+// startup
+void iplist_init( );
+
 // config
+int iplist_set_text( IPLIST *l, char *str, int len );
 IPL_CTL *iplist_config_defaults( void );
 int iplist_config_line( AVP *av );
 

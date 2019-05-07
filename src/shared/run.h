@@ -32,4 +32,7 @@
 #define RUN_SHUT_STATS				0x00010000
 #define RUN_SHUT_MASK				0x000f0000
 
+// runtime control
+#define RUN_SILENT_OUT				0x01000000
+
 #endif

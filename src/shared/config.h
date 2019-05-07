@@ -68,7 +68,6 @@ struct config_context
 };
 
 
-
 // main control structure
 struct process_control
 {
@@ -102,6 +101,14 @@ struct process_control
 
 	// string stores
 	SSTR				*	stores;
+
+	// the other pieces
+	LOG_CTL				*	log;
+	MEM_CTL				*	mem;
+	HTTP_CTL			*	http;
+	IO_CTL				*	io;
+	IPL_CTL				*	ipl;
+	TGT_CTL				*	tgt;
 };
 
 

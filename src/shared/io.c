@@ -9,7 +9,7 @@
 
 #include "shared.h"
 
-IO_CTL *_io;
+IO_CTL *_io = NULL;
 
 
 __attribute__((hot)) int io_read_data( SOCK *s )
@@ -383,8 +383,8 @@ void io_buf_next( TGT *t )
 // to the terminal|pipe
 int64_t io_send_stdout( TGT *t )
 {
+	int64_t b = 0, f = 0;
 	SOCK *s = t->sock;
-	int64_t f = 0;
 
 	if( !s->out )
 		io_buf_next( t );
@@ -392,8 +392,18 @@ int64_t io_send_stdout( TGT *t )
 	// keep writing while there's something to send
 	while( s->out )
 	{
-		t->curr_off += write( s->fd, s->out->buf + t->curr_off, s->out->len - t->curr_off );
-		f++;
+		if( t->enabled )
+		{
+			b = write( s->fd, s->out->buf + t->curr_off, s->out->len - t->curr_off );
+			t->curr_off += b;
+			t->bytes += b;
+			f++;
+		}
+		else
+		{
+			// just step over the buffer
+			t->curr_off = t->curr_len;
+		}
 
 		if( t->curr_off >= t->curr_len )
 		{
@@ -409,8 +419,8 @@ int64_t io_send_stdout( TGT *t )
 // to a network - needs to check connection
 int64_t io_send_net_tcp( TGT *t )
 {
+	int64_t b = 0, f = 0;
 	SOCK *s = t->sock;
-	int64_t f = 0;
 
 	// are we waiting to reconnect?
 	if( t->rc_count > 0 )
@@ -419,9 +429,10 @@ int64_t io_send_net_tcp( TGT *t )
 		return 0;
 	}
 
-	// are we connected?
-	if( io_connected( s ) < 0
-	 && io_connect( s ) < 0 )
+	// are we connected? or enabled?
+	if( !t->enabled
+	 || ( io_connected( s ) < 0
+	   && io_connect( s ) < 0 ) )
 	{
 		t->rc_count = t->rc_limit;
 		return 0;
@@ -432,7 +443,9 @@ int64_t io_send_net_tcp( TGT *t )
 
 	while( s->out )
 	{
-		t->curr_off += io_write_data( s, t->curr_off );
+		b = io_write_data( s, t->curr_off );
+		t->curr_off += b;
+		t->bytes += b;
 		f++;
 
 		// any problems?

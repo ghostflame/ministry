@@ -2,24 +2,25 @@
 * This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
 *                                                                         *
-* app.h - startup/shutdown functions                                      *
+* http_calls.h - built-in http endpoint definitions                       *
 *                                                                         *
 * Updates:                                                                *
 **************************************************************************/
 
+#ifndef SHARED_HTTP_CALLS_H
+#define SHARED_HTTP_CALLS_H
 
+http_callback http_calls_stats;
+http_callback http_calls_count;
+http_callback http_calls_usage;
 
-#ifndef SHARED_APP_H
-#define SHARED_APP_H
+int http_calls_ctl_iterator( void *cls, enum MHD_ValueKind kind, const char *key, const char *filename,
+        const char *content_type, const char *transfer_encoding, const char *data, uint64_t off, size_t size );
 
-int set_signals( void );
-int set_limits( void );
+http_callback http_calls_ctl_init;
+http_callback http_calls_ctl_done;
 
-int app_init( char *name, char *cfgdir );
-int app_start( int writePid );
-void app_ready( void );
-void app_finish( int exval );
-
-PROC_CTL *app_control( void );
+void http_calls_init( void );
 
 #endif
+

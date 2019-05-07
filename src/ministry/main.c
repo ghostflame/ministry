@@ -48,6 +48,9 @@ void main_loop( void )
 	stats_start( ctl->stats->gauge );
 	stats_start( ctl->stats->self );
 
+	// and init posts
+	post_init( );
+
 	// and a synthetics loop
 	thread_throw_named( &synth_loop, NULL, 0, "synth_loop" );
 
@@ -85,8 +88,7 @@ void main_loop( void )
 void main_create_conf( void )
 {
 	ctl             = (MIN_CTL *) allocz( sizeof( MIN_CTL ) );
-	ctl->proc       = _proc;
-	ctl->target     = _tgt;
+	ctl->proc       = app_control( );
 	ctl->mem        = memt_config_defaults( );
 	ctl->gc         = gc_config_defaults( );
 	ctl->locks      = lock_config_defaults( );

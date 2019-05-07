@@ -63,6 +63,7 @@
 #include "loop.h"
 #include "stringutils.h"
 #include "utils.h"
+#include "iter.h"
 #include "curlw.h"
 #include "regexp.h"
 #include "net.h"
@@ -72,18 +73,13 @@
 #include "io.h"
 #include "thread.h"
 #include "http.h"
+#include "http_calls.h"
 #include "config.h"
 #include "app.h"
 
 
-// some globals
-extern LOG_CTL *_logger;
-extern MEM_CTL *_mem;
+// process control global
 extern PROC_CTL *_proc;
-extern HTTP_CTL *_http;
-extern IPL_CTL *_iplist;
-extern IO_CTL *_io;
-extern TGT_CTL *_tgt;
 
 
 #endif

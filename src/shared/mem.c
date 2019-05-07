@@ -9,6 +9,8 @@
 
 #include "shared.h"
 
+MEM_CTL *_mem = NULL;
+
 static uint8_t mem_alloc_size_vals[16] =
 {
 	0, 1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4
@@ -103,6 +105,34 @@ void *mem_reverse_list( void *list_in )
 	}
 
 	return (void *) ret;
+}
+
+void mem_sort_list( void **list, int count, sort_fn *cmp )
+{
+	MTBLANK **tmp, *m;
+	int i, j;
+
+	if( !list || !*list )
+		return;
+
+	if( count == 1 )
+		return;
+
+	tmp = (MTBLANK **) allocz( count * sizeof( MTBLANK * ) );
+	for( i = 0, m = (MTBLANK *) *list; m; m = m->next )
+		tmp[i++] = m;
+
+	qsort( tmp, count, sizeof( MTBLANK * ), cmp );
+
+	// relink them
+	j = count - 1;
+	for( i = 0; i < j; i++ )
+		tmp[i]->next = tmp[i+1];
+
+	tmp[j]->next = NULL;
+	*list = tmp[0];
+
+	free( tmp );
 }
 
 
@@ -358,7 +388,7 @@ void mem_prealloc( int64_t tval, void *arg )
 void mem_check( int64_t tval, void *arg )
 {
 	MCHK *m = _mem->mcheck;
-	int kb, sz = m->bsize;
+	int sz = m->bsize;
 	struct rusage ru;
 
 
@@ -380,10 +410,13 @@ void mem_check( int64_t tval, void *arg )
 		return;
 	}
 
-	kb = atoi( m->w->wd[23] ) * m->psize;
-	//info( "/proc/self/stat[23] reports %d KB", kb );
-	m->proc_kb = kb;
+	m->proc_kb = atoi( m->w->wd[23] ) * m->psize;
+	//info( "/proc/self/stat[23] reports %d KB", m->proc_kb );
 
+	// get our virtual size - comes in bytes, turn into kb
+	m->virt_kb = atoi( m->w->wd[22] ) >> 10;
+
+	// use the higher of the two
 	m->curr_kb = ( m->rusage_kb > m->proc_kb ) ? m->rusage_kb : m->proc_kb;
 
 	if( m->curr_kb > m->max_kb )
@@ -438,18 +471,6 @@ int mem_config_line( AVP *av )
 			_mem->mcheck->checks = config_bool( av );
 		else if( attIs( "prealloc" ) || attIs( "preallocInterval" ) )
 			av_int( _mem->prealloc );
-		else if( attIs( "stackSize" ) )
-		{
-			// gets converted to KB
-			av_int( _mem->stacksize );
-			debug( "Stack size set to %d KB.", _mem->stacksize );
-		}
-		else if( attIs( "stackHighSize" ) )
-		{
-			// gets converted to KB
-			av_int( _mem->stackhigh );
-			debug( "Stack high size set to %d KB.", _mem->stackhigh );
-		}
 		else
 			return -1;
 
@@ -591,6 +612,10 @@ int64_t mem_curr_kb( void )
 	return _mem->mcheck->curr_kb;
 }
 
+int64_t mem_virt_kb( void )
+{
+	return _mem->mcheck->virt_kb;
+}
 
 
 MEM_CTL *mem_config_defaults( void )
@@ -604,12 +629,11 @@ MEM_CTL *mem_config_defaults( void )
 
 	_mem              = (MEM_CTL *) allocz( sizeof( MEM_CTL ) );
 	_mem->mcheck      = mc;
-	_mem->stacksize   = DEFAULT_MEM_STACK_SIZE;
-	_mem->stackhigh   = DEFAULT_MEM_STACK_HIGH;
 	_mem->prealloc    = DEFAULT_MEM_PRE_INTV;
 
 	_mem->iobufs      = mem_type_declare( "iobufs", sizeof( IOBUF ), MEM_ALLOCSZ_IOBUF, IO_BUF_SZ, 1 );
 	_mem->iobps       = mem_type_declare( "iobps",  sizeof( IOBP ),  MEM_ALLOCSZ_IOBP,  0, 1 );
+	_mem->htreq       = mem_type_declare( "htreqs", sizeof( HTREQ ), MEM_ALLOCSZ_HTREQ, 2048, 0 );
 
 	return _mem;
 }
@@ -733,5 +757,43 @@ void mem_free_iobp( IOBP **b )
 	p->prev = NULL;
 
 	mtype_free( _mem->iobps, p );
+}
+
+
+HTREQ *mem_new_request( void )
+{
+	HTREQ *r = mtype_new( _mem->htreq );
+	r->check = HTTP_CLS_CHECK;
+
+	if( !r->text )
+		r->text = strbuf( 4000u );
+
+	return r;
+}
+
+
+void mem_free_request( HTREQ **h )
+{
+	HTTP_POST *p = NULL;
+	BUF *b = NULL;
+	HTREQ *r;
+
+	r  = *h;
+	*h = NULL;
+
+	b = r->text;
+	p = r->post;
+
+	memset( r, 0, sizeof( HTREQ ) );
+
+	if( p )
+		memset( p, 0, sizeof( HTTP_POST ) );
+
+	strbuf_empty( b );
+
+	r->text = b;
+	r->post = p;
+
+	mtype_free( _mem->htreq, r );
 }
 

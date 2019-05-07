@@ -78,26 +78,35 @@ char *str_copy( char *src, int len );
 // get a buffer
 BUF *strbuf( uint32_t size );
 BUF *strbuf_create( char *str, int len );
-int strbuf_copy( BUF *b, char *str, int len );
-int strbuf_add( BUF *b, char *str, int len );
+
+// modify a buffer
+BUF *strbuf_resize( BUF *b, uint32_t size );
+BUF *strbuf_copy( BUF *b, char *str, int len );
+BUF *strbuf_add( BUF *b, char *str, int len );
 
 // these work as macros
 #define strbuf_printf( b, ... )			b->len = snprintf( b->buf, b->sz, ##__VA_ARGS__ )
 #define strbuf_aprintf( b, ... )		b->len += snprintf( b->buf + b->len, b->sz - b->len, ##__VA_ARGS__ )
 #define strbuf_empty( b )				b->len = 0; b->buf[0] = '\0'
 #define strbuf_chop( b )				if( b->len > 0 ) { b->len--; b->buf[b->len] = '\0'; }
+#define strbuf_chopn( b, n )			if( b->len > n ) { b->len -= n; b->buf[b->len] = '\0'; } else { strbuf_empty( b ); }
 #define strbuf_lastchar( b )			( ( b->len ) ? b->buf[b->len - 1] : '\0' )
 
 // get string length, up to a maximum
 int str_nlen( char *src, int max );
 
+// substitute args into strings, using %\d%
+int strsub( char **ptr, int *len, int argc, char **argv, int *argl );
 
 // break up potentially quoted string by delimiter
 int strqwords( WORDS *w, char *src, int len, char sep );
 
-// break up a string by delimiter
-int strwords( WORDS *w, char *src, int len, char sep );
+// break up a string by delimiter*
+int strwords_multi( WORDS *w, char *src, int len, char sep, int8_t multi );
 
+// with and without multi separate behaviour
+#define strwords( _w, _s, _l, _c )		strwords_multi( _w, _s, _l, _c, 0 )
+#define strmwords( _w, _s, _l, _c )		strwords_multi( _w, _s, _l, _c, 1 )
 
 
 

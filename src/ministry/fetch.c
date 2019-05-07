@@ -134,7 +134,7 @@ int fetch_init( void )
 	ctl->fetch->targets = mem_reverse_list( ctl->fetch->targets );
 
 	for( i = 0, f = ctl->fetch->targets; f; i++, f = f->next )
-		thread_throw_named_f( fetch_loop, f, i, "fetch_loop_%d" );
+		thread_throw_named_f( fetch_loop, f, i, "fetch_loop_%d", i );
 
 	return ctl->fetch->fcount;
 }

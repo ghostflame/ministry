@@ -29,7 +29,7 @@ or carbon-cache (or other copies of carbon-copy).\n\n" );
 void main_loop( void )
 {
 	// and the network io loops
-	target_run( 1 );
+	target_run( );
 
 	// throw the data listener loop
 	net_start_type( ctl->net->relay );
@@ -46,12 +46,10 @@ void main_loop( void )
 void main_create_conf( void )
 {
 	ctl				= (RCTL *) allocz( sizeof( RCTL ) );
-	ctl->proc		= _proc;
-	ctl->log		= _logger;
+	ctl->proc		= app_control( );
 	ctl->mem		= memt_config_defaults( );
 	ctl->net		= net_config_defaults( );
 	ctl->relay		= relay_config_defaults( );
-	ctl->target     = target_config_defaults( );
 
 	config_register_section( "network", &net_config_line );
 	config_register_section( "relay",   &relay_config_line );

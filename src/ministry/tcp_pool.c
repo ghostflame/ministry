@@ -248,7 +248,7 @@ void tcp_pool_setup( NET_TYPE *nt )
 		pthread_mutex_init( &(th->lock), NULL );
 		nt->tcp->threads[i] = th;
 
-		thread_throw_named_f( tcp_pool_thread, th, i, "tcp_pool_%d" );
+		thread_throw_named_f( tcp_pool_thread, th, i, "tcp_pool_%d", i );
 	}
 }
 

@@ -11,9 +11,6 @@
 #include "shared.h"
 
 PROC_CTL *_proc = NULL;
-LOG_CTL *_logger = NULL;
-MEM_CTL *_mem = NULL;
-HTTP_CTL *_http = NULL;
 
 
 void catch_pipe( int sig )
@@ -78,12 +75,12 @@ int app_init( char *name, char *cfgdir )
 	// create some stuff
 	config_defaults( name, cfgdir );
 
-	log_config_defaults( );
-	mem_config_defaults( );
-	http_config_defaults( );
-	io_config_defaults( );
-	iplist_config_defaults( );
-	target_config_defaults( );
+	_proc->log  = log_config_defaults( );
+	_proc->mem  = mem_config_defaults( );
+	_proc->http = http_config_defaults( );
+	_proc->io   = io_config_defaults( );
+	_proc->ipl  = iplist_config_defaults( );
+	_proc->tgt  = target_config_defaults( );
 
 	// set up our shared config
 	memset( config_sections, 0, CONF_SECT_MAX * sizeof( CSECT ) );
@@ -134,8 +131,7 @@ int app_start( int writePid )
 	if( set_limits( ) )
 		fatal( "Failed to set limits." );
 
-	if( !_logger->force_stdout && !_logger->use_std )
-		debug( "Starting logging - no more logs to stdout." );
+	http_calls_init( );
 
 	log_start( );
 
@@ -201,6 +197,9 @@ void app_ready( void )
 	// run mem check / prealloc
 	mem_startup( );
 
+	// and any iplists
+	iplist_init( );
+
 	thread_throw_named( &loop_timer, NULL, 0, "timer_loop" );
 }
 
@@ -243,3 +242,7 @@ void app_finish( int exval )
 	exit( exval );
 }
 
+PROC_CTL *app_control( void )
+{
+	return _proc;
+}

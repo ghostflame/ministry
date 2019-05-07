@@ -318,7 +318,6 @@ void metric_set_target_params( METRIC *m )
 
 void metric_init_group( MGRP *g )
 {
-	char buf[16];
 	METRIC *m;
 
 	// get ourselves a buffer
@@ -370,14 +369,11 @@ void metric_init_group( MGRP *g )
 
 	// start up the group
 	debug( "Starting group %s with %d metrics @ interval %ld.", g->name, g->mcount, g->rep_intv );
-	snprintf( buf, 16, "met_%s", g->name );
-	thread_throw_named( metric_group_update_loop, g, 0, buf );
-	snprintf( buf, 16, "rep_%s", g->name );
-	thread_throw_named( metric_group_report_loop, g, 0, buf );
+	thread_throw_named_f( metric_group_update_loop, g, 0, "met_%s", g->name );
+	thread_throw_named_f( metric_group_report_loop, g, 0, "rep_%s", g->name );
 
 	// and a loop to handle io max_age
-	snprintf( buf, 16, "iol_%s", g->name );
-	thread_throw_named( metric_group_io_loop, g, 0, buf );
+	thread_throw_named_f( metric_group_io_loop, g, 0, "iol_%s", g->name );
 }
 
 
@@ -404,7 +400,7 @@ void metric_start_all( void )
 	TGTL *l;
 	TGT *t;
 
-	for( l = ctl->target->lists; l; l = l->next )
+	for( l = target_list_all( ); l; l = l->next )
 	{
 		notice( "Target dump : List : %2d / %s", l->count, l->name );
 		for( t = l->targets; t; t = t->next )
@@ -756,6 +752,15 @@ int metric_config_line( AVP *av )
 		{
 			err( "Declare a group by name first.", g->name );
 			return -1;
+		}
+
+		// special prefix: -
+		// copies the group name, adds .
+		if( !strcmp( g->prefix->buf, "-" ) )
+		{
+			strbuf_printf( g->prefix, "%s", g->name );
+			if( strbuf_lastchar( g->prefix ) != '.' )
+				strbuf_add( g->prefix, ".", 1 );
 		}
 
 		// close config of this group

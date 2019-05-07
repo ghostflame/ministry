@@ -33,9 +33,7 @@ void main_create_conf( void )
 {
 	ctl             = (MTEST_CTL *) allocz( sizeof( MTEST_CTL ) );
 
-	ctl->proc       = _proc;
-	ctl->target     = _tgt;
-	ctl->log        = _logger;
+	ctl->proc       = app_control( );
 	ctl->metric     = metric_config_defaults( );
 	ctl->tgt        = targets_config_defaults( );
 

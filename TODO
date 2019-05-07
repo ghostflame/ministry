@@ -2,8 +2,7 @@ Refactor
     Looks like prealloc isn't working.
 	
 HTTP
-	Accept submissions via HTTP
-	Prometheus metrics (requires significant memory)
+	Prometheus process metrics
 
 Network
 	More granular token control

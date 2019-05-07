@@ -114,6 +114,7 @@ void self_stats_pass( ST_THR *t )
 	self_report_mtypes( t );
 
 	bprintf( t, "mem.total.kb %d", mem_curr_kb( ) );
+	bprintf( t, "mem.total.virt_kb %d", mem_virt_kb( ) );
 	bprintf( t, "uptime %.3f", ts_diff( t->now, ctl->proc->init_time, NULL ) );
 	bprintf( t, "workers.selfstats.0.self_paths %ld", t->active + 1 );
 }

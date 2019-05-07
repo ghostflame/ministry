@@ -172,37 +172,35 @@ void token_generate( uint32_t ip, int16_t types, TOKEN **ptrs, int max, int *cou
 }
 
 
-int token_url_handler( uint32_t ip, char **bptr, int max, void *arg )
+int token_url_handler( HTREQ *req )
 {
-	int types, len, i, count;
+	int types, i, count;
 	TOKEN *t, *tlist[8];
-	char *buf = *bptr;
+	BUF *b;
+
+	// min size for req text is 512
+	b = req->text;
 
 	types = TOKEN_TYPE_STATS|TOKEN_TYPE_ADDER|TOKEN_TYPE_GAUGE;
-	token_generate( ip, types, tlist, 8, &count );
+	token_generate( req->sin.sin_addr.s_addr, types, tlist, 8, &count );
 
-	len = snprintf( buf, max, "{" );
+	strbuf_add( b, "{", 1 );
 
 	// run down the tokens
 	for( i = 0; i < count; i++ )
 	{
 		t = tlist[i];
-
-		len += snprintf( buf + len, max - len, "\"%s\": %ld, ",
-				t->name, t->nonce );
+		strbuf_aprintf( b, "\"%s\": %ld, ", t->name, t->nonce );
 	}
 
 	// chop off the trailing ", "
 	// hand-crafting json is such a pain but all the C libs to
 	// do it really, really suck.
-	if( buf[len-1] == ' ' )
-		len--;
-	if( buf[len-1] == ',' )
-		len--;
+	strbuf_chopn( b, 2 );
 
-	len += snprintf( buf + len, max - len, "}\n" );
+	strbuf_add( b, "}\n", 2 );
 
-	return len;
+	return 0;
 }
 
 
@@ -320,7 +318,8 @@ int token_init( void )
 		iplist_explain( ts->filter, NULL, NULL, "Tokens", NULL );
 	}
 
-	http_add_handler( "/tokens", 1024, &token_url_handler, "Issues tokens.", NULL );
+	// no filters?  or do we match the requires-tokens list?
+	http_add_simple_get( "/tokens", "Issues tokens", &token_url_handler );
 	return 0;
 }
 

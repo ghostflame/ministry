@@ -120,7 +120,7 @@ void targets_start( void )
 
 	// start each target set
 	for( s = ctl->tgt->sets; s; s = s->next )
-		target_run_list( s->targets, 0 );
+		target_run_list( s->targets );
 }
 
 
@@ -132,7 +132,7 @@ int targets_init( void )
 	int i;
 
 	// create the target sets
-	for( l = ctl->target->lists; l; l = l->next )
+	for( l = target_list_all( ); l; l = l->next )
 	{
 		s = (TSET *) allocz( sizeof( TSET ) );
 		s->targets = l;

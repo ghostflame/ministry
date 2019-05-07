@@ -82,6 +82,7 @@ void udp_loop_checks( THRD *t )
 	struct sockaddr *sp;
 	socklen_t sl;
 	NET_PORT *n;
+	NET_PFX *p;
 	IPNET *ipn;
 	IOBUF *b;
 	HOST *h;
@@ -106,8 +107,8 @@ void udp_loop_checks( THRD *t )
 	net_set_host_parser( h, 0, 0 );
 
 	// prepopulate the hash table with prefixes
-	if( ctl->net->prefix )
-		iplist_call_data( ctl->net->prefix, &udp_add_phost, n );
+	for( p = ctl->net->prefix; p; p = p->next )
+		iplist_call_data( p->list, &udp_add_phost, n );
 
 	loop_mark_start( "udp" );
 
@@ -152,7 +153,10 @@ void udp_loop_checks( THRD *t )
 		b->buf[b->len] = '\0';
 
 		// do a prefix check on that
-		iplist_test_ip( ctl->net->prefix, h->ip, &ipn );
+		for( p = ctl->net->prefix; p; p = p->next )
+			if( iplist_test_ip( p->list, h->ip, &ipn ) != IPLIST_NOMATCH )
+				break;
+
 		if( ipn && ipn->tlen )
 			data_parse_buf( udp_get_phost( n, ipn ), b );
 		else

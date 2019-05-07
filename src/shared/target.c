@@ -9,11 +9,12 @@
 
 #include "shared.h"
 
-TGT_CTL *_tgt;
+TGT_CTL *_tgt = NULL;
 
 
 void target_loop( THRD *th )
 {
+	IO_CTL *io = _proc->io;
 	struct sockaddr_in sa;
 	int64_t fires = 0, r;
 	TGT *t;
@@ -44,9 +45,9 @@ void target_loop( THRD *th )
 	// make a socket with no buffers of its own
 	t->sock = io_make_sock( 0, 0, &sa );
 
-	r = 1000 * _io->rc_msec;
-	t->rc_limit = r / _io->send_usec;
-	if( r % _io->send_usec )
+	r = 1000 * io->rc_msec;
+	t->rc_limit = r / io->send_usec;
+	if( r % io->send_usec )
 		t->rc_limit++;
 
 	// make sure we have a non-zero max
@@ -63,7 +64,7 @@ void target_loop( THRD *th )
 	// now loop around sending
 	while( RUNNING( ) )
 	{
-		usleep( _io->send_usec );
+		usleep( io->send_usec );
 
 		// call the io_fn
 		fires += (*(t->iofp))( t );
@@ -78,23 +79,17 @@ void target_loop( THRD *th )
 
 
 
-int target_run_one( TGT *t, int enabled_check, int idx )
+int target_run_one( TGT *t, int idx )
 {
-	if( enabled_check && !t->enabled )
-	{
-		info( "Ignoring target %s due to enabled check.", t->name );
-		return 1;
-	}
-
 	target_set_id( t );
 
 	// start a loop for each one
-	thread_throw_named( target_loop, t, idx, "target_loop" );
+	thread_throw_named_f( target_loop, t, idx, "target_loop_%d", idx );
 	return 0;
 }
 
 
-int target_run_list( TGTL *list, int enabled_check )
+int target_run_list( TGTL *list )
 {
 	TGT *t;
 	int i;
@@ -103,13 +98,13 @@ int target_run_list( TGTL *list, int enabled_check )
 		return -1;
 
 	for( i = 0, t = list->targets; t; t = t->next, i++ )
-		target_run_one( t, enabled_check, i );
+		target_run_one( t, i );
 
 	return 0;
 }
 
 
-int target_run( int enabled_check )
+int target_run( void )
 {
 	TGTL *l;
 
@@ -118,7 +113,7 @@ int target_run( int enabled_check )
 
 	// check each one
 	for( l = _tgt->lists; l; l = l->next )
-		target_run_list( l, enabled_check );
+		target_run_list( l );
 
 	return 0;
 }
@@ -132,6 +127,23 @@ TGTL *target_list_find( char *name )
 		for( l = _tgt->lists; l; l = l->next )
 			if( !strcasecmp( name, l->name ) )
 				return l;
+
+	return NULL;
+}
+
+TGT *target_list_search( TGTL *l, char *name, int len )
+{
+	TGT *t;
+
+	if( !l || !name || !*name )
+		return NULL;
+
+	if( !len )
+		len = strlen( name );
+
+	for( t = l->targets; t; t = t->next )
+		if( len == t->nlen && !strncasecmp( name, t->name, len ) )
+			return t;
 
 	return NULL;
 }
@@ -187,6 +199,8 @@ int __target_set_maxw( TGT *t, char *max )
 
 int __target_set_host( TGT *t, char *host )
 {
+	IO_CTL *io = _proc->io;
+
 	if( strchr( host, ' ' ) )
 	{
 		err( "Target hosts may not have spaces in them: %s", host );
@@ -196,14 +210,14 @@ int __target_set_host( TGT *t, char *host )
 	// special value, stdout
 	if( !strcmp( host, "-" ) )
 	{
-		if( _io->stdout_count > 0 )
+		if( io->stdout_count > 0 )
 		{
 			err( "Can only have one target writing to stdout." );
 			return -1;
 		}
 
 		t->to_stdout = 1;
-		_io->stdout_count++;
+		io->stdout_count++;
 		debug( "Target writing to stdout." );
 	}
 
@@ -240,19 +254,46 @@ TGTL *__target_list_find_create( char *name )
 	return l;
 }
 
+void target_list_check_enabled( TGTL *l )
+{
+	int e = 0;
+	TGT *t;
+
+	if( !l )
+		return;
+
+	for( t = l->targets; t; t = t->next )
+		if( t->enabled )
+			e++;
+
+	if( !e && l->enabled )
+		info( "All targets in list %s are now disabled.", l->name );
+
+	l->enabled = e;
+}
+
 TGTL *target_list_create( char *name )
 {
 	return __target_list_find_create( name );
+}
+
+TGTL *target_list_all( void )
+{
+	return _tgt->lists;
 }
 
 
 TGT *target_create( char *list, char *name, char *proto, char *host, uint16_t port, char *type, int enabled )
 {
 	TGT *t;
+	int l;
+
+	l = strlen( name );
 
 	t = (TGT *) allocz( sizeof( TGT ) );
 	t->port = port;
-	t->name = str_copy( name, 0 );
+	t->name = str_copy( name, l );
+	t->nlen = l;
 	t->list = __target_list_find_create( list );
 	t->enabled = enabled;
 
@@ -262,6 +303,8 @@ TGT *target_create( char *list, char *name, char *proto, char *host, uint16_t po
 	t->next = t->list->targets;
 	t->list->targets = t;
 	_tgt->tcount++;
+
+	target_list_check_enabled( t->list );
 
 	return t;
 }
@@ -320,6 +363,7 @@ int target_config_line( AVP *av )
 	{
 		memset( t, 0, sizeof( TGT ) );
 		t->max = IO_MAX_WAITING;
+		t->enabled = 1;
 	}
 
 	if( attIs( "target" ) )
@@ -341,6 +385,7 @@ int target_config_line( AVP *av )
 			free( t->name );
 
 		t->name = str_copy( av->vptr, av->vlen );
+		t->nlen = av->vlen;
 		__tgt_cfg_state = 1;
 	}
 	else if( attIs( "host" ) )
@@ -443,6 +488,8 @@ int target_config_line( AVP *av )
 		n->list->count++;
 		_tgt->tcount++;
 
+		target_list_check_enabled( n->list );
+
 		__tgt_cfg_state = 0;
 	}
 	else
@@ -451,3 +498,131 @@ int target_config_line( AVP *av )
 	return 0;
 }
 
+
+
+
+
+// http interface
+
+void __target_http_list_one( BUF *b, TGT *t )
+{
+	strbuf_aprintf( b,
+		"{ \"name\": \"%s\", \"endpoint\": \"%s:%hu\", \"type\": \"%s\", \"bytes\": %ld }, ",
+		t->name, t->host, t->port, t->typestr, t->bytes );
+}
+
+
+void __target_http_list( BUF *b, int enval )
+{
+	int e, c;
+	TGTL *l;
+	TGT *t;
+
+	for( c = 0, l = _tgt->lists; l; l = l->next )
+	{
+		// see if we have anything in this list that matches
+		e = 0;
+		for( t = l->targets; t; t = t->next )
+			if( t->enabled == enval )
+			{
+				e = 1;
+				c++;	// to do with tidyup at the end
+				break;
+			}
+
+		if( e )
+		{
+			strbuf_aprintf( b, "\"%s\": [ ", l->name );
+			for( t = l->targets; t; t = t->next )
+			{
+				if( t->enabled == enval )
+					__target_http_list_one( b, t );
+			}
+			strbuf_chopn( b, 2 );
+			strbuf_aprintf( b, " ], " );
+		}
+	}
+
+	if( c > 0 )
+	{
+		strbuf_chopn( b, 2 );
+		strbuf_aprintf( b, " " );
+	}
+}
+
+
+int target_http_list( HTREQ *req )
+{
+	req->text = strbuf_resize( req->text, 32760 );
+
+	strbuf_printf( req->text, "{\"enabled\": { " );
+	__target_http_list( req->text, 1 );
+
+	strbuf_aprintf( req->text, "}, \"disabled\": { " );
+	__target_http_list( req->text, 0 );
+
+	strbuf_aprintf( req->text, "} }\n" );
+
+	return 0;
+}
+
+
+int target_http_toggle( HTREQ *req )
+{
+	AVP *av = &(req->post->kv);
+	TGTALT *ta;
+
+	if( !req->post->objFree )
+	{
+		req->post->objFree = (TGTALT *) allocz( sizeof( TGTALT ) );
+		strbuf_copy( req->text, "Target not found.\n", 0 );
+	}
+
+	ta = (TGTALT *) req->post->objFree;
+
+	if( !strcasecmp( av->aptr, "enabled" ) )
+	{
+		ta->state = config_bool( av );
+		ta->state_set = 1;
+	}
+	else if( !strcasecmp( av->aptr, "list" ) )
+	{
+		ta->list = target_list_find( av->vptr );
+	}
+	else if( !strcasecmp( av->aptr, "target" ) )
+	{
+		ta->tgt = target_list_search( ta->list, av->vptr, av->vlen );
+	}
+	else
+		return 0;
+
+	// do we have everything?
+	// set the state then
+	if( ta->list
+	 && ta->tgt
+	 && ta->state_set )
+	{
+		if( ta->tgt->enabled != ta->state )
+		{
+			ta->tgt->enabled = ta->state;
+
+			strbuf_printf( req->text, "Target %s/%s %sabled.\n",
+				ta->list->name, ta->tgt->name,
+				( ta->state ) ? "en" : "dis" );
+
+			notice( "Target %s/%s %sabled.",
+				ta->list->name, ta->tgt->name,
+				( ta->state ) ? "en" : "dis" );
+
+			target_list_check_enabled( ta->list );
+		}
+		else
+		{
+			strbuf_printf( req->text, "Target %s/%s was already %sabled.\n",
+				ta->list->name, ta->tgt->name,
+				( ta->state ) ? "en" : "dis" );
+		}
+	}
+
+	return 0;
+}

@@ -9,6 +9,8 @@
 
 #include "shared.h"
 
+LOG_CTL *_logger = NULL;
+
 char *log_level_strings[LOG_LEVEL_MAX] =
 {
 	"FATAL",
@@ -74,6 +76,37 @@ int8_t log_get_level( char *str )
 
 	warn( "Unrecognised log level string '%s'", str );
 	return LOG_LEVEL_DEBUG;
+}
+
+
+int log_set_level( int8_t level, int8_t both )
+{
+	// used as a reset to orig
+	if( level < 0 )
+	{
+		if( both )
+		{
+			_logger->level = _logger->orig_level;
+			return 0;
+		}
+		else
+			return -1;
+	}
+
+	if( level >= LOG_LEVEL_MAX )
+		return -1;
+
+	_logger->level = level;
+
+	if( both )
+		_logger->orig_level = level;
+
+	return 0;
+}
+
+void log_set_force_stdout( int set )
+{
+	_logger->force_stdout = ( set ) ? 1 : 0;
 }
 
 
@@ -263,9 +296,38 @@ void log_reopen( int sig )
 }
 
 
+int log_ctl_setdebug( HTREQ *req )
+{
+	AVP *av = &(req->post->kv);
+	int lvl = -1, both = 1;
+	char *str = "dis";
+
+	if( strcasecmp( av->aptr, "set-debug" ) )
+		return 0;
+
+	if( config_bool( av ) )
+	{
+		lvl = LOG_LEVEL_DEBUG;
+		both = 0;
+		str = "en";
+	}
+
+	// set our new level
+	log_set_level( lvl, both );
+	notice( "Run-time debug logging %sabled.", str );
+
+	// and report back
+	strbuf_printf( req->text, "Run-time debug logging %sabled.\n", str );
+
+	return 0;
+}
+
 
 int log_start( void )
 {
+	// add a callback to toggle debugging
+	http_add_control( "set-debug", "Set/unset debug logging", NULL, log_ctl_setdebug, NULL, 0 );
+
 	if( !_logger )
 		return -1;
 
@@ -277,6 +339,8 @@ int log_start( void )
 		_logger->notify_re = 0;
 		return 0;
 	}
+
+	debug( "Starting logging - no more logs to stdout." );
 
 	if( _logger->use_syslog )
 	{
@@ -297,6 +361,7 @@ LOG_CTL *log_config_defaults( void )
 	// default to stdout
 	_logger->filename       = strdup( "-" );
 	_logger->level          = LOG_LEVEL_INFO;
+	_logger->orig_level     = LOG_LEVEL_INFO;
 	_logger->ok_fd          = fileno( stdout );
 	_logger->err_fd         = fileno( stderr );
 	_logger->use_std        = 1;

@@ -20,34 +20,17 @@ CSECT config_sections[CONF_SECT_MAX];
 
 #define CFG_VV_FLAGS	(VV_AUTO_VAL|VV_LOWER_ATT|VV_REMOVE_UDRSCR)
 
+
 /*
  * Matches arg substitutions of the form:
  * %N% where N <= argc
  */
-void config_args_substitute( char *str, int *len )
+int config_args_substitute( AVP *av )
 {
-	int i, l;
+	if( !context->argc || av->vlen < 3 )
+		return 0;
 
-	l = *len;
-
-	if( !context->argc || l < 3 )
-		return;
-
-	// 1-indexed
-	if( str[0] == '%' && str[l - 1] == '%'
-	 && ( i = atoi( str + 1 ) ) > 0
-	 && i <= context->argc )
-	{
-		// it can't be too long, or we could never
-		// have read the include line in the first
-		// place.
-		i--;
-		*len = context->argl[i];
-		memcpy( str, context->argv[i], *len );
-		str[*len] = '\0';
-
-		debug( "Config substitution of arg %d: %s", i + 1, str );
-	}
+	return strsub( &(av->vptr), &(av->vlen), context->argc, context->argv, context->argl );
 }
 
 
@@ -108,7 +91,8 @@ int config_get_line( FILE *f, AVP *av )
 		if( av->status == VV_LINE_ATTVAL )
 		{
 			// but do args substitution first
-			config_args_substitute( av->vptr, &(av->vlen) );
+			if( config_args_substitute( av ) > 0 )
+				av->doFree = 1;
 
 			return 0;
 		}
@@ -148,7 +132,6 @@ int config_bool( AVP *av )
 CCTXT *config_make_context( char *path, WORDS *w )
 {
 	CCTXT *ctx, *parent = context;
-	char *str;
 	int i;
 
 	ctx = (CCTXT *) allocz( sizeof( CCTXT ) );
@@ -163,8 +146,7 @@ CCTXT *config_make_context( char *path, WORDS *w )
 		ctx->argv = (char **) allocz( ctx->argc * sizeof( char * ) );
 		for( i = 1; i < w->wc; i++ )
 		{
-			str = str_dup( w->wd[i], w->len[i] );
-			ctx->argv[i-1] = str;
+			ctx->argv[i-1] = str_copy( w->wd[i], w->len[i] );
 			ctx->argl[i-1] = w->len[i];
 		}
 	}
@@ -299,10 +281,44 @@ char *config_relative_path( char *inpath )
 }
 
 
+
+
+int __config_handle_line( AVP *av )
+{
+	int ret = 0;
+
+	// spot includes - they inherit context
+	if( !strcasecmp( av->aptr, "include" ) )
+	{
+		WORDS w;
+
+		strwords( &w, av->vptr, av->vlen, ' ' );
+
+		if( config_read( w.wd[0], &w ) != 0 )
+		{
+			err( "Included config file '%s' is not valid.", av->vptr );
+			return -1;
+		}
+
+		return 0;
+	}
+
+	debug( "Config line: %s = %s", av->aptr, av->vptr );
+
+	// then dispatch to the correct handler
+	ret = (*(context->section->fp))( av );
+
+	if( av->doFree )
+		free( av->vptr );
+
+	return ret;
+}
+
+
+
 int __config_read_file( FILE *fh )
 {
 	int rv, lrv, ret = 0;
-	WORDS w;
 	AVP av;
 
 	while( ( rv = config_get_line( fh, &av ) ) != -1 )
@@ -311,30 +327,81 @@ int __config_read_file( FILE *fh )
 		if( rv > 0 )
 			continue;
 
-		// spot includes - they inherit context
-		if( !strcasecmp( av.aptr, "include" ) )
+		// repeat the next line based on other args
+		if( !strcasecmp( av.aptr, "foreach" ) )
 		{
-			strwords( &w, av.vptr, av.vlen, ' ' );
+			ITER *it = iter_init( NULL, av.vptr, av.vlen );
+			char *vcpy, *vtmp, *arg;
+			int alen, vlen;
 
-			if( config_read( w.wd[0], &w ) != 0 )
-			{
-				err( "Included config file '%s' is not valid.", av.vptr );
-				ret = -1;
+			// get our next line
+			if( ( rv = config_get_line( fh, &av ) ) )
 				break;
+
+			// we need two copies because processing
+			// may alter the input string, and we need
+			// to keep replaying it
+			vlen = av.vlen;
+			vcpy = (char *) allocz( vlen + 2 );
+			vtmp = (char *) allocz( vlen + iter_longest( it ) + 2 );
+
+			memcpy( vcpy, av.vptr, av.vlen );
+			vcpy[av.vlen] = '\0';
+
+			// blanks have an autoassigned '1' we want to ignore
+			// if you really want a 1 with arguments, put a 1
+			if( av.blank )
+				vlen = 0;
+			else
+			 	vtmp[vlen++] = ' ';
+
+			// run while arguments...
+			while( iter_next( it, &arg, &alen ) == 0 )
+			{
+				// copy the base - might be 0, might be base + space
+				memcpy( vtmp, vcpy, vlen );
+				// add the latest arg
+				memcpy( vtmp + vlen, arg, alen );
+
+				// point the av struct at it
+				av.vptr = vtmp;
+				av.vlen = vlen + alen;
+
+				// and cap it
+				vtmp[av.vlen] = '\0';
+
+				debug( "Config iterator calling: %s = %s", av.aptr, av.vptr );
+
+				lrv = __config_handle_line( &av );
+
+				ret += lrv;
+				if( lrv )
+				{
+					err( "Bad config in file '%s', line %d (repeat arg %s)",
+						context->source, context->lineno, arg );
+					info( "Bad line: %s = %s", av.aptr, av.vptr );
+					break;
+				}
 			}
 
-			continue;
+			iter_clean( it, 1 );
+			free( vcpy );
+			free( vtmp );
+
+			if( ret )
+				break;
 		}
-
-		// and dispatch it
-		lrv = (*(context->section->fp))( &av );
-		ret += lrv;
-
-		if( lrv )
+		else
 		{
-			err( "Bad config in file '%s', line %d", context->source, context->lineno );
-			info( "Bad line: %s = %s", av.aptr, av.vptr );
-			break;
+			lrv = __config_handle_line( &av );
+			ret += lrv;
+
+			if( lrv )
+			{
+				err( "Bad config in file '%s', line %d", context->source, context->lineno );
+				info( "Bad line: %s = %s", av.aptr, av.vptr );
+				break;
+			}
 		}
 	}
 
@@ -357,9 +424,6 @@ int config_read_file( char *path )
 {
 	FILE *fh = NULL;
 
-	debug( "Opening config file %s, section %s",
-		path, context->section->name );
-
 	// die on not reading main config file, warn on others
 	if( !( fh = fopen( path, "r" ) ) )
 	{
@@ -378,9 +442,6 @@ int config_read_url( char *url )
 {
 	CURLWH ch;
 	int ret;
-
-	debug( "Opening config url '%s', section %s",
-		url, context->section->name );
 
 	memset( &ch, 0, sizeof( CURLWH ) );
 
@@ -489,6 +550,11 @@ int config_read( char *inpath, WORDS *w )
 		ret = _proc->strict;
 		goto Read_Done;
 	}
+
+	debug( "Opening config %s '%s', section '%s', %d arg%s.",
+		( context->is_url ) ? "url" : "file", path,
+		context->section->name, context->argc,
+		( context->argc == 1 ) ? "" : "s" );
 
 	// so go do it
 	if( context->is_url )
@@ -621,6 +687,7 @@ int config_read_env( char **env )
 
 		if( l < ( _proc->env_prfx_len + 2 ) || memcmp( buf, _proc->env_prfx, _proc->env_prfx_len ) )
 			continue;
+
 		debug("Env Entry: %s", buf);
 
 		if( config_env_path( buf + _proc->env_prfx_len, l - _proc->env_prfx_len ) )
@@ -750,12 +817,12 @@ void config_args( int ac, char **av, char *optstr, help_fn *hfp )
 				runf_add( RUN_DAEMON );
 				break;
 			case 'D':
-				_logger->level = LOG_LEVEL_DEBUG;
+				log_set_level( LOG_LEVEL_DEBUG, 1 );
 				runf_add( RUN_DEBUG );
 				break;
 			case 'V':
 				runf_add( RUN_TGT_STDOUT );
-				_logger->force_stdout = 1;
+				log_set_force_stdout( 1 );
 				break;
 			case 'v':
 				printf( "%s version: %s\n", _proc->app_upper, _proc->version );

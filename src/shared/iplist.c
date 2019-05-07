@@ -9,7 +9,7 @@
 
 #include "shared.h"
 
-IPL_CTL *_iplist;
+IPL_CTL *_iplist = NULL;
 
 // TESTING
 
@@ -252,6 +252,8 @@ int iplist_append_net( IPLIST *l, IPNET *n )
 	uint32_t hval;
 	int add = 0;
 
+	n->list = l;
+
 	// hosts are different - check for dupes
 	if( n->bits == 32 )
 	{
@@ -337,8 +339,77 @@ void iplist_add( IPLIST *l )
 
 
 
+void iplist_init( void )
+{
+	uint32_t i;
+	IPLIST *l;
+	IPNET *n;
+
+	for( l = _iplist->lists; l; l = l->next )
+	{
+		if( l->text )
+		{
+
+			for( n = l->nets; n; n = n->next )
+				if( !n->text )
+				{
+					n->text = l->text;
+					n->tlen = l->tlen;
+				}
+
+			for( i = 0; i < l->hashsz; i++ )
+				for( n = l->ips[i]; n; n = n->next )
+					if( !n->text )
+					{
+						n->text = l->text;
+						n->tlen = l->tlen;
+					}
+		}
+
+		l->init_done = 1;
+	}
+}
+
+
+int iplist_set_text( IPLIST *l, char *str, int len )
+{
+	if( !l )
+	{
+		warn( "No iplist provided." );
+		return -1;
+	}
+
+	if( l->init_done )
+	{
+		warn( "Cannot set text on iplist %s - it has been init'd.",
+			l->name );
+		return -2;
+	}
+
+	if( l->text )
+	{
+		warn( "Text already set on list %s: '%s'",
+			( l->name ) ? l->name : "unknown", l->text );
+		free( l->text );
+		l->tlen = 0;
+	}
+
+	if( str && !len )
+		len = strlen( str );
+
+	if( str )
+		l->text = str_copy( str, len );
+
+	return 0;
+}
+
+
+
+
 IPL_CTL *iplist_config_defaults( void )
 {
+	char buf[2048];
+	IPLIST *lo;
 	int rv;
 
 	// make our ip network regex
@@ -347,12 +418,21 @@ IPL_CTL *iplist_config_defaults( void )
 
 	if( ( rv = regcomp( _iplist->netrgx, IPLIST_REGEX_NET, REG_EXTENDED|REG_ICASE ) ) )
 	{
-		char errbuf[2048];
-
-		regerror( rv, _iplist->netrgx, errbuf, 2048 );
-		fatal( "Cannot make IP address regex -- %s", errbuf );
+		regerror( rv, _iplist->netrgx, buf, 2048 );
+		fatal( "Cannot make IP address regex -- %s", buf );
 		return NULL;
 	}
+
+	// create a default, localhost-only iplist
+	lo = (IPLIST *) allocz( sizeof( IPLIST ) );
+	lo->name = IPLIST_LOCALONLY;
+	lo->def = IPLIST_NEGATIVE;
+	lo->verbose = 0;
+	lo->hashsz = 3;
+	snprintf( buf, 2048, "127.0.0.1" );
+	iplist_add_entry( lo, IPLIST_POSITIVE, buf, 9 );
+	iplist_set_text( lo, "Matches only localhost.", 0 );
+	iplist_add( lo );
 
 	return _iplist;
 }
@@ -419,6 +499,11 @@ int iplist_config_line( AVP *av )
 	{
 		_iplist_cfg_set = 1;
 		return iplist_add_entry( l, IPLIST_NEITHER, av->vptr, av->vlen );
+	}
+	else if( attIs( "text" ) )
+	{
+		_iplist_cfg_set = 1;
+		iplist_set_text( l, av->vptr, av->vlen );
 	}
 	else if( attIs( "done" ) )
 	{

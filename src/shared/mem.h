@@ -14,8 +14,6 @@
 #define DEFAULT_MEM_MAX_KB			( 10 * 1024 * 1024 )
 #define DEFAULT_MEM_CHECK_INTV		5000		// msec
 #define DEFAULT_MEM_PRE_INTV		50			// msec
-#define DEFAULT_MEM_STACK_SIZE		128			// gets converted to KB
-#define DEFAULT_MEM_STACK_HIGH		1024		// gets converted to KB
 
 #define DEFAULT_MEM_PRE_THRESH		0.33
 
@@ -34,6 +32,7 @@
 // and some types
 #define MEM_ALLOCSZ_IOBUF			128
 #define MEM_ALLOCSZ_IOBP			512
+#define MEM_ALLOCSZ_HTREQ			128
 
 
 #define mem_lock( mt )			pthread_mutex_lock(   &(mt->lock) )
@@ -109,6 +108,7 @@ struct mem_check
 	int64_t				curr_kb;
 	int64_t				rusage_kb;
 	int64_t				proc_kb;
+	int64_t				virt_kb;
 	int64_t				max_kb;
 };
 
@@ -118,15 +118,13 @@ struct mem_control
 
 	MCHK			*	mcheck;
 
-	int64_t				stacksize;
-	int64_t				stackhigh;
 	int64_t				prealloc;	// msec
-
 	int16_t				type_ct;
 
 	// known types
 	MTYPE			*	iobufs;
 	MTYPE			*	iobps;
+	MTYPE			*	htreq;
 };
 
 
@@ -138,6 +136,9 @@ void *allocz( size_t size );
 
 
 void *mem_reverse_list( void *list_in );
+void mem_sort_list( void **list, int count, sort_fn *cmp );
+
+
 void *mtype_new( MTYPE *mt );
 void *mtype_new_list( MTYPE *mt, int count );
 void mtype_free( MTYPE *mt, void *p );
@@ -152,6 +153,7 @@ throw_fn mem_check_loop;
 MTYPE *mem_type_declare( char *name, int sz, int ct, int extra, uint32_t pre );
 int mem_type_stats( int id, MTSTAT *ms );
 int64_t mem_curr_kb( void );
+int64_t mem_virt_kb( void );
 
 void mem_shutdown( void );
 void mem_startup( void );
@@ -168,6 +170,8 @@ void mem_free_iobuf_list( IOBUF *list );
 IOBP *mem_new_iobp( void );
 void mem_free_iobp( IOBP **b );
 
+HTREQ *mem_new_request( void );
+void mem_free_request( HTREQ **h );
 
 
 #endif

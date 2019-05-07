@@ -119,6 +119,14 @@ struct net_type
 
 
 
+struct net_prefix
+{
+	NET_PFX				*	next;
+	IPLIST				*	list;
+	char				*	name;
+	char				*	text;
+	int						tlen;
+};
 
 
 
@@ -132,10 +140,9 @@ struct network_control
 	TOKENS				*	tokens;
 
 	IPLIST				*	filter;
-	IPLIST				*	prefix;
+	NET_PFX				*	prefix;
 
 	char				*	filter_list;
-	char				*	prefix_list;
 
 	time_t					dead_time;
 	unsigned int			rcv_tmout;
