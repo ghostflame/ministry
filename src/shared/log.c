@@ -317,7 +317,6 @@ int log_ctl_setdebug( HTREQ *req )
 	notice( "Run-time debug logging %sabled.", str );
 
 	// and report back
-	req->text = strbuf_resize( req->text, 38 );
 	strbuf_printf( req->text, "Run-time debug logging %sabled.\n", str );
 
 	return 0;

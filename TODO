@@ -2,11 +2,7 @@ Refactor
     Looks like prealloc isn't working.
 	
 HTTP
-	Accept submissions via HTTP - leaking memory.  It's not the post size that matters
-		Well:
-			29.33K per large post
-			17.61K per short post
-	Prometheus metrics (requires significant memory)
+	Prometheus process metrics
 
 Network
 	More granular token control

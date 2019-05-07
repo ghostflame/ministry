@@ -12,12 +12,10 @@
 
 int post_handle_init( HTREQ *req )
 {
-	HOST *h = mem_new_host( req->sin, MIN_NETBUF_SZ );
-
-	req->post->obj = h;
-	req->text = strbuf_resize( req->text, 64 );
+	HOST *h = mem_new_host( &(req->sin), MIN_NETBUF_SZ );
 
 	h->type = ((DTYPE *) req->path->arg)->nt;
+	req->post->obj = h;
 
 	if( net_set_host_parser( h, 0, 1 ) )
 	{
@@ -50,6 +48,7 @@ int post_handle_finish( HTREQ *req )
 	// then free up the host
 	mem_free_host( (HOST **) &(req->post->obj) );
 
+	strbuf_printf( req->text, "Received %ld bytes.", req->post->total );
 	return 0;
 }
 
@@ -86,9 +85,7 @@ int post_handle_data( HTREQ *req )
 		data_parse_buf( h, b );
 	}
 
-	strbuf_printf( req->text, "Received %ld bytes.", req->post->total );
 	//debug( "There were %d bytes left over after the callback.", b->len );
-
 	return 0;
 }
 

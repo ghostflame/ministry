@@ -845,9 +845,6 @@ void stats_prefix( ST_CFG *c, char *s )
 {
 	int len, dot = 0;
 
-	if( !c->prefix )
-		c->prefix = strbuf( PREFIX_SZ );
-
 	len = strlen( s );
 
 	if( len > 0 )
@@ -857,12 +854,16 @@ void stats_prefix( ST_CFG *c, char *s )
 			dot = 1;
 	}
 
-	if( ( strbuf_copy( c->prefix, s, len ) < 0 )
-	 || ( dot && ( strbuf_add(  c->prefix, ".", 1 ) < 0 ) ) )
+	if( ( len + dot ) >= PREFIX_SZ )
 	{
 		fatal( "Prefix is larger than allowed max %d", c->prefix->sz );
 		return;
 	}
+
+	// make a prefix if we've not got one
+	c->prefix = strbuf_copy( c->prefix, s, len );
+	if( dot )
+		strbuf_add( c->prefix, ".", 1 );
 }
 
 

@@ -764,6 +764,10 @@ HTREQ *mem_new_request( void )
 {
 	HTREQ *r = mtype_new( _mem->htreq );
 	r->check = HTTP_CLS_CHECK;
+
+	if( !r->text )
+		r->text = strbuf( 4000u );
+
 	return r;
 }
 
@@ -785,11 +789,7 @@ void mem_free_request( HTREQ **h )
 	if( p )
 		memset( p, 0, sizeof( HTTP_POST ) );
 
-	if( b )
-	{
-		b->buf[0] = '\0';
-		b->len = 0;
-	}
+	strbuf_empty( b );
 
 	r->text = b;
 	r->post = p;

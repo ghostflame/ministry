@@ -178,10 +178,11 @@ int token_url_handler( HTREQ *req )
 	TOKEN *t, *tlist[8];
 	BUF *b;
 
-	b = ( req->text = strbuf_resize( req->text, 256 ) );
+	// min size for req text is 512
+	b = req->text;
 
 	types = TOKEN_TYPE_STATS|TOKEN_TYPE_ADDER|TOKEN_TYPE_GAUGE;
-	token_generate( req->sin->sin_addr.s_addr, types, tlist, 8, &count );
+	token_generate( req->sin.sin_addr.s_addr, types, tlist, 8, &count );
 
 	strbuf_add( b, "{", 1 );
 

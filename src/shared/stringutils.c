@@ -121,34 +121,40 @@ BUF *strbuf_resize( BUF *b, uint32_t size )
 	return b;
 }
 
-int strbuf_copy( BUF *b, char *str, int len )
+BUF *strbuf_copy( BUF *b, char *str, int len )
 {
 	if( !len )
 		len = strlen( str );
 
+	if( !b )
+		return strbuf_create( str, len );
+
 	if( (uint32_t) len >= b->sz )
-		return -1;
+		strbuf_resize( b, len + 1 );
 
 	memcpy( b->buf, str, len );
 	b->len = len;
 	b->buf[b->len] = '\0';
 
-	return len;
+	return b;
 }
 
-int strbuf_add( BUF *b, char *str, int len )
+BUF *strbuf_add( BUF *b, char *str, int len )
 {
 	if( !len )
 		len = strlen( str );
 
-	if( ( b->len + len ) >= b->sz )
-		return -1;
+	if( !b )
+		return strbuf_create( str, len );
+
+	if( (uint32_t) len > ( b->sz - b->len ) )
+		len = b->sz - b->len - 1;
 
 	memcpy( b->buf + b->len, str, len );
 	b->len += len;
 	b->buf[b->len] = '\0';
 
-	return len;
+	return b;
 }
 
 BUF *strbuf_create( char *str, int len )

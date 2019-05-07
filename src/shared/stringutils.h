@@ -77,10 +77,12 @@ char *str_copy( char *src, int len );
 
 // get a buffer
 BUF *strbuf( uint32_t size );
-BUF *strbuf_resize( BUF *b, uint32_t size );
 BUF *strbuf_create( char *str, int len );
-int strbuf_copy( BUF *b, char *str, int len );
-int strbuf_add( BUF *b, char *str, int len );
+
+// modify a buffer
+BUF *strbuf_resize( BUF *b, uint32_t size );
+BUF *strbuf_copy( BUF *b, char *str, int len );
+BUF *strbuf_add( BUF *b, char *str, int len );
 
 // these work as macros
 #define strbuf_printf( b, ... )			b->len = snprintf( b->buf, b->sz, ##__VA_ARGS__ )

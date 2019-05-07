@@ -107,7 +107,6 @@ struct http_post_state
 	size_t					total;
 
 	int						calls;
-	int						valid;
 	int						state;	// where in the post cycle are we?
 };
 
@@ -121,7 +120,7 @@ struct http_req_data
 	HTPATH				*	path;
 	HTTP_CONN			*	conn;
 	BUF					*	text;
-	struct sockaddr_in	*	sin;
+	struct sockaddr_in		sin;
 	HTTP_POST			*	post;
 	HTTP_PPROC			*	pproc;
 	int						code;

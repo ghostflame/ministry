@@ -43,11 +43,8 @@ HTPATH *http_find_callback( const char *url, int rlen, HTHDLS *hd )
 	HTPATH *p;
 
 	for( p = hd->list; p; p = p->next )
-	{
-		//debug( "Comparing url '%s' against path '%s'", url, p->path );
 		if( p->plen == rlen && !memcmp( p->path, url, rlen ) )
 			return p;
-	}
 
 	return NULL;
 }
@@ -194,7 +191,6 @@ int http_send_response( HTREQ *req )
 {
 	int ret = MHD_YES;
 	HTTP_RESP *resp;
-	BUF *b;
 
 	if( req->sent )
 	{
@@ -202,10 +198,10 @@ int http_send_response( HTREQ *req )
 		return ret;
 	}
 
-	if( ( b = req->text ) )
+	if( req->text->len > 0 )
 	{
-		resp = MHD_create_response_from_buffer( b->len, (void *) b->buf, MHD_RESPMEM_MUST_COPY );
-		strbuf_empty( b );
+		resp = MHD_create_response_from_buffer( req->text->len, (void *) req->text->buf, MHD_RESPMEM_MUST_COPY );
+		strbuf_empty( req->text );
 	}
 	else
 	{
@@ -247,13 +243,10 @@ void http_request_complete( void *cls, HTTP_CONN *conn,
 	{
 		req->post->state = HTTP_POST_END;
 
-		if( req->post->valid )
-		{
-			if( req->path->flags & HTTP_FLAGS_CONTROL )
-				http_calls_ctl_done( req );
-			else
-				(req->path->cb)( req );
-		}
+		if( req->path->flags & HTTP_FLAGS_CONTROL )
+			http_calls_ctl_done( req );
+		else
+			(req->path->cb)( req );
 
 		// free anything on the post object
 		if( req->post->objFree )
@@ -270,10 +263,8 @@ void http_request_complete( void *cls, HTTP_CONN *conn,
 		(_http->rpt_fp)( req->path, _http->rpt_arg, nsec, bytes );
 	}
 
-	debug( "Freeing request %p", req );
 	mem_free_request( &req );
 	*arg = NULL;
-
 }
 
 
@@ -284,7 +275,7 @@ int http_request_access_check( IPLIST *src, HTREQ *req, struct sockaddr *sa )
 
 	if( http_access_policy( src, sa, 0 ) != MHD_YES )
 	{
-		req->text = strbuf_create( "Access denied.", 0 );
+		req->text = strbuf_copy( req->text, "Access denied.", 0 );
 		req->code = MHD_HTTP_FORBIDDEN;
 		http_send_response( req );
 		return 0;
@@ -303,29 +294,22 @@ int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
 	HTREQ *req;
 	HTHDLS *hd;
 
-	req = (HTREQ *) *con_cls;
-	debug( "Pointers:\n\t%p  con_cls\n\t%p  *con_cls\n\t%p  cls\n\t%p  conn\n\t%p  _http",
-		con_cls, req, cls, conn, _http );
-
-	// this is leaking massively!
-	// TODO find out what the hell is in con_cls
-
 	// WHISKEY TANGO FOXTROT, libmicrohttpd?
-	if( ((int64_t) *con_cls) < 0x1ff )
+	if( ((int64_t) *con_cls) < 0x1fff )
 	{
-		//info( "Flattening bizarre arg value %p.", *con_cls );
+		//info( "Flattening bizarre arg value %p -> %p.", *con_cls );
 		*con_cls = NULL;
 	}
-	// what the hell is it putting in con_cls, that's supposed to be
-	// null?
-	else if( req->check != HTTP_CLS_CHECK )
+
+	// what the hell is it putting in con_cls, that's supposed to be // null?
+	if( ( req = *((HTREQ **) con_cls) ) && req->check != HTTP_CLS_CHECK )
 	{
-		//info( "Flattening weird con_cls %p.", *con_cls );
+		//info( "Flattening weird con_cls %p -> %p.", con_cls, req );
 		*con_cls = NULL;
 	}
 
 	// do we have an object?
-	if( !( req = (HTREQ *) *con_cls ) )
+	if( !( req = *((HTREQ **) con_cls) ) )
 	{
 		req = mem_new_request( );
 		req->conn = conn;
@@ -349,7 +333,7 @@ int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
 		}
 		else
 		{
-			req->text = strbuf_create( "Method not supported.", 0 );
+			req->text = strbuf_copy( req->text, "Method not supported.", 0 );
 			req->code = MHD_HTTP_METHOD_NOT_ALLOWED;
 			http_send_response( req );
 			return MHD_YES;
@@ -358,7 +342,7 @@ int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
 		// find the handler
 		if( !( req->path = http_find_callback( url, rlen, hd ) ) )
 		{
-			req->text = strbuf_create( "That url is not recognised.", 0 );
+			req->text = strbuf_copy( req->text, "That url is not recognised.", 0 );
 			req->code = MHD_HTTP_NOT_FOUND;
 			http_send_response( req );
 			return MHD_YES;
@@ -368,7 +352,7 @@ int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
 		is_ctl = req->path->flags & HTTP_FLAGS_CONTROL;
 
 		ci = (union MHD_ConnectionInfo *) MHD_get_connection_info( conn, MHD_CONNECTION_INFO_CLIENT_ADDRESS );
-		req->sin = (struct sockaddr_in *) (ci->client_addr);
+		req->sin = *((struct sockaddr_in *) (ci->client_addr));
 
 		// do we have a separate ip list?
 		// check it's not the generic one
@@ -406,7 +390,9 @@ int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
 			if( req->first )
 			{
 				// and create the post data object
-				req->post = (HTTP_POST *) allocz( sizeof( HTTP_POST ) );
+				if( !req->post )
+					req->post = (HTTP_POST *) allocz( sizeof( HTTP_POST ) );
+
 				req->post->state = HTTP_POST_START;
 
 				if( is_ctl )
@@ -648,10 +634,10 @@ HTTP_CTL *http_config_defaults( void )
 	h->port            = DEFAULT_HTTP_PORT;
 	h->addr            = NULL;
 	h->stats           = 1;
+	// MHD_USE_DEBUG does *weird* things.  Points *con_cls at the request buffer
+	// without it, *con_cls seems to relate to the length of the requested url
+	// either way, whiskey tango foxtrot libmicrohttpd
 	h->flags           = MHD_USE_THREAD_PER_CONNECTION|MHD_USE_INTERNAL_POLLING_THREAD|MHD_USE_AUTO|MHD_USE_TCP_FASTOPEN|MHD_USE_ERROR_LOG;
-#ifdef DEBUG
-	h->flags           = h->flags | MHD_USE_DEBUG;
-#endif
 
 	h->enabled         = 0;
 	h->tls->enabled    = 0;

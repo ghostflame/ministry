@@ -575,7 +575,6 @@ int target_http_toggle( HTREQ *req )
 	if( !req->post->objFree )
 	{
 		req->post->objFree = (TGTALT *) allocz( sizeof( TGTALT ) );
-		req->text = strbuf( 250 );
 		strbuf_copy( req->text, "Target not found.\n", 0 );
 	}
 
