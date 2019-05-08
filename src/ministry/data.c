@@ -22,6 +22,7 @@ DTYPE data_type_defns[DATA_TYPE_MAX] =
 		.tokn = TOKEN_TYPE_STATS,
 		.port = DEFAULT_STATS_PORT,
 		.thrd = TCP_THRD_DSTATS,
+		.styl = TCP_STYLE_THRD,
 		.sock = "ministry stats socket",
 		.nt   = NULL
 	},
@@ -34,6 +35,7 @@ DTYPE data_type_defns[DATA_TYPE_MAX] =
 		.tokn = TOKEN_TYPE_ADDER,
 		.port = DEFAULT_ADDER_PORT,
 		.thrd = TCP_THRD_DADDER,
+		.styl = TCP_STYLE_EPOLL,
 		.sock = "ministry adder socket",
 		.nt   = NULL
 	},
@@ -46,6 +48,7 @@ DTYPE data_type_defns[DATA_TYPE_MAX] =
 		.tokn = TOKEN_TYPE_GAUGE,
 		.port = DEFAULT_GAUGE_PORT,
 		.thrd = TCP_THRD_DGAUGE,
+		.styl = TCP_STYLE_EPOLL,
 		.sock = "ministry gauge socket",
 		.nt   = NULL
 	},
@@ -58,6 +61,7 @@ DTYPE data_type_defns[DATA_TYPE_MAX] =
 		.tokn = 0,
 		.port = DEFAULT_COMPAT_PORT,
 		.thrd = TCP_THRD_DCOMPAT,
+		.styl = TCP_STYLE_THRD,
 		.sock = "statsd compat socket",
 		.nt   = NULL
 	},

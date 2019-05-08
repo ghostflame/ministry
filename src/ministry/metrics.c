@@ -823,6 +823,8 @@ int metrics_config_line( AVP *av )
 	}
 	else if( attIs( "default" ) )
 	{
+		_m_mt_chk;
+
 		p->is_default = config_bool( av );
 		__metrics_prof_state = 1;
 	}

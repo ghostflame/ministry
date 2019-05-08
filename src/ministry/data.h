@@ -42,6 +42,7 @@ struct data_type_params
 	int16_t				tokn;
 	uint16_t			port;
 	int64_t				thrd;
+	int8_t				styl;
 	char			*	sock;
 	NET_TYPE		*	nt;
 };

@@ -289,7 +289,7 @@ NET_TYPE *net_type_defaults( int type )
 	nt->udp_bind    = INADDR_ANY;
 	nt->threads     = d->thrd;
 	nt->pollmax     = TCP_MAX_POLLS;
-	nt->tcp_style   = TCP_STYLE_THRD;
+	nt->tcp_style   = d->styl;
 	nt->label       = strdup( d->sock );
 	nt->name        = strdup( d->name );
 	nt->flags       = NTYPE_ENABLED|NTYPE_TCP_ENABLED|NTYPE_UDP_ENABLED;

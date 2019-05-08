@@ -783,8 +783,15 @@ int http_config_line( AVP *av )
 		else if( attIs( "keyPass" ) || attIs( "pass" ) || attIs( "password" ) )
 		{
 		  	http_clean_password( h );
-			
-			if( !valIs( "null" ) && !valIs( "-" ) )
+
+			if( valIs( "-" ) )
+			{
+				debug( "Asking for TLS key password interactively - config said '-'." );
+				setcfFlag( KEY_PASSWORD );
+				return 0;
+			}
+
+			if( !valIs( "null" ) )
 			{
 				h->tls->password = str_copy( av->vptr, av->vlen );
 				h->tls->passlen  = (uint16_t) av->vlen;
