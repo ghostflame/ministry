@@ -72,6 +72,8 @@ int set_limits( void )
 
 int app_init( char *name, char *cfgdir )
 {
+	curl_version_info_data *cvid;
+
 	// create some stuff
 	config_defaults( name, cfgdir );
 
@@ -81,6 +83,7 @@ int app_init( char *name, char *cfgdir )
 	_proc->io   = io_config_defaults( );
 	_proc->ipl  = iplist_config_defaults( );
 	_proc->tgt  = target_config_defaults( );
+	_proc->ha   = ha_config_defaults( );
 
 	// set up our shared config
 	memset( config_sections, 0, CONF_SECT_MAX * sizeof( CSECT ) );
@@ -91,6 +94,7 @@ int app_init( char *name, char *cfgdir )
 	config_register_section( "iplist",   &iplist_config_line );
 	config_register_section( "io",       &io_config_line );
 	config_register_section( "target",   &target_config_line );
+	config_register_section( "ha",       &ha_config_line );
 
 	if( set_signals( ) )
 	{
@@ -103,6 +107,11 @@ int app_init( char *name, char *cfgdir )
 	// make curl ready
 	curl_global_init( CURL_GLOBAL_SSL );
 
+	// find out about curl
+	cvid = curl_version_info( CURLVERSION_NOW );
+	if( cvid->version_num > 0x072900 )	// 7.41.0
+		runf_add( RUN_CURL_VERIFY );
+
 	runf_add( RUN_APP_INIT );
 
 	return 0;
@@ -114,7 +123,6 @@ int app_start( int writePid )
 	if( !runf_has( RUN_APP_INIT ) )
 		fatal( "App has not been init'd yet." );
 
-	curl_global_cleanup( );
 
 	if( chkcfFlag( TEST_ONLY ) )
 	{
@@ -167,6 +175,10 @@ int app_start( int writePid )
 	if( http_start( ) )
 		fatal( "Failed to start http server." );
 
+	// and ha init
+	if( ha_init( ) )
+		fatal( "Failed to init HA." );
+
 	runf_add( RUN_APP_START );
 
 	return 0;
@@ -200,6 +212,10 @@ void app_ready( void )
 	// and any iplists
 	iplist_init( );
 
+	// and ha
+	if( ha_start( ) )
+		fatal( "Failed to start HA cluster." );
+
 	thread_throw_named( &loop_timer, NULL, 0, "timer_loop" );
 }
 
@@ -227,12 +243,16 @@ void app_finish( int exval )
 	else
 		notice( "Shutting down without thread completion." );
 
+	ha_shutdown( );
+
 	io_stop( );
 
 	string_store_cleanup( _proc->stores );
 
 	pthread_mutex_destroy( &(_proc->loop_lock) );
 	mem_shutdown( );
+
+	curl_global_cleanup( );
 
 	if( runf_has( RUN_PIDFILE ) )
 		pidfile_remove( );

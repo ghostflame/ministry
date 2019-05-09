@@ -30,7 +30,21 @@ int64_t get_time64( void )
 
 
 
+// random number below n
+int64_t get_rand( int64_t n )
+{
+	double d;
 
+	d  = (double) random( ) / ( 1.0 * RAND_MAX );
+	d *= (double) n;
+
+	return (int64_t) d;
+}
+
+int8_t percent( void )
+{
+	return 1 + (int8_t) get_rand( 100 );
+}
 
 
 #define	VV_NO_CHECKS	0x07
@@ -315,6 +329,12 @@ double get_uptime( void )
 	ts_diff( _proc->curr_time, _proc->init_time, &diff );
 
 	return diff;
+}
+
+time_t get_uptime_sec( void )
+{
+	get_time( );
+	return _proc->curr_time.tv_sec - _proc->init_time.tv_sec;
 }
 
 

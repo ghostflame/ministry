@@ -20,6 +20,21 @@
 	#define _LCURL_CAN_VERIFY 0
 #endif
 
+// in case we have an old version of curl
+#ifndef CURLOPT_SSL_VERIFYPEER
+#define CURLOPT_SSL_VERIFYPEER		64L
+#endif
+
+#ifndef CURLOPT_SSL_VERIFYHOST
+#define CURLOPT_SSL_VERIFYHOST		81L
+#endif
+
+#ifndef CURLOPT_SSL_VERIFYSTATUS
+#define CURLOPT_SSL_VERIFYSTATUS	232L
+#endif
+
+
+
 #define CErr						curl_easy_strerror( cc )
 
 #define CURLW_FLAG_SSL				0x01

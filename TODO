@@ -23,3 +23,7 @@ Operational Readiness
     review:  https://cwe.mitre.org/data/definitions/658.html
 		done:	https://cwe.mitre.org/data/definitions/14.html
 
+Clustering
+	Make sure existing connections are not closed until shutdown
+	This involves separting shutting down from RUNNING
+

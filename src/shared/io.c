@@ -207,6 +207,21 @@ void io_disconnect( SOCK *s )
 }
 
 
+void io_sock_set_peer( SOCK *s, struct sockaddr_in *peer )
+{
+	if( !s || !peer )
+		return;
+
+	s->peer = *peer;
+
+	if( !s->name )
+		s->name = perm_str( 32 );
+
+	snprintf( s->name, 32, "%s:%hu", inet_ntoa( peer->sin_addr ),
+		ntohs( peer->sin_port ) );
+}
+
+
 SOCK *io_make_sock( int32_t insz, int32_t outsz, struct sockaddr_in *peer )
 {
 	SOCK *s;
@@ -214,14 +229,8 @@ SOCK *io_make_sock( int32_t insz, int32_t outsz, struct sockaddr_in *peer )
 	if( !( s = (SOCK *) allocz( sizeof( SOCK ) ) ) )
 		fatal( "Could not allocate new nsock." );
 
-	if( !s->name )
-		s->name = perm_str( 32 );
-
-	snprintf( s->name, 32, "%s:%hu", inet_ntoa( peer->sin_addr ),
-		ntohs( peer->sin_port ) );
-
 	// copy the peer contents
-	s->peer = *peer;
+	io_sock_set_peer( s, peer );
 
 	if( insz )
 		s->in = mem_new_iobuf( insz );
@@ -234,6 +243,7 @@ SOCK *io_make_sock( int32_t insz, int32_t outsz, struct sockaddr_in *peer )
 
 	return s;
 }
+
 
 
 

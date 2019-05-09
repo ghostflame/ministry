@@ -554,6 +554,7 @@ int http_start( void )
 		h->proto = "http";
 	}
 
+	h->server_port = port;
 	h->sin->sin_port = htons( port );
 
 	MHD_set_panic_func( h->calls->panic, (void *) h );

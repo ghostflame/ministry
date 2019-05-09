@@ -688,7 +688,7 @@ int config_read_env( char **env )
 		if( l < ( _proc->env_prfx_len + 2 ) || memcmp( buf, _proc->env_prfx, _proc->env_prfx_len ) )
 			continue;
 
-		debug("Env Entry: %s", buf);
+		notice( "Env Entry: %s", buf );
 
 		if( config_env_path( buf + _proc->env_prfx_len, l - _proc->env_prfx_len ) )
 		{
@@ -753,7 +753,7 @@ static char config_help_buffer[4096];
 
 char *config_help( void )
 {
-	snprintf( config_help_buffer, 4096, "%s%s%s",
+	snprintf( config_help_buffer, 4096, "%s",
 "\
  -h            Print this help\n\
  -v            Print version number and exit\n\
@@ -767,14 +767,10 @@ char *config_help( void )
  -K            Interactively ask for an SSL key password\n\
  -u            Disable URI config including other URI's\n\
  -i            Allow insecure URI's\n\
- -I            Allow secure URI's to include insecure URI's\n", 
-#if _LCURL_CAN_VERIFY
-" -T            Validate certificates for HTTPS (if available)\n\
- -W            Permit invalid certificates from fetch targets\n"
-#else
-""
-#endif
-, " -d            Daemonize in the background\n\
+ -I            Allow secure URI's to include insecure URI's\n\
+ -T            Validate certificates for HTTPS (if available)\n\
+ -W            Permit invalid certificates from fetch targets\n\
+ -d            Daemonize in the background\n\
  -D            Switch on debug output (overrides config)\n\
  -V            Logging to console (prevents daemonizing)\n\
  -s            Strict config parsing\n\
@@ -878,10 +874,21 @@ void config_args( int ac, char **av, char *optstr, help_fn *hfp )
 
 PROC_CTL *config_defaults( char *app_name, char *conf_dir )
 {
+	char buf[1024];
+
 	_proc            = (PROC_CTL *) allocz( sizeof( PROC_CTL ) );
 	_proc->version   = strdup( VERSION_STRING );
 	_proc->app_name  = strdup( app_name );
 	_proc->tick_usec = 1000 * DEFAULT_TICK_MSEC;
+
+	if( gethostname( buf, 1024 ) )
+	{
+		fatal( "Cannot get my own hostname -- %s.", Err );
+		return NULL;
+	}
+	// just in case
+	buf[1023] = '\0';
+	_proc->hostname = str_dup( buf, 0 );
 
 	snprintf( _proc->app_upper, CONF_LINE_MAX, "%s", app_name );
 	_proc->app_upper[0] = toupper( _proc->app_upper[0] );

@@ -17,6 +17,7 @@ typedef struct http_control         HTTP_CTL;
 typedef struct iplist_control       IPL_CTL;
 typedef struct io_control           IO_CTL;
 typedef struct target_control       TGT_CTL;
+typedef struct ha_control           HA_CTL;
 
 typedef struct config_section       CSECT;
 typedef struct config_context       CCTXT;
@@ -61,6 +62,7 @@ typedef struct http_tls_file        TLS_FILE;
 
 typedef struct curlw_handle         CURLWH;
 
+typedef struct ha_partner           HAPT;
 
 
 // function types

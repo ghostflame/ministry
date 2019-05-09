@@ -35,13 +35,17 @@ int curlw_setup( CURL **cp, CURLWH *ch )
 
 	curl_easy_setopt( c, CURLOPT_CONNECTTIMEOUT_MS, 5000 );
 
-#if _LCURL_CAN_VERIFY > 0
-	if( chkCurlF( ch, SSL ) )
+	if( chkCurlF( ch, SSL ) && runf_has( RUN_CURL_VERIFY ) )
 	{
+		// these return success/failure, but we cannot check
+		// them meaningfully because older versions of libcurl
+		// (looking at you, CentOS/RHEL 7) do not do all of
+		// these checks, so we just do our best.  If you want
+		// cert verification, use an OS with up to date curl.
 		if( chkCurlF( ch, VALIDATE ) )
 		{
 			curl_easy_setopt( c, CURLOPT_SSL_VERIFYPEER,   1L );
-			curl_easy_setopt( c, CURLOPT_SSL_VERIFYHOST,   1L );
+			curl_easy_setopt( c, CURLOPT_SSL_VERIFYHOST,   2L );
 			curl_easy_setopt( c, CURLOPT_SSL_VERIFYSTATUS, 1L );
 		}
 		else
@@ -51,7 +55,6 @@ int curlw_setup( CURL **cp, CURLWH *ch )
 			curl_easy_setopt( c, CURLOPT_SSL_VERIFYSTATUS, 0L );
 		}
 	}
-#endif
 
 	return 0;
 }

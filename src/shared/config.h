@@ -78,6 +78,7 @@ struct process_control
 	unsigned int			conf_flags;
 	unsigned int			run_flags;
 
+	char				*	hostname;
 	char				*	app_name;
 	char					app_upper[CONF_LINE_MAX];
 	char				*	version;
@@ -109,6 +110,7 @@ struct process_control
 	IO_CTL				*	io;
 	IPL_CTL				*	ipl;
 	TGT_CTL				*	tgt;
+	HA_CTL				*	ha;
 };
 
 

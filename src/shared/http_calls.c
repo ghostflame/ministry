@@ -237,6 +237,10 @@ void http_calls_init( void )
 	http_add_json_get( "/targets", "List metric targets", &target_http_list );
 	http_add_simple_get( "/control", "List control paths", &http_calls_ctl_list );
 	http_add_control( "target", "Enable/disable target", NULL, &target_http_toggle, NULL, 0 );
+
+	// ha
+	http_add_simple_get( DEFAULT_HA_CHECK_PATH, "Fetch cluster status", &ha_get_cluster );
+	http_add_control( "cluster", "Control cluster status", NULL, &ha_ctl_cluster, NULL, HTTP_FLAGS_NO_REPORT );
 }
 
 
