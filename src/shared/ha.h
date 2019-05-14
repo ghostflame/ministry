@@ -17,25 +17,7 @@
 #define DEFAULT_HA_CHECK_PATH		"/cluster"
 #define DEFAULT_HA_CTL_PATH			"/control/cluster"
 
-curlw_cb ha_watcher_cb;
-loop_call_fn ha_watcher_pass;
-throw_fn ha_watcher;
 
-loop_call_fn ha_controller_pass;
-throw_fn ha_controller;
-
-http_callback ha_get_cluster;
-http_callback ha_ctl_cluster;
-
-int ha_init( void );
-int ha_start( void );
-void ha_shutdown( void );
-
-HAPT *ha_add_partner( char *spec, int dup_fail );
-HAPT *ha_find_partner( char *name, int len );
-
-HA_CTL *ha_config_defaults( void );
-int ha_config_line( AVP *av );
 
 enum ha_elector_types
 {
@@ -44,6 +26,33 @@ enum ha_elector_types
 	HA_ELECT_MANUAL,
 	HA_ELECT_MAX
 };
+
+enum ha_election_state_types
+{
+	HA_ELECTION_CONFIG = 0,
+	HA_ELECTION_CHOOSING,
+	HA_ELECTION_DONE,
+	HA_ELECTION_MISMATCH,
+	HA_ELECTION_MAX
+};
+
+
+enum ha_clst_line_kind_types
+{
+	HA_CLST_LINE_KIND_STATUS = 0,
+	HA_CLST_LINE_KIND_SETTING,
+	HA_CLST_LINE_KIND_PARTNER,
+	HA_CLST_LINE_KIND_MAX
+};
+
+enum ha_clst_line_setting_types
+{
+	HA_CLST_LINE_SETT_ELECTOR = 0,
+	HA_CLST_LINE_SETT_PERIOD,
+	HA_CLST_LINE_SETT_UPDATE,
+	HA_CLST_LINE_SETT_MAX
+};
+
 
 
 struct ha_partner
@@ -89,6 +98,34 @@ struct ha_control
 	int					is_master;
 	int					enabled;
 };
+
+
+
+const char *ha_elector_name( int elector );
+const char *ha_election_state_name( int state );
+int ha_elector_value( char *name );
+int ha_election_state_value( char *name );
+
+curlw_cb ha_watcher_cb;
+loop_call_fn ha_watcher_pass;
+throw_fn ha_watcher;
+
+loop_call_fn ha_controller_pass;
+throw_fn ha_controller;
+
+http_callback ha_get_cluster;
+http_callback ha_ctl_cluster;
+
+int ha_init( void );
+int ha_start( void );
+void ha_shutdown( void );
+
+HAPT *ha_add_partner( char *spec, int dup_fail );
+HAPT *ha_find_partner( char *name, int len );
+
+HA_CTL *ha_config_defaults( void );
+int ha_config_line( AVP *av );
+
 
 
 #endif

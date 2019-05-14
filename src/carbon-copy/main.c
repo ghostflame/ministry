@@ -63,7 +63,7 @@ int main( int ac, char **av, char **env )
 	int oc;
 
 	// start us up
-	app_init( "carbon_copy", "ministry" );
+	app_init( "carbon-copy", "ministry" );
 
 	if( !( optstr = config_arg_string( "p:" ) ) )
 		return 1;

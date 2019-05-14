@@ -8,11 +8,11 @@ LOGDIR ?= $(DESTDIR)/var/log/ministry
 MANDIR ?= $(DESTDIR)/usr/share/man
 DOCDIR ?= $(DESTDIR)/usr/share/doc/ministry
 UNIDIR ?= $(DESTDIR)/usr/lib/systemd/system
-INIDIR ?= $(DESTDIR)/etc/init.d
 SSLDIR ?= $(CFGDIR)/ssl
 TSTDIR ?= $(CFGDIR)/test
 
 BINS    = ministry ministry-test carbon-copy
+APPS    = ministry ministry_test carbon_copy
 SVCS    = ministry carbon-copy
 
 
@@ -32,25 +32,24 @@ code:
 	@cd src && VERS=$(VERS) $(MAKE) $(MFLAGS) $(TARGET)
 
 docker:
-	dist/docker.sh
+	docker build -t ghostflame/ministry:$(VERS) --file dist/Dockerfile .
 
 install:
 	@echo "Making installation directories"
 	@mkdir -p $(CFGDIR) $(SSLDIR) $(TSTDIR) $(LRTDIR) $(MANDIR)/man1 $(MANDIR)/man5 $(DOCDIR)
 	@cd src && $(MAKE) $(MFLAGS) install; cd ..
 	@echo "Creating config and scripts."
+	@for a in $(APPS); do \
+		install -m644 dist/config/$$d.conf $(CFGDIR)/$dd.conf; \
+	done
+	@echo "Creating manual pages and docs."
 	@for d in $(BINS); do \
-		install -m644 dist/$$d/install.conf $(CFGDIR)/$$d.conf; \
-		@echo "Creating manual pages and docs."; \
-		gzip -c dist/$$d/$$d.1 > $(MANDIR)/man1/$$d.1.gz; \
-		chmod 644 $(MANDIR)/man1/$$d.1.gz; \
-		if [ -f dist/$$d/$$d.conf.5 ]; then \
-		    gzip -c dist/$$d/$$d.conf.5 > $(MANDIR)/man5/$$d.conf.5.gz; \
-			chmod 644 $(MANDIR)/man5/$$d.conf.5.gz; \
-		fi \
+		gzip -c dist/man1/$$d.1 > $(MANDIR)/man1/$$d.1.gz; \
+		gzip -c dist/man5/$$d.conf.5 > $(MANDIR)/man1/$$d.conf.5.gz; \
+		chmod 644 $(MANDIR)/man1/$$d.1.gz $(MANDIR)/man5/$$d.conf.5.gz; \
 	done
 	@for d in $(SVCS); do \
-		install -m644 dist/$$d/$$d.logrotate $(LRTDIR)/$$d; \
+		install -m644 dist/logrotate/$$d $(LRTDIR)/$$d; \
 	done
 	@install -m644 dist/ssl/cert.pem $(SSLDIR)/cert.pem
 	@install -m600 dist/ssl/key.pem $(SSLDIR)/key.pem
@@ -60,13 +59,7 @@ install:
 unitinstall: install
 	@mkdir -p $(UNIDIR)
 	@for d in $(SVCS); do \
-		install -m644 dist/$$d/$$d.service $(UNIDIR)/$$d.service; \
-	done
-
-initinstall: install
-	@mkdir -p $(INIDIR)
-	@for d in $(SVCS); do \
-		install -m755 dist/$$d/$$d.init $(UNIDIR)/$$d; \
+		install -m644 dist/systemd/$$d.service $(UNIDIR)/$$d.service; \
 	done
 
 uninstall:
@@ -81,7 +74,7 @@ remove:
 	@service carbon-copy stop ||:
 	@cd src && $(MAKE) $(MFLAGS) uninstall; cd ..
 	@for d in $(SVCS); do \
-		rm -f $(UNIDIR)/$$d.service $(INIDIR)/$$d $(LRTDIR)/$$d; \
+		rm -f $(UNIDIR)/$$d.service $(LRTDIR)/$$d; \
 	done
 	@for d in $(BINS); do \
 		rm -f $(MANDIR)/man1/$$d.1.gz $(MANDIR)/man5/$$d.conf.5.gz; \

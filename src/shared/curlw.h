@@ -39,6 +39,7 @@
 
 #define CURLW_FLAG_SSL				0x01
 #define CURLW_FLAG_VALIDATE			0x02
+#define CURLW_FLAG_VERBOSE			0x08
 #define CURLW_FLAG_SLOW				0x10
 #define CURLW_FLAG_TOFILE			0x20
 

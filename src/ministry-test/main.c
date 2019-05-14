@@ -64,7 +64,7 @@ int main( int ac, char **av, char **env )
 	//int oc;
 
 	// this first
-	app_init( "ministry_test", "ministry" );
+	app_init( "ministry-test", "ministry" );
 
 	if( !( optstr = config_arg_string( "" ) ) )
 		return 1;
