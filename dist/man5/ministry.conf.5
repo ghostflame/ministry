@@ -46,18 +46,39 @@ config variables contain dots.  Wherever lists of values are permitted, they sho
 comma-separated without intervening spaces.  e.g.
 .PP
 \fBstats.udp.ports = 8100,8101,8102,8103\fP
-.SS Bools
+.SS Booleans
 .PP
-Anything marked as a boolean accepts the following responses as true to (case insenstive) "true",
+Anything marked as a boolean accepts the following responses as true: (case insenstive) "true",
 "y", "yes" or any non-zero number.  Any other value is taken as false.
 .SS File Inclusion
-Ministry can read in other config files using an \fBinclude\fP = \fIfilename\fP directive.
+.PP
+Ministry can read in other config files using an \fBinclude\fP = \fIfilename\fP directive.  Extra
+arguments can be passed into an \fBinclude\fP directive and those will be available inside the
+included file as \fI%1%\fP, \fI%2%\fP, etc.  These can be placed within configuration values,
+even embedded in strings, and they will be substituted.
+.SS Foreach
+.PP
+Ministry can repeat a line of config with different values, using the \fBforeach\fP construct.
+It is used in one of two ways, and the following line will have the value appended to it, thus it
+best suits \fBinclude\fP, above.
+.PP
+The first way is a list of values, eg:
+.PP
+\fBforeach\fP = \fIfirst second third fourth fifth\fP
+.PP
+The second way is a numeric range, starting at the lower bound, <= the upper bound, with an
+optional step value (which defaults to 1).  It understands only integers.  eg:
+.PP
+\fBforeach\fP = \fI1 - 100\fP
+.PP
+This is most commonly used in \fBministry-test\fP to easily generate a lot of different metric
+configs, but could be used in \fBministry\fP for targets or port configs.
 .SH CONFIG
 .PP
 The config variables accepted by \fBministry\fP are presented here by section.
 .SS (Anywhere)
 .PP
-These values can appear in any section.  Just include for now.
+These values can appear in any section.
 .TP
 \fBinclude\fP
 The name of another source to read in.  \fBMinistry\fP will refuse to read what it believes is the
@@ -66,10 +87,16 @@ against circular includes.  Included source are read in depth-first, meaning rea
 source is paused until the included file is read (possibly recursively).  This is important for any
 duplication of config values, as the last one read will win.  If include is found within a section,
 that section context is preserved into the new file, until it is changed by a new section heading.
+.TP
+\fBforeach\fP
+Cycle over possible values, passing each to the next line of config.
 
 .SS [Main]
 .PP
-These are a few unsectioned variables controlling overall \fBministry\fP behaviour.
+These are a few variables controlling overall \fBministry\fP behaviour.
+.TP
+\fBbaseDir\fP
+Directory to chdir to and which forms the basis for any relative paths.
 .TP
 \fBtickMsec\fP
 Overall internal tick time in msec.  Controls internal time accuracy (default 20)
@@ -121,10 +148,6 @@ Memory size check interval, in milliseconds (default 5000)
 .TP
 \fBdoChecks\fP
 Boolean to turn on (default) or off the memory size check.
-.TP
-\fBstackSize\fP
-This is the thread stack size (in KB).  This is mainly used during debugging to control VSS where there
-might be a lot of threads (from client connections mostly).  Best not mess with this (default 128).
 .PP
 Each memory type has a default block allocation size.  Whenever new memory is allocated
 for registered types it is not done individually, but as a block, to prevent frequent calls to \fBbrk()\fP.
@@ -246,7 +269,8 @@ Signals the end of one target block.
 .SS [Stats]
 .TP
 \fBthresholds\fP
-A list of integer percentage values to generate thresholds at.  Must be 0 < x < 100.
+A list of integer percentage values to generate thresholds at.  Must be 0 < x < 100.  Per-mille values are
+also allowed, and are 0 < x < 1000, but must have an \fIm\fP appended, eg: \fI999m\fP.
 .PP
 In addition to regular thresholds and calculated values, \fBMinistry\fP can produce other sample-moment based
 statistics: standard deviation, skewness and kurtosis.  It does not do this by default, and has a minimum points
@@ -340,7 +364,7 @@ This prefix is prepended to incoming paths at time of network read and so any la
 need to account for it.  This config key can be repeated.  \fBNote, this does not work for UDP
 packets - the mechanism would be very DoS'able.\fP
 .TP
-\fBprefixList\fP
+\fBprefix\fP
 The named prefix list to apply.
 .PP
 Filtering is done at TCP connect time.  A filter Iplist is created and named for use.  The assumption
@@ -375,19 +399,24 @@ Enable or disable his protocol for this type of collection (boolean, defaults to
 A list of listen ports, comma separated.  By default, statsd-compatible listens on 8125, the default
 statsd port, new-style stats is on 9125 and new-style adder is on 9225.
 .PP
-\fBMinistry\fP no longer uses one thread per TCP connection.  Instead it pools connections onto a set
-number of threads.  Each thread has a maximum number of possible connections.  They are assigned by
-hashing on source IP/port.  This can lead to degenerate conditions of uneven load, but this is rather
-unlikely.  When a thread can take no more connections, that connection is rejected.  A client might
-then reconnect but is likely to get given a new port, probably hitting a different thread.
+\fBMinistry\fP allows several different styles of TCP handling.  It can have one thread per connection
+(recommended for stats connections), or use a pool of threads (using either poll of epoll) to which
+new connections are assigned, hasing on source IP/port.  This does lead to slightly uneven load.  When
+a pool thread can take no more connections, future connections are rejected.  A client might then
+reconnect but is likely to get a new port, and likely will hit a different thread.
 .PP
-So to assess how many threads to use, perform the following calculation:
+So each connection type should be given a style, chosen from \fPthread\fP, \fIpool\fP (poll), or
+\fIepoll\fP.  to assess how many threads to use for pooling, perform the following calculation:
 .PP
 \fIthreads\fP = ( \fImax-connections\fP ) / ( \fIpollMax\fB * 0.8 )
 .PP
 The 0.8 is to allow for uneven hashing.
 .PP
 This does not change the UDP listener behaviour of one thread per port.
+.TP
+\fBTYPE.tcp.style\fI
+How to handle new connections, either with their own thread or on a thread pool.  The defaults are:
+stats/compat - thread, adder/gauge - epoll.
 .TP
 \fBTYPE.tcp.threads\fI
 How many threads in the pool for listening for each type.  Defaults are stats:60, adder:30, gauge:10,
@@ -459,6 +488,73 @@ The number of source metrics with a non-zero value.
 .TP
 \fBactive\fP
 Returns 0 or 1 depending on whether any data points were present.
+
+.SS [Http]
+\fBMinistry\fP has an in-built webserver, provided by \fBlibmicrohttpd\fP.  It is used for a variety
+of tasks - metric submission, issuing tokens, controlling targets and offering stats and status.
+\fBLibmicrohttpd\fP understands HTTPS and can manage ciphers anc certificates, so some config is
+offered to control those functions.
+.TP
+\fBenable\fP
+A boolean to control whether the HTTP server is active (default off)
+.TP
+\fBport\fP
+The port to listen on (default 9080)
+.TP
+\fBbind\fP
+Which IP to bind to (default 0.0.0.0)
+.TP
+\fBconns.max\fP
+Maximum concurrent connections to the HTTP server (default 256)
+.TP
+\fBconns.maxPerIP\fP
+Maximum concurrent connections from a single IP address (default 64)
+.TP
+\fBconns.timeout\fP
+Seconds before a connection is considered to have died (default 10)
+.TP
+\fBtls.enable\fP
+Boolean controlling whether we use HTTPS instead of HTTP (default off)
+.TP
+\fBtls.port\fP
+If this option is given, and TLS is enabled, this port will be used instead of the normal one
+(default 9443)
+.TP
+\fBtls.certFile\fP
+Path to the server certificate file
+.TP
+\fBtls.keyFile\fP
+Path to the server key file
+.TP
+\fBtls.keyPass\fP
+Password for the server key file.  If either the \fI-K\fP option is passed to ministry on startup,
+or the special value \fI-\fP is used, \fBministry\fP will prompt interactively for the password at
+startup.
+.TP
+\fBtls.priority\fP
+This string controls TLS versions, ciphers and TLS behaviour, and it passed through to the underlying
+TLS library.  The default is TLS v1.2 and v1.3, only secure 256-bit ciphers, and secure renegotiation.
+.PP
+\fBMinistry\fP has a mechanism for validating TCP connections, involving the HTTP server.  The idea
+is that valid clients connect to the HTTP server, requesting \fI/token\fP, and they receive a JSON
+object containing a nonce for each of stats, adder and gauge connections.  This nonce expires in a
+configurable number of milliseconds, and is only valid from the IP address that made the HTTP call.
+The client must then present the token as the first line of data upon connecting, else the connection
+will be closed by \fBministry\fP.
+.PP
+This mechanism is presented as a way to prevent scanning software or other random processing from
+connecting and sending whatever data in an uncontrolled way, but is also part of planned development
+to add authentication to the HTTP server, thus effectively providing authentication on metric
+submission.
+.TP
+\fBtokens.enable\fP
+A boolean controlling whether the token system is enabled (default off)
+.TP
+\fBtokens.filter\fP
+The name of an Iplist as a filter for which hosts are required to use them
+.TP
+\fBtokens.lifetime\fP
+A value in milliseconds for the lifetime of the token (all tokens are burned once used) (default 1000)
 .SH SEE ALSO
 .BR ministry (1)
 .SH AUTHOR

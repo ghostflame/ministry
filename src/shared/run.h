@@ -12,6 +12,7 @@
 
 // run flags
 
+// overall control
 #define RUN_DAEMON					0x00000001
 #define RUN_STATS					0x00000002
 #define RUN_DEBUG					0x00000004
@@ -21,8 +22,12 @@
 #define RUN_SHUTDOWN				0x00000020
 #define RUN_LOOP_CTL_MASK			0x00000030
 
+
 // this one disables daemon
 #define RUN_TGT_STDOUT				0x00000100
+// curl can verify certs
+#define RUN_CURL_VERIFY				0x00000200
+
 
 // app progress
 #define RUN_APP_INIT				0x00001000

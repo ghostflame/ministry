@@ -63,7 +63,7 @@ int main( int ac, char **av, char **env )
 	int oc;
 
 	// start us up
-	app_init( "carbon_copy", "ministry" );
+	app_init( "carbon-copy", "ministry" );
 
 	if( !( optstr = config_arg_string( "p:" ) ) )
 		return 1;
@@ -96,6 +96,7 @@ int main( int ac, char **av, char **env )
 	if( pidfile )
 		snprintf( ctl->proc->pidfile, CONF_LINE_MAX, "%s", pidfile );
 
+	mem_set_max_kb( DEFAULT_CC_MAX_KB );
 	app_start( 1 );
 
 	// resolve relay targets

@@ -21,7 +21,9 @@ int curlw_setup( CURL **cp, CURLWH *ch )
 	// set up our new context
 	if( !( c = curl_easy_init( ) ) )
 	{
-		err( "Could not init curl for url fetch -- %s", Err );
+		if( chkCurlF( ch, VERBOSE ) )
+			err( "Could not init curl for url fetch -- %s", Err );
+
 		return -1;
 	}
 
@@ -35,13 +37,17 @@ int curlw_setup( CURL **cp, CURLWH *ch )
 
 	curl_easy_setopt( c, CURLOPT_CONNECTTIMEOUT_MS, 5000 );
 
-#if _LCURL_CAN_VERIFY > 0
-	if( chkCurlF( ch, SSL ) )
+	if( chkCurlF( ch, SSL ) && runf_has( RUN_CURL_VERIFY ) )
 	{
+		// these return success/failure, but we cannot check
+		// them meaningfully because older versions of libcurl
+		// (looking at you, CentOS/RHEL 7) do not do all of
+		// these checks, so we just do our best.  If you want
+		// cert verification, use an OS with up to date curl.
 		if( chkCurlF( ch, VALIDATE ) )
 		{
 			curl_easy_setopt( c, CURLOPT_SSL_VERIFYPEER,   1L );
-			curl_easy_setopt( c, CURLOPT_SSL_VERIFYHOST,   1L );
+			curl_easy_setopt( c, CURLOPT_SSL_VERIFYHOST,   2L );
 			curl_easy_setopt( c, CURLOPT_SSL_VERIFYSTATUS, 1L );
 		}
 		else
@@ -51,7 +57,6 @@ int curlw_setup( CURL **cp, CURLWH *ch )
 			curl_easy_setopt( c, CURLOPT_SSL_VERIFYSTATUS, 0L );
 		}
 	}
-#endif
 
 	return 0;
 }
@@ -74,7 +79,9 @@ static size_t curlw_write_buf( void *contents, size_t size, size_t nmemb, void *
 	{
 		if( !( ch->iobuf = mem_new_iobuf( DEFAULT_CURLW_BUFFER ) ) )
 		{
-			err( "Could not allocate buffer memory to size %d.", ch->iobuf->sz );
+			if( chkCurlF( ch, VERBOSE ) )
+				err( "Could not allocate buffer memory to size %d.", ch->iobuf->sz );
+
 			return 0;
 		}
 		b = ch->iobuf;
@@ -122,7 +129,9 @@ int curlw_fetch( CURLWH *ch )
 	{
 		if( !( ch->fh = tmpfile( ) ) )
 		{
-			err( "Could not create tmpfile for curlw results." );
+			if( chkCurlF( ch, VERBOSE ) )
+				err( "Could not create tmpfile for curlw results." );
+
 			goto CURLW_FETCH_CLEANUP;
 		}
 
@@ -136,7 +145,9 @@ int curlw_fetch( CURLWH *ch )
 
 	if( ( cc = curl_easy_perform( c ) ) != CURLE_OK )
 	{
-		err( "Could not curl target url '%s' -- %s", ch->url, CErr );
+		if( chkCurlF( ch, VERBOSE ) )
+			err( "Could not curl target url '%s' -- %s", ch->url, CErr );
+
 		goto CURLW_FETCH_CLEANUP;
 	}
 

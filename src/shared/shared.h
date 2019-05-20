@@ -74,6 +74,7 @@
 #include "thread.h"
 #include "http.h"
 #include "http_calls.h"
+#include "ha.h"
 #include "config.h"
 #include "app.h"
 

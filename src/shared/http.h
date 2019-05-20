@@ -195,6 +195,7 @@ struct http_control
 	uint16_t				hdlr_count;
 
 	uint16_t				port;
+	uint16_t				server_port; // what we end up using
 	char				*	addr;
 	char				*	proto;
 

@@ -17,6 +17,12 @@ void fetch_single( int64_t tval, void *arg )
 {
 	FETCH *f = (FETCH *) arg;
 
+	if( !f->ready )
+	{
+		debug( "Fetch target %s is not ready (no DNS).", f->name );
+		return;
+	}
+
 	//info( "Fetching for target %s", f->name );
 
 	// this repeatedly calls it's callback with chunks of data
@@ -25,7 +31,30 @@ void fetch_single( int64_t tval, void *arg )
 }
 
 
+// called regularly
+void fetch_check_dns( int64_t tval, void *arg )
+{
+	FETCH *f = (FETCH *) arg;
+	struct sockaddr_in sin;
 
+	memset( &sin, 0, sizeof( struct sockaddr_in ) );
+
+	// resolve the IP address
+	if( net_lookup_host( f->remote, &sin ) )
+		f->ready = 0;
+	else
+	{
+		f->ready = 1;
+		sin.sin_port = htons( f->port );
+	}
+
+	// and set that
+	if( f->host )
+	{
+		io_sock_set_peer( f->host->net, &sin );
+		f->host->ip = sin.sin_addr.s_addr;
+	}
+}
 
 
 
@@ -42,6 +71,15 @@ void fetch_make_url( FETCH *f )
 	f->ch->url = perm_str( l + 1 );
 	memcpy( f->ch->url, urlbuf, l );
 	f->ch->url[l] = '\0';
+}
+
+
+
+void fetch_revalidate_loop( THRD *t )
+{
+	FETCH *f = (FETCH *) t->arg;
+
+	loop_control( "fetch_dns", &fetch_check_dns, f, f->revalidate, LOOP_TRIM, f->revalidate );
 }
 
 
@@ -73,27 +111,26 @@ void fetch_loop( THRD *t )
 	// and construct the url
 	fetch_make_url( f );
 
-	// resolve the IP address
-	if( net_lookup_host( f->remote, &sin ) )
-		return;	// abort this thread
-
-	sin.sin_port = htons( f->port );
-
 	// make the host structure
+	memset( &sin, 0, sizeof( struct sockaddr_in ) );
 	if( !( f->host = mem_new_host( &sin, (uint32_t) f->bufsz ) ) )
 	{
 		fatal( "Could not allocate buffer memory or host structure for fetch %s.", f->name );
 		return;
 	}
 
+	// and try looking up the IP address
+	fetch_check_dns( 0, f );
+
+	// did we get an answer?
+	if( !f->ready && !f->revalidate )
+		return;	// abort this thread then
+
 	// it's the in side that has the buffer on the host
 	f->ch->iobuf = f->host->net->in;
 
 	// and place ourself as the argument
 	f->ch->arg = f;
-
-	// set up that host
-	f->host->ip   = sin.sin_addr.s_addr;
 
 	// set up prometheus metrics bits
 	if( f->metrics )
@@ -116,6 +153,13 @@ void fetch_loop( THRD *t )
 		}
 
 		f->ch->cb = &data_fetch_cb;
+	}
+
+	// we may well have got 0-ttl dns, eg in Kubernetes, or from consul
+	if( f->revalidate )
+	{
+		f->revalidate *= 1000;
+		thread_throw_named_f( fetch_revalidate_loop, f, t->id, "fetch_dns_%d", t->id );
 	}
 
 	// and run the loop
@@ -305,6 +349,16 @@ int fetch_config_line( AVP *av )
 		}
 
 		f->period = v;
+		__fetch_config_state = 1;
+	}
+	else if( attIs( "revalidate" ) )
+	{
+		if( parse_number( av->vptr, &v, NULL ) == NUM_INVALID )
+		{
+			err( "Invalid DNS revalidation period in block %s: %s", f->name, av->vptr );
+			return -1;
+		}
+		f->revalidate = v;
 		__fetch_config_state = 1;
 	}
 	else if( attIs( "offset" ) )

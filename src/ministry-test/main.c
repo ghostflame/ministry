@@ -64,7 +64,7 @@ int main( int ac, char **av, char **env )
 	//int oc;
 
 	// this first
-	app_init( "ministry_test", "ministry" );
+	app_init( "ministry-test", "ministry" );
 
 	if( !( optstr = config_arg_string( "" ) ) )
 		return 1;
@@ -93,6 +93,7 @@ int main( int ac, char **av, char **env )
 		return 1;
 	}
 
+	mem_set_max_kb( DEFAULT_MT_MAX_KB );
 	app_start( 0 );
 
 	// no extra startup

@@ -20,6 +20,10 @@
 #include "targets.h"
 
 
+// max mem - 3G
+#define DEFAULT_MT_MAX_KB		( 3 * 1024 * 1024 )
+
+
 // main control structure
 struct mintest_control
 {

@@ -91,6 +91,11 @@ struct av_pair
 void get_time( void );
 int64_t get_time64( void );
 
+// get a number from 0 <= x < n
+int64_t get_rand( int64_t n );
+
+// get a percentage - 1-100
+int8_t percent( void );
 
 // processing a config line in variable/value
 int var_val( char *line, int len, AVP *av, int flags );
@@ -104,6 +109,7 @@ double ts_diff( struct timespec to, struct timespec from, double *store );
 
 // get our uptime
 double get_uptime( void );
+time_t get_uptime_sec( void );
 
 // set an rlimit
 int setlimit( int res, int64_t val );

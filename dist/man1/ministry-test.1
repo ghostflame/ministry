@@ -5,7 +5,7 @@ ministry-test \- test tool for ministry stats daemon
 .SH SYNOPSIS
 .nf
 .BI "ministry-test [-v|-h]"
-.BI "ministry-test [-DVtEFIUu] -c <" config-file ">"
+.BI "ministry-test [-DVtEdsKFIiTUu] -c <" config-file "> [-P <" prefix ">]"
 .fi
 .SH DESCRIPTION
 .PP
@@ -17,7 +17,7 @@ The main options are:
 \fB\-h\fR
 print help
 .TP
-\fB\-v\fR
+\fB-v\fR
 print version and exit
 .TP
 \fB\-t\fR
@@ -26,14 +26,17 @@ just test config and exit
 \fB\-c\fR \fI<FILE|URI>\fR
 select config source instead of default file
 .TP
-\fB\-s\fR
-be strict about parsing config
-.TP
-\fB\-F\fR
-disable reading config source (environment only)
+\fB\-C\fR \fI<FILE|URI>\fR
+as -c but with strict processing
 .TP
 \fB\-E\fR
 disable reading variables from the environment
+.TP
+\fB\-P\fR \fI<prefix>\fP
+override the prefix for environment variable
+.TP
+\fB\-F\fR
+disable reading config source (environment only)
 .TP
 \fB\-U\fR
 disable reading any URI config (even if given with -c)
@@ -47,11 +50,26 @@ allow insecure URI's
 \fB\-I\fR
 allow secure URI's to include insecure URI's
 .TP
+\fB\-K\fR
+interactively ask for a TLS key password
+.TP
+\fB\-T\fR
+Validate the certificates of any secure URI's
+.TP
+\fB\-W\fR
+Permit invalid certificates from fetch targets even if we are validating config certificates.
+.TP
+\fB\-d\fR
+run in daemon mode (background)
+.TP
 \fB\-D\fR
 run in debug mode
 .TP
 \fB\-V\fR
 run in verbose mode, with more output to stdout
+.TP
+\fB\-s\fR
+be strict about parsing config
 .PP
 The config file format is in sections, denoted as \fB[Section]\fR and is of a general format of:
 .TP
