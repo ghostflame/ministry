@@ -93,6 +93,7 @@ int main( int ac, char **av, char **env )
 		return 1;
 	}
 
+	mem_set_max_kb( DEFAULT_MT_MAX_KB );
 	app_start( 0 );
 
 	// no extra startup

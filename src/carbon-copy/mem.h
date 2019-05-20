@@ -14,6 +14,8 @@
 #define MEM_ALLOCSZ_HOSTS			128
 #define MEM_ALLOCSZ_HBUFS			128
 
+// 1GB
+#define DEFAULT_CC_MAX_KB			( 1 * 1024 * 1024 )
 
 
 struct memt_control

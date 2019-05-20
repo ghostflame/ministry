@@ -462,9 +462,13 @@ int mem_config_line( AVP *av )
 		{
 			av_int( _mem->mcheck->max_kb );
 			_mem->mcheck->max_kb <<= 10;
+			_mem->mcheck->max_set = 1;
 		}
 		else if( attIs( "maxKb") )
+		{
 			av_int( _mem->mcheck->max_kb );
+			_mem->mcheck->max_set = 1;
+		}
 		else if( attIs( "interval" ) || attIs( "msec" ) )
 			av_int( _mem->mcheck->interval );
 		else if( attIs( "doChecks" ) )
@@ -615,6 +619,14 @@ int64_t mem_curr_kb( void )
 int64_t mem_virt_kb( void )
 {
 	return _mem->mcheck->virt_kb;
+}
+
+// allow apps to override the default max 10
+// As long as it wasn't set in config
+void mem_set_max_kb( int64_t kb )
+{
+	if( _mem->mcheck->max_set == 0 )
+		_mem->mcheck->max_kb = kb;
 }
 
 

@@ -106,7 +106,10 @@ __attribute__((hot)) void relay_simple( HOST *h, char *line, int len )
 	RLINE l;
 	char *s;
 
-	if( !( s = memchr( line, ' ', len ) ) )
+	// we can handle ministry or statsd format
+	// relies on statsd format not containing a space
+	if( !( s = memchr( line, ' ', len ) )
+	 && !( s = memchr( line, ':', len ) ) )
 	{
 		// not a valid line
 		return;
@@ -379,6 +382,7 @@ int relay_config_line( AVP *av )
 		r->type = RTYPE_UNKNOWN;
 		r->name = str_copy( "- unnamed -", 0 );
 		r->matches = (regex_t *) allocz( RELAY_MAX_REGEXES * sizeof( regex_t ) );
+		r->rgxstr  = (char *)    allocz( RELAY_MAX_REGEXES * sizeof( char *  ) );
 		r->invert  = (uint8_t *) allocz( RELAY_MAX_REGEXES * sizeof( uint8_t ) );
 	}
 
@@ -415,6 +419,9 @@ int relay_config_line( AVP *av )
 				r->name, av->vptr );
 			return -1;
 		}
+
+		// keep a copy of the string
+		r->match_str[r->mcount] = str_dup( av->vptr, av->vlen );
 
 		r->mcount++;
 		r->type = RTYPE_REGEX;
@@ -481,6 +488,7 @@ int relay_config_line( AVP *av )
 		// make it's own memory
 		n->mstats  = (int64_t *) allocz( n->mcount * sizeof( int64_t ) );
 		n->matches = (regex_t *) allocz( n->mcount * sizeof( regex_t ) );
+		n->rgxstr
 		n->invert  = (uint8_t *) allocz( n->mcount * sizeof( uint8_t ) );
 
 		// and copy in the regexes and inverts

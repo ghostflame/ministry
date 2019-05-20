@@ -46,6 +46,7 @@ struct relay_rule
 	RELAY			*	next;
 	TGTL			**	targets;
 	regex_t			*	matches;
+	char			**  rgxstr;
 	uint8_t			*	invert;
 	int64_t			*	mstats;
 	char			*	name;

@@ -122,7 +122,7 @@ void metric_update_floor_up( METRIC *m )
  */
 void metric_update_sometimes_track( METRIC *m )
 {
-	if( m->d3 <= metrand( ) )
+	if( m->d4 >= metrand( ) )
 		metric_update_track_mean( m );
 }
 

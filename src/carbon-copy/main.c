@@ -96,6 +96,7 @@ int main( int ac, char **av, char **env )
 	if( pidfile )
 		snprintf( ctl->proc->pidfile, CONF_LINE_MAX, "%s", pidfile );
 
+	mem_set_max_kb( DEFAULT_CC_MAX_KB );
 	app_start( 1 );
 
 	// resolve relay targets

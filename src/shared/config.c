@@ -420,15 +420,23 @@ int __config_read_file( FILE *fh )
 
 
 
-int config_read_file( char *path )
+int config_read_file( char *path, int fail_ok )
 {
 	FILE *fh = NULL;
 
 	// die on not reading main config file, warn on others
 	if( !( fh = fopen( path, "r" ) ) )
 	{
-		err( "Could not open config file '%s' -- %s", path, Err );
-		return -1;
+		if( fail_ok )
+		{
+			warn( "Could not open optional config file '%s' -- %s", path, Err );
+			return 0;
+		}
+		else
+		{
+			err( "Could not open config file '%s' -- %s", path, Err );
+			return -1;
+		}
 	}
 
 	return __config_read_file( fh );
@@ -438,7 +446,7 @@ int config_read_file( char *path )
 
 
 
-int config_read_url( char *url )
+int config_read_url( char *url, int fail_ok )
 {
 	CURLWH ch;
 	int ret;
@@ -458,8 +466,16 @@ int config_read_url( char *url )
 
 	if( curlw_fetch( &ch ) )
 	{
-		err( "Could not fetch target url '%s'" );
-		return -1;
+		if( fail_ok )
+		{
+			warn( "Could not fetch optional target url '%s'", url );
+			return 0;
+		}
+		else
+		{
+			err( "Could not fetch target url '%s'", url );
+			return -1;
+		}
 	}
 
 	// and read that file
@@ -475,8 +491,15 @@ int config_read_url( char *url )
 
 int config_read( char *inpath, WORDS *w )
 {
-	int ret = 0, p_url = 0, p_ssl = 0, s;
+	int ret = 0, p_url = 0, p_ssl = 0, s, fail_ok = 0;
 	char *path;
+
+	// are we allowing this include to fail?
+	if( *inpath == '?' )
+	{
+		fail_ok = 1;
+		inpath++;
+	}
 
 	// prune the path
 	path = config_relative_path( inpath );
@@ -558,9 +581,9 @@ int config_read( char *inpath, WORDS *w )
 
 	// so go do it
 	if( context->is_url )
-		ret = config_read_url( path );
+		ret = config_read_url( path, fail_ok );
 	else
-		ret = config_read_file( path );
+		ret = config_read_file( path, fail_ok );
 
 Read_Done:
 	free( path );
@@ -764,10 +787,10 @@ char *config_help( void )
  -P <prefix>   Set environment variable prefix\n\
  -F            Disable reading a config file (env only)\n\
  -U            Disable all reading of URI's\n\
- -K            Interactively ask for an SSL key password\n\
  -u            Disable URI config including other URI's\n\
  -i            Allow insecure URI's\n\
  -I            Allow secure URI's to include insecure URI's\n\
+ -K            Interactively ask for an SSL key password\n\
  -T            Validate certificates for HTTPS (if available)\n\
  -W            Permit invalid certificates from fetch targets\n\
  -d            Daemonize in the background\n\

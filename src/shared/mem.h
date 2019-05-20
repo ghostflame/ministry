@@ -110,6 +110,7 @@ struct mem_check
 	int64_t				proc_kb;
 	int64_t				virt_kb;
 	int64_t				max_kb;
+	int					max_set;
 };
 
 struct mem_control
@@ -154,6 +155,7 @@ MTYPE *mem_type_declare( char *name, int sz, int ct, int extra, uint32_t pre );
 int mem_type_stats( int id, MTSTAT *ms );
 int64_t mem_curr_kb( void );
 int64_t mem_virt_kb( void );
+void mem_set_max_kb( int64_t kb );
 
 void mem_shutdown( void );
 void mem_startup( void );
