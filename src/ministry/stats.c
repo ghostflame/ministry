@@ -948,6 +948,10 @@ void stats_init( void )
 	// we only allow one thread for this, and no data
 	ctl->stats->self->threads = 1;
 	stats_init_control( ctl->stats->self, 0 );
+
+	// set up the http callbacks
+	http_stats_handler( &self_stats_cb_stats );
+	http_metrics_handler( &self_stats_cb_metrics );
 }
 
 

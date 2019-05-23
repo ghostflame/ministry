@@ -54,6 +54,23 @@ void self_report_types( ST_THR *t, ST_CFG *c )
 }
 
 
+void self_report_http_types( HTREQ *req, ST_CFG *c )
+{
+	float hr = (float) c->dcurr / (float) c->hsize;
+	BUF *b = req->text;
+
+	json_fldo( c->name );
+
+	json_fldi( "curr", c->dcurr );
+	json_fldf6( "hashRatio", hr );
+
+	json_fldo( "gc" );
+	json_fldU( "curr", lockless_fetch( &(c->gc_count) ) );
+	json_fldU( "total", c->gc_count.count );
+	json_endo( );
+
+	json_endo( );
+}
 
 
 
@@ -120,3 +137,28 @@ void self_stats_pass( ST_THR *t )
 }
 
 
+int self_stats_cb_stats( HTREQ *req )
+{
+	BUF *b = req->text;
+
+	// make sure we have 4k free
+	if( ( b->sz - b->len ) < 4096 )
+		req->text = strbuf_resize( req->text, b->sz + 4096 );
+
+	json_fldo( "statsTypes" );
+	self_report_http_types( req, ctl->stats->stats );
+	self_report_http_types( req, ctl->stats->adder );
+	self_report_http_types( req, ctl->stats->gauge );
+	json_endo( );
+
+	return 0;
+}
+
+int self_stats_cb_metrics( HTREQ *req )
+{
+	BUF *b = req->text;
+
+	strbuf_aprintf( b, "# No metrics yet.\n\n" );
+
+	return 0;
+}

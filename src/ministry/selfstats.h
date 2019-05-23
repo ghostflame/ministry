@@ -12,6 +12,8 @@
 
 
 stats_fn self_stats_pass;
+http_callback self_stats_cb_stats;
+http_callback self_stats_cb_metrics;
 
 #define DEFAULT_SELF_PREFIX			"stats.ministry"
 

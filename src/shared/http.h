@@ -11,6 +11,8 @@
 #define SHARED_HTTP_H
 
 
+
+
 typedef struct MHD_Daemon               HTTP_SVR;
 typedef struct MHD_Connection           HTTP_CONN;
 typedef enum MHD_RequestTerminationCode HTTP_CODE;
@@ -29,7 +31,6 @@ typedef void (*cb_RequestLogger) ( void *cls, const char *uri, HTTP_CONN *conn )
 #define DEFAULT_HTTP_CONN_TMOUT			10
 
 #define DEFAULT_POST_BUF_SZ				0x4000	// 16k
-#define DEFAULT_STATS_BUF_SZ			0x2000	// 8k
 
 #define MAX_TLS_FILE_SIZE				0x10000	// 64k
 #define MAX_TLS_PASS_SIZE				512
@@ -187,6 +188,9 @@ struct http_control
 
 	struct sockaddr_in	*	sin;
 
+	http_callback		*	stats_fp;   // extra stats callback
+	http_callback		*	metrics_fp; // extra metrics callback
+
 	http_reporter		*	rpt_fp;
 	void				*	rpt_arg;
 
@@ -200,10 +204,8 @@ struct http_control
 	char				*	proto;
 
 	int64_t					requests;
-	int64_t					statsBufSize;
 
 	int8_t					enabled;
-	int8_t					stats;
 };
 
 
@@ -211,6 +213,9 @@ sort_fn __http_cmp_handlers;
 
 int http_add_handler( char *path, char *desc, void *arg, int method, http_callback *fp, IPLIST *srcs, int flags );
 int http_add_control( char *path, char *desc, void *arg, http_callback *fp, IPLIST *srcs, int flags );
+
+int http_stats_handler( http_callback *fp );
+int http_metrics_handler( http_callback *fp );
 
 // give us a simple call to add get handlers
 #define http_add_simple_get( _p, _d, _c )			http_add_handler( _p, _d, NULL, HTTP_METH_GET, _c, NULL, 0 )

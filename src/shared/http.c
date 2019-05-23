@@ -132,6 +132,28 @@ int http_add_control( char *path, char *desc, void *arg, http_callback *fp, IPLI
 	return __http_add_handler( urlbuf, desc, arg, HTTP_METH_POST, fp, srcs, flags|HTTP_FLAGS_CONTROL );
 }
 
+// set an extra stats handler
+int http_stats_handler( http_callback *fp )
+{
+	if( fp )
+	{
+		_http->stats_fp = fp;
+		return 0;
+	}
+
+	return -1;
+}
+
+int http_metrics_handler( http_callback *fp )
+{
+	if( fp )
+	{
+		_http->metrics_fp = fp;
+		return 0;
+	}
+
+	return -1;
+}
 
 
 ssize_t http_unused_reader( void *cls, uint64_t pos, char *buf, size_t max )
@@ -647,7 +669,6 @@ HTTP_CTL *http_config_defaults( void )
 	h->conns_tmout     = DEFAULT_HTTP_CONN_TMOUT;
 	h->port            = DEFAULT_HTTP_PORT;
 	h->addr            = NULL;
-	h->stats           = 1;
 	// MHD_USE_DEBUG does *weird* things.  Points *con_cls at the request buffer
 	// without it, *con_cls seems to relate to the length of the requested url
 	// either way, whiskey tango foxtrot libmicrohttpd
@@ -677,7 +698,6 @@ HTTP_CTL *http_config_defaults( void )
 	sin->sin_family      = AF_INET;
 	sin->sin_addr.s_addr = INADDR_ANY;
 	h->sin               = sin;
-	h->statsBufSize      = DEFAULT_STATS_BUF_SZ;
 
 	_http = h;
 
@@ -721,20 +741,6 @@ int http_config_line( AVP *av )
 		{
 			h->enabled = config_bool( av );
 			debug( "Http server is %sabled.", ( h->enabled ) ? "en" : "dis" );
-		}
-		else if( attIs( "stats" ) || attIs( "exposeStats" ) )
-		{
-			h->stats = config_bool( av );
-			debug( "Http exposure of internal stats is %sabled.",
-				( h->stats ) ? "en" : "dis" );
-		}
-		else if( attIs( "statsBufSize" ) )
-		{
-			av_int( h->statsBufSize );
-			if( h->statsBufSize <= 0 )
-				h->statsBufSize = DEFAULT_STATS_BUF_SZ;
-
-			debug( "Http stats buf size is now %ld.", h->statsBufSize );
 		}
 		else
 			return -1;

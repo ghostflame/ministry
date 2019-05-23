@@ -504,21 +504,15 @@ int target_config_line( AVP *av )
 
 // http interface
 
-void __target_http_list_one( BUF *b, TGT *t )
-{
-	strbuf_aprintf( b,
-		"{ \"name\": \"%s\", \"endpoint\": \"%s:%hu\", \"type\": \"%s\", \"bytes\": %ld }, ",
-		t->name, t->host, t->port, t->typestr, t->bytes );
-}
-
 
 void __target_http_list( BUF *b, int enval )
 {
-	int e, c;
+	char ebuf[512];
 	TGTL *l;
 	TGT *t;
+	int e;
 
-	for( c = 0, l = _tgt->lists; l; l = l->next )
+	for( l = _tgt->lists; l; l = l->next )
 	{
 		// see if we have anything in this list that matches
 		e = 0;
@@ -526,42 +520,51 @@ void __target_http_list( BUF *b, int enval )
 			if( t->enabled == enval )
 			{
 				e = 1;
-				c++;	// to do with tidyup at the end
 				break;
 			}
 
 		if( e )
 		{
-			strbuf_aprintf( b, "\"%s\": [ ", l->name );
+			json_flda( l->name );
 			for( t = l->targets; t; t = t->next )
 			{
 				if( t->enabled == enval )
-					__target_http_list_one( b, t );
-			}
-			strbuf_chopn( b, 2 );
-			strbuf_aprintf( b, " ], " );
-		}
-	}
+				{
+					snprintf( ebuf, 512, "%s:%hu", t->host, t->port );
 
-	if( c > 0 )
-	{
-		strbuf_chopn( b, 2 );
-		strbuf_aprintf( b, " " );
+					json_starto( );
+
+					json_flds( "name", t->name );
+					json_flds( "endpoint", ebuf );
+					json_flds( "type", t->typestr );
+					json_fldI( "bytes", t->bytes );
+
+					json_endo( );
+				}
+			}
+			json_enda( );
+		}
 	}
 }
 
 
 int target_http_list( HTREQ *req )
 {
-	req->text = strbuf_resize( req->text, 32760 );
+	BUF *b = req->text;
 
-	strbuf_printf( req->text, "{\"enabled\": { " );
+	strbuf_resize( req->text, 32760 );
+
+	json_starto( );
+
+	json_fldo( "enabled" );
 	__target_http_list( req->text, 1 );
+	json_endo( );
 
-	strbuf_aprintf( req->text, "}, \"disabled\": { " );
+	json_fldo( "disabled" );
 	__target_http_list( req->text, 0 );
+	json_endo( );
 
-	strbuf_aprintf( req->text, "} }\n" );
+	json_finisho( );
 
 	return 0;
 }

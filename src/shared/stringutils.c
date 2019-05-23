@@ -95,6 +95,7 @@ BUF *strbuf( uint32_t size )
 BUF *strbuf_resize( BUF *b, uint32_t size )
 {
 	size_t sz;
+	char *old;
 
 	if( !size )
 		return NULL;
@@ -109,10 +110,16 @@ BUF *strbuf_resize( BUF *b, uint32_t size )
 
 	if( sz > b->sz )
 	{
-		free( b->space );
+		old = b->space;
+
 		b->space  = (char *) allocz( sz );
 		b->sz     = sz;
 		b->buf    = b->space;
+
+		if( b->len > 0 )
+			memcpy( b->space, old, b->len );
+
+		free( old );
 	}
 
 	b->len    = 0;

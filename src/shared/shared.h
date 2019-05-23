@@ -72,6 +72,7 @@
 #include "target.h"
 #include "io.h"
 #include "thread.h"
+#include "json.h"
 #include "http.h"
 #include "http_calls.h"
 #include "ha.h"

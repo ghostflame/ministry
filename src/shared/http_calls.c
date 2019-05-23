@@ -11,26 +11,30 @@
 #include "shared.h"
 
 
-#define _jstr( s )				strbuf_aprintf( b, "%s\r\n", s )
 
-#define _jfielda( p, f )		strbuf_aprintf( b, p "\"%s\": [\r\n", f )
-#define _jfieldo( p, f )		strbuf_aprintf( b, p "\"%s\": {\r\n", f )
+int http_calls_metrics( HTREQ *req )
+{
+	// TODO
 
-#define _jfields( p, f, v )		strbuf_aprintf( b, p "\"%s\": \"%s\",\r\n", f, v )
-#define _jfieldd( p, f, v )		strbuf_aprintf( b, p "\"%s\": %f,\r\n", f, v )
-#define _jfield4( p, f, v )		strbuf_aprintf( b, p "\"%s\": %d,\r\n", f, v )
-#define _jfield8( p, f, v )		strbuf_aprintf( b, p "\"%s\": %ld,\r\n", f, v )
-#define _jfieldu( p, f, v )		strbuf_aprintf( b, p "\"%s\": %u,\r\n", f, v )
-#define _jfieldl( p, f, v )		strbuf_aprintf( b, p "\"%s\": %lu,\r\n", f, v )
+	// this needs a big buffer
+	strbuf_resize( req->text, 64000 );
 
-#define _jprunecma( )			if( strbuf_lastchar( b ) == '\n' ) { strbuf_chopn( b, 3 ); }
-#define _jenda( p )				_jprunecma( ); strbuf_aprintf( b, p "],\r\n" )
-#define _jendo( p )				_jprunecma( ); strbuf_aprintf( b, p "},\r\n" )
+
+
+	// and call out to any app-specific handlers
+	if( _proc->http->metrics_fp )
+		(*(_proc->http->metrics_fp))( req );
+
+	return 0;
+}
+
+
+
 
 #define _jmtype( n, mc )		snprintf( tmp, 16, "%s_calls", n ); \
-								_jfieldl( "      ", tmp, mc.ctr ); \
+								json_fldU( tmp, mc.ctr ); \
 								snprintf( tmp, 16, "%s_total", n ); \
-								_jfieldl( "      ", tmp, mc.sum )
+								json_fldU( tmp, mc.sum )
 
 
 int http_calls_stats( HTREQ *req )
@@ -42,36 +46,39 @@ int http_calls_stats( HTREQ *req )
 	BUF *b;
 	int j;
 
-	b = ( req->text = strbuf_resize( req->text, _proc->http->statsBufSize ) );
+	b = ( req->text = strbuf_resize( req->text, 8000 ) );
 
-	_jstr( "{" );
+	json_starto( );
 
-	_jfields( "  ", "app", _proc->app_name );
-	_jfieldd( "  ", "uptime", get_uptime( ) );
-	_jfield8( "  ", "mem", mem_curr_kb( ) );
+	json_flds( "app", _proc->app_name );
+	json_fldf( "uptime", get_uptime( ) );
+	json_fldI( "mem", mem_curr_kb( ) );
 
-	_jfielda( "  ", "memtypes" );
+	json_fldo( "memTypes" );
 
 	for( j = 0; j < _proc->mem->type_ct; j++ )
 	{
 		if( mem_type_stats( j, &ms ) != 0 )
 			continue;
 
-		_jstr( "    {" );
-		_jfields( "      ", "type", ms.name );
-		_jfieldu( "      ", "free", ms.ctrs.fcount );
-		_jfieldu( "      ", "alloc", ms.ctrs.total );
-		_jfieldl( "      ", "kb", ms.bytes >> 10 );
+		json_fldo( ms.name );
+		json_fldu( "free", ms.ctrs.fcount );
+		json_fldu( "alloc", ms.ctrs.total );
+		json_fldU( "kb", ms.bytes >> 10 );
 #ifdef MTYPE_TRACING
 		_jmtype( "alloc",  ms.ctrs.all );
 		_jmtype( "freed",  ms.ctrs.fre );
 		_jmtype( "preall", ms.ctrs.pre );
 		_jmtype( "refill", ms.ctrs.ref );
 #endif
-		_jendo( "    " );
+		json_endo( );
 	}
-	_jenda( "  " );
-	_jstr( "}" );
+	json_endo( );
+
+	if( _proc->http->stats_fp )
+		(*(_proc->http->stats_fp))( req );
+
+	json_finisho( );
 
 	return 0;
 }
@@ -80,12 +87,12 @@ int http_calls_stats( HTREQ *req )
 
 void __http_calls_count_one( BUF *b, HTPATH *pt )
 {
-	_jstr( "    {" );
-	_jfields( "      ", "path", pt->path );
-	_jfields( "      ", "description", pt->desc );
-	_jfields( "      ", "iplist", ( pt->iplist ) ? pt->iplist : "(none)" );
-	_jfield8( "      ", "hits", pt->hits );
-	_jendo( "    " );
+	json_starto( );
+	json_flds( "path", pt->path );
+	json_flds( "description", pt->desc );
+	json_flds( "iplist", ( pt->iplist ) ? pt->iplist : "(none)" );
+	json_fldI( "hits", pt->hits );
+	json_endo( );
 }
 
 
@@ -94,46 +101,26 @@ int http_calls_count( HTREQ *req )
 	HTPATH *pt;
 	BUF *b;
 
-	b = ( req->text = strbuf_resize( req->text, _proc->http->statsBufSize ) );
+	b = ( req->text = strbuf_resize( req->text, 8000 ) );
 
-	_jstr( "{" );
+	json_starto( );
 
-	_jfielda( "  ", "GET" );
+	json_flda( "GET" );
 
 	for( pt = _proc->http->get_h->list; pt; pt = pt->next )
 		__http_calls_count_one( b, pt );
 
-	_jenda( "  " );
-	_jfielda( "  ", "POST" );
+	json_enda( );
+	json_flda( "POST" );
 
 	for( pt = _proc->http->post_h->list; pt; pt = pt->next )
 		__http_calls_count_one( b, pt );
 
-	_jenda( "  " );
-	_jprunecma( );
-	_jstr( "}" );
+	json_enda( );
+	json_finisho( );
 
 	return 0;
 }
-
-
-
-
-
-#undef _jstr
-#undef _jfielda
-#undef _jfieldo
-#undef _jenda
-#undef _jendo
-#undef _jfields
-#undef _jfieldd
-#undef _jfield4
-#undef _jfield8
-#undef _jfieldu
-#undef _jfieldl
-#undef _jprunecma
-
-
 
 
 
@@ -227,11 +214,12 @@ void http_calls_init( void )
 {
 	http_add_simple_get( "/", "Usage information", &http_calls_usage );
 
-	// you should disable this if you are writing your own
-	if( _proc->http->stats )
-		http_add_json_get( "/stats", "Internal stats", &http_calls_stats );
+	http_add_json_get( "/stats", "Internal stats", &http_calls_stats );
 
 	http_add_json_get( "/counts", "HTTP request counts", &http_calls_count );
+
+	// prometheus support
+	http_add_simple_get( "/metrics", "HTTP prometheus metrics endpoint", &http_calls_metrics );
 
 	// add target control
 	http_add_json_get( "/targets", "List metric targets", &target_http_list );
