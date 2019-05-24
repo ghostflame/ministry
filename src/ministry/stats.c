@@ -949,9 +949,8 @@ void stats_init( void )
 	ctl->stats->self->threads = 1;
 	stats_init_control( ctl->stats->self, 0 );
 
-	// set up the http callbacks
+	// set up the http callback
 	http_stats_handler( &self_stats_cb_stats );
-	http_metrics_handler( &self_stats_cb_metrics );
 }
 
 

@@ -74,6 +74,7 @@
 #include "thread.h"
 #include "json.h"
 #include "http.h"
+#include "pmet.h"
 #include "http_calls.h"
 #include "ha.h"
 #include "config.h"

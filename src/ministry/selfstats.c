@@ -142,8 +142,8 @@ int self_stats_cb_stats( HTREQ *req )
 	BUF *b = req->text;
 
 	// make sure we have 4k free
-	if( ( b->sz - b->len ) < 4096 )
-		req->text = strbuf_resize( req->text, b->sz + 4096 );
+	if( ( b->sz - b->len ) < 4090 )
+		strbuf_resize( req->text, b->sz + 4090 );
 
 	json_fldo( "statsTypes" );
 	self_report_http_types( req, ctl->stats->stats );
@@ -154,10 +154,8 @@ int self_stats_cb_stats( HTREQ *req )
 	return 0;
 }
 
-int self_stats_cb_metrics( HTREQ *req )
+int self_stats_cb_metrics( BUF *b, void *arg )
 {
-	BUF *b = req->text;
-
 	strbuf_aprintf( b, "# No metrics yet.\n\n" );
 
 	return 0;

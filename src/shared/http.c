@@ -144,17 +144,6 @@ int http_stats_handler( http_callback *fp )
 	return -1;
 }
 
-int http_metrics_handler( http_callback *fp )
-{
-	if( fp )
-	{
-		_http->metrics_fp = fp;
-		return 0;
-	}
-
-	return -1;
-}
-
 
 ssize_t http_unused_reader( void *cls, uint64_t pos, char *buf, size_t max )
 {
@@ -699,13 +688,13 @@ HTTP_CTL *http_config_defaults( void )
 	sin->sin_addr.s_addr = INADDR_ANY;
 	h->sin               = sin;
 
-	_http = h;
-
 	// and handler structures
 	h->get_h          = (HTHDLS *) allocz( sizeof( HTHDLS ) );
 	h->get_h->method  = "GET";
 	h->post_h         = (HTHDLS *) allocz( sizeof( HTHDLS ) );
 	h->post_h->method = "POST";
+
+	_http = h;
 
 	return _http;
 }
@@ -715,6 +704,7 @@ HTTP_CTL *http_config_defaults( void )
 int http_config_line( AVP *av )
 {
 	HTTP_CTL *h = _http;
+	int64_t v;
 
 	if( !memchr( av->aptr, '.', av->alen ) )
 	{
@@ -757,15 +747,30 @@ int http_config_line( AVP *av )
 
 		if( attIs( "max" ) )
 		{
-			h->conns_max = (unsigned int) strtoul( av->vptr, NULL, 10 );
+			if( parse_number( av->vptr, &v, NULL ) == NUM_INVALID )
+			{
+				err( "Invalid max connections '%s'", av->vptr );
+				return -1;
+			}
+			h->conns_max = (unsigned int) v;
 		}
 		else if( attIs( "maxPerIp" ) || attIs( "maxPerHost" ) )
 		{
-			h->conns_max_ip = (unsigned int) strtoul( av->vptr, NULL, 10 );
+			if( parse_number( av->vptr, &v, NULL ) == NUM_INVALID )
+			{
+				err( "Invalid max-per-ip connections '%s'", av->vptr );
+				return -1;
+			}
+			h->conns_max_ip = (unsigned int) v;
 		}
 		else if( attIs( "timeout" ) || attIs( "tmout" ) )
 		{
-			h->conns_tmout = (unsigned int) strtoul( av->vptr, NULL, 10 );
+			if( parse_number( av->vptr, &v, NULL ) == NUM_INVALID )
+			{
+				err( "Invalid connection timeout '%s'", av->vptr );
+				return -1;
+			}
+			h->conns_tmout = (unsigned int) v;
 		}
 		else
 			return -1;

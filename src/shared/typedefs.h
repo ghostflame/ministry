@@ -18,9 +18,11 @@ typedef struct iplist_control       IPL_CTL;
 typedef struct io_control           IO_CTL;
 typedef struct target_control       TGT_CTL;
 typedef struct ha_control           HA_CTL;
+typedef struct pmet_control         PMET_CTL;
 
 typedef struct config_section       CSECT;
 typedef struct config_context       CCTXT;
+
 typedef struct mem_type_blank       MTBLANK;
 typedef struct mem_call_counters    MCCTR;
 typedef struct mem_type_counters    MTCTR;
@@ -64,6 +66,8 @@ typedef struct curlw_handle         CURLWH;
 
 typedef struct ha_partner           HAPT;
 
+typedef struct pmet_source          PMSRC;
+
 
 // function types
 typedef void loop_call_fn ( int64_t, void * );
@@ -76,6 +80,7 @@ typedef int64_t io_fn( TGT * );
 typedef int target_cfg_fn( TGT *, char *, int );
 typedef void curlw_cb( void *, IOBUF *b );
 typedef int sort_fn( const void *, const void * );
+typedef int pmet_fn( BUF *, void * );
 
 typedef void iplist_data_fn( void *, IPNET * );
 

@@ -111,6 +111,7 @@ struct process_control
 	IPL_CTL				*	ipl;
 	TGT_CTL				*	tgt;
 	HA_CTL				*	ha;
+	PMET_CTL			*	pmet;
 };
 
 

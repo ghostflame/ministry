@@ -14,16 +14,8 @@
 
 int http_calls_metrics( HTREQ *req )
 {
-	// TODO
-
-	// this needs a big buffer
-	strbuf_resize( req->text, 64000 );
 
 
-
-	// and call out to any app-specific handlers
-	if( _proc->http->metrics_fp )
-		(*(_proc->http->metrics_fp))( req );
 
 	return 0;
 }

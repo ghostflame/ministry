@@ -132,7 +132,6 @@ struct http_req_data
 };
 
 
-
 struct http_path
 {
 	HTPATH				*	next;
@@ -189,7 +188,6 @@ struct http_control
 	struct sockaddr_in	*	sin;
 
 	http_callback		*	stats_fp;   // extra stats callback
-	http_callback		*	metrics_fp; // extra metrics callback
 
 	http_reporter		*	rpt_fp;
 	void				*	rpt_arg;
@@ -215,7 +213,6 @@ int http_add_handler( char *path, char *desc, void *arg, int method, http_callba
 int http_add_control( char *path, char *desc, void *arg, http_callback *fp, IPLIST *srcs, int flags );
 
 int http_stats_handler( http_callback *fp );
-int http_metrics_handler( http_callback *fp );
 
 // give us a simple call to add get handlers
 #define http_add_simple_get( _p, _d, _c )			http_add_handler( _p, _d, NULL, HTTP_METH_GET, _c, NULL, 0 )

@@ -84,6 +84,7 @@ int app_init( char *name, char *cfgdir )
 	_proc->ipl  = iplist_config_defaults( );
 	_proc->tgt  = target_config_defaults( );
 	_proc->ha   = ha_config_defaults( );
+	_proc->pmet = pmet_config_defaults( );
 
 	// set up our shared config
 	memset( config_sections, 0, CONF_SECT_MAX * sizeof( CSECT ) );
@@ -95,6 +96,7 @@ int app_init( char *name, char *cfgdir )
 	config_register_section( "io",       &io_config_line );
 	config_register_section( "target",   &target_config_line );
 	config_register_section( "ha",       &ha_config_line );
+	config_register_section( "pmet",     &pmet_config_line );
 
 	if( set_signals( ) )
 	{
@@ -174,6 +176,10 @@ int app_start( int writePid )
 	// and http
 	if( http_start( ) )
 		fatal( "Failed to start http server." );
+
+	// and prometheus metrics
+	if( pmet_init( ) )
+		fatal( "Failed to start prometheus metrics generation." );
 
 	// and ha init
 	if( ha_init( ) )

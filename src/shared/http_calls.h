@@ -10,6 +10,7 @@
 #ifndef SHARED_HTTP_CALLS_H
 #define SHARED_HTTP_CALLS_H
 
+http_callback http_calls_metrics;
 http_callback http_calls_stats;
 http_callback http_calls_count;
 http_callback http_calls_usage;
