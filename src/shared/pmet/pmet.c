@@ -53,8 +53,43 @@ g/exposition_formats.md
  */
 
 
+PMET_TYPE pmet_types[PMET_TYPE_MAX] =
+{
+	{
+		.type = PMET_TYPE_UNTYPED,
+		.name = "untyped",
+		.rndr = NULL,
+		.valu = NULL,
+	},
+	{
+		.type = PMET_TYPE_COUNTER,
+		.name = "counter",
+		.rndr = NULL,
+		.valu = NULL,
+	},
+	{
+		.type = PMET_TYPE_GAUGE,
+		.name = "gauge",
+		.rndr = NULL,
+		.valu = NULL,
+	},
+	{
+		.type = PMET_TYPE_SUMMARY,
+		.name = "summary",
+		.rndr = &pmet_summary_render,
+		.valu = &pmet_summary_value
+	},
+	{
+		.type = PMET_TYPE_HISTOGRAM,
+		.name = "histogram",
+		.rndr = &pmet_histogram_render,
+		.valu = &pmet_histogram_value
+	}
+};
+
 
 PMET_CTL *_pmet = NULL;
+
 
 
 
@@ -62,10 +97,6 @@ int pmet_gen_shared( BUF *b, void *arg )
 {
 	return 0;
 }
-
-
-
-
 
 void pmet_pass( int64_t tval, void *arg )
 {
@@ -178,12 +209,24 @@ PMSRC *pmet_add_source( pmet_fn *fp, char *name, void *arg, int sz )
 PMET_CTL *pmet_config_defaults( void )
 {
 	PMET_CTL *p = (PMET_CTL *) allocz( sizeof( PMET_CTL ) );
-	int v = 1;
+	int v;
 
 	p->period = DEFAULT_PMET_PERIOD_MSEC;
 	p->enabled = 0;
 
+	v = 1;
 	p->lookup = string_store_create( 0, "tiny", &v );
+
+	p->plus_inf = str_dup( "+Inf", 4 );
+
+	if( ( v = regcomp( &(p->path_check), PMET_PATH_RGX, REG_EXTENDED|REG_ICASE|REG_NOSUB ) ) )
+	{
+		char *errbuf = (char *) allocz( 2048 );
+
+		regerror( v, &(p->path_check), errbuf, 2048 );
+		fatal( "Could not compile prometheus metrics path check regex: %s", errbuf );
+		return NULL;
+	}
 
 	// add in the basics
 	p->shared = pmet_add_source( pmet_gen_shared, "shared", NULL, 0 );

@@ -67,6 +67,9 @@ typedef struct curlw_handle         CURLWH;
 typedef struct ha_partner           HAPT;
 
 typedef struct pmet_source          PMSRC;
+typedef struct pmet_item            PMET;
+typedef struct pmet_type_info       PMET_TYPE;
+typedef union pmet_generator        PMET_GEN;
 
 
 // function types
@@ -81,6 +84,9 @@ typedef int target_cfg_fn( TGT *, char *, int );
 typedef void curlw_cb( void *, IOBUF *b );
 typedef int sort_fn( const void *, const void * );
 typedef int pmet_fn( BUF *, void * );
+typedef double pmet_gen_fn( void *, PMET_VAL * );
+typedef int pmet_render_fn( int64_t, BUF *b, PMET *, PMET_LBL * );
+typedef int pmet_value_fn( PMET *, double );
 
 typedef void iplist_data_fn( void *, IPNET * );
 

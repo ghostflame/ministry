@@ -135,6 +135,24 @@ void mem_sort_list( void **list, int count, sort_fn *cmp )
 	free( tmp );
 }
 
+int mem_cmp_dbl( const void *p1, const void *p2 )
+{
+	double d1 = *((double *) p1);
+	double d2 = *((double *) p2);
+
+	return ( d1 > d2 ) ? 1 : ( d1 == d2 ) ? 0 : -1;
+}
+
+int mem_cmp_i64( const void *p1, const void *p2 )
+{
+	int64_t i1 = *((int64_t *) p1);
+	int64_t i2 = *((int64_t *) p2);
+
+	return ( i1 > i2 ) ? 1 : ( i1 == i2 ) ? 0 : -1;
+}
+
+
+
 
 void __mtype_report_counts( MTYPE *mt )
 {

@@ -135,6 +135,10 @@ uint32_t mem_alloc_size( int len );
 // zero'd memory
 void *allocz( size_t size );
 
+sort_fn mem_cmp_dbl;
+sort_fn mem_cmp_i64;
+#define mem_sort_dlist( _l, _c )		qsort( _l, _c, sizeof( double ), mem_cmp_dbl )
+#define mem_sort_ilist( _l, _c )		qsort( _l, _c, sizeof( int64_t ), mem_cmp_i64 )
 
 void *mem_reverse_list( void *list_in );
 void mem_sort_list( void **list, int count, sort_fn *cmp );
