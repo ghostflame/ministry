@@ -10,6 +10,7 @@
 #include "local.h"
 
 
+#define _lbl_render( _l )		strbuf_aprintf( b, "%s=\"%s\",", _l->name, *(_l->valptr) )
 
 void pmet_label_render( BUF *b, int count, ... )
 {
@@ -17,18 +18,23 @@ void pmet_label_render( BUF *b, int count, ... )
 	va_list ap;
 	int i, j;
 
-	if( !count )
+	if( !count && !_proc->pmet->common )
 		return;
 
 	strbuf_add( b, "{", 1 );
 
+	// there may be common labels
+	for( l = _proc->pmet->common; l; l = l->next )
+		_lbl_render( l );
+
+	// and let's see what we were given
 	va_start( ap, count );
 	for( j = 0, i = 0; i < count; i++ )
 	{
 		list = va_arg( ap, PMET_LBL * );
 
 		for( l = list; l; l = l->next, j++ )
-			strbuf_aprintf( b, "%s=\"%s\",", l->name, *(l->valptr) );
+			_lbl_render( l );
 	}
 	va_end( ap );
 
@@ -42,6 +48,8 @@ void pmet_label_render( BUF *b, int count, ... )
 	if( j )
 		strbuf_add( b, "}", 1 );
 }
+
+#undef _lbl_render
 
 
 PMET_LBL *pmet_label_create( char *name, char **valptr, PMET *item )

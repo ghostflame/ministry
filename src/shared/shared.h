@@ -68,7 +68,7 @@
 #include "regexp.h"
 #include "net.h"
 #include "iplist.h"
-#include "mem.h"
+#include "mem/mem.h"
 #include "target.h"
 #include "io.h"
 #include "thread.h"

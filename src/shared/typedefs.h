@@ -23,11 +23,11 @@ typedef struct pmet_control         PMET_CTL;
 typedef struct config_section       CSECT;
 typedef struct config_context       CCTXT;
 
-typedef struct mem_type_blank       MTBLANK;
 typedef struct mem_call_counters    MCCTR;
 typedef struct mem_type_counters    MTCTR;
-typedef struct mem_type             MTYPE;
 typedef struct mem_type_stats       MTSTAT;
+typedef struct mem_type_blank       MTBLANK;
+typedef struct mem_type             MTYPE;
 typedef struct mem_check            MCHK;
 
 typedef struct iterator             ITER;

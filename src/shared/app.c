@@ -79,24 +79,24 @@ int app_init( char *name, char *cfgdir )
 
 	_proc->log  = log_config_defaults( );
 	_proc->mem  = mem_config_defaults( );
+	_proc->pmet = pmet_config_defaults( );
 	_proc->http = http_config_defaults( );
 	_proc->io   = io_config_defaults( );
 	_proc->ipl  = iplist_config_defaults( );
 	_proc->tgt  = target_config_defaults( );
 	_proc->ha   = ha_config_defaults( );
-	_proc->pmet = pmet_config_defaults( );
 
 	// set up our shared config
 	memset( config_sections, 0, CONF_SECT_MAX * sizeof( CSECT ) );
 	config_register_section( "main",     &config_line );
 	config_register_section( "logging",  &log_config_line );
 	config_register_section( "memory",   &mem_config_line );
+	config_register_section( "pmet",     &pmet_config_line );
 	config_register_section( "http",     &http_config_line );
 	config_register_section( "iplist",   &iplist_config_line );
 	config_register_section( "io",       &io_config_line );
 	config_register_section( "target",   &target_config_line );
 	config_register_section( "ha",       &ha_config_line );
-	config_register_section( "pmet",     &pmet_config_line );
 
 	if( set_signals( ) )
 	{
@@ -177,13 +177,17 @@ int app_start( int writePid )
 	if( http_start( ) )
 		fatal( "Failed to start http server." );
 
-	// and prometheus metrics
-	if( pmet_init( ) )
-		fatal( "Failed to start prometheus metrics generation." );
+	// set our host name and app name
+	pmet_label_common( "host", _proc->hostname );
+	pmet_label_common( "app", _proc->app_name );
 
 	// and ha init
 	if( ha_init( ) )
 		fatal( "Failed to init HA." );
+
+	// and prometheus metrics
+	if( pmet_init( ) )
+		fatal( "Failed to start prometheus metrics generation." );
 
 	runf_add( RUN_APP_START );
 

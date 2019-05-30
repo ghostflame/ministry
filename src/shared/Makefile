@@ -1,9 +1,9 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-SUBS   = pmet
+SUBS   = mem pmet
 
-FILES  = log utils stringutils iter regexp curlw net iplist target io mem thread config loop http http_calls ha app
-HEADS  = log utils stringutils iter regexp curlw net iplist target io mem thread config loop http pmet http_calls ha app run json
+FILES  = log utils stringutils iter regexp curlw net iplist target io thread config loop http http_calls ha app
+HEADS  = log utils stringutils iter regexp curlw net iplist target io thread config loop http pmet http_calls ha app run json
 
 VERS  ?= 0.1.0
 RKV    = app_shared.a
@@ -11,6 +11,7 @@ EARGS ?=
 
 OBJS   = $(FILES:%=%.o)
 HDRS   = $(HEADS:%=%.h)
+SUBO   = $(SUBS:%=%/*.o)
 
 WFLAGS = -Wall -Wshadow
 IFLAGS = -I. 
@@ -43,7 +44,7 @@ subs:
 	for d in $(SUBS); do ( cd $$d && EARGS=$(EARGS) $(MAKE) $(MFLAGS) $(TARGET) ); done
 
 $(RKV): $(OBJS)
-	ar crs $(RKV) $(OBJS) */*.o
+	ar crs $(RKV) $(OBJS) $(SUBO)
 	ranlib $(RKV)
 
 clean:

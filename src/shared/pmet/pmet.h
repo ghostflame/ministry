@@ -51,6 +51,8 @@ struct pmet_control
 
 	SSTR			*	lookup;
 
+	PMET_LBL		*	common;
+
 	regex_t				path_check;
 	char			*	plus_inf;
 
@@ -67,6 +69,8 @@ struct pmet_control
 // if an item is provided, the created label will be added to it
 PMET_LBL *pmet_label_create( char *name, char **valptr, PMET *item );
 
+// pass an app-common label in
+int pmet_label_common( char *name, char *valptr );
 
 
 // wrapper fns
