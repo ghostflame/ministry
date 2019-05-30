@@ -7,7 +7,7 @@
 * Updates:                                                                *
 **************************************************************************/
 
-#include "shared.h"
+#include "local.h"
 
 
 
@@ -16,33 +16,41 @@ int pmet_histogram_render( int64_t mval, BUF *b, PMET *item, PMET_LBL *with )
 	PMET_HIST *h = item->value.hist;
 	int i;
 
+	if( item->count == 0 )
+		return 0;
+
+	// we have to do this entire thing under lock, or risk
+	// inconsitent values
+	lock_pmet( item );
+
 	for( i = 0; i < h->bcount; i++ )
 	{
 		strbuf_aprintf( b, "%s_bucket", item->path );
 		pmet_label_render( b, 3, item->labels, with, h->labels[i] );
-		strbuf_aprintf( " %ld %ld\n", h->counts[i], mval );
+		strbuf_aprintf( b, " %ld %ld\n", h->counts[i], mval );
 	}
 
 	strbuf_aprintf( b, "%s_bucket", item->path );
 	pmet_label_render( b, 3, item->labels, with, h->labels[h->bcount] );
-	strbuf_aprintf( " %ld %ld\n", h->count, mval );
+	strbuf_aprintf( b, " %ld %ld\n", item->count, mval );
 
 	strbuf_aprintf( b, "%s_sum", item->path );
 	pmet_label_render( b, 2, item->labels, with );
-	strbuf_aprintf( " %ld %ld\n", h->sum, mval );
+	strbuf_aprintf( b, " %f %ld\n", h->sum, mval );
 
 	strbuf_aprintf( b, "%s_count", item->path );
 	pmet_label_render( b, 2, item->labels, with );
-	strbuf_aprintf( " %ld %ld\n", h->count, mval );
+	strbuf_aprintf( b, " %ld %ld\n", item->count, mval );
 
 	// flatten it
-	lock_pmet( item );
 
 	memset( h->counts, 0, h->bcount * sizeof( int64_t ) );
-	h->count = 0;
+	item->count = 0;
 	h->sum = 0;
 
 	unlock_pmet( item );
+
+	return 0;
 }
 
 
@@ -52,7 +60,6 @@ void __pmet_histogram_labels( PMET *item )
 {
 	PMET_HIST *h = item->value.hist;
 	char *valtmp;
-	PMET_LBL *l;
 	int i;
 
 	h->labels = (PMET_LBL **) allocz( ( 1 + h->bcount ) * sizeof( PMET_LBL * ) );
@@ -98,24 +105,8 @@ int pmet_histogram_set( PMET *item, int count, double *vals, int copy )
 }
 
 
-int pmet_histogram_setv( PMET *item, int count, ... )
-{
-	double *list;
-	va_list ap;
-	int i, ret;
 
-	list = (double *) allocz( count * sizeof( double ) );
-
-	va_start( ap, count );
-	for( i = 0; i < count; i++ )
-		list[i] = va_arg( ap, double );
-	va_end( ap );
-
-	return pmet_histogram_set( item, count, list, 0 );
-}
-
-
-int pmet_histogram_value( PMET *item, double value )
+int pmet_histogram_value( PMET *item, double value, int set )
 {
 	PMET_HIST *h = item->value.hist;
 	int i, j;
@@ -134,7 +125,7 @@ int pmet_histogram_value( PMET *item, double value )
 	// update under lock
 	lock_pmet( item );
 
-	h->count++;
+	item->count++;
 	h->sum += value;
 
 	if( j >= 0 )

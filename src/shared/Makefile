@@ -40,13 +40,14 @@ with_old_gcc: $(RKV)
 
 
 subs:
-	for d in $(SUBS); ( cd $$d && EARGS=$(EARGS) $(MAKE) $(MFLAGS) $(TARGET) ); done
+	for d in $(SUBS); do ( cd $$d && EARGS=$(EARGS) $(MAKE) $(MFLAGS) $(TARGET) ); done
 
 $(RKV): $(OBJS)
-	ar crs $(RKV) $(OBJS) */*_shared.a
+	ar crs $(RKV) $(OBJS) */*.o
 	ranlib $(RKV)
 
 clean:
+	for d in $(SUBS); do ( cd $$d && EARGS=$(EARGS) $(MAKE) $(MFLAGS) clean ); done
 	rm -f *.o $(RKV)
 
 install:

@@ -7,7 +7,7 @@
 * Updates:                                                                *
 **************************************************************************/
 
-#include "shared.h"
+#include "local.h"
 
 
 /*
@@ -58,20 +58,20 @@ PMET_TYPE pmet_types[PMET_TYPE_MAX] =
 	{
 		.type = PMET_TYPE_UNTYPED,
 		.name = "untyped",
-		.rndr = NULL,
-		.valu = NULL,
+		.rndr = &pmet_counter_render,
+		.valu = &pmet_counter_value
 	},
 	{
 		.type = PMET_TYPE_COUNTER,
 		.name = "counter",
-		.rndr = NULL,
-		.valu = NULL,
+		.rndr = &pmet_counter_render,
+		.valu = &pmet_counter_value
 	},
 	{
 		.type = PMET_TYPE_GAUGE,
 		.name = "gauge",
-		.rndr = NULL,
-		.valu = NULL,
+		.rndr = &pmet_gauge_render,
+		.valu = &pmet_gauge_value
 	},
 	{
 		.type = PMET_TYPE_SUMMARY,
@@ -219,7 +219,7 @@ PMET_CTL *pmet_config_defaults( void )
 
 	p->plus_inf = str_dup( "+Inf", 4 );
 
-	if( ( v = regcomp( &(p->path_check), PMET_PATH_RGX, REG_EXTENDED|REG_ICASE|REG_NOSUB ) ) )
+	if( ( v = regcomp( &(p->path_check), PMET_PATH_CHK_RGX, REG_EXTENDED|REG_ICASE|REG_NOSUB ) ) )
 	{
 		char *errbuf = (char *) allocz( 2048 );
 
@@ -228,10 +228,10 @@ PMET_CTL *pmet_config_defaults( void )
 		return NULL;
 	}
 
+	_pmet = p;
+
 	// add in the basics
 	p->shared = pmet_add_source( pmet_gen_shared, "shared", NULL, 0 );
-
-	_pmet = p;
 
 	return p;
 }

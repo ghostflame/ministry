@@ -7,40 +7,18 @@
 * Updates:                                                                *
 **************************************************************************/
 
-#include "shared.h"
+#include "local.h"
 
 
 
 
 int pmet_item_render( int64_t mval, BUF *b, PMET *item, PMET_LBL *with )
 {
-	int i;
-
 	if( item->help )
 		strbuf_aprintf( b, "HELP %s %s\n", item->path, item->help );
 	strbuf_aprintf( b, "TYPE %s %s\n", item->path, item->type->name );
 
-	switch( item->type->type )
-	{
-		case PMET_TYPE_GAUGE:
-			strbuf_add( b, item->path, item->plen );
-			pmet_label_render( b, 2, item->labels, with );
-			strbuf_aprintf( " %f %ld\n", item->value.dval, mval );
-			break;
-
-		case PMET_TYPE_COUNTER:
-			strbuf_add( b, item->path, item->plen );
-			pmet_label_render( b, 2, item->labels, with );
-			strbuf_aprintf( " %f %ld\n", item->value.dval, mval );
-			item->value.dval = 0;
-			break;
-
-		case PMET_TYPE_SUMMARY:
-			break;
-
-		case PMET_TYPE_HISTOGRAM:
-			break;
-	}
+	return (*(item->type->rndr))( mval, b, item, with );
 }
 
 
@@ -60,7 +38,7 @@ int pmet_item_gen( PMET *item )
 			break;
 
 		case PMET_GEN_LLCT:
-			item->value.dval = (double) lockless_fetch( item->gen.llct );
+			item->value.dval = (double) lockless_fetch( item->gen.lockless );
 			break;
 
 		case PMET_GEN_FN:
@@ -100,7 +78,7 @@ PMET *pmet_item_create( int type, char *path, char *help, int gentype, void *gen
 		return NULL;
 	}
 
-	if( regexec( &(_pmet->path_check), path, 0, NULL, 0 ) )
+	if( regexec( &(_proc->pmet->path_check), path, 0, NULL, 0 ) )
 	{
 		err( "Prometheus metric path '%s' is invalid (against regex check).", path );
 		return NULL;
@@ -158,9 +136,9 @@ PMET *pmet_item_clone( PMET *item, void *genptr, void *genarg )
 
 	// create a new one
 	i = pmet_item_create( item->type->type,
-	        item->path, item->help, item->gentype,
-	        ( genptr ) ? genptr : item->genptr,
-	        ( genarg ) ? genarg : item->genarg );
+	        item->path, item->help, item->gtype,
+	        ( genptr ) ? genptr : item->gen.dptr,
+	        ( genarg ) ? genarg : item->garg );
 
 
 	// recreate the labels, because they are a list
@@ -180,12 +158,12 @@ PMET *pmet_item_clone( PMET *item, void *genptr, void *genarg )
 	{
 		case PMET_TYPE_SUMMARY:
 			pmet_summary_make_space( i, item->value.summ->max );
-			pmet_summary_set( i, item->value.summ->qcount,
+			pmet_summary_quantile_set( i, item->value.summ->qcount,
 			        item->value.summ->quantiles, 1 );
 			break;
 
 		case PMET_TYPE_HISTOGRAM:
-			pmet_histogram_set( i, item->value.hist->bcount,
+			pmet_histogram_bucket_set( i, item->value.hist->bcount,
 			        item->value.hist->buckets, 1 );
 			break;
 	}

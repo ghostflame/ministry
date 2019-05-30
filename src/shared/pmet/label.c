@@ -7,13 +7,13 @@
 * Updates:                                                                *
 **************************************************************************/
 
-#include "shared.h"
+#include "local.h"
 
 
 
 void pmet_label_render( BUF *b, int count, ... )
 {
-	PMET_LBL *l, *list
+	PMET_LBL *l, *list;
 	va_list ap;
 	int i, j;
 
@@ -28,7 +28,7 @@ void pmet_label_render( BUF *b, int count, ... )
 		list = va_arg( ap, PMET_LBL * );
 
 		for( l = list; l; l = l->next, j++ )
-			strbuf_aprintf( b, "%s=\"%s\"," l->name, *(l->valptr) );
+			strbuf_aprintf( b, "%s=\"%s\",", l->name, *(l->valptr) );
 	}
 	va_end( ap );
 
@@ -46,7 +46,7 @@ void pmet_label_render( BUF *b, int count, ... )
 
 PMET_LBL *pmet_label_create( char *name, char **valptr, PMET *item )
 {
-	PMET_LBL *l = (PMET_LBL *) allocz( sizeof( PMT_LBL ) );
+	PMET_LBL *l = (PMET_LBL *) allocz( sizeof( PMET_LBL ) );
 
 	l->name = str_dup( name, 0 );
 	l->valptr = valptr;
