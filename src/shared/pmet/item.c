@@ -78,7 +78,7 @@ PMET *pmet_item_create( int type, char *path, char *help, int gentype, void *gen
 		return NULL;
 	}
 
-	if( regexec( &(_proc->pmet->path_check), path, 0, NULL, 0 ) )
+	if( regexec( &(_pmet->path_check), path, 0, NULL, 0 ) )
 	{
 		err( "Prometheus metric path '%s' is invalid (against regex check).", path );
 		return NULL;
@@ -128,7 +128,6 @@ PMET *pmet_item_create( int type, char *path, char *help, int gentype, void *gen
 // useful for making a set of items with different labels
 PMET *pmet_item_clone( PMET *item, void *genptr, void *genarg )
 {
-	PMET_LBL *l, *list;
 	PMET *i;
 
 	if( !item )
@@ -140,18 +139,10 @@ PMET *pmet_item_clone( PMET *item, void *genptr, void *genarg )
 	        ( genptr ) ? genptr : item->gen.dptr,
 	        ( genarg ) ? genarg : item->garg );
 
-
 	// recreate the labels, because they are a list
 	// and we may add a new label to each of them
 	// cloned items
-	if( i->labels )
-	{
-		list = i->labels;
-		i->labels = NULL;
-
-		for( l = list; l; l = l->next )
-			pmet_label_create( l->name, l->valptr, i );
-	}
+	i->labels = pmet_label_clone( item->labels, -1 );
 
 	// and clone histogram/summary setup
 	switch( item->type->type )

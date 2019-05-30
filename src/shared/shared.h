@@ -77,7 +77,7 @@
 #include "pmet/pmet.h"
 #include "http_calls.h"
 #include "ha.h"
-#include "config.h"
+#include "config/config.h"
 #include "app.h"
 
 

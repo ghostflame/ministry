@@ -1,9 +1,10 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-FILES  = conf alloc mtype types mem
-HEADS  = local mem
+FILES  = args context env read config
+HEADS  = local config
 
-RKV    = mem_shared.a
+VERS  ?= 0.1.0
+RKV    = config_shared.a
 EARGS ?=
 
 OBJS   = $(FILES:%=%.o)
@@ -13,7 +14,7 @@ WFLAGS = -Wall -Wshadow
 IFLAGS = -I. -I..
 DFLAGS = -g -pg -ggdb3 -DDEBUG
 TFLAGS = -pthread
-CFLAGS = -c $(TFLAGS) $(IFLAGS) $(EARGS)
+CFLAGS = -c $(TFLAGS) $(IFLAGS) -DVERSION_STRING='"$(VERS)"' $(EARGS)
 #CFLAGS = -c $(TFLAGS) $(IFLAGS) -DMIN_MHD_PASS=0
 #LFLAGS = -lm -lcurl -lmicrohttpd
 

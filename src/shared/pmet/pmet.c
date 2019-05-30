@@ -217,8 +217,6 @@ PMET_CTL *pmet_config_defaults( void )
 	v = 1;
 	p->lookup = string_store_create( 0, "tiny", &v );
 
-	p->plus_inf = str_dup( "+Inf", 4 );
-
 	if( ( v = regcomp( &(p->path_check), PMET_PATH_CHK_RGX, REG_EXTENDED|REG_ICASE|REG_NOSUB ) ) )
 	{
 		char *errbuf = (char *) allocz( 2048 );

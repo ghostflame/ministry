@@ -1,9 +1,9 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-SUBS   = mem pmet
+SUBS   = config mem pmet
 
-FILES  = log utils stringutils iter regexp curlw net iplist target io thread config loop http http_calls ha app
-HEADS  = log utils stringutils iter regexp curlw net iplist target io thread config loop http pmet http_calls ha app run json
+FILES  = log utils stringutils iter regexp curlw net iplist target io thread loop http http_calls ha app
+HEADS  = log utils stringutils iter regexp curlw net iplist target io thread loop http pmet http_calls ha app run json
 
 VERS  ?= 0.1.0
 RKV    = app_shared.a
@@ -17,8 +17,8 @@ WFLAGS = -Wall -Wshadow
 IFLAGS = -I. 
 DFLAGS = -g -pg -ggdb3 -DDEBUG
 TFLAGS = -pthread
-CFLAGS = -c $(TFLAGS) $(IFLAGS) -DVERSION_STRING='"$(VERS)"' $(EARGS)
-#CFLAGS = -c $(TFLAGS) $(IFLAGS) -DVERSION_STRING='"$(VERS)"' -DMIN_MHD_PASS=0
+CFLAGS = -c $(TFLAGS) $(IFLAGS) $(EARGS)
+#CFLAGS = -c $(TFLAGS) $(IFLAGS) -DMIN_MHD_PASS=0
 #LFLAGS = -lm -lcurl -lmicrohttpd
 
 all: WFLAGS += -Wpedantic -Wextra -Wno-unused-parameter
@@ -41,7 +41,7 @@ with_old_gcc: $(RKV)
 
 
 subs:
-	for d in $(SUBS); do ( cd $$d && EARGS=$(EARGS) $(MAKE) $(MFLAGS) $(TARGET) ); done
+	for d in $(SUBS); do ( cd $$d && EARGS=$(EARGS) VERS=$(VERS) $(MAKE) $(MFLAGS) $(TARGET) ); done
 
 $(RKV): $(OBJS)
 	ar crs $(RKV) $(OBJS) $(SUBO)

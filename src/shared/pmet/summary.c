@@ -61,26 +61,6 @@ int pmet_summary_render( int64_t mval, BUF *b, PMET *item, PMET_LBL *with )
 
 
 
-void __pmet_summary_labels( PMET *item )
-{
-	PMET_SUMM *s = item->value.summ;
-	char *valtmp;
-	int i;
-
-	s->labels = (PMET_LBL **) allocz( s->qcount * sizeof( PMET_LBL * ) );
-	s->qvals = (char **) allocz( s->qcount * sizeof( char * ) );
-
-	for( i = 0; i < s->qcount; i++ )
-	{
-		valtmp = (char *) allocz( 12 );
-		snprintf( valtmp, 12, "%0.4f", s->quantiles[i] );
-		s->qvals[i] = valtmp;
-		s->labels[i] = pmet_label_create( "le", s->qvals + i, NULL );
-	}
-}
-
-
-
 int pmet_summary_quantile_set( PMET *item, int count, double *vals, int copy )
 {
 	PMET_SUMM *s = item->value.summ;
@@ -100,7 +80,7 @@ int pmet_summary_quantile_set( PMET *item, int count, double *vals, int copy )
 	// sort them
 	mem_sort_dlist( s->quantiles, s->qcount );
 
-	__pmet_summary_labels( item );
+	s->labels = pmet_label_array( "quantile", 0, s->qcount, s->quantiles );
 
 	return 0;
 }

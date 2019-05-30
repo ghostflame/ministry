@@ -3,7 +3,6 @@ CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 FILES  = histogram summary counter gauge item label wrapper pmet
 HEADS  = local pmet
 
-VERS  ?= 0.1.0
 RKV    = pmet_shared.a
 EARGS ?=
 

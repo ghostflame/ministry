@@ -168,28 +168,6 @@ void mem_startup( void )
 
 
 
-int mem_type_stats( int id, MTSTAT *ms )
-{
-	MTYPE *m = _mem->types[id];
-
-	memset( ms, 0, sizeof( MTSTAT ) );
-
-	if( id >= _mem->type_ct )
-		return -1;
-
-	// grab the stats
-	mem_lock( m );
-	memcpy( &(ms->ctrs), &(m->ctrs), sizeof( MTCTR ) );
-	mem_unlock( m );
-
-	// these can be after the unlock
-	ms->bytes = (uint64_t) m->stats_sz * (uint64_t) ms->ctrs.total;
-	ms->name = m->name;
-
-	return 0;
-}
-
-
 int64_t mem_curr_kb( void )
 {
 	//info( "_mem->mcheck->curr_kb reports %d KB.", _mem->mcheck->curr_kb );

@@ -11,7 +11,6 @@
 #ifndef SHARED_CONFIG_H
 #define SHARED_CONFIG_H
 
-#define CONF_SECT_MAX				128
 #define CONF_LINE_MAX				8192
 
 // config flags
@@ -39,33 +38,6 @@
 // used all over - so all the config line fns have an AVP called 'av'
 #define attIs( s )      !strcasecmp( av->aptr, s )
 #define valIs( s )      !strcasecmp( av->vptr, s )
-
-
-struct config_section
-{
-	char				*	name;
-	conf_line_fn		*	fp;
-	int						section;
-};
-
-// bring this in from main
-extern CSECT config_sections[];
-
-struct config_context
-{
-	CCTXT				*	next;
-	CCTXT				*	children;
-	CCTXT				*	parent;
-	CSECT				*	section;
-
-	char					source[4096];
-	char				**	argv;
-	int						lineno;
-	int						is_url;
-	int						is_ssl;
-	int					*	argl;
-	int						argc;
-};
 
 
 // main control structure
@@ -127,15 +99,10 @@ void config_args( int ac, char **av, char *optstr, help_fn *hfp );
 int config_bool( AVP *av );
 int config_read( char *path, WORDS *w );
 int config_read_env( char **env );
-char *config_relative_path( char *inpath );
-void config_choose_section( CCTXT *c, char *section );
 
-void config_register_section( char *name, conf_line_fn *fp );
-
-void config_set_main_file( char *path );
-void config_set_env_prefix( char *prefix );
 void config_set_pid_file( char *path );
 
+void config_register_section( char *name, conf_line_fn *fp );
 PROC_CTL *config_defaults( char *app_name, char *conf_dir );
 
 #endif

@@ -37,7 +37,7 @@ struct pmet_label
 {
 	PMET_LBL		*	next;
 	char			*	name;
-	char			**	valptr;
+	char			*	val;
 };
 
 
@@ -54,7 +54,6 @@ struct pmet_control
 	PMET_LBL		*	common;
 
 	regex_t				path_check;
-	char			*	plus_inf;
 
 	int64_t				outsz;
 	int64_t				timestamp;
@@ -67,10 +66,14 @@ struct pmet_control
 
 
 // if an item is provided, the created label will be added to it
-PMET_LBL *pmet_label_create( char *name, char **valptr, PMET *item );
+PMET_LBL *pmet_label_create( char *name, char *val, PMET *item );
 
 // pass an app-common label in
 int pmet_label_common( char *name, char *valptr );
+
+// clone a list of labels
+// max -1 means all, no matter the length
+PMET_LBL *pmet_label_clone( PMET_LBL *in, int max );
 
 
 // wrapper fns

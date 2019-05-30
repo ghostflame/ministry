@@ -54,30 +54,6 @@ int pmet_histogram_render( int64_t mval, BUF *b, PMET *item, PMET_LBL *with )
 }
 
 
-
-
-void __pmet_histogram_labels( PMET *item )
-{
-	PMET_HIST *h = item->value.hist;
-	char *valtmp;
-	int i;
-
-	h->labels = (PMET_LBL **) allocz( ( 1 + h->bcount ) * sizeof( PMET_LBL * ) );
-	h->bvals = (char **) allocz( h->bcount * sizeof( char * ) );
-
-	for( i = 0; i < h->bcount; i++ )
-	{
-		valtmp = (char *) allocz( 12 );
-		snprintf( valtmp, 12, "%0.4f", h->buckets[i] );
-		h->bvals[i] = valtmp;
-		h->labels[i] = pmet_label_create( "le", h->bvals + i, NULL );
-	}
-
-	h->labels[h->bcount] = pmet_label_create( "le", &(_proc->pmet->plus_inf), NULL );
-}
-
-
-
 int pmet_histogram_set( PMET *item, int count, double *vals, int copy )
 {
 	PMET_HIST *h = item->value.hist;
@@ -98,8 +74,10 @@ int pmet_histogram_set( PMET *item, int count, double *vals, int copy )
 	mem_sort_dlist( h->buckets, h->bcount );
 
 	h->counts = (int64_t *) allocz( count * sizeof( int64_t ) );
+	h->labels = pmet_label_array( "le", 1, h->bcount, h->buckets );
 
-	__pmet_histogram_labels( item );
+	// an extra label +Inf
+	h->labels[h->bcount] = pmet_label_create( "le", "+Inf", NULL );
 
 	return 0;
 }

@@ -54,7 +54,6 @@ extern PMET_TYPE pmet_types[PMET_TYPE_MAX];
 struct pmet_summary
 {
 	double			*	quantiles;
-	char			**	qvals;
 	PMET_LBL		**	labels;
 
 	double			*	values;
@@ -69,7 +68,6 @@ struct pmet_summary
 struct pmet_histogram
 {
 	double			*	buckets;
-	char			**	bvals;
 	PMET_LBL		**	labels;
 	int64_t			*	counts;
 
@@ -139,6 +137,8 @@ struct pmet_source
 };
 
 
+extern PMET_CTL *_pmet;
+
 
 // histogram
 
@@ -168,8 +168,8 @@ pmet_value_fn pmet_gauge_value;
 
 
 // label
-
 void pmet_label_render( BUF *b, int count, ... );
+PMET_LBL **pmet_label_array( char *name, int extra, int count, double *vals );
 
 
 // item

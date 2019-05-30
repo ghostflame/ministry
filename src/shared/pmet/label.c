@@ -10,7 +10,7 @@
 #include "local.h"
 
 
-#define _lbl_render( _l )		strbuf_aprintf( b, "%s=\"%s\",", _l->name, *(_l->valptr) )
+#define _lbl_render( _l )		strbuf_aprintf( b, "%s=\"%s\",", _l->name, _l->val )
 
 void pmet_label_render( BUF *b, int count, ... )
 {
@@ -52,12 +52,12 @@ void pmet_label_render( BUF *b, int count, ... )
 #undef _lbl_render
 
 
-PMET_LBL *pmet_label_create( char *name, char **valptr, PMET *item )
+PMET_LBL *pmet_label_create( char *name, char *val, PMET *item )
 {
 	PMET_LBL *l = (PMET_LBL *) allocz( sizeof( PMET_LBL ) );
 
 	l->name = str_dup( name, 0 );
-	l->valptr = valptr;
+	l->val = str_dup( val, 0 );
 
 	if( item )
 	{
@@ -67,6 +67,64 @@ PMET_LBL *pmet_label_create( char *name, char **valptr, PMET *item )
 	}
 
 	return l;
+}
+
+
+int pmet_label_common( char *name, char *val )
+{
+	PMET_LBL *l;
+
+	if( !name || !*name || !val || !*val )
+		return -1;
+
+	if( !( l = pmet_label_create( name, val, NULL ) ) )
+		return -1;
+
+	l->next = _pmet->common;
+	_pmet->common = l;
+
+	return 0;
+}
+
+PMET_LBL *pmet_label_clone( PMET_LBL *in, int max )
+{
+	PMET_LBL *out = NULL, *l;
+	int i = 0;
+
+	if( !in )
+		return NULL;
+
+	if( max < 0 )
+		max = 1000000000;
+
+	while( in && i++ < max )
+	{
+		l = pmet_label_create( in->name, in->val, NULL );
+
+		l->next = out;
+		out = l;
+
+		in = in->next;
+	}
+
+	return (PMET_LBL *) mem_reverse_list( out );
+}
+
+PMET_LBL **pmet_label_array( char *name, int extra, int count, double *vals )
+{
+	char valtmp[16];
+	PMET_LBL **ret;
+	int i;
+
+	ret = (PMET_LBL **) allocz( ( extra + count ) * sizeof( PMET_LBL * ) );
+
+	for( i = 0; i < count; i++ )
+	{
+		snprintf( valtmp, 16, "%0.6f", vals[i] );
+		ret[i] = pmet_label_create( name, valtmp, NULL );
+	}
+
+	return ret;
 }
 
 

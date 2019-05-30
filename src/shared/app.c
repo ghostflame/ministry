@@ -87,7 +87,6 @@ int app_init( char *name, char *cfgdir )
 	_proc->ha   = ha_config_defaults( );
 
 	// set up our shared config
-	memset( config_sections, 0, CONF_SECT_MAX * sizeof( CSECT ) );
 	config_register_section( "main",     &config_line );
 	config_register_section( "logging",  &log_config_line );
 	config_register_section( "memory",   &mem_config_line );
