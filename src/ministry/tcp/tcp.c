@@ -8,7 +8,7 @@
 **************************************************************************/
 
 
-#include "ministry.h"
+#include "local.h"
 
 
 void tcp_choose_thread( HOST *h )

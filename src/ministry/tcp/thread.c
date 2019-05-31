@@ -2,13 +2,13 @@
 * This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
 *                                                                         *
-* tcp_thrd.c - handles TCP connections in a single thread                 *
+* tcp/thredd.c - handles TCP connections in a single thread               *
 *                                                                         *
 * Updates:                                                                *
 **************************************************************************/
 
 
-#include "ministry.h"
+#include "local.h"
 
 
 //  This function is an annoying mix of io code and processing code,

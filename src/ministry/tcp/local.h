@@ -7,24 +7,12 @@
 * Updates:                                                                *
 **************************************************************************/
 
-#ifndef MINISTRY_TCP_H
-#define MINISTRY_TCP_H
-
-enum tcp_style_types
-{
-	TCP_STYLE_POOL = 0,
-	TCP_STYLE_THRD,
-	TCP_STYLE_EPOLL,
-	TCP_STYLE_MAX
-};
+#ifndef MINISTRY_TCP_LOCAL_H
+#define MINISTRY_TCP_LOCAL_H
 
 
-#define TCP_THRD_DADDER             30
-#define TCP_THRD_DSTATS             60
-#define TCP_THRD_DGAUGE             10
-#define TCP_THRD_DCOMPAT            20
+#include "ministry.h"
 
-#define TCP_MAX_POLLS               128
 
 // used to hash (port<<32)+ip to give a nice
 // spread of tcp slots even with a power-of-two
@@ -39,6 +27,8 @@ enum tcp_style_types
 #define tnotice( fmt, ... )     notice( "[TCP:%03d] " fmt, th->num, ##__VA_ARGS__ )
 #define tinfo( fmt, ... )       info( "[TCP:%03d] " fmt, th->num, ##__VA_ARGS__ )
 #define tdebug( fmt, ... )      debug( "[TCP:%03d] " fmt, th->num, ##__VA_ARGS__ )
+
+
 
 
 struct tcp_thread
@@ -65,28 +55,6 @@ struct tcp_thread
 };
 
 
-struct tcp_style_data
-{
-	char				*	name;
-	int						style;
-	tcp_setup_fn		*	setup;
-	tcp_fn				*	hdlr;
-};
-
-extern const struct tcp_style_data tcp_styles[];
-
-tcp_fn tcp_choose_thread;
-tcp_fn tcp_throw_thread;
-
-tcp_setup_fn tcp_epoll_setup;
-tcp_setup_fn tcp_pool_setup;
-tcp_setup_fn tcp_thrd_setup;
-
-throw_fn tcp_pool_thread;
-throw_fn tcp_epoll_thread;
-throw_fn tcp_thrd_thread;
-
-throw_fn tcp_loop;
 
 void tcp_close_host( HOST *h );
 void tcp_close_active_host( HOST *h );

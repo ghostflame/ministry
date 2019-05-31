@@ -2,13 +2,13 @@
 * This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
 *                                                                         *
-* tcp.c - handles TCP connections                                         *
+* tcp/epoll.c - handles TCP connections with epoll                        *
 *                                                                         *
 * Updates:                                                                *
 **************************************************************************/
 
 
-#include "ministry.h"
+#include "local.h"
 
 
 void tcp_epoll_add_host( TCPTH *th, HOST *h )

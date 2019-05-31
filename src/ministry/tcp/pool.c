@@ -2,13 +2,13 @@
 * This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
 *                                                                         *
-* tcp_pool.c - handles tcp thread pool functions                          *
+* tcp/pool.c - handles tcp thread pool functions                          *
 *                                                                         *
 * Updates:                                                                *
 **************************************************************************/
 
 
-#include "ministry.h"
+#include "local.h"
 
 
 void tcp_pool_find_slot( TCPTH *th, HOST *h )
