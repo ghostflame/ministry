@@ -29,7 +29,7 @@ typedef union pmet_value            PMET_VAL;
 typedef struct pmet_type_info       PMET_TYPE;
 typedef union pmet_generator        PMET_GEN;
 
-typedef double pmet_gen_fn( void *, PMET_VAL * );
+
 typedef int pmet_render_fn( int64_t, BUF *b, PMET *, PMET_LBL * );
 typedef int pmet_value_fn( PMET *, double, int );
 
@@ -95,8 +95,8 @@ union pmet_generator
 	pmet_gen_fn		*	genfn;
 };
 
-#define lock_pmet( _p )		pthread_mutex_lock(   &(_p->lock) )
-#define unlock_pmet( _p )	pthread_mutex_unlock( &(_p->lock) )
+#define lock_pmet( _p )		if( _p->gtype == PMET_GEN_NONE ) { pthread_mutex_lock(   &(_p->lock) ); }
+#define unlock_pmet( _p )	if( _p->gtype == PMET_GEN_NONE ) { pthread_mutex_unlock( &(_p->lock) ); }
 
 
 // a simple fetch item, nice and predictable
@@ -110,14 +110,14 @@ struct pmet_item
 	void			*	garg;
 	PMET_LBL		*	labels;
 
+	PMET_VAL			value;
+	int64_t				count;
+
 	int8_t				lcount;
 	int8_t				gtype;
 	int16_t				plen;
 
 	pthread_mutex_t		lock;
-
-	PMET_VAL			value;
-	int64_t				count;
 };
 
 
@@ -128,12 +128,12 @@ struct pmet_source
 	PMSRC			*	next;
 	PMET			*	items;
 	BUF				*	buf;
-	pmet_fn			*	fp;
 	SSTE			*	sse;
 	char			*	name;
 	int					nlen;
 	int					icount;
 	int					last_ct;
+	int					render;
 };
 
 
@@ -173,6 +173,10 @@ PMET_LBL **pmet_label_array( char *name, int extra, int count, double *vals );
 
 
 // item
+
+int pmet_item_render( int64_t mval, BUF *b, PMET *item, PMET_LBL *with );
+int pmet_item_gen( int64_t mval, PMET *item );
+
 PMET *pmet_item_create( int type, char *path, char *help, int gentype, void *genptr, void *genarg );
 
 // if genptr or genarg are NULL, the one from the source is used

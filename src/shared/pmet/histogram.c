@@ -16,12 +16,10 @@ int pmet_histogram_render( int64_t mval, BUF *b, PMET *item, PMET_LBL *with )
 	PMET_HIST *h = item->value.hist;
 	int i;
 
-	if( item->count == 0 )
-		return 0;
-
 	// we have to do this entire thing under lock, or risk
 	// inconsitent values
-	lock_pmet( item );
+	if( item->gtype == PMET_GEN_NONE )
+		lock_pmet( item );
 
 	for( i = 0; i < h->bcount; i++ )
 	{
@@ -48,13 +46,14 @@ int pmet_histogram_render( int64_t mval, BUF *b, PMET *item, PMET_LBL *with )
 	item->count = 0;
 	h->sum = 0;
 
-	unlock_pmet( item );
+	if( item->gtype == PMET_GEN_NONE )
+		unlock_pmet( item );
 
-	return 0;
+	return h->bcount + 3;
 }
 
 
-int pmet_histogram_set( PMET *item, int count, double *vals, int copy )
+int pmet_histogram_bucket_set( PMET *item, int count, double *vals, int copy )
 {
 	PMET_HIST *h = item->value.hist;
 

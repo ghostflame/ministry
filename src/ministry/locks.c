@@ -42,7 +42,6 @@ LOCK_CTL *lock_config_defaults( void )
 void lock_shutdown( void )
 {
 	LOCK_CTL *l = ctl->locks;
-	ST_THR *t;
 	int i;
 
 	if( !l || !l->init_done )
@@ -63,10 +62,6 @@ void lock_shutdown( void )
 	// used to lock table positions
 	for( i = 0; i < HASHT_MUTEX_COUNT; i++ )
 		pthread_mutex_destroy( l->table + i );
-
-	// used in stats thread control
-	for( t = ctl->stats->adder->ctls; t; t = t->next )
-		pthread_mutex_destroy( &(t->lock) );
 
 	l->init_done = 0;
 }

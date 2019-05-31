@@ -23,7 +23,8 @@ enum pmet_type_vals
 
 enum pmet_gen_types
 {
-	PMET_GEN_IVAL = 0,
+	PMET_GEN_NONE = 0,  // fed, not generated
+	PMET_GEN_IVAL,
 	PMET_GEN_DVAL,
 	PMET_GEN_LLCT,
 	PMET_GEN_FN,
@@ -95,12 +96,13 @@ int pmet_value( PMET *item, double value, int set );
 // pmet.c
 
 int pmet_add_item( PMSRC *src, PMET *item );
+int pmet_add_item_by_name( char *src, PMET *item );
 
 http_callback pmet_source_control;
 http_callback pmet_source_list;
 
 
-PMSRC *pmet_add_source( pmet_fn *fp, char *name, void *arg, int sz );
+PMSRC *pmet_add_source( char *name, int sz );
 
 
 int pmet_init( void );

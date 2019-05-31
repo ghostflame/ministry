@@ -82,7 +82,7 @@ typedef int64_t io_fn( TGT * );
 typedef int target_cfg_fn( TGT *, char *, int );
 typedef void curlw_cb( void *, IOBUF *b );
 typedef int sort_fn( const void *, const void * );
-typedef int pmet_fn( BUF *, void * );
+typedef double pmet_gen_fn( int64_t, void *, double * );
 
 typedef void iplist_data_fn( void *, IPNET * );
 

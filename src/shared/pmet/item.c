@@ -11,9 +11,12 @@
 
 
 
-
 int pmet_item_render( int64_t mval, BUF *b, PMET *item, PMET_LBL *with )
 {
+	if( item->type->type != PMET_TYPE_GAUGE
+	 && item->count == 0 )
+		return 0;
+
 	if( item->help )
 		strbuf_aprintf( b, "HELP %s %s\n", item->path, item->help );
 	strbuf_aprintf( b, "TYPE %s %s\n", item->path, item->type->name );
@@ -22,13 +25,16 @@ int pmet_item_render( int64_t mval, BUF *b, PMET *item, PMET_LBL *with )
 }
 
 
-int pmet_item_gen( PMET *item )
+int pmet_item_gen( int64_t mval, PMET *item )
 {
 	if( !item )
 		return -1;
 
 	switch( item->gtype )
 	{
+		case PMET_GEN_NONE:
+			break;
+
 		case PMET_GEN_IVAL:
 			item->value.dval = (double) *(item->gen.iptr);
 			break;
@@ -42,7 +48,7 @@ int pmet_item_gen( PMET *item )
 			break;
 
 		case PMET_GEN_FN:
-			return (*(item->gen.genfn))( item->garg, &(item->value) );
+			return (*(item->gen.genfn))( mval, item->garg, &(item->value.dval) );
 
 		default:
 			err( "Unknown metric gen type '%d'", item->gtype );

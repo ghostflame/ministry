@@ -93,37 +93,63 @@ PMET_CTL *_pmet = NULL;
 
 
 
-int pmet_gen_shared( BUF *b, void *arg )
+
+void pmet_pass_render( PMSRC *s, int64_t mval )
 {
-	return 0;
+	PMET *i;
+
+	for( i = s->items; i; i = i->next )
+		s->last_ct += pmet_item_render( mval, s->buf, i, NULL );
+
+	s->render = 0;
 }
+
+
+
+void pmet_pass_gen( PMSRC *s, int64_t mval )
+{
+	PMET *i;
+
+	for( i = s->items; i; i = i->next )
+	{
+		if( i->gtype != PMET_GEN_NONE )
+			pmet_item_gen( mval, i );
+	}
+
+	s->render = 1;
+}
+
 
 void pmet_pass( int64_t tval, void *arg )
 {
 	PMET_CTL *p = _pmet;
 	PMSRC *s;
-	int c;
 
 	p->outsz = 0;
-	p->timestamp = tval;
+	p->timestamp = tval / MILLION; // we just need msec
 
 	// run across each source, capturing
 	// how many metrics it output
 	for( s = p->sources; s; s = s->next )
 	{
+		s->last_ct = 0;
 		strbuf_empty( s->buf );
 
 		// is this one enabled?
 		if( !s->sse->val )
 			continue;
 
-		if( ( c = (*(s->fp))( s->buf, s->sse->ptr ) ) < 0 )
-			warn( "Failed to generate prometheus metrics for %s.", s->name );
-		else
-		{
-			p->outsz += s->buf->len;
-			s->last_ct = c;
-		}
+		pmet_pass_gen( s, p->timestamp );
+	}
+
+	// then render
+	for( s = p->sources; s; s = s->next )
+	{
+		if( !s->render )
+			continue;
+
+		pmet_pass_render( s, p->timestamp );
+		p->outsz += s->buf->len;
 	}
 }
 
@@ -161,14 +187,42 @@ int pmet_init( void )
 }
 
 
+int pmet_add_item( PMSRC *src, PMET *item )
+{
+	if( !src || !item )
+	{
+		err( "Prometheus source of item missing." );
+		return -1;
+	}
 
-PMSRC *pmet_add_source( pmet_fn *fp, char *name, void *arg, int sz )
+	item->next = src->items;
+	src->items = item;
+	src->icount++;
+
+	return 0;
+}
+
+int pmet_add_item_by_name( char *src, PMET *item )
+{
+	SSTE *sse;
+
+	if( !( sse = string_store_look( _pmet->lookup, src, strlen( src ), 0 ) ) )
+	{
+		err( "Could not find a prometheus source called '%s'.", src );
+		return -1;
+	}
+
+	return pmet_add_item( (PMSRC *) sse->ptr, item );
+}
+
+
+PMSRC *pmet_add_source( char *name, int sz )
 {
 	PMSRC *ps;
 	SSTE *sse;
 	int l;
 
-	if( !fp || !name || !*name )
+	if( !name || !*name )
 	{
 		err( "No function pointer or name given to pmet_add_source." );
 		return NULL;
@@ -188,14 +242,14 @@ PMSRC *pmet_add_source( pmet_fn *fp, char *name, void *arg, int sz )
 	if( !sz )
 		sz = DEFAULT_PMET_BUF_SZ;
 
-	sse->ptr = arg;
-
 	ps = (PMSRC *) allocz( sizeof( PMSRC ) );
 	ps->name = str_dup( name, l );
 	ps->nlen = l;
 	ps->buf  = strbuf( sz );
 	ps->sse  = sse;
-	ps->fp   = fp;
+
+	// link ourself up
+	ps->sse->ptr = ps;
 
 	ps->next = _pmet->sources;
 	_pmet->sources = ps;
@@ -229,7 +283,7 @@ PMET_CTL *pmet_config_defaults( void )
 	_pmet = p;
 
 	// add in the basics
-	p->shared = pmet_add_source( pmet_gen_shared, "shared", NULL, 0 );
+	p->shared = pmet_add_source( "shared", 0 );
 
 	return p;
 }

@@ -13,10 +13,6 @@
 
 int pmet_counter_render( int64_t mval, BUF *b, PMET *item, PMET_LBL *with )
 {
-	// is there anything to do?
-	if( item->count == 0 )
-		return 0;
-
 	strbuf_add( b, item->path, item->plen );
 	pmet_label_render( b, 2, item->labels, with );
 	strbuf_aprintf( b, " %f %ld\n", item->value.dval, mval );

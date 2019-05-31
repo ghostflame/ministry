@@ -79,6 +79,9 @@ void main_loop( void )
 	// and http server
 	http_stop( );
 
+	// shut down stats
+	stats_stop( );
+
 	// unset some locks
 	lock_shutdown( );
 }
@@ -108,9 +111,7 @@ void main_create_conf( void )
 
 	target_set_type_fn( &targets_set_type );
 
-	http_stats_handler( &self_stats_cb_stats );
-
-	pmet_add_source( &self_stats_cb_metrics, "ministryStats", NULL, 0 );
+	http_stats_handler( &stats_self_stats_cb_stats );
 }
 
 

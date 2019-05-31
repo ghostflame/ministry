@@ -17,9 +17,6 @@ int pmet_summary_render( int64_t mval, BUF *b, PMET *item, PMET_LBL *with )
 	int i, idx, c;
 	double dc;
 
-	if( item->count == 0 )
-		return 0;
-
 	// capture the count at this moment
 	// from then on, any other values until we 
 	// flatten the structure are lost :-/
@@ -55,7 +52,7 @@ int pmet_summary_render( int64_t mval, BUF *b, PMET *item, PMET_LBL *with )
 
 	unlock_pmet( item );
 
-	return 0;
+	return s->qcount + 2;
 }
 
 

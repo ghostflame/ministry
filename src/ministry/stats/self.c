@@ -7,7 +7,7 @@
 * Updates:                                                                *
 **************************************************************************/
 
-#include "ministry.h"
+#include "local.h"
 
 
 
@@ -15,7 +15,7 @@
 		bprintf( t, "mem.trace.%s.%s.calls %ld", ms.name, n, c.ctr ); \
 		bprintf( t, "mem.trace.%s.%s.total %ld", ms.name, n, c.sum )
 
-void self_report_mtypes( ST_THR *t )
+void stats_self_report_mtypes( ST_THR *t )
 {
 	MTSTAT ms;
 	int16_t i;
@@ -43,7 +43,7 @@ void self_report_mtypes( ST_THR *t )
 
 
 
-void self_report_types( ST_THR *t, ST_CFG *c )
+void stats_self_report_types( ST_THR *t, ST_CFG *c )
 {
 	float hr = (float) c->dcurr / (float) c->hsize;
 
@@ -54,7 +54,7 @@ void self_report_types( ST_THR *t, ST_CFG *c )
 }
 
 
-void self_report_http_types( HTREQ *req, ST_CFG *c )
+void stats_self_report_http_types( HTREQ *req, ST_CFG *c )
 {
 	float hr = (float) c->dcurr / (float) c->hsize;
 	BUF *b = req->text;
@@ -75,7 +75,7 @@ void self_report_http_types( HTREQ *req, ST_CFG *c )
 
 
 
-void self_report_netport( ST_THR *t, NET_PORT *p, char *name, char *proto, int do_drops )
+void stats_self_report_netport( ST_THR *t, NET_PORT *p, char *name, char *proto, int do_drops )
 {
 	uint64_t diff;
 
@@ -93,14 +93,14 @@ void self_report_netport( ST_THR *t, NET_PORT *p, char *name, char *proto, int d
 }
 
 
-void self_report_nettype( ST_THR *t, NET_TYPE *n )
+void stats_self_report_nettype( ST_THR *t, NET_TYPE *n )
 {
 	int i, drops = 0;
 
 	if( n->flags & NTYPE_TCP_ENABLED )
 	{
 		bprintf( t, "network.%s.tcp.%hu.connections %d", n->name, n->tcp->port, n->conns );
-		self_report_netport( t, n->tcp, n->name, "tcp", 1 );
+		stats_self_report_netport( t, n->tcp, n->name, "tcp", 1 );
 	}
 
 	// without checks we cannot drop UDP packets so no stats
@@ -109,26 +109,26 @@ void self_report_nettype( ST_THR *t, NET_TYPE *n )
 
 	if( n->flags & NTYPE_UDP_ENABLED )
 		for( i = 0; i < n->udp_count; i++ )
-			self_report_netport( t, n->udp[i], n->name, "udp", drops );
+			stats_self_report_netport( t, n->udp[i], n->name, "udp", drops );
 }
 
 
 // report our own pass
-void self_stats_pass( ST_THR *t )
+void stats_self_stats_pass( ST_THR *t )
 {
 	// network stats
-	self_report_nettype( t, ctl->net->stats );
-	self_report_nettype( t, ctl->net->adder );
-	self_report_nettype( t, ctl->net->gauge );
-	self_report_nettype( t, ctl->net->compat );
+	stats_self_report_nettype( t, ctl->net->stats );
+	stats_self_report_nettype( t, ctl->net->adder );
+	stats_self_report_nettype( t, ctl->net->gauge );
+	stats_self_report_nettype( t, ctl->net->compat );
 
 	// stats types
-	self_report_types( t, ctl->stats->stats );
-	self_report_types( t, ctl->stats->adder );
-	self_report_types( t, ctl->stats->gauge );
+	stats_self_report_types( t, ctl->stats->stats );
+	stats_self_report_types( t, ctl->stats->adder );
+	stats_self_report_types( t, ctl->stats->gauge );
 
 	// memory
-	self_report_mtypes( t );
+	stats_self_report_mtypes( t );
 
 	bprintf( t, "mem.total.kb %d", mem_curr_kb( ) );
 	bprintf( t, "mem.total.virt_kb %d", mem_virt_kb( ) );
@@ -137,7 +137,75 @@ void self_stats_pass( ST_THR *t )
 }
 
 
-int self_stats_cb_stats( HTREQ *req )
+// report on a single thread's performance
+void stats_thread_report( ST_THR *t )
+{
+	int64_t p, tsteal, tstats, twait, tdone, delay, steal, wait, stats, total;
+	double intvpc;
+
+	// report some self stats?
+	if( !ctl->stats->self->enable )
+		return;
+
+	stats_set_bufs( t, ctl->stats->self, 0 );
+
+	// we have to capture it, because bprintf increments it
+	p = t->active;
+
+	bprintf( t, "%s.active %d", t->wkrstr, t->active );
+	bprintf( t, "%s.points %d", t->wkrstr, t->points );
+
+	if( t->conf->type == STATS_TYPE_STATS )
+	{
+		bprintf( t, "%s.workspace %d", t->wkrstr, t->wkspcsz );
+		bprintf( t, "%s.highest %d",   t->wkrstr, t->highest );
+	}
+
+	// how many predictions?
+	if( t->predict )
+		bprintf( t, "%s.predictions %d", t->wkrstr, t->predict );
+
+	tsteal = tsll( t->steal );
+	twait  = tsll( t->wait );
+	tstats = tsll( t->stats );
+	tdone  = tsll( t->done );
+
+	delay  = tsteal - t->tval;
+	stats  = tdone  - tstats;
+	total  = tdone  - t->tval;
+
+	if( twait )
+	{
+		steal = twait  - tsteal;
+		wait  = tstats - twait;
+	}
+	else
+	{
+		steal = tstats - tsteal;
+		wait  = 0;
+	}
+
+	bprintf( t, "%s.delay %ld", t->wkrstr, delay / 1000 );
+	bprintf( t, "%s.steal %ld", t->wkrstr, steal / 1000 );
+	bprintf( t, "%s.stats %ld", t->wkrstr, stats / 1000 );
+	bprintf( t, "%s.usec %ld",  t->wkrstr, total / 1000 );
+
+	if( wait )
+		bprintf( t, "%s.wait %ld",  t->wkrstr, wait  / 1000 );
+
+	// calculate percentage of interval
+	intvpc  = (double) ( total / 10 );
+	intvpc /= (double) t->conf->period;
+	bprintf( t, "%s.interval_usage %.3f", t->wkrstr, intvpc );
+
+	// and report our own paths
+	bprintf( t, "%s.self_paths %ld", t->wkrstr, t->active - p + 1 );
+}
+
+
+
+
+int stats_self_stats_cb_stats( HTREQ *req )
 {
 	BUF *b = req->text;
 
@@ -146,17 +214,13 @@ int self_stats_cb_stats( HTREQ *req )
 		strbuf_resize( req->text, b->sz + 4090 );
 
 	json_fldo( "statsTypes" );
-	self_report_http_types( req, ctl->stats->stats );
-	self_report_http_types( req, ctl->stats->adder );
-	self_report_http_types( req, ctl->stats->gauge );
+	stats_self_report_http_types( req, ctl->stats->stats );
+	stats_self_report_http_types( req, ctl->stats->adder );
+	stats_self_report_http_types( req, ctl->stats->gauge );
 	json_endo( );
 
 	return 0;
 }
 
-int self_stats_cb_metrics( BUF *b, void *arg )
-{
-	strbuf_aprintf( b, "# No metrics yet.\n\n" );
 
-	return 0;
-}
+

@@ -11,24 +11,10 @@
 #define MINISTRY_STATS_H
 
 
-pred_fn stats_predict_linear;
-
-loop_call_fn thread_pass;
-
-stats_fn stats_stats_pass;
-stats_fn stats_adder_pass;
-stats_fn stats_gauge_pass;
-
-tsf_fn stats_tsf_sec;
-tsf_fn stats_tsf_msec;
-tsf_fn stats_tsf_usec;
-tsf_fn stats_tsf_nsec;
-tsf_fn stats_tsf_dotmsec;
-tsf_fn stats_tsf_dotusec;
-tsf_fn stats_tsf_dotnsec;
-
-
+http_callback stats_self_stats_cb_stats;
+loop_call_fn stats_thread_pass;
 throw_fn stats_loop;
+
 
 
 enum stats_types
@@ -42,24 +28,14 @@ enum stats_types
 
 
 
-
-#define DEFAULT_STATS_THREADS		6
-#define DEFAULT_ADDER_THREADS		2
-#define DEFAULT_GAUGE_THREADS		2
-
-#define DEFAULT_STATS_MSEC			10000
-
-#define DEFAULT_STATS_PREFIX		"stats.timers"
-#define DEFAULT_ADDER_PREFIX		""
-#define DEFAULT_GAUGE_PREFIX		""
-
-#define DEFAULT_MOM_MIN				30L
-#define DEFAULT_MODE_MIN			30L
-
-#define TSBUF_SZ					32
-#define PREFIX_SZ					512
-#define PATH_SZ						8192
-
+struct stat_predict_conf
+{
+	RGXL			*	rgx;
+	pred_fn			*	fp;
+	uint16_t			vsize;
+	uint16_t			pmax;
+	int8_t				enabled;
+};
 
 
 struct stat_thread_ctl
@@ -104,6 +80,15 @@ struct stat_thread_ctl
 };
 
 
+struct stat_moments
+{
+	RGXL			*	rgx;
+	int64_t				min_pts;
+	int					enabled;
+};
+
+
+
 
 struct stat_config
 {
@@ -127,31 +112,6 @@ struct stat_config
 };
 
 
-struct stat_threshold
-{
-	ST_THOLD		*	next;
-	int					val;
-	int					max;
-	char			*	label;
-};
-
-
-struct stat_moments
-{
-	RGXL			*	rgx;
-	int64_t				min_pts;
-	int					enabled;
-};
-
-struct stat_predict_conf
-{
-	RGXL			*	rgx;
-	pred_fn			*	fp;
-	uint16_t			vsize;
-	uint16_t			pmax;
-	int8_t				enabled;
-};
-
 
 struct stats_control
 {
@@ -169,11 +129,19 @@ struct stats_control
 	int32_t				qsort_thresh;
 };
 
+// target timestamp functions
+tsf_fn stats_tsf_sec;
+tsf_fn stats_tsf_msec;
+tsf_fn stats_tsf_usec;
+tsf_fn stats_tsf_nsec;
+tsf_fn stats_tsf_dotmsec;
+tsf_fn stats_tsf_dotusec;
+tsf_fn stats_tsf_dotnsec;
 
-void bprintf( ST_THR *t, char *fmt, ... );
 
 void stats_start( ST_CFG *cf );
 void stats_init( void );
+void stats_stop( void );
 
 STAT_CTL *stats_config_defaults( void );
 int stats_config_line( AVP *av );
