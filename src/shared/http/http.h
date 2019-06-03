@@ -13,33 +13,18 @@
 
 
 
-typedef struct MHD_Daemon               HTTP_SVR;
-typedef struct MHD_Connection           HTTP_CONN;
-typedef enum MHD_RequestTerminationCode HTTP_CODE;
-typedef enum MHD_ValueKind              HTTP_VAL;
-typedef struct MHD_Response             HTTP_RESP;
-typedef struct MHD_PostProcessor		HTTP_PPROC;
-
-typedef void (*cb_RequestLogger) ( void *cls, const char *uri, HTTP_CONN *conn );
-
-
-#define DEFAULT_HTTP_PORT				9080
-#define DEFAULT_HTTPS_PORT              9443
-
-#define DEFAULT_HTTP_CONN_LIMIT			256
-#define DEFAULT_HTTP_CONN_IP_LIMIT		64
-#define DEFAULT_HTTP_CONN_TMOUT			10
-
-#define DEFAULT_POST_BUF_SZ				0x4000	// 16k
-
-#define MAX_TLS_FILE_SIZE				0x10000	// 64k
-#define MAX_TLS_PASS_SIZE				512
-
-
-
 #define HTTP_FLAGS_CONTROL				0x0001
 #define HTTP_FLAGS_JSON					0x0002
 #define HTTP_FLAGS_NO_REPORT			0x0100
+
+
+
+typedef struct MHD_Daemon               HTTP_SVR;
+typedef struct MHD_Connection           HTTP_CONN;
+typedef struct MHD_Response             HTTP_RESP;
+typedef struct MHD_PostProcessor        HTTP_PPROC;
+typedef enum MHD_RequestTerminationCode HTTP_CODE;
+typedef enum MHD_ValueKind              HTTP_VAL;
 
 
 
@@ -50,48 +35,11 @@ enum http_method_shortcuts
 	HTTP_METH_OTHER,
 };
 
-
 enum http_post_states
 {
-	HTTP_POST_START = 0,
-	HTTP_POST_BODY,
-	HTTP_POST_END,
-};
-
-
-struct http_tls_file
-{
-	const char				*	type;
-	char					*	content;
-	char					*	path;
-	int							len;
-};
-
-
-struct http_tls
-{
-	TLS_FILE					key;
-	TLS_FILE					cert;
-	volatile char			*	password;
-	char					*	priorities;
-	int							enabled;
-
-	uint16_t					port;
-	uint16_t					passlen;
-};
-
-
-struct http_callbacks
-{
-	MHD_PanicCallback						panic;
-	MHD_AcceptPolicyCallback				policy;
-	MHD_AccessHandlerCallback				handler;
-	MHD_RequestCompletedCallback			complete;
-	MHD_ContentReaderCallback				reader;
-	MHD_ContentReaderFreeCallback			rfree;
-
-	MHD_LogCallback							log;
-	cb_RequestLogger						reqlog;
+    HTTP_POST_START = 0,
+    HTTP_POST_BODY,
+    HTTP_POST_END,
 };
 
 
@@ -152,18 +100,6 @@ struct http_path
 };
 
 
-struct http_handlers
-{
-	HTPATH				*	list;
-	char				*	method;
-	int						count;
-};
-
-
-#define lock_hits( )		pthread_mutex_lock(   &(_http->hitlock) )
-#define unlock_hits( )		pthread_mutex_unlock( &(_http->hitlock) )
-
-#define hit_counter( _p )	lock_hits( ); (_p)++; unlock_hits( )
 
 struct http_control
 {
@@ -207,7 +143,6 @@ struct http_control
 };
 
 
-sort_fn __http_cmp_handlers;
 
 int http_add_handler( char *path, char *desc, void *arg, int method, http_callback *fp, IPLIST *srcs, int flags );
 int http_add_control( char *path, char *desc, void *arg, http_callback *fp, IPLIST *srcs, int flags );
@@ -220,9 +155,12 @@ int http_stats_handler( http_callback *fp );
 
 void http_set_reporter( http_reporter *fp, void *arg );
 
+void http_calls_init( void );
+
 int http_start( void );
 void http_stop( void );
 
+int http_tls_enabled( void );
 int http_ask_password( void );
 
 HTTP_CTL *http_config_defaults( void );

@@ -410,7 +410,7 @@ int ha_init( void )
 		ha->hostname = _proc->hostname;
 
 	snprintf( buf, 1024, "http%s://%s:%hu/",
-		( _proc->http->tls->enabled ) ? "s" : "",
+		( http_tls_enabled( ) ) ? "s" : "",
 		ha->hostname, _proc->http->server_port );
 
 	if( !( ha->self = ha_add_partner( buf, 0 ) ) )
