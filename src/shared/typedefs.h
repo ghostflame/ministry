@@ -37,6 +37,7 @@ typedef struct io_socket            SOCK;
 typedef struct io_buf_ptr           IOBP;
 
 typedef struct target               TGT;
+typedef struct target_metrics       TGTMT;
 typedef struct target_list          TGTL;
 typedef struct target_alter         TGTALT;
 
@@ -66,7 +67,8 @@ typedef struct curlw_handle         CURLWH;
 
 typedef struct ha_partner           HAPT;
 
-typedef struct pmet_source          PMSRC;
+typedef struct pmet_source          PMETS;
+typedef struct pmet_metric          PMETM;
 typedef struct pmet_item            PMET;
 typedef struct pmet_label           PMET_LBL;
 

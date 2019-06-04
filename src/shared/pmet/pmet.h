@@ -44,30 +44,42 @@ struct pmet_label
 
 
 
-
 struct pmet_control
 {
-	PMSRC			*	sources;
-	PMSRC			*	shared;
+	PMETS			*	sources;
+	PMETM			*	metrics;
 
-	SSTR			*	lookup;
+	SSTR			*	srclookup;
+	SSTR			*	metlookup;
 
 	PMET_LBL		*	common;
+	BUF				*	page;
+
+	PMETS			*	shared;
 
 	regex_t				path_check;
+	pthread_mutex_t		genlock;
 
-	int64_t				outsz;
 	int64_t				timestamp;
 
 	int64_t				period;
 	int					enabled;
-	int					scount;
 };
 
 
+#define pmet_genlock( )			pthread_mutex_lock(   &(_proc->pmet->genlock) )
+#define pmet_genunlock( )		pthread_mutex_unlock( &(_proc->pmet->genlock) )
+
+#define pmets_enabled( _s )		( _s->sse->val )
+
 
 // if an item is provided, the created label will be added to it
-PMET_LBL *pmet_label_create( char *name, char *val, PMET *item );
+PMET_LBL *pmet_label_create( char *name, char *val );
+PMET_LBL *pmet_label_words( WORDS *w );
+
+int pmet_label_apply_to( PMET_LBL *list, PMETM *metric, PMET *item );
+#define pmet_label_apply_item( _l, _i )		pmet_label_apply_to( _l, NULL, _i )
+#define pmet_label_apply_metric( _l, _m )	pmet_label_apply_to( _l, _m, NULL )
 
 // pass an app-common label in
 int pmet_label_common( char *name, char *valptr );
@@ -81,28 +93,43 @@ PMET_LBL *pmet_label_clone( PMET_LBL *in, int max );
 int pmet_set( PMET *item, int count, double *vals, int copy );
 int pmet_setv( PMET *item, int count, ... );
 int pmet_max_vals( PMET *item, int64_t max ); // only meaningful for summary
-PMET *pmet_create( int type, char *path, char *help, int gentype, void *genptr, void *genarg );
-PMET *pmet_clone( PMET *item, void *genptr, void *genarg );
 
-int pmet_value( PMET *item, double value, int set );
+// full interface
+PMET *pmet_create_gen( PMETM *metric, PMETS *source, int gentype, void *genptr, void *genarg );
+PMET *pmet_create( PMETM *metric, PMETS *source );
+PMET *pmet_clone_gen( PMET *item, PMETS *source, void *genptr, void *genarg );
+PMET *pmet_clone( PMET *item );
+
+// new metric
+PMETM *pmet_new( int type, char *path, char *help );
+
+// set is only examined for gauges
+int pmet_value_set( PMET *item, double value, int set );
+int pmet_value( PMET *item, double value );
 
 // gauge interface
-#define pmet_val_add( _i, _v )			pmet_value( _i, _v, 0 )
-#define pmet_val_sub( _i, _v )			pmet_value( _i, ( -1 * _v ), 0 )
-#define pmet_val_set( _i, _v )			pmet_value( _i, _v, 1 )
+#define pmet_val_add( _i, _v )			pmet_value_set( _i, _v, 0 )
+#define pmet_val_sub( _i, _v )			pmet_value_set( _i, ( -1 * _v ), 0 )
+#define pmet_val_set( _i, _v )			pmet_value_set( _i, _v, 1 )
 
+// counter interface
+#define pmet_incr( _i )					pmet_value( _i, 1 )
+#define pmet_plus( _i, _v )				pmet_value( _i, v )
+
+
+
+// metric.c
+PMETM *pmet_metric_find( char *name );
 
 
 // pmet.c
-
-int pmet_add_item( PMSRC *src, PMET *item );
-int pmet_add_item_by_name( char *src, PMET *item );
 
 http_callback pmet_source_control;
 http_callback pmet_source_list;
 
 
-PMSRC *pmet_add_source( char *name, int sz );
+PMETS *pmet_add_source( char *name );
+void pmet_report( BUF *into );
 
 
 int pmet_init( void );

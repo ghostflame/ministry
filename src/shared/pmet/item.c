@@ -11,82 +11,14 @@
 
 
 
-int pmet_item_render( int64_t mval, BUF *b, PMET *item, PMET_LBL *with )
-{
-	if( item->type->type != PMET_TYPE_GAUGE
-	 && item->count == 0 )
-		return 0;
 
-	if( item->help )
-		strbuf_aprintf( b, "HELP %s %s\n", item->path, item->help );
-	strbuf_aprintf( b, "TYPE %s %s\n", item->path, item->type->name );
-
-	return (*(item->type->rndr))( mval, b, item, with );
-}
-
-
-int pmet_item_gen( int64_t mval, PMET *item )
-{
-	if( !item )
-		return -1;
-
-	switch( item->gtype )
-	{
-		case PMET_GEN_NONE:
-			break;
-
-		case PMET_GEN_IVAL:
-			item->value.dval = (double) *(item->gen.iptr);
-			break;
-
-		case PMET_GEN_DVAL:
-			item->value.dval = *(item->gen.dptr);
-			break;
-
-		case PMET_GEN_LLCT:
-			item->value.dval = (double) lockless_fetch( item->gen.lockless );
-			break;
-
-		case PMET_GEN_FN:
-			return (*(item->gen.genfn))( mval, item->garg, &(item->value.dval) );
-
-		default:
-			err( "Unknown metric gen type '%d'", item->gtype );
-			return -1;
-	}
-
-	return 0;
-}
-
-
-
-
-PMET *pmet_item_create( int type, char *path, char *help, int gentype, void *genptr, void *genarg )
+PMET *pmet_item_create( PMETM *metric, PMETS *source, int gentype, void *genptr, void *genarg )
 {
 	PMET *item;
-	int i;
 
-	if( type < 0 || type >= PMET_TYPE_MAX )
+	if( !metric )
 	{
-		err( "Invalid prometheus type '%d'", type );
-		return NULL;
-	}
-
-	if( !path || !*path )
-	{
-		err( "No prometheus metric path provided." );
-		return NULL;
-	}
-
-	if( !genptr )
-	{
-		err( "No promtheus metric generation target pointer." );
-		return NULL;
-	}
-
-	if( regexec( &(_pmet->path_check), path, 0, NULL, 0 ) )
-	{
-		err( "Prometheus metric path '%s' is invalid (against regex check).", path );
+		err( "No metric given to connect the new item to." );
 		return NULL;
 	}
 
@@ -96,26 +28,22 @@ PMET *pmet_item_create( int type, char *path, char *help, int gentype, void *gen
 		return NULL;
 	}
 
+	if( !genptr && gentype != PMET_GEN_NONE )
+	{
+		err( "No promtheus metric generation target pointer." );
+		return NULL;
+	}
+
 	item = (PMET *) allocz( sizeof( PMET ) );
+	item->metric = metric;
+	item->source = source;
+	item->type = metric->type->type;
 	item->gtype = gentype;
+	item->gen.in = genptr;
 	item->garg = genarg;
-	item->path = str_dup( path, 0 );
-
-	// doesn't matter which one we set
-	item->gen.dptr = (double *) genptr;
-
-	if( help )
-		item->help = str_dup( help, 0 );
-
-	for( i = 0; i < PMET_TYPE_MAX; i++ )
-		if( pmet_types[i].type == type )
-		{
-			item->type = pmet_types + i;
-			break;
-		}
 
 	// make sure value contains what we need
-	switch( type )
+	switch( item->type )
 	{
 		case PMET_TYPE_SUMMARY:
 			item->value.summ = (PMET_SUMM *) allocz( sizeof( PMET_SUMM ) );
@@ -128,11 +56,20 @@ PMET *pmet_item_create( int type, char *path, char *help, int gentype, void *gen
 
 	pthread_mutex_init( &(item->lock), NULL );
 
+	lock_pmetm( metric );
+
+	item->next = metric->items;
+	metric->items = item;
+
+	unlock_pmetm( metric );
+
 	return item;
 }
 
+
+
 // useful for making a set of items with different labels
-PMET *pmet_item_clone( PMET *item, void *genptr, void *genarg )
+PMET *pmet_item_clone( PMET *item, PMETS *source, void *genptr, void *genarg )
 {
 	PMET *i;
 
@@ -140,9 +77,10 @@ PMET *pmet_item_clone( PMET *item, void *genptr, void *genarg )
 		return NULL;
 
 	// create a new one
-	i = pmet_item_create( item->type->type,
-	        item->path, item->help, item->gtype,
-	        ( genptr ) ? genptr : item->gen.dptr,
+	i = pmet_item_create( item->metric,
+			( source ) ? source : item->source,
+			item->gtype,
+	        ( genptr ) ? genptr : item->gen.in,
 	        ( genarg ) ? genarg : item->garg );
 
 	// recreate the labels, because they are a list
@@ -151,7 +89,7 @@ PMET *pmet_item_clone( PMET *item, void *genptr, void *genarg )
 	i->labels = pmet_label_clone( item->labels, -1 );
 
 	// and clone histogram/summary setup
-	switch( item->type->type )
+	switch( item->type )
 	{
 		case PMET_TYPE_SUMMARY:
 			pmet_summary_make_space( i, item->value.summ->max );
@@ -167,3 +105,5 @@ PMET *pmet_item_clone( PMET *item, void *genptr, void *genarg )
 
 	return i;
 }
+
+

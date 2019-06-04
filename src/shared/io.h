@@ -66,6 +66,7 @@ struct io_socket
 	int						flags;
 	int						bufs;
 	int						proto;
+	int64_t					connected;
 
 	struct sockaddr_in		peer;
 	char				*	name;
@@ -113,6 +114,7 @@ io_fn io_send_file;
 // sockets
 SOCK *io_make_sock( int32_t insz, int32_t outsz, struct sockaddr_in *peer );
 void io_sock_set_peer( SOCK *s, struct sockaddr_in *peer );
+void io_sock_pmet( SOCK *s, PMET *status, PMET *bytes );
 
 // startup/shutdown
 int io_init( void );

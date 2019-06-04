@@ -94,70 +94,63 @@ PMET_CTL *_pmet = NULL;
 
 
 
-void pmet_pass_render( PMSRC *s, int64_t mval )
-{
-	PMET *i;
-
-	for( i = s->items; i; i = i->next )
-		s->last_ct += pmet_item_render( mval, s->buf, i, NULL );
-
-	s->render = 0;
-}
-
-
-
-void pmet_pass_gen( PMSRC *s, int64_t mval )
-{
-	PMET *i;
-
-	for( i = s->items; i; i = i->next )
-	{
-		if( i->gtype != PMET_GEN_NONE )
-			pmet_item_gen( mval, i );
-	}
-
-	s->render = 1;
-}
-
-
 void pmet_pass( int64_t tval, void *arg )
 {
 	PMET_CTL *p = _pmet;
-	PMSRC *s;
+	PMETS *s;
+	PMETM *m;
 
-	p->outsz = 0;
 	p->timestamp = tval / MILLION; // we just need msec
 
-	// run across each source, capturing
-	// how many metrics it output
+	//debug( "Generating prometheus metrics." );
+
+	pmet_genlock( );
+
+	// run across each source, clearing the counter
 	for( s = p->sources; s; s = s->next )
-	{
 		s->last_ct = 0;
-		strbuf_empty( s->buf );
 
-		// is this one enabled?
-		if( !s->sse->val )
-			continue;
+	strbuf_empty( p->page );
 
-		pmet_pass_gen( s, p->timestamp );
-	}
+	// run across each metric, generating data
+	// for them.
+	for( m = p->metrics; m; m = m->next )
+		pmet_metric_gen( p->timestamp, m );
 
 	// then render
-	for( s = p->sources; s; s = s->next )
-	{
-		if( !s->render )
-			continue;
+	for( m = p->metrics; m; m = m->next )
+		pmet_metric_render( p->timestamp, p->page, m );
 
-		pmet_pass_render( s, p->timestamp );
-		p->outsz += s->buf->len;
-	}
+	pmet_genunlock( );
+
+	//debug( "Generated sources, outsz %u.", p->page->len );
+}
+
+
+
+void pmet_report( BUF *into )
+{
+	strbuf_empty( into );
+
+	if( !_pmet->enabled )
+		return;
+
+	pmet_genlock( );
+
+	strbuf_resize( into, _pmet->page->len );
+	strbuf_copy( into, _pmet->page->buf, _pmet->page->len );
+
+	pmet_genunlock( );
 }
 
 
 
 void pmet_run( THRD *t )
 {
-	_pmet->period = 1000; // convert to usec
+	notice( "Beginning generation of prometheus metrics." );
+
+	_pmet->period *= 1000; // convert to usec
+
 	loop_control( "pmet_gen", pmet_pass, NULL, _pmet->period, LOOP_TRIM|LOOP_SYNC, _pmet->period / 2 );
 }
 
@@ -165,7 +158,10 @@ void pmet_run( THRD *t )
 int pmet_init( void )
 {
 	if( !_pmet->enabled )
+	{
+		info( "Prometheus metrics are disabled." );
 		return 0;
+	}
 
 	// no point without the http server as well
 	if( !_proc->http->enabled )
@@ -187,38 +183,10 @@ int pmet_init( void )
 }
 
 
-int pmet_add_item( PMSRC *src, PMET *item )
+
+PMETS *pmet_add_source( char *name )
 {
-	if( !src || !item )
-	{
-		err( "Prometheus source of item missing." );
-		return -1;
-	}
-
-	item->next = src->items;
-	src->items = item;
-	src->icount++;
-
-	return 0;
-}
-
-int pmet_add_item_by_name( char *src, PMET *item )
-{
-	SSTE *sse;
-
-	if( !( sse = string_store_look( _pmet->lookup, src, strlen( src ), 0 ) ) )
-	{
-		err( "Could not find a prometheus source called '%s'.", src );
-		return -1;
-	}
-
-	return pmet_add_item( (PMSRC *) sse->ptr, item );
-}
-
-
-PMSRC *pmet_add_source( char *name, int sz )
-{
-	PMSRC *ps;
+	PMETS *ps;
 	SSTE *sse;
 	int l;
 
@@ -232,28 +200,26 @@ PMSRC *pmet_add_source( char *name, int sz )
 
 	// we might already have one, it depends when things get registered,
 	// because it might be disabled in config
-	if( !( sse = string_store_add( _pmet->lookup, name, l ) ) )
+	if( !( sse = string_store_add( _pmet->srclookup, name, l ) ) )
 	{
 		err( "Could not add name '%s' to the prometheus metrics string store.",
 			name );
 		return NULL;
 	}
 
-	if( !sz )
-		sz = DEFAULT_PMET_BUF_SZ;
-
-	ps = (PMSRC *) allocz( sizeof( PMSRC ) );
+	ps = (PMETS *) allocz( sizeof( PMETS ) );
 	ps->name = str_dup( name, l );
 	ps->nlen = l;
-	ps->buf  = strbuf( sz );
 	ps->sse  = sse;
 
 	// link ourself up
 	ps->sse->ptr = ps;
 
+	// and turn ourself on
+	ps->sse->val = 1;
+
 	ps->next = _pmet->sources;
 	_pmet->sources = ps;
-	_pmet->scount++;
 
 	return ps;
 }
@@ -269,7 +235,11 @@ PMET_CTL *pmet_config_defaults( void )
 	p->enabled = 0;
 
 	v = 1;
-	p->lookup = string_store_create( 0, "tiny", &v );
+	p->srclookup = string_store_create( 0, "nano", &v );
+	p->metlookup = string_store_create( 0, "tiny", &v );
+
+	// give ourselves half a meg
+	p->page = strbuf( DEFAULT_PMET_BUF_SZ );
 
 	if( ( v = regcomp( &(p->path_check), PMET_PATH_CHK_RGX, REG_EXTENDED|REG_ICASE|REG_NOSUB ) ) )
 	{
@@ -280,10 +250,12 @@ PMET_CTL *pmet_config_defaults( void )
 		return NULL;
 	}
 
+	pthread_mutex_init( &(p->genlock), NULL );
+
 	_pmet = p;
 
 	// add in the basics
-	p->shared = pmet_add_source( "shared", 0 );
+	p->shared = pmet_add_source( "shared" );
 
 	return p;
 }
@@ -311,7 +283,7 @@ int pmet_config_line( AVP *av )
 	}
 	else if( attIs( "disable" ) )
 	{
-		if( !( e = string_store_add( p->lookup, av->vptr, av->vlen ) ) )
+		if( !( e = string_store_add( p->srclookup, av->vptr, av->vlen ) ) )
 		{
 			err( "Could not handle disabling prometheus metrics type '%s'.", av->vptr );
 			return -1;
@@ -339,14 +311,14 @@ int pmet_source_control( HTREQ *req )
 int pmet_source_list( HTREQ *req )
 {
 	BUF *b = req->text;
-	PMSRC *s;
+	PMETS *s;
 
 	json_starto( );
-	json_flda( "types" );
+	json_flda( "sources" );
 	for( s = _pmet->sources; s; s = s->next )
 	{
 		json_fldo( s->name );
-		json_fldi( "enabled", s->sse->val );
+		json_fldi( "enabled", pmets_enabled( s ) );
 		json_fldi( "lastCount", s->last_ct );
 		json_endo( );
 	}

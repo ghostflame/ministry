@@ -184,21 +184,16 @@ int token_url_handler( HTREQ *req )
 	types = TOKEN_TYPE_STATS|TOKEN_TYPE_ADDER|TOKEN_TYPE_GAUGE;
 	token_generate( req->sin.sin_addr.s_addr, types, tlist, 8, &count );
 
-	strbuf_add( b, "{", 1 );
+	json_starto( );
 
 	// run down the tokens
 	for( i = 0; i < count; i++ )
 	{
 		t = tlist[i];
-		strbuf_aprintf( b, "\"%s\": %ld, ", t->name, t->nonce );
+		json_fldI( t->name, t->nonce );
 	}
 
-	// chop off the trailing ", "
-	// hand-crafting json is such a pain but all the C libs to
-	// do it really, really suck.
-	strbuf_chopn( b, 2 );
-
-	strbuf_add( b, "}\n", 2 );
+	json_finisho( );
 
 	return 0;
 }

@@ -13,7 +13,7 @@
 
 int pmet_gauge_render( int64_t mval, BUF *b, PMET *item, PMET_LBL *with )
 {
-	strbuf_add( b, item->path, item->plen );
+	strbuf_add( b, item->metric->path, item->metric->plen );
 	pmet_label_render( b, 2, item->labels, with );
 	strbuf_aprintf( b, " %f %ld\n", item->value.dval, mval );
 
@@ -24,7 +24,7 @@ int pmet_gauge_render( int64_t mval, BUF *b, PMET *item, PMET_LBL *with )
 
 	unlock_pmet( item );
 
-	return 0;
+	return 1;
 }
 
 
@@ -32,7 +32,7 @@ int pmet_gauge_render( int64_t mval, BUF *b, PMET *item, PMET_LBL *with )
 
 int pmet_gauge_value( PMET *item, double value, int set )
 {
-	if( item->type->type != PMET_TYPE_GAUGE )
+	if( item->type != PMET_TYPE_GAUGE )
 		return -1;
 
 	lock_pmet( item );

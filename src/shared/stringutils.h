@@ -91,6 +91,8 @@ BUF *strbuf_add( BUF *b, char *str, int len );
 #define strbuf_chop( b )				if( b->len > 0 ) { b->len--; b->buf[b->len] = '\0'; }
 #define strbuf_chopn( b, n )			if( b->len > n ) { b->len -= n; b->buf[b->len] = '\0'; } else { strbuf_empty( b ); }
 #define strbuf_lastchar( b )			( ( b->len ) ? b->buf[b->len - 1] : '\0' )
+#define strbuf_append( b, o )			strbuf_copy( strbuf_resize( b, b->len + o->len ), o->buf, o->len )
+
 
 // get string length, up to a maximum
 int str_nlen( char *src, int max );

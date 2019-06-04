@@ -52,22 +52,87 @@ void pmet_label_render( BUF *b, int count, ... )
 #undef _lbl_render
 
 
-PMET_LBL *pmet_label_create( char *name, char *val, PMET *item )
+PMET_LBL *pmet_label_create( char *name, char *val )
 {
 	PMET_LBL *l = (PMET_LBL *) allocz( sizeof( PMET_LBL ) );
 
 	l->name = str_dup( name, 0 );
 	l->val = str_dup( val, 0 );
 
-	if( item )
-	{
-		l->next = item->labels;
-		item->labels = l;
-		item->lcount++;
-	}
-
 	return l;
 }
+
+
+// a handy way of creating many labels
+PMET_LBL *pmet_label_words( WORDS *w )
+{
+	PMET_LBL *list, *l;
+	int i;
+
+	if( !w )
+		return NULL;
+
+	if( w->wc & 0x1 )
+	{
+		warn( "Odd number of words (%d) given to pmet_label_words - ignoring last word.", w->wc );
+		w->wc -= 1;
+	}
+
+	for( list = NULL, i = w->wc; i > 0; i -= 2 )
+	{
+		l = pmet_label_create( w->wd[i-2], w->wd[i-1] );
+		l->next = list;
+		list = l;
+	}
+
+	return list;
+}
+
+
+int pmet_label_apply_to( PMET_LBL *list, PMETM *metric, PMET *item )
+{
+	PMET_LBL *l = list;
+	int i = 1;
+
+	if( !list )
+		return 0;
+
+	if( metric && item )
+	{
+		err( "Apply label to either metric or item, not both." );
+		return -1;
+	}
+	if( !metric && !item )
+		return 0;
+
+	while( l->next )
+	{
+		l = l->next;
+		i++;
+	}
+
+	if( metric )
+	{
+		lock_pmetm( metric );
+
+		l->next = metric->labels;
+		metric->labels = list;
+
+		unlock_pmetm( metric );
+	}
+	else
+	{
+		lock_pmet( item );
+
+		l->next = item->labels;
+		item->labels = list;
+
+		unlock_pmet( item );
+	}
+
+	return i;
+}
+
 
 
 int pmet_label_common( char *name, char *val )
@@ -77,7 +142,7 @@ int pmet_label_common( char *name, char *val )
 	if( !name || !*name || !val || !*val )
 		return -1;
 
-	if( !( l = pmet_label_create( name, val, NULL ) ) )
+	if( !( l = pmet_label_create( name, val ) ) )
 		return -1;
 
 	l->next = _pmet->common;
@@ -99,7 +164,7 @@ PMET_LBL *pmet_label_clone( PMET_LBL *in, int max )
 
 	while( in && i++ < max )
 	{
-		l = pmet_label_create( in->name, in->val, NULL );
+		l = pmet_label_create( in->name, in->val );
 
 		l->next = out;
 		out = l;
@@ -121,7 +186,7 @@ PMET_LBL **pmet_label_array( char *name, int extra, int count, double *vals )
 	for( i = 0; i < count; i++ )
 	{
 		snprintf( valtmp, 16, "%0.6f", vals[i] );
-		ret[i] = pmet_label_create( name, valtmp, NULL );
+		ret[i] = pmet_label_create( name, valtmp );
 	}
 
 	return ret;

@@ -97,6 +97,10 @@ struct target
 	int32_t					id;
 	uint16_t				port;
 
+	PMET				*	pm_bytes;
+	PMET				*	pm_conn;
+	PMET_LBL			*	pm_lbls;
+
 	// for callers to fill in
 	void				*	ptr;
 	int						type;
@@ -122,11 +126,21 @@ struct target_alter
 };
 
 
+struct target_metrics
+{
+	PMETS				*	source;
+	PMETM				*	bytes;
+	PMETM				*	conn;
+};
+
+
 struct target_control
 {
 	TGTL				*	lists;
 	int						count;
 	int						tcount;
+
+	TGTMT				*	metrics;
 
 	target_cfg_fn		*	type_fn;
 	target_cfg_fn		*	data_fn;

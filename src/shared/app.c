@@ -184,10 +184,6 @@ int app_start( int writePid )
 	if( ha_init( ) )
 		fatal( "Failed to init HA." );
 
-	// and prometheus metrics
-	if( pmet_init( ) )
-		fatal( "Failed to start prometheus metrics generation." );
-
 	runf_add( RUN_APP_START );
 
 	return 0;
@@ -220,6 +216,10 @@ void app_ready( void )
 
 	// and any iplists
 	iplist_init( );
+
+	// and prometheus metrics
+	if( pmet_init( ) )
+		fatal( "Failed to start prometheus metrics generation." );
 
 	// and ha
 	if( ha_start( ) )

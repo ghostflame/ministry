@@ -14,6 +14,7 @@
 int pmet_summary_render( int64_t mval, BUF *b, PMET *item, PMET_LBL *with )
 {
 	PMET_SUMM *s = item->value.summ;
+	PMETM *met = item->metric;
 	int i, idx, c;
 	double dc;
 
@@ -29,17 +30,17 @@ int pmet_summary_render( int64_t mval, BUF *b, PMET *item, PMET_LBL *with )
 
 	for( i = 0; i < s->qcount; i++ )
 	{
-		strbuf_add( b, item->path, item->plen );
+		strbuf_add( b, met->path, met->plen );
 		pmet_label_render( b, 3, item->labels, with, s->labels[i] );
 		idx = (int) ( dc * s->quantiles[i] );
 		strbuf_aprintf( b, " %f %ld\n", s->values[idx], mval );
 	}
 
-	strbuf_aprintf( b, "%s_sum", item->path );
+	strbuf_aprintf( b, "%s_sum", met->path );
 	pmet_label_render( b, 2, item->labels, with );
 	strbuf_aprintf( b, " %f %ld\n", s->sum, mval );
 
-	strbuf_aprintf( b, "%s_count", item->path );
+	strbuf_aprintf( b, "%s_count", met->path );
 	pmet_label_render( b, 2, item->labels, with );
 	strbuf_aprintf( b, " %ld %ld\n", item->count, mval );
 
@@ -61,6 +62,12 @@ int pmet_summary_render( int64_t mval, BUF *b, PMET *item, PMET_LBL *with )
 int pmet_summary_quantile_set( PMET *item, int count, double *vals, int copy )
 {
 	PMET_SUMM *s = item->value.summ;
+
+	// can be called from item clone on an item
+	// that isn't set up yet
+	// that doesn't check the return code for this very reason
+	if( !count )
+		return -1;
 
 	s->qcount = count;
 
@@ -87,7 +94,7 @@ int pmet_summary_make_space( PMET *item, int64_t max )
 {
 	PMET_SUMM *s;
 
-	if( !item )
+	if( !item || max <= 0 )
 		return -1;
 
 	s = item->value.summ;
@@ -104,7 +111,7 @@ int pmet_summary_value( PMET *item, double value, int set )
 	PMET_SUMM *s = item->value.summ;
 	int ret = 0;
 
-	if( item->type->type != PMET_TYPE_SUMMARY )
+	if( item->type != PMET_TYPE_SUMMARY )
 		return -1;
 
 	lock_pmet( item );

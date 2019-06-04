@@ -14,8 +14,8 @@
 
 int http_calls_metrics( HTREQ *req )
 {
-
-
+	// this does all the hard work
+	pmet_report( req->text );
 
 	return 0;
 }

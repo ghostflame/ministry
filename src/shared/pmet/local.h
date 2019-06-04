@@ -11,7 +11,7 @@
 #define SHARED_PMET_LOCAL_H
 
 
-#define DEFAULT_PMET_BUF_SZ				0x7f00		// just under 32k
+#define DEFAULT_PMET_BUF_SZ				0x7ffff		// just under 512k
 #define DEFAULT_PMET_PERIOD_MSEC		10000
 
 
@@ -93,19 +93,44 @@ union pmet_generator
 	double			*	dptr;
 	LLCT			*	lockless;
 	pmet_gen_fn		*	genfn;
+	void			*	in;
 };
+
+
+#define lock_pmetm( _m )	pthread_mutex_lock(   &(_m->lock) )
+#define unlock_pmetm( _m )	pthread_mutex_unlock( &(_m->lock) )
+
 
 #define lock_pmet( _p )		if( _p->gtype == PMET_GEN_NONE ) { pthread_mutex_lock(   &(_p->lock) ); }
 #define unlock_pmet( _p )	if( _p->gtype == PMET_GEN_NONE ) { pthread_mutex_unlock( &(_p->lock) ); }
+
+
+
+struct pmet_metric
+{
+	PMETM			*	next;
+	PMET_TYPE		*	type;
+	char			*	path;
+	char			*	help;
+	PMET_LBL		*	labels;
+	SSTE			*	sse;
+
+	PMET			*	items;
+
+	int16_t				plen;
+
+	pthread_mutex_t		lock;
+};
+
 
 
 // a simple fetch item, nice and predictable
 struct pmet_item
 {
 	PMET			*	next;
-	PMET_TYPE		*	type;
-	char			*	path;
-	char			*	help;
+	PMETM			*	metric;	
+	PMETS			*	source;
+
 	PMET_GEN			gen;
 	void			*	garg;
 	PMET_LBL		*	labels;
@@ -113,9 +138,8 @@ struct pmet_item
 	PMET_VAL			value;
 	int64_t				count;
 
-	int8_t				lcount;
 	int8_t				gtype;
-	int16_t				plen;
+	int8_t				type;
 
 	pthread_mutex_t		lock;
 };
@@ -125,15 +149,11 @@ struct pmet_item
 
 struct pmet_source
 {
-	PMSRC			*	next;
-	PMET			*	items;
-	BUF				*	buf;
+	PMETS			*	next;
 	SSTE			*	sse;
 	char			*	name;
 	int					nlen;
-	int					icount;
 	int					last_ct;
-	int					render;
 };
 
 
@@ -177,12 +197,16 @@ PMET_LBL **pmet_label_array( char *name, int extra, int count, double *vals );
 int pmet_item_render( int64_t mval, BUF *b, PMET *item, PMET_LBL *with );
 int pmet_item_gen( int64_t mval, PMET *item );
 
-PMET *pmet_item_create( int type, char *path, char *help, int gentype, void *genptr, void *genarg );
-
+PMET *pmet_item_create( PMETM *metric, PMETS *source, int gentype, void *genptr, void *genarg );
 // if genptr or genarg are NULL, the one from the source is used
 // all labels are *cloned*
-PMET *pmet_item_clone( PMET *item, void *genptr, void *genarg );
+PMET *pmet_item_clone( PMET *item, PMETS *source, void *genptr, void *genarg );
 
+// metric
+int pmet_metric_render( int64_t mval, BUF *b, PMETM *metric );
+int pmet_metric_gen( int64_t mval, PMETM *metric );
+PMETM *pmet_metric_create( int type, char *path, char *help );
+PMETM *pmet_metric_find( char *name );
 
 
 
