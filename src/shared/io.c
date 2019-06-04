@@ -79,7 +79,7 @@ int io_write_data( SOCK *s, int off )
 			warn( "Poll error writing to host %s -- %s",
 				s->name, Err );
 			flagf_add( s, IO_CLOSE );
-			return sent;
+			break;
 		}
 
 		if( !rv )
@@ -89,7 +89,7 @@ int io_write_data( SOCK *s, int off )
 				continue;
 
 			// we cannot write just yet
-			return sent;
+			break;
 		}
 
 		if( ( wr = send( s->fd, ptr, len, MSG_NOSIGNAL ) ) < 0 )
@@ -97,7 +97,7 @@ int io_write_data( SOCK *s, int off )
 			warn( "Error writing to host %s -- %s",
 				s->name, Err );
 			flagf_add( s, IO_CLOSE );
-			return sent;
+			break;
 		}
 
 		len  -= wr;
@@ -129,6 +129,8 @@ int io_connected( SOCK *s )
 		warn( "Could not assess target socket state: %s", Err );
 		close( s->fd );
 		s->fd = -1;
+		s->connected = 0;
+
 		return -1;
 	}
 
@@ -137,6 +139,8 @@ int io_connected( SOCK *s )
 		warn( "I/O socket errored: %s", strerror( err ) );
 		close( s->fd );
 		s->fd = -1;
+		s->connected = 0;
+
 		return -1;
 	}
 
@@ -155,6 +159,7 @@ int io_connect( SOCK *s )
 		shutdown( s->fd, SHUT_RDWR );
 		close( s->fd );
 		s->fd = -1;
+		s->connected = 0;
 	}
 
 	if( ( s->fd = socket( AF_INET, SOCK_STREAM, 0 ) ) < 0 )
@@ -187,6 +192,7 @@ int io_connect( SOCK *s )
 		ntohs( s->peer.sin_port ) );
 
 	s->flags = 0;
+	s->connected = 1;
 
 	return s->fd;
 }
@@ -204,6 +210,7 @@ void io_disconnect( SOCK *s )
 
 	close( s->fd );
 	s->fd = -1;
+	s->connected = 0;
 }
 
 
@@ -220,6 +227,7 @@ void io_sock_set_peer( SOCK *s, struct sockaddr_in *peer )
 	snprintf( s->name, 32, "%s:%hu", inet_ntoa( peer->sin_addr ),
 		ntohs( peer->sin_port ) );
 }
+
 
 
 SOCK *io_make_sock( int32_t insz, int32_t outsz, struct sockaddr_in *peer )

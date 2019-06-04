@@ -1,11 +1,13 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-FILES  = locks mem fetch post gc net tcp_epoll tcp_pool tcp_thrd tcp udp targets data metrics token synth sort history maths stats selfstats main
-HEADS  = locks mem fetch post gc net tcp udp targets data metrics token synth sort history maths stats selfstats ministry
-#VERS   = $(shell sed -rn 's/^Version:\t(.*)/\1/p' ../../ministry.spec)
+FILES  = locks mem fetch post gc net udp targets data metrics token synth sort history maths main
+HEADS  = locks mem fetch post gc net udp targets data metrics token synth sort history maths ministry
+
+SUBS   = stats tcp
 
 OBJS   = $(FILES:%=%.o)
 HDRS   = $(HEADS:%=%.h)
+SUBO   = $(SUBS:%=%/*.o)
 RKVS   = ../shared/app_shared.a
 
 EARGS ?=
@@ -23,21 +25,30 @@ BIN    = ministry
 
 all:   WFLAGS += -Wpedantic -Wextra -Wno-unused-parameter
 all:   CFLAGS += -O2
+all:   TARGET = all
+all:   subs
 all:   $(BIN)
 
 debug: WFLAGS += -Wpedantic -Wextra -Wno-unused-parameter
 debug: CFLAGS += $(DFLAGS)
 debug: LFLAGS += $(DFLAGS)
+debug: TARGET = debug
+debug: subs
 debug: $(BIN)
 
 with_old_gcc:  CFLAGS += -O2
 with_old_gcc:  WFLAGS += -pedantic
 with_old_gcc:  LFLAGS += -lrt
+with_old_gcc:  TARGET = with_old_gcc
+with_old_gcc:  subs
 with_old_gcc:  $(BIN)
 
 
+subs:
+	@for d in $(SUBS); do ( cd $$d && $(MAKE) $(MFLAGS) $(TARGET) ); done
+
 $(BIN): $(HDRS) $(OBJS)
-	$(CC) -o $(BIN) $(LFLAGS) $(OBJS) $(RKVS)
+	$(CC) -o $(BIN) $(LFLAGS) $(OBJS) $(SUBO) $(RKVS)
 	@cp -f $(BIN) ../../bin/
 	@echo "Ministry constructed.  Submit your forms, citizen!"
 
@@ -51,5 +62,6 @@ uninstall:
 	@rm -f $(BINDIR)/$(BIN)
 
 clean:
+	@for d in $(SUBS); do ( cd $$d && $(MAKE) $(MFLAGS) clean ); done
 	@rm -f core* *.core $(OBJS) $(BIN)
 

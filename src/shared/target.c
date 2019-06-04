@@ -12,6 +12,26 @@
 TGT_CTL *_tgt = NULL;
 
 
+void target_add_metrics( TGT *t )
+{
+	TGTMT *m = _tgt->metrics;
+	WORDS w;
+
+	w.wd[0] = "target";
+	w.wd[1] = t->name;
+	w.wd[2] = "tgttype";
+	w.wd[3] = t->typestr;
+
+	w.wc = 4;
+
+	t->pm_bytes = pmet_create_gen( m->bytes, m->source, PMET_GEN_IVAL, &(t->bytes), NULL );
+	pmet_label_apply_item( pmet_label_words( &w ), t->pm_bytes );
+
+	t->pm_conn = pmet_create_gen( m->conn, m->source, PMET_GEN_IVAL, &(t->sock->connected), NULL );
+	pmet_label_apply_item( pmet_label_words( &w ), t->pm_conn );
+}
+
+
 void target_loop( THRD *th )
 {
 	IO_CTL *io = _proc->io;
@@ -56,6 +76,9 @@ void target_loop( THRD *th )
 
 	// init the lock
 	io_lock_init( t->lock );
+
+	// and add some watcher metrics
+	target_add_metrics( t );
 
 	tgdebug( "Started target, max waiting %d", t->max );
 
@@ -283,6 +306,7 @@ TGTL *target_list_all( void )
 }
 
 
+
 TGT *target_create( char *list, char *name, char *proto, char *host, uint16_t port, char *type, int enabled )
 {
 	TGT *t;
@@ -297,9 +321,12 @@ TGT *target_create( char *list, char *name, char *proto, char *host, uint16_t po
 	t->list = __target_list_find_create( list );
 	t->enabled = enabled;
 
+	t->typestr = str_copy( type, 0 );
+
 	if( _tgt->type_fn )
 		(*(_tgt->type_fn))( t, type, strlen( type ) );
 
+	// and link it up
 	t->next = t->list->targets;
 	t->list->targets = t;
 	_tgt->tcount++;
@@ -346,7 +373,19 @@ void target_set_data_fn( target_cfg_fn *fp )
 
 TGT_CTL *target_config_defaults( void )
 {
+	TGTMT *m;
+
 	_tgt = (TGT_CTL *) allocz( sizeof( TGT_CTL ) );
+
+	m = (TGTMT *) allocz( sizeof( TGTMT ) );
+	m->source = pmet_add_source( "targets" );
+	m->bytes = pmet_new( PMET_TYPE_COUNTER, "ministry_target_sent_bytes",
+	                    "Number of bytes sent to a target" );
+	m->conn = pmet_new( PMET_TYPE_GAUGE, "ministry_target_connected", 
+                        "Connection status of target" );
+
+	_tgt->metrics = m;
+
 	return _tgt;
 }
 
@@ -504,21 +543,15 @@ int target_config_line( AVP *av )
 
 // http interface
 
-void __target_http_list_one( BUF *b, TGT *t )
-{
-	strbuf_aprintf( b,
-		"{ \"name\": \"%s\", \"endpoint\": \"%s:%hu\", \"type\": \"%s\", \"bytes\": %ld }, ",
-		t->name, t->host, t->port, t->typestr, t->bytes );
-}
-
 
 void __target_http_list( BUF *b, int enval )
 {
-	int e, c;
+	char ebuf[512];
 	TGTL *l;
 	TGT *t;
+	int e;
 
-	for( c = 0, l = _tgt->lists; l; l = l->next )
+	for( l = _tgt->lists; l; l = l->next )
 	{
 		// see if we have anything in this list that matches
 		e = 0;
@@ -526,42 +559,51 @@ void __target_http_list( BUF *b, int enval )
 			if( t->enabled == enval )
 			{
 				e = 1;
-				c++;	// to do with tidyup at the end
 				break;
 			}
 
 		if( e )
 		{
-			strbuf_aprintf( b, "\"%s\": [ ", l->name );
+			json_flda( l->name );
 			for( t = l->targets; t; t = t->next )
 			{
 				if( t->enabled == enval )
-					__target_http_list_one( b, t );
-			}
-			strbuf_chopn( b, 2 );
-			strbuf_aprintf( b, " ], " );
-		}
-	}
+				{
+					snprintf( ebuf, 512, "%s:%hu", t->host, t->port );
 
-	if( c > 0 )
-	{
-		strbuf_chopn( b, 2 );
-		strbuf_aprintf( b, " " );
+					json_starto( );
+
+					json_flds( "name", t->name );
+					json_flds( "endpoint", ebuf );
+					json_flds( "type", t->typestr );
+					json_fldI( "bytes", t->bytes );
+
+					json_endo( );
+				}
+			}
+			json_enda( );
+		}
 	}
 }
 
 
 int target_http_list( HTREQ *req )
 {
-	req->text = strbuf_resize( req->text, 32760 );
+	BUF *b = req->text;
 
-	strbuf_printf( req->text, "{\"enabled\": { " );
+	strbuf_resize( req->text, 32760 );
+
+	json_starto( );
+
+	json_fldo( "enabled" );
 	__target_http_list( req->text, 1 );
+	json_endo( );
 
-	strbuf_aprintf( req->text, "}, \"disabled\": { " );
+	json_fldo( "disabled" );
 	__target_http_list( req->text, 0 );
+	json_endo( );
 
-	strbuf_aprintf( req->text, "} }\n" );
+	json_finisho( );
 
 	return 0;
 }

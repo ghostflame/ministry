@@ -219,9 +219,7 @@ void synth_pass( int64_t tval, void *arg )
 
 	while( sc->tready < sc->tcount )
 	{
-		//info( "Synth waiting: %d / %d ready.", sc->tready, sc->tcount );
 		pthread_cond_wait( &(sc->threads_ready), &(ctl->locks->synth) );
-		//info( "Synth was awoken." );
 	}
 
 	// we are a go
@@ -235,7 +233,6 @@ void synth_pass( int64_t tval, void *arg )
 	// tell everyone to proceed
 	sc->tproceed = sc->tcount;
 
-	//debug( "Waking the adder threads." );
 	pthread_cond_broadcast( &(sc->threads_done) );
 
 	// and release them

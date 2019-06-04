@@ -320,7 +320,7 @@ void ha_watcher( THRD *td )
 	p->ch->cb     = &ha_watcher_cb;
 	p->ch->iobuf  = p->buf;
 
-	info( "HA watcher starting for %s.", p->name );
+	//info( "HA watcher starting for %s.", p->name );
 
 	loop_control( "ha_watcher", ha_watcher_pass, td->arg, 1000 * ha->period, LOOP_TRIM, 0 );
 }
@@ -329,12 +329,12 @@ void ha_controller( THRD *td )
 {
 	HA_CTL *ha = _proc->ha;
 
-	info( "HA controller started." );
+	//info( "HA controller started." );
 
 	// offset by a chunk of the check period
 	loop_control( "ha_controller", ha_controller_pass, NULL, 1000 * ha->update, LOOP_TRIM, 300 * ha->period );
 
-	info( "HA controller exiting." );
+	//info( "HA controller exiting." );
 }
 
 
@@ -410,7 +410,7 @@ int ha_init( void )
 		ha->hostname = _proc->hostname;
 
 	snprintf( buf, 1024, "http%s://%s:%hu/",
-		( _proc->http->tls->enabled ) ? "s" : "",
+		( http_tls_enabled( ) ) ? "s" : "",
 		ha->hostname, _proc->http->server_port );
 
 	if( !( ha->self = ha_add_partner( buf, 0 ) ) )
@@ -439,7 +439,7 @@ int ha_start( void )
 
 	if( !ha->enabled )
 	{
-		info( "High-availablity is disabled." );
+		//info( "High-availablity is disabled." );
 		return 0;
 	}
 
@@ -454,7 +454,7 @@ int ha_start( void )
 		if( p != ha->self )
 		{
 			thread_throw_named_f( ha_watcher, p, i, "ha_watcher_%d", i );
-			notice( "Found HA partner on %s", p->name );
+			//notice( "Found HA partner on %s", p->name );
 		}
 
 	// and our controller
@@ -649,7 +649,7 @@ int ha_config_line( AVP *av )
 	if( attIs( "enable" ) )
 	{
 		ha->enabled = config_bool( av );
-		info( "High-Availability %sabled.", ( ha->enabled ) ? "en" : "dis" );
+		//info( "High-Availability %sabled.", ( ha->enabled ) ? "en" : "dis" );
 	}
 	else if( attIs( "hostname" ) )
 	{
@@ -663,8 +663,8 @@ int ha_config_line( AVP *av )
 	else if( attIs( "master" ) )
 	{
 		ha->is_master = config_bool( av );
-		info( "High-Availability - would start as %s.",
-			( ha->is_master ) ? "primary" : "secondary" );
+		//info( "High-Availability - would start as %s.",
+		//	( ha->is_master ) ? "primary" : "secondary" );
 	}
 	else if( attIs( "checkPeriod" ) )
 	{

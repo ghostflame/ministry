@@ -520,10 +520,47 @@ int parse_number( char *str, int64_t *iv, double *dv )
 }
 
 
+struct hash_size_data hash_sizes[8] =
+{
+	{
+		.name = "nano",
+		.size = MEM_HSZ_NANO,
+	},
+	{
+		.name = "micro",
+		.size = MEM_HSZ_MICRO,
+	},
+	{
+		.name = "tiny",
+		.size = MEM_HSZ_TINY,
+	},
+	{
+		.name = "small",
+		.size = MEM_HSZ_SMALL,
+	},
+	{
+		.name = "medium",
+		.size = MEM_HSZ_MEDIUM,
+	},
+	{
+		.name = "large",
+		.size = MEM_HSZ_LARGE,
+	},
+	{
+		.name = "xlarge",
+		.size = MEM_HSZ_XLARGE,
+	},
+	{
+		.name = "x2large",
+		.size = MEM_HSZ_X2LARGE,
+	}
+};
+
 
 uint64_t hash_size( char *str )
 {
 	int64_t v = 0;
+	int i;
 
 	if( !str || !strlen( str ) )
 	{
@@ -531,34 +568,14 @@ uint64_t hash_size( char *str )
 		return 0;
 	}
 
-	if( !strcasecmp( str, "nano" ) )
-		return MEM_HSZ_NANO;
-
-	if( !strcasecmp( str, "micro" ) )
-		return MEM_HSZ_MICRO;
-
-	if( !strcasecmp( str, "tiny" ) )
-		return MEM_HSZ_TINY;
-
-	if( !strcasecmp( str, "small" ) )
-		return MEM_HSZ_SMALL;
-
-	if( !strcasecmp( str, "medium" ) )
-		return MEM_HSZ_MEDIUM;
-
-	if( !strcasecmp( str, "large" ) )
-		return MEM_HSZ_LARGE;
-
-	if( !strcasecmp( str, "xlarge" ) )
-		return MEM_HSZ_XLARGE;
-
-	if( !strcasecmp( str, "x2large" ) )
-		return MEM_HSZ_X2LARGE;
+	for( i = 0; i < 8; i++ )
+		if( !strcasecmp( str, hash_sizes[i].name ) )
+			return hash_sizes[i].size;
 
 	if( parse_number( str, &v, NULL ) == NUM_INVALID )
 	{
 		warn( "Unrecognised hash table size '%s'", str );
-		return -1;
+		return 0;
 	}
 
 	return (uint64_t) v;

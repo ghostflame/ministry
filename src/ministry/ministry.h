@@ -27,7 +27,7 @@
 #include "locks.h"
 #include "net.h"
 #include "udp.h"
-#include "tcp.h"
+#include "tcp/tcp.h"
 #include "fetch.h"
 #include "post.h"
 #include "token.h"
@@ -40,8 +40,7 @@
 #include "sort.h"
 #include "history.h"
 #include "maths.h"
-#include "stats.h"
-#include "selfstats.h"
+#include "stats/stats.h"
 
 
 

@@ -70,6 +70,12 @@ struct lockless_counter
 	uint64_t				prev;
 };
 
+struct hash_size_data
+{
+	const char			*	name;
+	uint64_t				size;
+};
+
 
 struct av_pair
 {

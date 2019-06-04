@@ -382,7 +382,7 @@ int relay_config_line( AVP *av )
 		r->type = RTYPE_UNKNOWN;
 		r->name = str_copy( "- unnamed -", 0 );
 		r->matches = (regex_t *) allocz( RELAY_MAX_REGEXES * sizeof( regex_t ) );
-		r->rgxstr  = (char *)    allocz( RELAY_MAX_REGEXES * sizeof( char *  ) );
+		r->rgxstr  = (char **)   allocz( RELAY_MAX_REGEXES * sizeof( char *  ) );
 		r->invert  = (uint8_t *) allocz( RELAY_MAX_REGEXES * sizeof( uint8_t ) );
 	}
 
@@ -421,7 +421,7 @@ int relay_config_line( AVP *av )
 		}
 
 		// keep a copy of the string
-		r->match_str[r->mcount] = str_dup( av->vptr, av->vlen );
+		r->rgxstr[r->mcount] = str_dup( av->vptr, av->vlen );
 
 		r->mcount++;
 		r->type = RTYPE_REGEX;
@@ -488,11 +488,12 @@ int relay_config_line( AVP *av )
 		// make it's own memory
 		n->mstats  = (int64_t *) allocz( n->mcount * sizeof( int64_t ) );
 		n->matches = (regex_t *) allocz( n->mcount * sizeof( regex_t ) );
-		n->rgxstr
+		n->rgxstr  = (char **)   allocz( n->mcount * sizeof( char *  ) );
 		n->invert  = (uint8_t *) allocz( n->mcount * sizeof( uint8_t ) );
 
 		// and copy in the regexes and inverts
 		memcpy( n->matches, r->matches, n->mcount * sizeof( regex_t ) );
+		memcpy( n->rgxstr,  r->rgxstr,  n->mcount * sizeof( char *  ) );
 		memcpy( n->invert,  r->invert,  n->mcount * sizeof( uint8_t ) );
 
 		// set the relay function and buffers
@@ -517,6 +518,7 @@ int relay_config_line( AVP *av )
 
 		// free up the allocated memory
 		free( r->matches );
+		free( r->rgxstr );
 		free( r->invert );
 		free( r->name );
 		__relay_cfg_state = 0;
