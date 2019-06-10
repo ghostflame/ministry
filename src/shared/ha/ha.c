@@ -352,6 +352,9 @@ int ha_init( void )
 
 	pthread_mutex_init( &(ha->lock), NULL );
 
+	http_add_simple_get( DEFAULT_HA_CHECK_PATH, "Fetch cluster status", &ha_get_cluster );
+	http_add_control( "cluster", "Control cluster status", NULL, &ha_ctl_cluster, NULL, HTTP_FLAGS_NO_REPORT );
+
 	return 0;
 }
 
