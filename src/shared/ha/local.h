@@ -2,21 +2,23 @@
 * This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
 *                                                                         *
-* ha.h - defines high-availability structures and functions               *
+* ha/local.h - defines HA structures and functions                        *
 *                                                                         *
 * Updates:                                                                *
 **************************************************************************/
 
 
 
-#ifndef SHARED_HA_H
-#define SHARED_HA_H
+#ifndef SHARED_HA_LOCAL_H
+#define SHARED_HA_LOCAL_H
 
 #define DEFAULT_HA_CHECK_MSEC		1000
 #define DEFAULT_HA_UPDATE_MSEC		1000
 #define DEFAULT_HA_CHECK_PATH		"/cluster"
 #define DEFAULT_HA_CTL_PATH			"/control/cluster"
 
+
+#include "shared.h"
 
 
 enum ha_elector_types
@@ -54,6 +56,40 @@ enum ha_clst_line_setting_types
 };
 
 
+struct ha_string_set
+{
+	const char			**	arr;
+	int						max;
+
+};
+
+
+
+extern const char *ha_elector_name_strings[HA_ELECT_MAX];
+extern const char *ha_election_state_strings[HA_ELECTION_MAX];
+extern const char *ha_clst_line_kind_strings[HA_CLST_LINE_KIND_MAX];
+extern const char *ha_clst_line_setting_strings[HA_CLST_LINE_SETT_MAX];
+extern struct ha_string_set ha_string_sets[4];
+
+
+const char *__ha_string_name( int which, int val );
+int __ha_string_val( int which, char *str );
+
+
+#define ha_elector_name( _e )			__ha_string_name( 0, _e )
+#define ha_elector_value( _n )			__ha_string_val( 0, _n )
+
+#define ha_election_state_name( _s )	__ha_string_name( 1, _s )
+#define ha_election_state_value( _n )	__ha_string_val( 1, _n )
+
+#define ha_clst_line_kind_name( _k )	__ha_string_name( 2, _k )
+#define ha_clst_line_kind_value( _n )	__ha_string_val( 2, _n )
+
+#define ha_clst_line_sett_name( _s )	__ha_string_name( 3, _s )
+#define ha_clst_line_sett_value( _n )	__ha_string_val( 3, _n )
+
+
+
 
 struct ha_partner
 {
@@ -79,53 +115,9 @@ struct ha_partner
 #define lock_ha( )		pthread_mutex_lock(   &(_proc->ha->lock) )
 #define unlock_ha( )	pthread_mutex_unlock( &(_proc->ha->lock) )
 
-struct ha_control
-{
-	HAPT			*	partners;
-	HAPT			*	self;
-	int					pcount;
-
-	pthread_mutex_t		lock;
-
-	char			*	hostname;
-
-	int64_t				period;		// msec
-	int64_t				update; 	// msec
-
-	int					priority;
-	int					elector;	// style of election
-
-	int					is_master;
-	int					enabled;
-};
-
-
-
-const char *ha_elector_name( int elector );
-const char *ha_election_state_name( int state );
-int ha_elector_value( char *name );
-int ha_election_state_value( char *name );
-
-curlw_cb ha_watcher_cb;
-loop_call_fn ha_watcher_pass;
-throw_fn ha_watcher;
-
-loop_call_fn ha_controller_pass;
-throw_fn ha_controller;
-
-http_callback ha_get_cluster;
-http_callback ha_ctl_cluster;
-
-int ha_init( void );
-int ha_start( void );
-void ha_shutdown( void );
 
 HAPT *ha_add_partner( char *spec, int dup_fail );
 HAPT *ha_find_partner( char *name, int len );
-
-HA_CTL *ha_config_defaults( void );
-int ha_config_line( AVP *av );
-
 
 
 #endif

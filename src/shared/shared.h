@@ -75,7 +75,7 @@
 #include "json.h"
 #include "http/http.h"
 #include "pmet/pmet.h"
-#include "ha.h"
+#include "ha/ha.h"
 #include "config/config.h"
 #include "app.h"
 
