@@ -24,7 +24,7 @@ int config_args_substitute( AVP *av )
 	if( !context->argc || av->vlen < 3 )
 		return 0;
 
-	return strsub( &(av->vptr), &(av->vlen), context->argc, context->argv, context->argl );
+	return str_sub( &(av->vptr), &(av->vlen), context->argc, context->argv, context->argl );
 }
 
 

@@ -2,7 +2,7 @@
 * This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
 *                                                                         *
-* strings.h - structures and declarations for string handling             *
+* strings/stringutils.h - structures and declarations for string handling *
 *                                                                         *
 * Updates:                                                                *
 **************************************************************************/
@@ -13,7 +13,8 @@
 
 
 // for fast string allocation, free not possible
-#define PERM_SPACE_BLOCK	0x1000000	// 1M
+#define PERM_SPACE_BLOCK	0x1000000   // 1M
+
 
 // for breaking up strings on a delimiter
 #define STRWORDS_MAX		339			// makes for a 4k struct
@@ -67,7 +68,7 @@ struct string_buffer
 
 
 // allocation of strings that can't be freed
-char *perm_str( int len );
+char *str_perm( int len );
 char *str_dup( char *src, int len );
 
 #define dup_val( )						str_dup( av->vptr, av->vlen )
@@ -98,7 +99,7 @@ BUF *strbuf_add( BUF *b, char *str, int len );
 int str_nlen( char *src, int max );
 
 // substitute args into strings, using %\d%
-int strsub( char **ptr, int *len, int argc, char **argv, int *argl );
+int str_sub( char **ptr, int *len, int argc, char **argv, int *argl );
 
 // break up potentially quoted string by delimiter
 int strqwords( WORDS *w, char *src, int len, char sep );
@@ -132,6 +133,8 @@ int string_store_locking( SSTR *store, int lk );
 // clean up those mutexes
 void string_store_cleanup( SSTR *list );
 
+// how many?
+int64_t string_store_entries( SSTR *store );
 
 
 #endif

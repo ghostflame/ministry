@@ -19,7 +19,7 @@ void io_sock_set_peer( SOCK *s, struct sockaddr_in *peer )
 	s->peer = *peer;
 
 	if( !s->name )
-		s->name = perm_str( 32 );
+		s->name = str_perm( 32 );
 
 	snprintf( s->name, 32, "%s:%hu", inet_ntoa( peer->sin_addr ),
 		ntohs( peer->sin_port ) );

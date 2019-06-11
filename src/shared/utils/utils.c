@@ -145,7 +145,7 @@ int read_file( char *path, char **buf, int *len, int perm, char *desc )
 	if( !*buf )
 	{
 		// we need a buffer if you want to read from /proc
-		*buf = ( perm ) ? perm_str( l + 1 ) : (char *) allocz( l + 1 );
+		*buf = ( perm ) ? str_perm( l + 1 ) : (char *) allocz( l + 1 );
 		debug( "Creating buffer of %d bytes for %s.", 1 + *len, desc );
 	}
 	else

@@ -61,7 +61,7 @@
 #include "run.h"
 #include "log.h"
 #include "loop.h"
-#include "stringutils.h"
+#include "strings/stringutils.h"
 #include "utils/utils.h"
 #include "iter.h"
 #include "curlw.h"

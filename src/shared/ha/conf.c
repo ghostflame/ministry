@@ -140,7 +140,7 @@ HAPT *ha_add_partner( char *spec, int dupe_fail )
 	curl_url_cleanup( ch );
 
 	len = strlen( p->host ) + 6;
-	p->name = perm_str( len );
+	p->name = str_perm( len );
 	p->nlen = snprintf( p->name, len + 1, "%s:%hu", p->host, p->port );
 
 	p->next = _proc->ha->partners;
