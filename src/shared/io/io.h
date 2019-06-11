@@ -10,22 +10,14 @@
 #ifndef SHARED_IO_H
 #define SHARED_IO_H
 
-#define IO_BUF_SZ				0x40000		// 256k
-#define IO_BUF_HWMK				0x3c000		// 240k
-#define IO_MAX_WAITING			1024		// makes for 1024 * 256k = 256M
-#define IO_LIM_WAITING			65536		// makes for 16G
-
 #define IO_CLOSE				0x01
 #define IO_CLOSE_EMPTY			0x02
 
-#define IO_BUF_FLG_INIT			0x01
+#define IO_BUF_SZ				0x40000		// 256k
+#define IO_BUF_HWMK				0x3c000		// 240k
 
-#define IO_BLOCK_BITS			5	// 32 locks
-
-#define IO_SEND_USEC			11000	// usec
-#define IO_RECONN_DELAY			2000	// msec
-
-
+#define IO_MAX_WAITING			1024		// makes for 1024 * 256k = 256M
+#define IO_LIM_WAITING			65536		// makes for 16G
 
 
 
@@ -94,11 +86,6 @@ struct io_control
 
 // r/w
 int io_read_data( SOCK *s );
-int io_write_data( SOCK *s, int off );
-
-// connection
-int  io_connected( SOCK *s );
-int  io_connect( SOCK *s );
 void io_disconnect( SOCK *s );
 
 // buffers
@@ -114,7 +101,6 @@ io_fn io_send_file;
 // sockets
 SOCK *io_make_sock( int32_t insz, int32_t outsz, struct sockaddr_in *peer );
 void io_sock_set_peer( SOCK *s, struct sockaddr_in *peer );
-void io_sock_pmet( SOCK *s, PMET *status, PMET *bytes );
 
 // startup/shutdown
 int io_init( void );
