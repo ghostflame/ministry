@@ -59,7 +59,7 @@
 #include "typedefs.h"
 
 #include "run.h"
-#include "log.h"
+#include "log/log.h"
 #include "loop.h"
 #include "strings/stringutils.h"
 #include "utils/utils.h"

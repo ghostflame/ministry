@@ -24,6 +24,7 @@ typedef struct config_section       CSECT;
 typedef struct config_context       CCTXT;
 
 typedef struct log_file             LOGFL;
+typedef struct log_setdebug         LOGSD;
 
 typedef struct mem_call_counters    MCCTR;
 typedef struct mem_type_counters    MTCTR;
