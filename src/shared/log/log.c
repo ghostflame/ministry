@@ -145,8 +145,6 @@ int log_start( void )
 
 	_logger->fps[1] = ( _logger->unified ) ? _logger->main : _logger->http;
 
-	printf( "Logger pointers:  %p  %p", (void *) _logger->fps[0], (void *) _logger->fps[1] );
-
 	ret += log_file_start( _logger->main );
 
 	if( !_logger->unified )
