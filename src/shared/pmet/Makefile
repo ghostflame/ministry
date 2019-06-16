@@ -1,6 +1,6 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-FILES  = histogram summary counter gauge metric item label wrapper pmet
+FILES  = histogram summary counter gauge metric item label wrapper conf utils pmet
 HEADS  = local pmet
 
 RKV    = pmet_shared.a

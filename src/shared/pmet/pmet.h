@@ -42,6 +42,16 @@ struct pmet_label
 };
 
 
+struct pmet_shared
+{
+	PMETS			*	source;
+
+	PMETM			*	upmet;
+	PMET			*	uptime;
+
+	PMETM			*	memmet;
+	PMET			*	mem;
+};
 
 
 struct pmet_control
@@ -55,7 +65,7 @@ struct pmet_control
 	PMET_LBL		*	common;
 	BUF				*	page;
 
-	PMETS			*	shared;
+	PMET_SH			*	shared;
 
 	regex_t				path_check;
 	pthread_mutex_t		genlock;
@@ -95,9 +105,10 @@ int pmet_setv( PMET *item, int count, ... );
 int pmet_max_vals( PMET *item, int64_t max ); // only meaningful for summary
 
 // full interface
-PMET *pmet_create_gen( PMETM *metric, PMETS *source, int gentype, void *genptr, void *genarg );
+PMET *pmet_create_name( char *metric, char *source, int gentype, void *genptr, pmet_gen_fn *fp, void *genarg );
+PMET *pmet_create_gen( PMETM *metric, PMETS *source, int gentype, void *genptr, pmet_gen_fn *fp, void *genarg );
 PMET *pmet_create( PMETM *metric, PMETS *source );
-PMET *pmet_clone_gen( PMET *item, PMETS *source, void *genptr, void *genarg );
+PMET *pmet_clone_gen( PMET *item, PMETS *source, void *genptr, pmet_gen_fn *fp, void *genarg );
 PMET *pmet_clone( PMET *item );
 
 // new metric

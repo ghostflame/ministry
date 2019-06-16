@@ -53,43 +53,6 @@ g/exposition_formats.md
  */
 
 
-PMET_TYPE pmet_types[PMET_TYPE_MAX] =
-{
-	{
-		.type = PMET_TYPE_UNTYPED,
-		.name = "untyped",
-		.rndr = &pmet_counter_render,
-		.valu = &pmet_counter_value
-	},
-	{
-		.type = PMET_TYPE_COUNTER,
-		.name = "counter",
-		.rndr = &pmet_counter_render,
-		.valu = &pmet_counter_value
-	},
-	{
-		.type = PMET_TYPE_GAUGE,
-		.name = "gauge",
-		.rndr = &pmet_gauge_render,
-		.valu = &pmet_gauge_value
-	},
-	{
-		.type = PMET_TYPE_SUMMARY,
-		.name = "summary",
-		.rndr = &pmet_summary_render,
-		.valu = &pmet_summary_value
-	},
-	{
-		.type = PMET_TYPE_HISTOGRAM,
-		.name = "histogram",
-		.rndr = &pmet_histogram_render,
-		.valu = &pmet_histogram_value
-	}
-};
-
-
-PMET_CTL *_pmet = NULL;
-
 
 
 
@@ -102,7 +65,7 @@ void pmet_pass( int64_t tval, void *arg )
 
 	p->timestamp = tval / MILLION; // we just need msec
 
-	//debug( "Generating prometheus metrics." );
+	debug( "Generating prometheus metrics." );
 
 	pmet_genlock( );
 
@@ -151,13 +114,15 @@ void pmet_run( THRD *t )
 
 	_pmet->period *= 1000; // convert to usec
 
-	loop_control( "pmet_gen", pmet_pass, NULL, _pmet->period, LOOP_TRIM|LOOP_SYNC, _pmet->period / 2 );
+	loop_control( "pmet_gen", pmet_pass, NULL, _pmet->period, LOOP_TRIM|LOOP_SYNC, _pmet->period / 4 );;
 }
 
 
 int pmet_init( void )
 {
-	if( !_pmet->enabled )
+	PMET_CTL *p = _pmet;
+
+	if( !p->enabled )
 	{
 		info( "Prometheus metrics are disabled." );
 		return 0;
@@ -171,7 +136,13 @@ int pmet_init( void )
 		return 0;
 	}
 
-	_pmet->sources = mem_reverse_list( _pmet->sources );
+	p->shared->upmet  = pmet_new( PMET_TYPE_COUNTER, "process_uptime_seconds", "How long the process has been up" );
+	p->shared->uptime = pmet_create_gen( p->shared->upmet, p->shared->source, PMET_GEN_FN, NULL, &pmet_get_uptime, NULL );
+
+	p->shared->memmet = pmet_new( PMET_TYPE_GAUGE, "process_memory_usage_bytes", "How many bytes used in memory" );
+	p->shared->mem    = pmet_create_gen( p->shared->memmet, p->shared->source, PMET_GEN_FN, NULL, &pmet_get_memory, NULL );
+
+	p->sources = mem_reverse_list( p->sources );
 
 	thread_throw_named( &pmet_run, NULL, 0, "pmet_gen" );
 
@@ -224,78 +195,6 @@ PMETS *pmet_add_source( char *name )
 	return ps;
 }
 
-
-
-PMET_CTL *pmet_config_defaults( void )
-{
-	PMET_CTL *p = (PMET_CTL *) allocz( sizeof( PMET_CTL ) );
-	int v;
-
-	p->period = DEFAULT_PMET_PERIOD_MSEC;
-	p->enabled = 0;
-
-	v = 1;
-	p->srclookup = string_store_create( 0, "nano", &v );
-	p->metlookup = string_store_create( 0, "tiny", &v );
-
-	// give ourselves half a meg
-	p->page = strbuf( DEFAULT_PMET_BUF_SZ );
-
-	if( ( v = regcomp( &(p->path_check), PMET_PATH_CHK_RGX, REG_EXTENDED|REG_ICASE|REG_NOSUB ) ) )
-	{
-		char *errbuf = (char *) allocz( 2048 );
-
-		regerror( v, &(p->path_check), errbuf, 2048 );
-		fatal( "Could not compile prometheus metrics path check regex: %s", errbuf );
-		return NULL;
-	}
-
-	pthread_mutex_init( &(p->genlock), NULL );
-
-	_pmet = p;
-
-	// add in the basics
-	p->shared = pmet_add_source( "shared" );
-
-	return p;
-}
-
-
-int pmet_config_line( AVP *av )
-{
-	PMET_CTL *p = _pmet;
-	int64_t v;
-	SSTE *e;
-
-	if( attIs( "enable" ) )
-	{
-		p->enabled = config_bool( av );
-	}
-	else if( attIs( "period" ) || attIs( "interval" ) )
-	{
-		if( parse_number( av->vptr, &v, NULL ) == NUM_INVALID )
-		{
-			err( "Invalid prometheus metrics generation period '%s'.", av->vptr );
-			return -1;
-		}
-
-		p->period = v;
-	}
-	else if( attIs( "disable" ) )
-	{
-		if( !( e = string_store_add( p->srclookup, av->vptr, av->vlen ) ) )
-		{
-			err( "Could not handle disabling prometheus metrics type '%s'.", av->vptr );
-			return -1;
-		}
-		info( "Prometheus metrics type %s disabled.", av->vptr );
-		e->val = 0;
-	}
-	else
-		return -1;
-
-	return 0;
-}
 
 
 

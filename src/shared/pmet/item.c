@@ -12,7 +12,7 @@
 
 
 
-PMET *pmet_item_create( PMETM *metric, PMETS *source, int gentype, void *genptr, void *genarg )
+PMET *pmet_item_create( PMETM *metric, PMETS *source, int gentype, void *genptr, pmet_gen_fn *fp, void *genarg )
 {
 	PMET *item;
 
@@ -28,10 +28,21 @@ PMET *pmet_item_create( PMETM *metric, PMETS *source, int gentype, void *genptr,
 		return NULL;
 	}
 
-	if( !genptr && gentype != PMET_GEN_NONE )
+	if( gentype == PMET_GEN_FN )
 	{
-		err( "No promtheus metric generation target pointer." );
-		return NULL;
+		if( !fp )
+		{
+			err( "No prometheus metric generation function given." );
+			return NULL;
+		}
+	}
+	else if( gentype != PMET_GEN_NONE )
+	{
+		if( !genptr )
+		{
+			err( "No promtheus metric generation target pointer." );
+			return NULL;
+		}
 	}
 
 	item = (PMET *) allocz( sizeof( PMET ) );
@@ -39,8 +50,11 @@ PMET *pmet_item_create( PMETM *metric, PMETS *source, int gentype, void *genptr,
 	item->source = source;
 	item->type = metric->type->type;
 	item->gtype = gentype;
-	item->gen.in = genptr;
 	item->garg = genarg;
+	if( fp )
+		item->gen.genfn = fp;
+	else
+		item->gen.in = genptr;
 
 	// make sure value contains what we need
 	switch( item->type )
@@ -69,18 +83,23 @@ PMET *pmet_item_create( PMETM *metric, PMETS *source, int gentype, void *genptr,
 
 
 // useful for making a set of items with different labels
-PMET *pmet_item_clone( PMET *item, PMETS *source, void *genptr, void *genarg )
+PMET *pmet_item_clone( PMET *item, PMETS *source, void *genptr, pmet_gen_fn *fp, void *genarg )
 {
+	void *ga;
 	PMET *i;
 
 	if( !item )
 		return NULL;
 
+	if( fp )
+		ga = NULL;
+	else
+		ga = ( genptr ) ? genptr : item->gen.in;
+
 	// create a new one
 	i = pmet_item_create( item->metric,
 			( source ) ? source : item->source,
-			item->gtype,
-	        ( genptr ) ? genptr : item->gen.in,
+			item->gtype, ga, fp,
 	        ( genarg ) ? genarg : item->garg );
 
 	// recreate the labels, because they are a list

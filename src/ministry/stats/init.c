@@ -88,9 +88,11 @@ void stats_stop( void )
 
 void stats_init_control( ST_CFG *c, int alloc_data )
 {
-	char wkrstrbuf[128];
+	ST_MET *sm = ctl->stats->metrics;
+	char wkrstrbuf[128], idbuf[12];
 	int i, l, j;
 	ST_THR *t;
+	WORDS w;
 
 	// maybe fall back to default hash size
 	if( c->hsize == 0 )
@@ -111,6 +113,12 @@ void stats_init_control( ST_CFG *c, int alloc_data )
 	// make the control structures
 	c->ctls = (ST_THR *) allocz( c->threads * sizeof( ST_THR ) );
 
+	w.wc = 4;
+	w.wd[0] = "type";
+	w.wd[1] = (char *) c->name;
+	w.wd[2] = "id";
+	w.wd[3] = idbuf;
+
 	for( i = 0; i < c->threads; i++ )
 	{
 		t = &(c->ctls[i]);
@@ -120,7 +128,8 @@ void stats_init_control( ST_CFG *c, int alloc_data )
 		t->max    = c->threads;
 
 		// worker path
-		l = snprintf( wkrstrbuf, 128, "workers.%s.%lu", c->name, t->id );
+		snprintf( idbuf, 12, "%lu", t->id );
+		l = snprintf( wkrstrbuf, 128, "workers.%s.%s", c->name, idbuf );
 		t->wkrstr = str_dup( wkrstrbuf, l );
 
 		// timestamp buffers
@@ -140,6 +149,18 @@ void stats_init_control( ST_CFG *c, int alloc_data )
 			stats_set_workspace( t, MIN_QSORT_THRESHOLD );
 			t->counters = (uint32_t *) allocz( 6 * sizeof( uint32_t ) * F8_SORT_HIST_SIZE );
 		}
+
+		// create metrics
+		t->pm_pts  = pmet_create_gen( sm->pts_count, sm->source, PMET_GEN_IVAL, &(t->points),  NULL, NULL );
+		t->pm_high = pmet_create_gen( sm->pts_high,  sm->source, PMET_GEN_IVAL, &(t->highest), NULL, NULL );
+		t->pm_tot  = pmet_create_gen( sm->pts_total, sm->source, PMET_GEN_IVAL, &(t->total),   NULL, NULL );
+		t->pm_pct  = pmet_create_gen( sm->pct_time,  sm->source, PMET_GEN_DVAL, &(t->percent), NULL, NULL );
+
+		// and apply labels
+		pmet_label_apply_item( pmet_label_words( &w ), t->pm_pts  );
+		pmet_label_apply_item( pmet_label_words( &w ), t->pm_high );
+		pmet_label_apply_item( pmet_label_words( &w ), t->pm_tot  );
+		pmet_label_apply_item( pmet_label_words( &w ), t->pm_pct  );
 
 		//pthread_mutex_init( &(t->lock), NULL );
 

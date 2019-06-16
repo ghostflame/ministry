@@ -91,6 +91,18 @@ STAT_CTL *stats_config_defaults( void )
 	// function choice threshold
 	s->qsort_thresh   = DEFAULT_QSORT_THRESHOLD;
 
+	// metrics source
+	s->metrics            = (ST_MET *) allocz( sizeof( ST_MET ) );
+	s->metrics->source    = pmet_add_source( "stats" );
+	s->metrics->pts_high  = pmet_new( PMET_TYPE_GAUGE, "ministry_stats_metric_points_max",
+	                                  "Max number of points from one single metric for each thread" );
+	s->metrics->pts_count = pmet_new( PMET_TYPE_GAUGE, "ministry_stats_points_current",
+	                                  "Number of points processed this interval by each stats thread" );
+	s->metrics->pts_total = pmet_new( PMET_TYPE_COUNTER, "ministry_stats_point_total",
+	                                  "Number of points processed since startup by each stats thread" );
+	s->metrics->pct_time  = pmet_new( PMET_TYPE_GAUGE, "ministry_stats_thread_proc_time",
+	                                  "Percentage of available processing time used by a stats thread" );
+
 	return s;
 }
 

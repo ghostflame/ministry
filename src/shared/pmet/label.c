@@ -15,8 +15,8 @@
 void pmet_label_render( BUF *b, int count, ... )
 {
 	PMET_LBL *l, *list;
+	int i, j = 0;
 	va_list ap;
-	int i, j;
 
 	if( !count && !_proc->pmet->common )
 		return;
@@ -24,12 +24,12 @@ void pmet_label_render( BUF *b, int count, ... )
 	strbuf_add( b, "{", 1 );
 
 	// there may be common labels
-	for( l = _proc->pmet->common; l; l = l->next )
+	for( l = _proc->pmet->common; l; l = l->next, j++ )
 		_lbl_render( l );
 
 	// and let's see what we were given
 	va_start( ap, count );
-	for( j = 0, i = 0; i < count; i++ )
+	for( i = 0; i < count; i++ )
 	{
 		list = va_arg( ap, PMET_LBL * );
 

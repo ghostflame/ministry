@@ -52,7 +52,6 @@ stats_fn stats_self_stats_pass;
 
 
 
-
 struct stat_threshold
 {
 	ST_THOLD		*	next;

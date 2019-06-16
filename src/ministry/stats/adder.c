@@ -195,6 +195,8 @@ void stats_adder_pass( ST_THR *t )
 					t->active++;
 				}
 
+	// keep track of all points
+	t->total += t->points;
 
 	// and work out how long that took
 	st_thr_time( done );

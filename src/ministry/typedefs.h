@@ -30,6 +30,7 @@ typedef struct stat_config			ST_CFG;
 typedef struct stat_threshold		ST_THOLD;
 typedef struct stat_moments			ST_MOM;
 typedef struct stat_predict_conf	ST_PRED;
+typedef struct stats_metrics        ST_MET;
 typedef struct maths_prediction		PRED;
 typedef struct maths_moments		MOMS;
 typedef struct history_data_point	DPT;

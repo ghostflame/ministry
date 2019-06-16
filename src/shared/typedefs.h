@@ -23,6 +23,8 @@ typedef struct pmet_control         PMET_CTL;
 typedef struct config_section       CSECT;
 typedef struct config_context       CCTXT;
 
+typedef struct log_file             LOGFL;
+
 typedef struct mem_call_counters    MCCTR;
 typedef struct mem_type_counters    MTCTR;
 typedef struct mem_type_stats       MTSTAT;
@@ -72,6 +74,7 @@ typedef struct pmet_source          PMETS;
 typedef struct pmet_metric          PMETM;
 typedef struct pmet_item            PMET;
 typedef struct pmet_label           PMET_LBL;
+typedef struct pmet_shared          PMET_SH;
 
 
 // function types
