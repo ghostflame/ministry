@@ -1,4 +1,4 @@
-/var/log/ministry/ministry.log {
+/var/log/ministry/ministr*.log {
     weekly
     missingok
     rotate 7
@@ -6,3 +6,4 @@
     notifempty
     lastaction 'pkill -HUP ministry'
 }
+
