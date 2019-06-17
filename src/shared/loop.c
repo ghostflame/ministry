@@ -56,7 +56,7 @@ void loop_set_time( int64_t tval, void *arg )
 void loop_timer( THRD *t )
 {
 	// this just gather sets the time and doesn't exit
-	loop_control( "time set", &loop_set_time, NULL, _proc->tick_usec, LOOP_SYNC|LOOP_SILENT, 0 );
+	loop_control( "time set", &loop_set_time, NULL, _proc->tick_usec, LOOP_SYNC, 0 );
 }
 
 
@@ -88,9 +88,13 @@ void loop_control( const char *name, loop_call_fn *fp, void *arg, int64_t usec, 
 	// if period is too high
 	intv = nsec;
 
+	// trim the offset to <= nsec
+	if( offs >= nsec )
+		offs = offs % nsec;
+
 	// wind down to an acceptable interval
 	// try to avoid issues
-	while( ( flags & LOOP_TRIM ) && intv > MAX_LOOP_NSEC && intv > offs )
+	while( ( flags & LOOP_TRIM ) && intv > MAX_LOOP_NSEC )
 	{
 		for( i = 0; i < 8; i++ )
 			if( ( intv % loop_control_factors[i] ) == 0 )
@@ -110,7 +114,12 @@ void loop_control( const char *name, loop_call_fn *fp, void *arg, int64_t usec, 
 	}
 
 	if( ticks > 1 )
+	{
 		debug( "Loop %s trimmed from %ld to %ld nsec interval.", name, nsec, intv );
+		// needed to avoid calling it too quickly first time,
+		// which breaks offsets
+		curr = -1;
+	}
 
 	// get the time
 	clock_gettime( CLOCK_REALTIME, &ts );
@@ -137,12 +146,21 @@ void loop_control( const char *name, loop_call_fn *fp, void *arg, int64_t usec, 
 
 	while( RUNNING( ) )
 	{
+#ifdef DEBUG_LOOPS
+		if( flags & LOOP_DEBUG )
+		{
+			clock_gettime( CLOCK_REALTIME, &ts );
+			t = tsll( ts );
+			debug( "Timer for %s now %ld, curr = %d, time = %ld", name, timer / 1000, curr, t / 1000 );
+		}
+#endif
+
 		// decide if we are firing the payload
 		if( ++curr == ticks )
 		{
 #ifdef DEBUG_LOOPS
-			if( !( flags & LOOP_SILENT ) )
-				debug_loop( "Calling payload %s", name );
+			if( flags & LOOP_DEBUG )
+				debug( "Calling payload %s", name );
 #endif
 			(*fp)( timer, arg );
 			fires++;
@@ -151,6 +169,7 @@ void loop_control( const char *name, loop_call_fn *fp, void *arg, int64_t usec, 
 
 		// roll on the timer
 		timer += intv;
+
 
 		// get the current time
 		clock_gettime( CLOCK_REALTIME, &ts );
@@ -168,7 +187,7 @@ void loop_control( const char *name, loop_call_fn *fp, void *arg, int64_t usec, 
 		{
 			skips++;
 #ifdef DEBUG_LOOPS
-			if( skips == marker )
+			if( flags & LOOP_DEBUG && skips == marker )
 			{
 				debug( "Loop %s skips: %ld", name, skips );
 				marker = marker << 1;

@@ -15,6 +15,8 @@ BINS    = ministry ministry-test carbon-copy
 APPS    = ministry ministry_test carbon_copy
 SVCS    = ministry carbon-copy
 
+CTPATH  = ghostflame/ministry
+
 
 all:  subdirs
 all:  code
@@ -32,7 +34,11 @@ code:
 	@cd src && VERS=$(VERS) $(MAKE) $(MFLAGS) $(TARGET)
 
 docker:
-	docker build -t ghostflame/ministry:$(VERS) --file dist/Dockerfile .
+	docker build -t $(CTPATH):$(VERS) --file dist/Dockerfile .
+
+dockerpush: docker
+	docker tag $(CTPATH):$(VERS) $(CTPATH):latest
+	docker push
 
 install:
 	@echo "Making installation directories"

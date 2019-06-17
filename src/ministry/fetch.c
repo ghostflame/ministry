@@ -68,7 +68,7 @@ void fetch_make_url( FETCH *f )
 		( chkCurlF( f->ch, SSL ) ) ? "s" : "",
 		f->remote, f->port, f->path );
 
-	f->ch->url = perm_str( l + 1 );
+	f->ch->url = str_perm( l + 1 );
 	memcpy( f->ch->url, urlbuf, l );
 	f->ch->url[l] = '\0';
 }

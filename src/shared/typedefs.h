@@ -18,14 +18,19 @@ typedef struct iplist_control       IPL_CTL;
 typedef struct io_control           IO_CTL;
 typedef struct target_control       TGT_CTL;
 typedef struct ha_control           HA_CTL;
+typedef struct pmet_control         PMET_CTL;
 
 typedef struct config_section       CSECT;
 typedef struct config_context       CCTXT;
-typedef struct mem_type_blank       MTBLANK;
+
+typedef struct log_file             LOGFL;
+typedef struct log_setdebug         LOGSD;
+
 typedef struct mem_call_counters    MCCTR;
 typedef struct mem_type_counters    MTCTR;
-typedef struct mem_type             MTYPE;
 typedef struct mem_type_stats       MTSTAT;
+typedef struct mem_type_blank       MTBLANK;
+typedef struct mem_type             MTYPE;
 typedef struct mem_check            MCHK;
 
 typedef struct iterator             ITER;
@@ -35,6 +40,7 @@ typedef struct io_socket            SOCK;
 typedef struct io_buf_ptr           IOBP;
 
 typedef struct target               TGT;
+typedef struct target_metrics       TGTMT;
 typedef struct target_list          TGTL;
 typedef struct target_alter         TGTALT;
 
@@ -42,12 +48,13 @@ typedef struct iplist_net           IPNET;
 typedef struct iplist               IPLIST;
 
 typedef struct thread_data          THRD;
-typedef struct words_data           WORDS;
-typedef struct string_buffer        BUF;
 typedef struct av_pair              AVP;
 typedef struct lockless_counter     LLCT;
 typedef struct regex_entry          RGX;
 typedef struct regex_list           RGXL;
+
+typedef struct words_data           WORDS;
+typedef struct string_buffer        BUF;
 typedef struct string_store_entry   SSTE;
 typedef struct string_store         SSTR;
 
@@ -64,6 +71,12 @@ typedef struct curlw_handle         CURLWH;
 
 typedef struct ha_partner           HAPT;
 
+typedef struct pmet_source          PMETS;
+typedef struct pmet_metric          PMETM;
+typedef struct pmet_item            PMET;
+typedef struct pmet_label           PMET_LBL;
+typedef struct pmet_shared          PMET_SH;
+
 
 // function types
 typedef void loop_call_fn ( int64_t, void * );
@@ -76,6 +89,7 @@ typedef int64_t io_fn( TGT * );
 typedef int target_cfg_fn( TGT *, char *, int );
 typedef void curlw_cb( void *, IOBUF *b );
 typedef int sort_fn( const void *, const void * );
+typedef double pmet_gen_fn( int64_t, void *, double * );
 
 typedef void iplist_data_fn( void *, IPNET * );
 

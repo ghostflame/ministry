@@ -24,12 +24,13 @@ typedef struct metrics_control		MET_CTL;
 
 typedef struct net_in_port			NET_PORT;
 typedef struct net_type				NET_TYPE;
-typedef struct net_prefix           NET_PFX;
-typedef struct stat_config			ST_CFG;
+typedef struct net_prefix			NET_PFX;
 typedef struct stat_thread_ctl		ST_THR;
+typedef struct stat_config			ST_CFG;
 typedef struct stat_threshold		ST_THOLD;
 typedef struct stat_moments			ST_MOM;
 typedef struct stat_predict_conf	ST_PRED;
+typedef struct stats_metrics        ST_MET;
 typedef struct maths_prediction		PRED;
 typedef struct maths_moments		MOMS;
 typedef struct history_data_point	DPT;
@@ -61,11 +62,12 @@ typedef struct metrics_data			MDATA;
 typedef void targets_fn ( ST_THR *, BUF *, IOBUF * );
 typedef void tsf_fn ( ST_THR *, BUF * );
 typedef void stats_fn ( ST_THR * );
+typedef void pred_fn ( ST_THR *, DHASH * );
 typedef void add_fn ( char *, int, char * );
 typedef void line_fn ( HOST *, char *, int );
 typedef void synth_fn( SYNTH * );
-typedef void pred_fn ( ST_THR *, DHASH * );
 typedef void tcp_setup_fn ( NET_TYPE * );
 typedef void tcp_fn ( HOST * );
+
 
 #endif
