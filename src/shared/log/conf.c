@@ -147,6 +147,9 @@ LOG_CTL *log_config_defaults( void )
 	_logger->identifier     = strdup( _proc->app_name );
 	_logger->facility       = DEFAULT_LOG_FAC;
 
+	// unification - unified by default
+	_logger->unified        = 1;
+
 	return _logger;
 }
 
@@ -195,8 +198,6 @@ int log_config_line( AVP *av )
 	else if( attIs( "unified" ) )
 	{
 		_logger->unified = config_bool( av );
-		if( !_logger->unified )
-			info( "Log config of 'unified <false>' has no effect." );
 	}
 	else if( attIs( "writelevel" ) )
 		_logger->write_level = config_bool( av );

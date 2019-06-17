@@ -114,13 +114,22 @@ Make a call to setrlimit for the specified type.  Supported types are \fBprocs\f
 Both default to the system hard limit of the type.
 
 .SS [Logging]
+.PP
+\fBMinistry\fP can use either one, two or no logfiles (logging to stdout or syslog).  It has two blocks
+of config, \fImain\fP and \fIhttp\fP.  Not specifying a block implies \fImain\fP.
 .TP
-\fBfilename\fP | \fBfile\fP | \fBlogfile\fP
+\fBBLOCK.filename\fP | \fBBLOCK.file\fP | \fBBLOCK.logfile\fP
 File name to write the log to.  The special value \fB-\fP writes to stdout, and is the default.  The
 special value \fBsyslog\fP writes to syslog.
 .TP
-\fBlevel\fP
+\fBBLOCK.level\fP
 Maximum log level, one of FATAL, ERR, WARN, NOTICE, INFO or DEBUG.
+.PP
+The rest of the configuration items apply to all generally.
+.TP
+\fBunified\fP
+Inform \fBministry\fP to merge the \fImain\fP and \fIhttp\fP logging (essentially, the separate \fIhttp\fP
+logging block is not used).
 .TP
 \fBnotify\fP
 Add a notification of log re-opening.  Guarantees a non-zero log file size after log rotation (boolean,
@@ -156,6 +165,97 @@ Valid types include: hosts, iobufs, iolist, dhash, points
 .TP
 \fBTYPE.block\fP
 Number of instances to allocate at once.
+
+.SS [Http]
+.PP
+\fBMinistry\fP has an in-built webserver, provided by \fBlibmicrohttpd\fP.  It is used for a variety
+of tasks - metric submission, issuing tokens, controlling targets and offering stats and status.
+\fBLibmicrohttpd\fP understands HTTPS and can manage ciphers anc certificates, so some config is
+offered to control those functions.
+.PP
+The HTTP interface documentation can be read by fetching /.
+.TP
+\fBenable\fP
+A boolean to control whether the HTTP server is active (default off)
+.TP
+\fBport\fP
+The port to listen on (default 9080)
+.TP
+\fBbind\fP
+Which IP to bind to (default 0.0.0.0)
+.TP
+\fBconns.max\fP
+Maximum concurrent connections to the HTTP server (default 256)
+.TP
+\fBconns.maxPerIP\fP
+Maximum concurrent connections from a single IP address (default 64)
+.TP
+\fBconns.timeout\fP
+Seconds before a connection is considered to have died (default 10)
+.TP
+\fBtls.enable\fP
+Boolean controlling whether we use HTTPS instead of HTTP (default off)
+.TP
+\fBtls.port\fP
+If this option is given, and TLS is enabled, this port will be used instead of the normal one
+(default 9443)
+.TP
+\fBtls.certFile\fP
+Path to the server certificate file
+.TP
+\fBtls.keyFile\fP
+Path to the server key file
+.TP
+\fBtls.keyPass\fP
+Password for the server key file.  If either the \fI-K\fP option is passed to ministry on startup,
+or the special value \fI-\fP is used, \fBministry\fP will prompt interactively for the password at
+startup.
+.TP
+\fBtls.priority\fP
+This string controls TLS versions, ciphers and TLS behaviour, and it passed through to the underlying
+TLS library.  The default is TLS v1.2 and v1.3, only secure 256-bit ciphers, and secure renegotiation.
+.PP
+\fBMinistry\fP has a mechanism for validating TCP connections, involving the HTTP server.  The idea
+is that valid clients connect to the HTTP server, requesting \fI/token\fP, and they receive a JSON
+object containing a nonce for each of stats, adder and gauge connections.  This nonce expires in a
+configurable number of milliseconds, and is only valid from the IP address that made the HTTP call.
+The client must then present the token as the first line of data upon connecting, else the connection
+will be closed by \fBministry\fP.
+.PP
+This mechanism is presented as a way to prevent scanning software or other random processing from
+connecting and sending whatever data in an uncontrolled way, but is also part of planned development
+to add authentication to the HTTP server, thus effectively providing authentication on metric
+submission.
+.TP
+\fBtokens.enable\fP
+A boolean controlling whether the token system is enabled (default off)
+.TP
+\fBtokens.filter\fP
+The name of an Iplist as a filter for which hosts are required to use them
+.TP
+\fBtokens.lifetime\fP
+A value in milliseconds for the lifetime of the token (all tokens are burned once used) (default 1000)
+
+.SS [Pmet]
+.PP
+\fBMinistry\fP has an HTTP interface and can provide metrics for Prometheus, on \fB/metrics\fP.  This
+is disabled whenever the HTTP server is disabled.  It is broken up in several internal sources, which
+can be turned off individually.  The internal client code may at some future point be broken out into
+a separate library.
+.PP
+Metrics generation is relatively new, and is currently off by default.  This will likely change in
+future releases.
+.TP
+\fBenable\fP
+Enable or disable the metrics endpoint (boolean, default 0).
+.TP
+\fBperiod\fP
+Post period in milliseconds.  \fBMinistry\fP pre-generates its metrics (to properly support multiple
+Prometheus servers) and will present the same page of metrics within a given period no matter how
+many times it is fetched.  This controls the period of this page generation (default 10000).
+.TP
+\fBdisable\fP
+A single source to be disabled.  This option can repeat.  Sources include: shared, targets, stats
 
 .SS [GC]
 .TP
@@ -489,72 +589,6 @@ The number of source metrics with a non-zero value.
 \fBactive\fP
 Returns 0 or 1 depending on whether any data points were present.
 
-.SS [Http]
-\fBMinistry\fP has an in-built webserver, provided by \fBlibmicrohttpd\fP.  It is used for a variety
-of tasks - metric submission, issuing tokens, controlling targets and offering stats and status.
-\fBLibmicrohttpd\fP understands HTTPS and can manage ciphers anc certificates, so some config is
-offered to control those functions.
-.TP
-\fBenable\fP
-A boolean to control whether the HTTP server is active (default off)
-.TP
-\fBport\fP
-The port to listen on (default 9080)
-.TP
-\fBbind\fP
-Which IP to bind to (default 0.0.0.0)
-.TP
-\fBconns.max\fP
-Maximum concurrent connections to the HTTP server (default 256)
-.TP
-\fBconns.maxPerIP\fP
-Maximum concurrent connections from a single IP address (default 64)
-.TP
-\fBconns.timeout\fP
-Seconds before a connection is considered to have died (default 10)
-.TP
-\fBtls.enable\fP
-Boolean controlling whether we use HTTPS instead of HTTP (default off)
-.TP
-\fBtls.port\fP
-If this option is given, and TLS is enabled, this port will be used instead of the normal one
-(default 9443)
-.TP
-\fBtls.certFile\fP
-Path to the server certificate file
-.TP
-\fBtls.keyFile\fP
-Path to the server key file
-.TP
-\fBtls.keyPass\fP
-Password for the server key file.  If either the \fI-K\fP option is passed to ministry on startup,
-or the special value \fI-\fP is used, \fBministry\fP will prompt interactively for the password at
-startup.
-.TP
-\fBtls.priority\fP
-This string controls TLS versions, ciphers and TLS behaviour, and it passed through to the underlying
-TLS library.  The default is TLS v1.2 and v1.3, only secure 256-bit ciphers, and secure renegotiation.
-.PP
-\fBMinistry\fP has a mechanism for validating TCP connections, involving the HTTP server.  The idea
-is that valid clients connect to the HTTP server, requesting \fI/token\fP, and they receive a JSON
-object containing a nonce for each of stats, adder and gauge connections.  This nonce expires in a
-configurable number of milliseconds, and is only valid from the IP address that made the HTTP call.
-The client must then present the token as the first line of data upon connecting, else the connection
-will be closed by \fBministry\fP.
-.PP
-This mechanism is presented as a way to prevent scanning software or other random processing from
-connecting and sending whatever data in an uncontrolled way, but is also part of planned development
-to add authentication to the HTTP server, thus effectively providing authentication on metric
-submission.
-.TP
-\fBtokens.enable\fP
-A boolean controlling whether the token system is enabled (default off)
-.TP
-\fBtokens.filter\fP
-The name of an Iplist as a filter for which hosts are required to use them
-.TP
-\fBtokens.lifetime\fP
-A value in milliseconds for the lifetime of the token (all tokens are burned once used) (default 1000)
 .SH SEE ALSO
 .BR ministry (1)
 .SH AUTHOR
