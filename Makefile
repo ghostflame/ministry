@@ -38,7 +38,8 @@ docker:
 
 dockerpush: docker
 	docker tag $(CTPATH):$(VERS) $(CTPATH):latest
-	docker push
+	docker push $(CTPATH):$(VERS)
+	docker push $(CTPATH):latest
 
 install:
 	@echo "Making installation directories"
