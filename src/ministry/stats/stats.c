@@ -256,6 +256,9 @@ void stats_stats_pass( ST_THR *t )
 					d->do_pass = 0;
 				}
 
+	// keep track of all points
+	t->total += t->points;
+
 	// and work out how long that took
 	st_thr_time( done );
 }

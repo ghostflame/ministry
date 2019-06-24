@@ -38,7 +38,7 @@ int pmet_metric_gen( int64_t mval, PMETM *metric )
 	if( !metric )
 		return -1;
 
-	debug( "Generating metric %s.", metric->path );
+	//debug( "Generating metric %s.", metric->path );
 
 	for( item = metric->items; item; item = item->next )
 	{

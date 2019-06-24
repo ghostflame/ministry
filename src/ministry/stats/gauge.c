@@ -69,6 +69,9 @@ void stats_gauge_pass( ST_THR *t )
 				}
 			}
 
+	// keep track of all points
+	t->total += t->points;
+
 	// how long did all that take?
 	st_thr_time( done );
 }

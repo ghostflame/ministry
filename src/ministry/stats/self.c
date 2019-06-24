@@ -152,8 +152,9 @@ void stats_thread_report( ST_THR *t )
 	// we have to capture it, because bprintf increments it
 	p = t->active;
 
-	bprintf( t, "%s.active %d", t->wkrstr, t->active );
-	bprintf( t, "%s.points %d", t->wkrstr, t->points );
+	bprintf( t, "%s.active %ld", t->wkrstr, t->active );
+	bprintf( t, "%s.points %ld", t->wkrstr, t->points );
+	bprintf( t, "%s.total %ld",  t->wkrstr, t->total  );
 
 	if( t->conf->type == STATS_TYPE_STATS )
 	{
@@ -196,6 +197,7 @@ void stats_thread_report( ST_THR *t )
 	// calculate percentage of interval
 	intvpc  = (double) ( total / 10 );
 	intvpc /= (double) t->conf->period;
+	t->percent = intvpc;
 	bprintf( t, "%s.interval_usage %.3f", t->wkrstr, intvpc );
 
 	// and report our own paths

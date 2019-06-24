@@ -23,6 +23,9 @@ typedef struct pmet_control         PMET_CTL;
 typedef struct config_section       CSECT;
 typedef struct config_context       CCTXT;
 
+typedef struct log_file             LOGFL;
+typedef struct log_setdebug         LOGSD;
+
 typedef struct mem_call_counters    MCCTR;
 typedef struct mem_type_counters    MTCTR;
 typedef struct mem_type_stats       MTSTAT;
@@ -45,12 +48,13 @@ typedef struct iplist_net           IPNET;
 typedef struct iplist               IPLIST;
 
 typedef struct thread_data          THRD;
-typedef struct words_data           WORDS;
-typedef struct string_buffer        BUF;
 typedef struct av_pair              AVP;
 typedef struct lockless_counter     LLCT;
 typedef struct regex_entry          RGX;
 typedef struct regex_list           RGXL;
+
+typedef struct words_data           WORDS;
+typedef struct string_buffer        BUF;
 typedef struct string_store_entry   SSTE;
 typedef struct string_store         SSTR;
 
@@ -71,6 +75,7 @@ typedef struct pmet_source          PMETS;
 typedef struct pmet_metric          PMETM;
 typedef struct pmet_item            PMET;
 typedef struct pmet_label           PMET_LBL;
+typedef struct pmet_shared          PMET_SH;
 
 
 // function types

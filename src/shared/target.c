@@ -22,12 +22,16 @@ void target_add_metrics( TGT *t )
 	w.wd[2] = "tgttype";
 	w.wd[3] = t->typestr;
 
+	// happens in ministry-test
+	if( !w.wd[3] )
+		w.wd[3] = "ministry";
+
 	w.wc = 4;
 
-	t->pm_bytes = pmet_create_gen( m->bytes, m->source, PMET_GEN_IVAL, &(t->bytes), NULL );
+	t->pm_bytes = pmet_create_gen( m->bytes, m->source, PMET_GEN_IVAL, &(t->bytes), NULL, NULL );
 	pmet_label_apply_item( pmet_label_words( &w ), t->pm_bytes );
 
-	t->pm_conn = pmet_create_gen( m->conn, m->source, PMET_GEN_IVAL, &(t->sock->connected), NULL );
+	t->pm_conn = pmet_create_gen( m->conn, m->source, PMET_GEN_IVAL, &(t->sock->connected), NULL, NULL );
 	pmet_label_apply_item( pmet_label_words( &w ), t->pm_conn );
 }
 

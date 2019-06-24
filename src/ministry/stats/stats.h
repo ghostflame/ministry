@@ -66,8 +66,14 @@ struct stat_thread_ctl
 	// counters
 	int64_t				active;
 	int64_t				points;
+	int64_t				total;
 	int64_t				highest;
 	int64_t				predict;
+
+	PMET			*	pm_pts;
+	PMET			*	pm_high;
+	PMET			*	pm_pct;
+	PMET			*	pm_tot;
 
 	// timings
 	struct timespec		now;
@@ -77,6 +83,9 @@ struct stat_thread_ctl
 	struct timespec		stats;
 	// and this is taken when finished
 	struct timespec		done;
+
+	// percent of window used
+	double				percent;
 };
 
 
@@ -112,6 +121,16 @@ struct stat_config
 };
 
 
+struct stats_metrics
+{
+	PMETS			*	source;
+	PMETM			*	pts_total;
+	PMETM			*	pts_count;
+	PMETM			*	pts_high;
+	PMETM			*	pct_time;
+};
+
+
 
 struct stats_control
 {
@@ -124,6 +143,8 @@ struct stats_control
 	ST_MOM			*	mom;
 	ST_MOM			*	mode;
 	ST_PRED			*	pred;
+
+	ST_MET			*	metrics;
 
 	// for new sorting
 	int32_t				qsort_thresh;

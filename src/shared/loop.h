@@ -13,11 +13,11 @@
 #define SHARED_LOOP_H
 
 #define DEFAULT_TICK_MSEC		5
-#define MAX_LOOP_NSEC			3000000000
+#define MAX_LOOP_NSEC			5000000000
 
 #define LOOP_TRIM				0x01
 #define LOOP_SYNC				0x02
-#define LOOP_SILENT				0x04
+#define LOOP_DEBUG				0x04
 
 
 void loop_mark_start( const char *tag );

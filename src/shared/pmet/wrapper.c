@@ -70,12 +70,12 @@ int pmet_max_vals( PMET *item, int64_t max )
 }
 
 
-PMET *pmet_create_gen( PMETM *metric, PMETS *source, int gentype, void *genptr, void *genarg )
+PMET *pmet_create_gen( PMETM *metric, PMETS *source, int gentype, void *genptr, pmet_gen_fn *fp, void *genarg )
 {
-	return pmet_item_create( metric, source, gentype, genptr, genarg );
+	return pmet_item_create( metric, source, gentype, genptr, fp, genarg );
 }
 
-PMET *pmet_create_name( char *metric, char *source, int gentype, void *genptr, void *genarg )
+PMET *pmet_create_name( char *metric, char *source, int gentype, void *genptr, pmet_gen_fn *fp, void *genarg )
 {
 	SSTE *sse1, *sse2;
 
@@ -91,22 +91,22 @@ PMET *pmet_create_name( char *metric, char *source, int gentype, void *genptr, v
 		return NULL;
 	}
 
-	return pmet_item_create( (PMETM *) sse1->ptr, (PMETS *) sse2->ptr, gentype, genptr, genarg );
+	return pmet_item_create( (PMETM *) sse1->ptr, (PMETS *) sse2->ptr, gentype, genptr, fp, genarg );
 }
 
 PMET *pmet_create( PMETM *metric, PMETS *source )
 {
-	return pmet_item_create( metric, source, PMET_GEN_NONE, NULL, NULL );
+	return pmet_item_create( metric, source, PMET_GEN_NONE, NULL, NULL, NULL );
 }
 
-PMET *pmet_clone_gen( PMET *item, PMETS *source, void *genptr, void *genarg )
+PMET *pmet_clone_gen( PMET *item, PMETS *source, void *genptr, pmet_gen_fn *fp, void *genarg )
 {
-	return pmet_item_clone( item, source, genptr, genarg );
+	return pmet_item_clone( item, source, genptr, fp, genarg );
 }
 
 PMET *pmet_clone( PMET *item )
 {
-	return pmet_item_clone( item, NULL, NULL, NULL );
+	return pmet_item_clone( item, NULL, NULL, NULL, NULL );
 }
 
 
