@@ -66,9 +66,13 @@ void config_set_env_prefix( char *prefix )
 	int i;
 
 	// it needs to be uppercase
-	for( i = 0, p = prefix; i < 125 && *p; p++ )
+	for( i = 0, p = prefix; i < 125 && *p; p++, i++ )
 	{
-		_proc->env_prfx[i++] = toupper( *p );
+		if( *p == '-' )
+			_proc->env_prfx[i] = '_';
+		else
+			_proc->env_prfx[i] = toupper( *p );
+
 		prev = *p;
 	}
 
