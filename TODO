@@ -5,9 +5,7 @@ HTTP
 	none
 
 Network
-	More granular token control
-		Allow a token / non-token port on one type
-        Force some IPs to present a token?
+	none
 
 Data types
 	none
