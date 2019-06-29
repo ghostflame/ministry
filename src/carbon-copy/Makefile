@@ -11,7 +11,8 @@ EARGS ?=
 LARGS ?=
 
 WFLAGS = -Wall -Wshadow
-IFLAGS = -I. -I../shared
+#IFLAGS = -I. -I../shared
+IFLAGS = -I.
 #DFLAGS = -g -pg -ggdb3 -DDEBUG -DDEBUG_IO -DDEBUG_RELAY
 DFLAGS = -g -pg -ggdb3 -DDEBUG
 TFLAGS = -pthread
