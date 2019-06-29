@@ -19,7 +19,6 @@ DFLAGS = -g -pg -ggdb3 -DDEBUG
 TFLAGS = -pthread
 CFLAGS = -c $(TFLAGS) $(IFLAGS) $(EARGS)
 #CFLAGS = -c $(TFLAGS) $(IFLAGS) -DMIN_MHD_PASS=0
-#LFLAGS = -lm -lcurl -lmicrohttpd
 
 all: WFLAGS += -Wpedantic -Wextra -Wno-unused-parameter
 all: CFLAGS += -O2
@@ -53,3 +52,4 @@ clean:
 
 install:
 	@echo "OK."
+

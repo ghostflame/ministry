@@ -1,9 +1,12 @@
-DIRS   = shared ministry ministry-test carbon-copy
+ODIRS  = shared
+ADIRS  = ministry ministry-test carbon-copy
 TARGET = unknown
 VERS  ?= 0.0.1
 
 #EARGS  = -DMTYPE_TRACING
-EARGS  =
+EARGS  = 
+
+LARGS  = -lm -lcurl -lmicrohttpd -ljson-c
 
 all: TARGET = all
 all: subdirs
@@ -19,6 +22,7 @@ debug: TARGET = debug
 debug: subdirs
 
 subdirs:
-	for d in $(DIRS); do cd $$d; EARGS="$(EARGS)" VERS=$(VERS) $(MAKE) $(MFLAGS) $(TARGET); cd ..; done
+	for d in $(ODIRS); do cd $$d; EARGS="$(EARGS)" VERS=$(VERS)     $(MAKE) $(MFLAGS) $(TARGET); cd ..; done
+	for d in $(ADIRS); do cd $$d; EARGS="$(EARGS)" LARGS="$(LARGS)" $(MAKE) $(MFLAGS) $(TARGET); cd ..; done
 
 .PHONY: all clean debug

@@ -11,6 +11,7 @@ SUBO   = $(SUBS:%=%/*.o)
 RKVS   = ../shared/app_shared.a
 
 EARGS ?=
+LARGS ?=
 
 WFLAGS = -Wall -Wshadow
 IFLAGS = -I. -I../shared
@@ -18,7 +19,7 @@ IFLAGS = -I. -I../shared
 DFLAGS = -g -pg -ggdb3 -DDEBUG
 TFLAGS = -pthread
 CFLAGS = $(TFLAGS) $(IFLAGS) $(EARGS)
-LFLAGS = $(TFLAGS) $(IFLAGS) -lm -lcurl -lmicrohttpd
+LFLAGS = $(TFLAGS) $(IFLAGS) $(LARGS)
 
 BINDIR = $(DESTDIR)/usr/bin
 BIN    = ministry
