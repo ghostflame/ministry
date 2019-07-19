@@ -211,23 +211,27 @@ int pmet_source_control( HTREQ *req )
 
 int pmet_source_list( HTREQ *req )
 {
-	json_object *jo, *ja, *js;
+	json_object *jo, *jr, *je, *jd, *js;
 	PMETS *s;
 
 	jo = json_object_new_object( );
-	ja = json_object_new_array( );
+	jr = json_object_new_object( );
+	je = json_object_new_array( );
+	jd = json_object_new_array( );
 
 	for( s = _pmet->sources; s; s = s->next )
 	{
 		js = json_object_new_object( );
 
-		json_object_object_add( js, "enabled",   json_object_new_boolean( pmets_enabled( s ) ) );
+		json_object_object_add( js, "name",      json_object_new_string( s->name ) );
 		json_object_object_add( js, "lastCount", json_object_new_int( s->last_ct ) );
 
-		json_object_array_add( ja, js );
+		json_object_array_add( ( pmets_enabled( s ) ) ? je : jd, js );
 	}
 
-	json_object_object_add( jo, "sources", ja );
+	json_object_object_add( jr, "enabled",  je );
+	json_object_object_add( jr, "disabled", jd );
+	json_object_object_add( jo, "sources",  jr );
 
 	strbuf_json( req->text, jo, 1 );
 
