@@ -13,7 +13,7 @@
 
 void http_server_panic( void *cls, const char *file, unsigned int line, const char *reason )
 {
-	err( "[HTTP] Server panic: (%s/%u) %s", file, line, reason );
+	herr( "[HTTP] Server panic: (%s/%u) %s", file, line, reason );
 }
 
 
@@ -25,7 +25,7 @@ void http_log_request( void *cls, const char *uri, HTTP_CONN *conn )
 	// see who we are talking to
 	ci = (union MHD_ConnectionInfo *) MHD_get_connection_info( conn, MHD_CONNECTION_INFO_CLIENT_ADDRESS );
 
-	info( "[HTTP] Request {%s}: %s", inet_ntoa( ((struct sockaddr_in *) (ci->client_addr))->sin_addr ), uri );
+	hinfo( "[HTTP] Request {%s}: %s", inet_ntoa( ((struct sockaddr_in *) (ci->client_addr))->sin_addr ), uri );
 }
 
 
@@ -35,7 +35,7 @@ void http_log( void *arg, const char *fm, va_list ap )
 
 	vsnprintf( lbuf, 4096, fm, ap );
 
-	info( "[HTTP] %s", lbuf );
+	hinfo( "[HTTP] %s", lbuf );
 }
 
 

@@ -10,11 +10,6 @@
 #ifndef SHARED_TARGET_H
 #define SHARED_TARGET_H
 
-#define TARGET_PROTO_TCP		IPPROTO_TCP
-#define TARGET_PROTO_UDP		IPPROTO_UDP
-
-
-
 #ifdef DEBUG
 #define tgdebug( fmt, ... )		debug( "[%d:%s] " fmt, t->id, t->name, ##__VA_ARGS__ )
 #else
@@ -23,6 +18,8 @@
 
 #define tginfo( fmt, ... )		info(   "[%d:%s] " fmt, t->id, t->name, ##__VA_ARGS__ )
 #define tgnotice( fmt, ... )	notice( "[%d:%s] " fmt, t->id, t->name, ##__VA_ARGS__ )
+
+
 
 
 #ifdef IO_LOCK_SPIN

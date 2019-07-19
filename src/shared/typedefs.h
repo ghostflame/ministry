@@ -67,6 +67,8 @@ typedef struct http_callbacks       HTTP_CB;
 typedef struct http_tls             TLS_CONF;
 typedef struct http_tls_file        TLS_FILE;
 
+typedef struct curlw_container      CURLWC;
+typedef struct curlw_times          CURLWT;
 typedef struct curlw_handle         CURLWH;
 
 typedef struct ha_partner           HAPT;
@@ -83,11 +85,13 @@ typedef void loop_call_fn ( int64_t, void * );
 typedef void throw_fn ( THRD * );
 typedef int conf_line_fn ( AVP * );
 typedef int http_callback ( HTREQ * );
+typedef int json_callback ( json_object * );
 typedef int http_reporter ( HTPATH *, void *arg, int64_t, int64_t );
 typedef void help_fn ( void );
 typedef int64_t io_fn( TGT * );
 typedef int target_cfg_fn( TGT *, char *, int );
 typedef void curlw_cb( void *, IOBUF *b );
+typedef void curlw_jcb( void *, json_object *jso );
 typedef int sort_fn( const void *, const void * );
 typedef double pmet_gen_fn( int64_t, void *, double * );
 

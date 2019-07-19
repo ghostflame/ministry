@@ -12,7 +12,6 @@
 
 
 
-
 #define HTTP_FLAGS_CONTROL				0x0001
 #define HTTP_FLAGS_JSON					0x0002
 #define HTTP_FLAGS_NO_REPORT			0x0100
@@ -22,7 +21,6 @@
 typedef struct MHD_Daemon               HTTP_SVR;
 typedef struct MHD_Connection           HTTP_CONN;
 typedef struct MHD_Response             HTTP_RESP;
-typedef struct MHD_PostProcessor        HTTP_PPROC;
 typedef enum MHD_RequestTerminationCode HTTP_CODE;
 typedef enum MHD_ValueKind              HTTP_VAL;
 
@@ -43,6 +41,7 @@ enum http_post_states
 };
 
 
+
 struct http_post_state
 {
 	void				*	obj;
@@ -52,11 +51,12 @@ struct http_post_state
 	size_t					bytes;	// this post size
 
 	AVP						kv;		// key-value for post-processor
+	json_object			*	jo;		// json object pointer
 
 	size_t					total;
 
 	int						calls;
-	int						state;	// where in the post cycle are we?
+	int8_t					state;	// where in the post cycle are we?
 };
 
 #define HTTP_CLS_CHECK		0xdeadbeefdeadbeef
@@ -71,12 +71,13 @@ struct http_req_data
 	BUF					*	text;
 	struct sockaddr_in		sin;
 	HTTP_POST			*	post;
-	HTTP_PPROC			*	pproc;
 	int						code;
 	int						meth;
-	int						err;
 	int						sent;
-	int						first;
+	int8_t					first;
+	int8_t					err;
+	int8_t					is_ctl;
+	int8_t					is_json;
 };
 
 
@@ -123,7 +124,7 @@ struct http_control
 
 	struct sockaddr_in	*	sin;
 
-	http_callback		*	stats_fp;   // extra stats callback
+	json_callback		*	stats_fp;	// extra stats callback
 
 	http_reporter		*	rpt_fp;
 	void				*	rpt_arg;
@@ -147,7 +148,7 @@ struct http_control
 int http_add_handler( char *path, char *desc, void *arg, int method, http_callback *fp, IPLIST *srcs, int flags );
 int http_add_control( char *path, char *desc, void *arg, http_callback *fp, IPLIST *srcs, int flags );
 
-int http_stats_handler( http_callback *fp );
+int http_stats_handler( json_callback *fp );
 
 // give us a simple call to add get handlers
 #define http_add_simple_get( _p, _d, _c )			http_add_handler( _p, _d, NULL, HTTP_METH_GET, _c, NULL, 0 )

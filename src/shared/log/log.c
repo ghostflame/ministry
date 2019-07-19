@@ -78,57 +78,6 @@ void log_reopen( int sig )
 }
 
 
-int log_ctl_setdebug( HTREQ *req )
-{
-	AVP *av = &(req->post->kv);
-	int lvl = -1, both = 1;
-	char *str = "dis";
-	LOGSD *lct;
-
-	if( !req->post->objFree )
-	{
-		req->post->objFree = (LOGSD *) allocz( sizeof( LOGSD ) );
-		strbuf_copy( req->text, "Logfile type not found.\n", 0 );
-	}
-
-	lct = (LOGSD *) req->post->objFree;
-
-	if( !strcasecmp( av->aptr, "set-debug" ) )
-	{
-		lct->debug = config_bool( av );
-		lct->setdebug = 1;
-	}
-	else if( !strcasecmp( av->aptr, "file" ) )
-	{
-		if( !strcasecmp( av->vptr, "main" ) )
-			lct->file = _logger->fps[0];
-		else if( !strcasecmp( av->vptr, "http" ) )
-			lct->file = _logger->fps[1];
-	}
-	else
-		return 0;
-
-	if( lct->file && lct->setdebug )
-	{
-		if( lct->debug )
-		{
-			lvl = LOG_LEVEL_DEBUG;
-			both = 0;
-			str = "en";
-		}
-
-		// set our new level
-		log_file_set_level( lct->file, lvl, both );
-		notice( "Run-time %s debug logging %sabled.", lct->file->type, str );
-
-		// and report back
-		strbuf_printf( req->text, "Run-time %s debug logging %sabled.\n", lct->file->type, str );
-	}
-
-	return 0;
-}
-
-
 
 int log_start( void )
 {
@@ -153,10 +102,14 @@ int log_start( void )
 	return ret;
 }
 
-
-void log_set_level( int8_t level, int8_t both )
+// 1 - did something
+// 0 - did nothing
+int log_set_level( int8_t level, int8_t both )
 {
-	log_file_set_level( _logger->main, level, both );
-	log_file_set_level( _logger->http, level, both );
+	if( log_file_set_level( _logger->main, level, both ) > 0
+	 && log_file_set_level( _logger->http, level, both ) > 0 )
+		return 1;
+
+	return 0;
 }
 

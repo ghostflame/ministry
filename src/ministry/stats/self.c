@@ -54,24 +54,6 @@ void stats_self_report_types( ST_THR *t, ST_CFG *c )
 }
 
 
-void stats_self_report_http_types( HTREQ *req, ST_CFG *c )
-{
-	float hr = (float) c->dcurr / (float) c->hsize;
-	BUF *b = req->text;
-
-	json_fldo( c->name );
-
-	json_fldi( "curr", c->dcurr );
-	json_fldf6( "hashRatio", hr );
-
-	json_fldo( "gc" );
-	json_fldU( "curr", lockless_fetch( &(c->gc_count) ) );
-	json_fldU( "total", c->gc_count.count );
-	json_endo( );
-
-	json_endo( );
-}
-
 
 
 
@@ -206,20 +188,36 @@ void stats_thread_report( ST_THR *t )
 
 
 
-
-int stats_self_stats_cb_stats( HTREQ *req )
+void stats_self_report_http_types( json_object *js, ST_CFG *c )
 {
-	BUF *b = req->text;
+	float hr = (float) c->dcurr / (float) c->hsize;
+	json_object *jt, *jc;;
 
-	// make sure we have 4k free
-	if( ( b->sz - b->len ) < 4090 )
-		strbuf_resize( req->text, b->sz + 4090 );
+	jt = json_object_new_object( );
+	jc = json_object_new_object( );
 
-	json_fldo( "statsTypes" );
-	stats_self_report_http_types( req, ctl->stats->stats );
-	stats_self_report_http_types( req, ctl->stats->adder );
-	stats_self_report_http_types( req, ctl->stats->gauge );
-	json_endo( );
+	json_object_object_add( jt, "curr",      json_object_new_double( c->dcurr ) );
+	json_object_object_add( jt, "hashRatio", json_object_new_double( hr ) );
+
+	json_object_object_add( jc, "curr",      json_object_new_int64( lockless_fetch( &(c->gc_count) ) ) );
+	json_object_object_add( jc, "total",     json_object_new_int64( c->gc_count.count ) );
+
+	json_object_object_add( jt, "gc",        jc );
+	json_object_object_add( js, c->name,     jt );
+}
+
+
+int stats_self_stats_cb_stats( json_object *jo )
+{
+	json_object *js;
+
+	js = json_object_new_object( );
+
+	stats_self_report_http_types( js, ctl->stats->stats );
+	stats_self_report_http_types( js, ctl->stats->adder );
+	stats_self_report_http_types( js, ctl->stats->gauge );
+
+	json_object_object_add( jo, "statsTypes", js );
 
 	return 0;
 }

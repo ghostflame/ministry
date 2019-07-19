@@ -19,7 +19,6 @@ int log_file_open( LOGFL *lf )
 	if( lf->use_syslog )
 		return log_open_syslog( );
 
-
 	if( ( lf->ok_fd = open( lf->filename, O_WRONLY|O_APPEND|O_CREAT, 0644 ) ) < 0 )
 	{
 		fprintf( stderr, "Unable to open %s log file '%s' -- %s\n",
@@ -80,27 +79,40 @@ int log_file_start( LOGFL *lf )
 
 int log_file_set_level( LOGFL *lf, int8_t level, int8_t both )
 {
-	// used as a reset to orig
-	if( level < 0 )
-	{
-		if( both )
-		{
-			lf->level = lf->orig_level;
-			return 0;
-		}
-		else
-			return -1;
-	}
+	int ret = 0;
 
+	// never allowed
 	if( level >= LOG_LEVEL_MAX )
 		return -1;
 
-	lf->level = level;
+	// used as a reset to orig
+	if( level < 0 )
+	{
+		if( !both )
+			return -1;
 
-	if( both )
-		lf->orig_level = level;
+		if( lf->level != lf->orig_level )
+		{
+			lf->level = lf->orig_level;
+			ret = 1;
+		}
+	}
+	else
+	{
+		if( lf->level != level )
+		{
+			lf->level = level;
+			ret = 1;
+		}
 
-	return 0;
+		if( both && lf->orig_level != level )
+		{
+			lf->orig_level = level;
+			ret = 1;
+		}
+	}
+
+	return ret;
 }
 
 

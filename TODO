@@ -10,6 +10,9 @@ Network
 Data types
 	none
 
+Logging
+	HTTP separate log not working
+
 Stats generation
 	Allow for usec timestamps - multiple buffers
 

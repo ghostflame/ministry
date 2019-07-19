@@ -34,6 +34,7 @@
 #define cutcfFlag( K )				XcutcfFlag( _proc, K )
 #define chkcfFlag( K )				XchkcfFlag( _proc, K )
 
+#define TMP_DIR						"/tmp"
 
 // used all over - so all the config line fns have an AVP called 'av'
 #define attIs( s )      !strcasecmp( av->aptr, s )
@@ -54,6 +55,7 @@ struct process_control
 	char				*	app_name;
 	char					app_upper[CONF_LINE_MAX];
 	char				*	version;
+	char				*	tmpdir;
 	char					env_prfx[128];
 	char					cfg_file[CONF_LINE_MAX];
 	char					pidfile[CONF_LINE_MAX];

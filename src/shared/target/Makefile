@@ -1,9 +1,9 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-FILES  = conf alloc mtype types mem
-HEADS  = local mem
+FILES  = conf http target
+HEADS  = local target
 
-RKV    = mem_shared.a
+RKV    = target_shared.a
 EARGS ?=
 
 OBJS   = $(FILES:%=%.o)

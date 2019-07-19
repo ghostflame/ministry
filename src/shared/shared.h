@@ -37,6 +37,7 @@
 #include <sys/sem.h>
 #include <termios.h>
 #include <features.h>
+#include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <arpa/inet.h>
@@ -44,6 +45,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <json-c/json.h>
 #include <openssl/sha.h>
 #include <sys/resource.h>
 
@@ -69,10 +71,9 @@
 #include "net.h"
 #include "iplist.h"
 #include "mem/mem.h"
-#include "target.h"
+#include "target/target.h"
 #include "io/io.h"
 #include "thread.h"
-#include "json.h"
 #include "http/http.h"
 #include "pmet/pmet.h"
 #include "ha/ha.h"

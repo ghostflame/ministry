@@ -130,6 +130,13 @@ int read_file( char *path, char **buf, int *len, int perm, char *desc );
 // returns the type it thought it was
 int parse_number( char *str, int64_t *iv, double *dv );
 
+// parse a file for json
+json_object *parse_json_file( FILE *fh, char *path );
+
+// create a json result and put it in a buffer
+void create_json_result( BUF *buf, int ok, char *fmt, ... );
+
+
 // is this an http url
 enum str_url_types
 {
