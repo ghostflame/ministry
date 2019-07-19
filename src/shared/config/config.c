@@ -73,6 +73,10 @@ int config_line( AVP *av )
 		free( _proc->tmpdir );
 		_proc->tmpdir = str_copy( av->vptr, av->vlen );
 	}
+	else if( attIs( "maxJsonSz" ) )
+	{
+		_proc->max_json_sz = atoi( av->vptr );
+	}
 	else if( attIs( "pidFile" ) )
 	{
 		snprintf( _proc->pidfile, CONF_LINE_MAX, "%s", av->vptr );
@@ -130,7 +134,9 @@ PROC_CTL *config_defaults( char *app_name, char *conf_dir )
 	snprintf( _proc->basedir,  CONF_LINE_MAX, "/etc/%s", conf_dir );
 	snprintf( _proc->cfg_file, CONF_LINE_MAX, "/etc/%s/%s.conf", conf_dir, app_name );
 	snprintf( _proc->pidfile,  CONF_LINE_MAX, "/var/run/%s/%s.pid", conf_dir, app_name );
+
 	_proc->tmpdir = str_copy( TMP_DIR, 0 );
+	_proc->max_json_sz = MAX_JSON_SZ;
 
 	config_set_env_prefix( app_name );
 

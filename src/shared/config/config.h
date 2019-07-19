@@ -35,6 +35,7 @@
 #define chkcfFlag( K )				XchkcfFlag( _proc, K )
 
 #define TMP_DIR						"/tmp"
+#define MAX_JSON_SZ					0x8000		// 32k
 
 // used all over - so all the config line fns have an AVP called 'av'
 #define attIs( s )      !strcasecmp( av->aptr, s )
@@ -70,6 +71,7 @@ struct process_control
 	int						env_prfx_len;
 	int						strict;
 	int						sect_count;
+	int						max_json_sz;
 
 	int64_t					limits[RLIMIT_NLIMITS];
 	int8_t					setlim[RLIMIT_NLIMITS];
