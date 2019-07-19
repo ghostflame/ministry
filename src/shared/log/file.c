@@ -19,7 +19,6 @@ int log_file_open( LOGFL *lf )
 	if( lf->use_syslog )
 		return log_open_syslog( );
 
-
 	if( ( lf->ok_fd = open( lf->filename, O_WRONLY|O_APPEND|O_CREAT, 0644 ) ) < 0 )
 	{
 		fprintf( stderr, "Unable to open %s log file '%s' -- %s\n",

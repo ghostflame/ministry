@@ -1,6 +1,6 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-FILES  = conf file write log
+FILES  = conf file http write log
 HEADS  = local log
 
 RKV    = log_shared.a
