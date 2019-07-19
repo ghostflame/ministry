@@ -21,14 +21,6 @@
 extern LOG_CTL *_logger;
 
 
-struct log_setdebug
-{
-	LOGFL			*	file;
-	int					setdebug;
-	int					debug;
-};
-
-
 struct log_facility
 {
 	int					facility;

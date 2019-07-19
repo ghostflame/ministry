@@ -176,24 +176,21 @@ int token_url_handler( HTREQ *req )
 {
 	int types, i, count;
 	TOKEN *t, *tlist[8];
-	BUF *b;
-
-	// min size for req text is 512
-	b = req->text;
+	json_object *jo;
 
 	types = TOKEN_TYPE_STATS|TOKEN_TYPE_ADDER|TOKEN_TYPE_GAUGE;
 	token_generate( req->sin.sin_addr.s_addr, types, tlist, 8, &count );
 
-	json_starto( );
+	jo = json_object_new_object( );
 
 	// run down the tokens
 	for( i = 0; i < count; i++ )
 	{
 		t = tlist[i];
-		json_fldI( t->name, t->nonce );
+		json_object_object_add( jo, t->name, json_object_new_int64( t->nonce ) );
 	}
 
-	json_finisho( );
+	strbuf_json( req->text, jo, 1 );
 
 	return 0;
 }
@@ -314,7 +311,7 @@ int token_init( void )
 	}
 
 	// no filters?  or do we match the requires-tokens list?
-	http_add_simple_get( "/tokens", "Issues tokens", &token_url_handler );
+	http_add_json_get( "/tokens", "Issues tokens", &token_url_handler );
 	return 0;
 }
 

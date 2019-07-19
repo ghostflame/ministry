@@ -13,66 +13,62 @@
 // http interface
 
 
-void __target_http_list( BUF *b, int enval )
+void __target_http_list( json_object *o, int enval )
 {
+	json_object *jl, *jt;
 	char ebuf[512];
 	TGTL *l;
 	TGT *t;
-	int e;
 
 	for( l = _tgt->lists; l; l = l->next )
 	{
 		// see if we have anything in this list that matches
-		e = 0;
 		for( t = l->targets; t; t = t->next )
 			if( t->enabled == enval )
-			{
-				e = 1;
 				break;
-			}
 
-		if( e )
+		if( !t )
+			continue;
+
+		jl = json_object_new_array( );
+
+		for( t = l->targets; t; t = t->next )
 		{
-			json_flda( l->name );
-			for( t = l->targets; t; t = t->next )
-			{
-				if( t->enabled == enval )
-				{
-					snprintf( ebuf, 512, "%s:%hu", t->host, t->port );
+			if( t->enabled != enval )
+				continue;
 
-					json_starto( );
+			snprintf( ebuf, 512, "%s:%hu", t->host, t->port );
 
-					json_flds( "name", t->name );
-					json_flds( "endpoint", ebuf );
-					json_flds( "type", t->typestr );
-					json_fldI( "bytes", t->bytes );
+			jt = json_object_new_object( );
 
-					json_endo( );
-				}
-			}
-			json_enda( );
+			json_object_object_add( jt, "name",     json_object_new_string( t->name ) );
+			json_object_object_add( jt, "endpoint", json_object_new_string( ebuf ) );
+			json_object_object_add( jt, "type",     json_object_new_string( t->typestr ) );
+			json_object_object_add( jt, "bytes",    json_object_new_int( t->bytes ) );
+
+			json_object_array_add( jl, jt );
 		}
+
+		json_object_object_add( o, l->name, jl );
 	}
 }
 
 
 int target_http_list( HTREQ *req )
 {
-	BUF *b = req->text;
+	json_object *jo, *je, *jd;
 
-	strbuf_resize( req->text, 32760 );
+	jo = json_object_new_object( );
+	je = json_object_new_object( );
+	jd = json_object_new_object( );
 
-	json_starto( );
+	__target_http_list( je, 1 );
+	__target_http_list( jd, 0 );
 
-	json_fldo( "enabled" );
-	__target_http_list( req->text, 1 );
-	json_endo( );
+	json_object_object_add( jo, "enabled",  je );
+	json_object_object_add( jo, "disabled", jd );
 
-	json_fldo( "disabled" );
-	__target_http_list( req->text, 0 );
-	json_endo( );
-
-	json_finisho( );
+	strbuf_json( req->text, jo, 1 );
 
 	return 0;
 }
@@ -80,59 +76,47 @@ int target_http_list( HTREQ *req )
 
 int target_http_toggle( HTREQ *req )
 {
-	AVP *av = &(req->post->kv);
-	TGTALT *ta;
+	json_object *je, *jl, *jt;
+	char *list, *trgt;
+	TGTL *l;
+	TGT *t;
+	int e;
 
-	if( !req->post->objFree )
+	if( !( je = json_object_object_get( req->post->jo, "enabled" ) )
+	 || !( jl = json_object_object_get( req->post->jo, "list" ) )
+	 || !( jt = json_object_object_get( req->post->jo, "target" ) ) )
 	{
-		req->post->objFree = (TGTALT *) allocz( sizeof( TGTALT ) );
-		strbuf_copy( req->text, "Target not found.\n", 0 );
+		create_json_result( req->text, 0, "Invalid json passed to %s.", req->path->path );
+		return 0;
 	}
 
-	ta = (TGTALT *) req->post->objFree;
+	e = json_object_get_boolean( je );
+	list = (char *) json_object_get_string( jl );
+	trgt = (char *) json_object_get_string( jt );
 
-	if( !strcasecmp( av->aptr, "enabled" ) )
+	if( !( l = target_list_find( list ) )
+	 || !( t = target_list_search( l, trgt, 0 ) ) )
 	{
-		ta->state = config_bool( av );
-		ta->state_set = 1;
+		create_json_result( req->text, 0, "Unknown target '%s/%s'", list, trgt );
+		return 0;
 	}
-	else if( !strcasecmp( av->aptr, "list" ) )
+
+	if( t->enabled != e )
 	{
-		ta->list = target_list_find( av->vptr );
-	}
-	else if( !strcasecmp( av->aptr, "target" ) )
-	{
-		ta->tgt = target_list_search( ta->list, av->vptr, av->vlen );
+		t->enabled = e;
+
+		create_json_result( req->text, 1, "Target %s/%s %sabled.",
+			l->name, t->name, ( e ) ? "en" : "dis" );
+
+		notice( "Target %s/%s %sabled.",
+			l->name, t->name, ( e ) ? "en" : "dis" );
+
+		target_list_check_enabled( l );
 	}
 	else
-		return 0;
-
-	// do we have everything?
-	// set the state then
-	if( ta->list
-	 && ta->tgt
-	 && ta->state_set )
 	{
-		if( ta->tgt->enabled != ta->state )
-		{
-			ta->tgt->enabled = ta->state;
-
-			strbuf_printf( req->text, "Target %s/%s %sabled.\n",
-				ta->list->name, ta->tgt->name,
-				( ta->state ) ? "en" : "dis" );
-
-			notice( "Target %s/%s %sabled.",
-				ta->list->name, ta->tgt->name,
-				( ta->state ) ? "en" : "dis" );
-
-			target_list_check_enabled( ta->list );
-		}
-		else
-		{
-			strbuf_printf( req->text, "Target %s/%s was already %sabled.\n",
-				ta->list->name, ta->tgt->name,
-				( ta->state ) ? "en" : "dis" );
-		}
+		create_json_result( req->text, 1, "Target %s/%s was already %sabled.",
+			l->name, t->name, ( e ) ? "en" : "dis" );
 	}
 
 	return 0;

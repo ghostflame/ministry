@@ -11,19 +11,20 @@
 
 #include "local.h"
 
+HA_CTL *_ha = NULL;
 
 
 
 
-HAPT *ha_find_partner( char *name, int len )
+
+HAPT *ha_find_partner( const char *name, int len )
 {
-	HA_CTL *ha = _proc->ha;
 	HAPT *p;
 
 	if( !len )
 		len = strlen( name );
 
-	for( p = ha->partners; p; p = p->next )
+	for( p = _ha->partners; p; p = p->next )
 		if( len == p->nlen && !memcmp( p->name, name, len ) )
 			return p;
 
@@ -85,7 +86,7 @@ HAPT *ha_add_partner( char *spec, int dupe_fail )
 
 
 	// check for duplicates
-	for( q = _proc->ha->partners; q; q = q->next )
+	for( q = _ha->partners; q; q = q->next )
 	{
 		if( q->port == p->port
 		 && !strcmp( q->host, p->host ) )
@@ -143,9 +144,9 @@ HAPT *ha_add_partner( char *spec, int dupe_fail )
 	p->name = str_perm( len );
 	p->nlen = snprintf( p->name, len + 1, "%s:%hu", p->host, p->port );
 
-	p->next = _proc->ha->partners;
-	_proc->ha->partners = p;
-	_proc->ha->pcount++;
+	p->next = _ha->partners;
+	_ha->partners = p;
+	_ha->pcount++;
 
 	return p;
 
@@ -159,37 +160,36 @@ FailURL:
 
 HA_CTL *ha_config_defaults( void )
 {
-	HA_CTL *ha = (HA_CTL *) allocz( sizeof( HA_CTL ) );
+	_ha = (HA_CTL *) allocz( sizeof( HA_CTL ) );
 
-	ha->enabled = 0;
+	_ha->enabled = 0;
 	// we default to being master, this enables solo behaviour
-	ha->is_master = 1;
-	ha->priority  = 1000;
-	ha->elector = HA_ELECT_FIRST;
-	ha->period = DEFAULT_HA_CHECK_MSEC;
-	ha->update = DEFAULT_HA_UPDATE_MSEC;
+	_ha->is_master = 1;
+	_ha->priority  = 1000;
+	_ha->elector = HA_ELECT_FIRST;
+	_ha->period = DEFAULT_HA_CHECK_MSEC;
+	_ha->update = DEFAULT_HA_UPDATE_MSEC;
 
 	// ideally we would throw the self-partner now, but we need
 	// config, not least http config, including finding out if
 	// http is active.
 
-	return ha;
+	return _ha;
 }
 
 
 int ha_config_line( AVP *av )
 {
-	HA_CTL *ha = _proc->ha;
 	int64_t v, i;
 
 	if( attIs( "enable" ) )
 	{
-		ha->enabled = config_bool( av );
+		_ha->enabled = config_bool( av );
 		//info( "High-Availability %sabled.", ( ha->enabled ) ? "en" : "dis" );
 	}
 	else if( attIs( "hostname" ) )
 	{
-		ha->hostname = str_copy( av->vptr, av->vlen );
+		_ha->hostname = str_copy( av->vptr, av->vlen );
 	}
 	else if( attIs( "partner" ) || attIs( "member" ) )
 	{
@@ -198,7 +198,7 @@ int ha_config_line( AVP *av )
 	}
 	else if( attIs( "master" ) )
 	{
-		ha->is_master = config_bool( av );
+		_ha->is_master = config_bool( av );
 		//info( "High-Availability - would start as %s.",
 		//	( ha->is_master ) ? "primary" : "secondary" );
 	}
@@ -209,7 +209,7 @@ int ha_config_line( AVP *av )
 			err( "Invalid check period msec '%s'", av->vptr );
 			return -1;
 		}
-		ha->period = v;
+		_ha->period = v;
 	}
 	else if( attIs( "updatePeriod" ) )
 	{
@@ -218,7 +218,7 @@ int ha_config_line( AVP *av )
 			err( "Invalid update period msec '%s'", av->vptr );
 			return -1;
 		}
-		ha->update = v;
+		_ha->update = v;
 	}
 	else if( attIs( "elector" ) )
 	{
@@ -235,7 +235,7 @@ int ha_config_line( AVP *av )
 			return -1;
 		}
 
-		ha->elector = i;
+		_ha->elector = i;
 	}
 	else
 		return -1;

@@ -80,51 +80,53 @@ void log_reopen( int sig )
 
 int log_ctl_setdebug( HTREQ *req )
 {
-	AVP *av = &(req->post->kv);
 	int lvl = -1, both = 1;
 	char *str = "dis";
-	LOGSD *lct;
+	json_object *o;
+	const char *s;
+	LOGFL *lf;
 
-	if( !req->post->objFree )
+	if( !( o = json_object_object_get( req->post->jo, "file" ) )
+	 || !( s = json_object_get_string( o ) ) )
 	{
-		req->post->objFree = (LOGSD *) allocz( sizeof( LOGSD ) );
-		strbuf_copy( req->text, "Logfile type not found.\n", 0 );
+		create_json_result( req->text, 0, "No valid file choice for %s", req->path->path );
+		return 0;
 	}
 
-	lct = (LOGSD *) req->post->objFree;
-
-	if( !strcasecmp( av->aptr, "set-debug" ) )
+	if( !strcasecmp( s, "main" ) )
+		lf = _logger->fps[0];
+	else if( !strcasecmp( s, "http" ) )
+		lf = _logger->fps[1];
+	else
 	{
-		lct->debug = config_bool( av );
-		lct->setdebug = 1;
+		create_json_result( req->text, 0, "Unrecognised log file spec '%s'.", s );
+		return 0;
 	}
-	else if( !strcasecmp( av->aptr, "file" ) )
+
+	if( !( o = json_object_object_get( req->post->jo, "debug" ) ) )
 	{
-		if( !strcasecmp( av->vptr, "main" ) )
-			lct->file = _logger->fps[0];
-		else if( !strcasecmp( av->vptr, "http" ) )
-			lct->file = _logger->fps[1];
+		create_json_result( req->text, 0, "No debug on/off for set-debug." );
+		return 0;
+	}
+
+	if( json_object_get_boolean( o ) )
+	{
+		lvl = LOG_LEVEL_DEBUG;
+		both = 0;
+		str = "en";
+	}
+
+	// set our new level
+	if( log_file_set_level( lf, lvl, both ) )
+	{
+		notice( "Run-time %s debug logging %sabled.", lf->type, str );
+		// and report success
+		create_json_result( req->text, 1, "Run-time %s debug logging %sabled.", lf->type, str );
 	}
 	else
-		return 0;
-
-	if( lct->file && lct->setdebug )
 	{
-		if( lct->debug )
-		{
-			lvl = LOG_LEVEL_DEBUG;
-			both = 0;
-			str = "en";
-		}
-
-		// set our new level
-		log_file_set_level( lct->file, lvl, both );
-		notice( "Run-time %s debug logging %sabled.", lct->file->type, str );
-
-		// and report back
-		strbuf_printf( req->text, "Run-time %s debug logging %sabled.\n", lct->file->type, str );
+		create_json_result( req->text, 1, "Log levels unaltered." );
 	}
-
 	return 0;
 }
 
@@ -153,10 +155,14 @@ int log_start( void )
 	return ret;
 }
 
-
-void log_set_level( int8_t level, int8_t both )
+// 1 - did something
+// 0 - did nothing
+int log_set_level( int8_t level, int8_t both )
 {
-	log_file_set_level( _logger->main, level, both );
-	log_file_set_level( _logger->http, level, both );
+	if( log_file_set_level( _logger->main, level, both ) > 0
+	 && log_file_set_level( _logger->http, level, both ) > 0 )
+		return 1;
+
+	return 0;
 }
 

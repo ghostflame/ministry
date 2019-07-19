@@ -21,6 +21,8 @@ clean: subdirs
 debug: TARGET = debug
 debug: subdirs
 
+
+
 subdirs:
 	for d in $(ODIRS); do cd $$d; EARGS="$(EARGS)" VERS=$(VERS)     $(MAKE) $(MFLAGS) $(TARGET); cd ..; done
 	for d in $(ADIRS); do cd $$d; EARGS="$(EARGS)" LARGS="$(LARGS)" $(MAKE) $(MFLAGS) $(TARGET); cd ..; done

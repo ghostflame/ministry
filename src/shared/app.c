@@ -124,7 +124,6 @@ int app_start( int writePid )
 	if( !runf_has( RUN_APP_INIT ) )
 		fatal( "App has not been init'd yet." );
 
-
 	if( chkcfFlag( TEST_ONLY ) )
 	{
 		printf( "Config file '%s' is OK.\n", _proc->cfg_file );
@@ -139,6 +138,9 @@ int app_start( int writePid )
 
 	if( set_limits( ) )
 		fatal( "Failed to set limits." );
+
+	// move our tmpdir as desired
+	setenv( "TMPDIR", _proc->tmpdir, 1 );
 
 	http_calls_init( );
 

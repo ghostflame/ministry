@@ -68,7 +68,7 @@ int curlw_setup( CURLWH *ch )
 	// say that we accept json
 	if( chkCurlF( ch, PARSE_JSON ) )
 	{
-		ch->ctr->hdrs = curl_slist_append( ch->ctr->hdrs, "Accept: " CURLW_JSON_CT );
+		ch->ctr->hdrs = curl_slist_append( ch->ctr->hdrs, "Accept: " JSON_CONTENT_TYPE );
 		curl_easy_setopt( c, CURLOPT_HTTPHEADER, ch->ctr->hdrs );
 	}
 
@@ -79,23 +79,10 @@ int curlw_setup( CURLWH *ch )
 // we are expecting the data to be in a file
 int curlw_parse_json( CURLWH *ch )
 {
-	enum json_tokener_error jerr;
-	char *bf;
-	off_t sz;
-	int fd;
+	ch->jso = parse_json_file( ch->fh, NULL );
 
-	fd = fileno( ch->fh );
-	sz = lseek( fd, 0, SEEK_END );
-	bf = mmap( NULL, sz, PROT_READ, MAP_PRIVATE, fd, 0 );
-
-	ch->jso = json_tokener_parse_verbose( bf, &jerr );
-
-	if( jerr != json_tokener_success )
-	{
-		json_object_put( ch->jso );
-		ch->jso = NULL;
+	if( !ch->jso )
 		return -1;
-	}
 
 	return 0;
 }
@@ -106,16 +93,12 @@ int curlw_is_json( CURLWH *ch )
 {
 	CURLcode ret;
 	char *ct;
-	int n;
 
 	ret = curl_easy_getinfo( ch->ctr->handle, CURLINFO_CONTENT_TYPE, &ct );
 
-	if( ret == CURLE_OK )
-	{
-		n = strlen( CURLW_JSON_CT );
-		if( !strncasecmp( ct, CURLW_JSON_CT, n ) )
-			return 1;
-	}
+	if( ret == CURLE_OK && ct
+	 && !strncasecmp( ct, JSON_CONTENT_TYPE, JSON_CONTENT_TYPE_LEN ) )
+		return 1;
 
 	return 0;
 }

@@ -1,6 +1,6 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-FILES  = pidfile time utils var_val
+FILES  = json pidfile time utils var_val
 HEADS  = utils
 
 RKV    = utils_shared.a

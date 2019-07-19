@@ -74,7 +74,6 @@
 #include "target/target.h"
 #include "io/io.h"
 #include "thread.h"
-#include "json.h"
 #include "http/http.h"
 #include "pmet/pmet.h"
 #include "ha/ha.h"

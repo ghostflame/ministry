@@ -203,26 +203,33 @@ PMETS *pmet_add_source( char *name )
 
 int pmet_source_control( HTREQ *req )
 {
+	// TODO - parse the json, find out what to turn on/off
+	create_json_result( req->text, 0, "Not implemented yet." );
 	return 0;
 }
 
 
 int pmet_source_list( HTREQ *req )
 {
-	BUF *b = req->text;
+	json_object *jo, *ja, *js;
 	PMETS *s;
 
-	json_starto( );
-	json_flda( "sources" );
+	jo = json_object_new_object( );
+	ja = json_object_new_array( );
+
 	for( s = _pmet->sources; s; s = s->next )
 	{
-		json_fldo( s->name );
-		json_fldi( "enabled", pmets_enabled( s ) );
-		json_fldi( "lastCount", s->last_ct );
-		json_endo( );
+		js = json_object_new_object( );
+
+		json_object_object_add( js, "enabled",   json_object_new_boolean( pmets_enabled( s ) ) );
+		json_object_object_add( js, "lastCount", json_object_new_int( s->last_ct ) );
+
+		json_object_array_add( ja, js );
 	}
-	json_enda( );
-	json_finisho( );
+
+	json_object_object_add( jo, "sources", ja );
+
+	strbuf_json( req->text, jo, 1 );
 
 	return 0;
 }

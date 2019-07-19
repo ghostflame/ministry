@@ -117,7 +117,8 @@ struct ha_partner
 
 
 HAPT *ha_add_partner( char *spec, int dup_fail );
-HAPT *ha_find_partner( char *name, int len );
+HAPT *ha_find_partner( const char *name, int len );
 
+extern HA_CTL *_ha;
 
 #endif

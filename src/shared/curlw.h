@@ -54,7 +54,8 @@
 #define chkCurlFl( _h, F )			( _h.flags & CURLW_FLAG_##F )
 
 #define DEFAULT_CURLW_BUFFER		0x10000		// 64k
-#define CURLW_JSON_CT				"application/json"
+#define JSON_CONTENT_TYPE			"application/json"
+#define JSON_CONTENT_TYPE_LEN		16
 
 
 struct curlw_container
