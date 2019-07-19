@@ -104,6 +104,31 @@ BUF *strbuf_add( BUF *b, char *str, int len )
 	return b;
 }
 
+BUF *strbuf_json( BUF *b, json_object *o, int done )
+{
+	const char *str;
+	size_t l;
+
+	if( !o || !b )
+		return NULL;
+
+	str = json_object_to_json_string_length( o, JSON_C_TO_STRING_SPACED, &l );
+
+	if( (uint32_t) l > b->sz )
+		strbuf_resize( b, l + 2 );
+
+	memcpy( b->buf, str, (int) l );
+	b->buf[l++] = '\n';
+	b->buf[l] = '\0';
+
+	b->len = (uint32_t) l;
+
+	if( done )
+		json_object_put( o );
+
+	return b;
+}
+
 BUF *strbuf_create( char *str, int len )
 {
 	int k, l;
@@ -122,5 +147,4 @@ BUF *strbuf_create( char *str, int len )
 
 	return b;
 }
-
 

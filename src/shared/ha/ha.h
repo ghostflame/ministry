@@ -64,6 +64,8 @@ struct ha_control
 
 
 curlw_cb ha_watcher_cb;
+curlw_jcb ha_watcher_jcb;
+
 loop_call_fn ha_watcher_pass;
 throw_fn ha_watcher;
 

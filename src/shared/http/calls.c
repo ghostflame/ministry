@@ -24,92 +24,95 @@ int http_calls_metrics( HTREQ *req )
 
 
 #define _jmtype( n, mc )		snprintf( tmp, 16, "%s_calls", n ); \
-								json_fldU( tmp, mc.ctr ); \
+								json_object_object_add( jt, tmp, json_object_new_int64( mc.ctr ) ); \
 								snprintf( tmp, 16, "%s_total", n ); \
-								json_fldU( tmp, mc.sum )
+								json_object_object_add( jt, tmp, json_object_new_int64( mc.sum ) )
 
 
 int http_calls_stats( HTREQ *req )
 {
+	json_object *jo, *jm, *jt;
 #ifdef MTYPE_TRACING
 	char tmp[16];
 #endif
 	MTSTAT ms;
-	BUF *b;
 	int j;
 
-	b = ( req->text = strbuf_resize( req->text, 8000 ) );
+	jo = json_object_new_object( );
+	jm = json_object_new_object( );
 
-	json_starto( );
+	json_object_object_add( jo, "app",    json_object_new_string( _proc->app_name ) );
+	json_object_object_add( jo, "uptime", json_object_new_double( get_uptime( ) ) );
+	json_object_object_add( jo, "mem",    json_object_new_int64( mem_curr_kb( ) ) );
 
-	json_flds( "app", _proc->app_name );
-	json_fldf( "uptime", get_uptime( ) );
-	json_fldI( "mem", mem_curr_kb( ) );
-
-	json_fldo( "memTypes" );
 
 	for( j = 0; j < _proc->mem->type_ct; j++ )
 	{
 		if( mem_type_stats( j, &ms ) != 0 )
 			continue;
 
-		json_fldo( ms.name );
-		json_fldu( "free", ms.ctrs.fcount );
-		json_fldu( "alloc", ms.ctrs.total );
-		json_fldU( "kb", ms.bytes >> 10 );
+		jt = json_object_new_object( );
+
+		json_object_object_add( jt, "free",  json_object_new_int( ms.ctrs.fcount ) );
+		json_object_object_add( jt, "alloc", json_object_new_int( ms.ctrs.total ) );
+		json_object_object_add( jt, "kb",    json_object_new_int64( ms.bytes >> 10 ) );
+
 #ifdef MTYPE_TRACING
 		_jmtype( "alloc",  ms.ctrs.all );
 		_jmtype( "freed",  ms.ctrs.fre );
 		_jmtype( "preall", ms.ctrs.pre );
 		_jmtype( "refill", ms.ctrs.ref );
 #endif
-		json_endo( );
+
+		json_object_object_add( jm, ms.name, jt );
 	}
-	json_endo( );
+
+	json_object_object_add( jo, "memTypes", jm );
 
 	if( _proc->http->stats_fp )
-		(*(_proc->http->stats_fp))( req );
+		(*(_proc->http->stats_fp))( jo );
 
-	json_finisho( );
+	strbuf_json( req->text, jo, 1 );
 
 	return 0;
 }
 
 
 
-void __http_calls_count_one( BUF *b, HTPATH *pt )
+void __http_calls_count_one( json_object *a, HTPATH *pt )
 {
-	json_starto( );
-	json_flds( "path", pt->path );
-	json_flds( "description", pt->desc );
-	json_flds( "iplist", ( pt->iplist ) ? pt->iplist : "(none)" );
-	json_fldI( "hits", pt->hits );
-	json_endo( );
+	json_object *o;
+
+	o = json_object_new_object( );
+
+	json_object_object_add( o, "path",        json_object_new_string( pt->path ) );
+	json_object_object_add( o, "description", json_object_new_string( pt->desc ) );
+	json_object_object_add( o, "iplist",      json_object_new_string( ( pt->iplist ) ? pt->iplist : "(none)" ) );
+	json_object_object_add( o, "hits",        json_object_new_int64( pt->hits ) );
+
+	json_object_array_add( a, o );
 }
 
 
 int http_calls_count( HTREQ *req )
 {
+	json_object *jo, *jg, *jp;
 	HTPATH *pt;
-	BUF *b;
 
-	b = ( req->text = strbuf_resize( req->text, 8000 ) );
-
-	json_starto( );
-
-	json_flda( "GET" );
+	jo = json_object_new_object( );
+	jg = json_object_new_array( );
+	jp = json_object_new_array( );
 
 	for( pt = _proc->http->get_h->list; pt; pt = pt->next )
-		__http_calls_count_one( b, pt );
-
-	json_enda( );
-	json_flda( "POST" );
+		__http_calls_count_one( jg, pt );
 
 	for( pt = _proc->http->post_h->list; pt; pt = pt->next )
-		__http_calls_count_one( b, pt );
+		__http_calls_count_one( jp, pt );
 
-	json_enda( );
-	json_finisho( );
+	json_object_object_add( jo, "GET",  jg );
+	json_object_object_add( jo, "POST", jp );
+
+	strbuf_json( req->text, jo, 1 );
 
 	return 0;
 }
@@ -126,7 +129,10 @@ void __http_calls_usage_type( HTHDLS *hd, BUF *b )
 		strbuf_aprintf( b, "[%s]\n", hd->method );
 
 		for( p = hd->list; p; p = p->next )
-			strbuf_aprintf( b, "%-24s %s\n", p->path, p->desc );
+			strbuf_aprintf( b, "%-24s  %s  %s\n",
+				p->path,
+				( p->flags & HTTP_FLAGS_JSON ) ? "json" : "    ",
+				p->desc );
 	}
 }
 
@@ -155,48 +161,68 @@ int http_calls_ctl_list( HTREQ *req )
 
 	for( p = h->list; p; p = p->next )
 		if( p->flags & HTTP_FLAGS_CONTROL )
-			strbuf_aprintf( req->text, "%-24s %s\n", p->path, p->desc );
+			strbuf_aprintf( req->text, "%-24s  json  %s\n", p->path, p->desc );
 
 	return 0;
 }
 
 
 
-
-
-
-int http_calls_ctl_init( HTREQ *req )
+int http_calls_json_init( HTREQ *req )
 {
-	req->pproc = MHD_create_post_processor( req->conn, DEFAULT_POST_BUF_SZ,
-	                 &http_calls_ctl_iterator, req );
+	FILE *tfh;
 
+	if( !( tfh = tmpfile( ) ) )
+	{
+		err( "Could not open tmpfile for upload." );
+		return -1;
+	}
+
+	//info( "Opened a filehandle for a new request." );
+	req->post->obj = tfh;
 	return 0;
 }
 
-int http_calls_ctl_iterator( void *cls, enum MHD_ValueKind kind, const char *key, const char *filename,
-        const char *content_type, const char *transfer_encoding, const char *data, uint64_t off, size_t size )
+int http_calls_json_data( HTREQ *req )
 {
-	HTREQ *req = (HTREQ *) cls;
+	FILE *tfh;
 
-	req->post->kv.aptr = (char *) key;
-	req->post->kv.alen = strlen( key );
+	if( !( tfh = (FILE *) req->post->obj ) )
+	{
+		err( "No file handle on POST data." );
+		return -1;
+	}
 
-	req->post->kv.vptr = (char *) data;
-	req->post->kv.vlen = (int) size;
-
-	if( (req->path->cb)( req ) < 0 )
-		return MHD_NO;
-
-	return MHD_YES;
+	//info( "Wrote %ld bytes to request filehandle.", req->post->bytes );
+	return fwrite( req->post->data, req->post->bytes, 1, tfh ) - 1;
 }
 
-
-int http_calls_ctl_done( HTREQ *req )
+int http_calls_json_done( HTREQ *req )
 {
-	MHD_destroy_post_processor( req->pproc );
-	req->pproc = NULL;
+	int ret = 0;
+	FILE *tfh;
 
-	return 0;
+	if( !( tfh = (FILE *) req->post->obj ) )
+	{
+		err( "No file handle on POST data." );
+		return -1;
+	}
+
+	//info( "Parsing request upload file." );
+
+	// let's try to parse what we've got
+	if( ( req->post->jo = parse_json_file( tfh, NULL ) ) )
+	{
+		// and hit the callback
+		ret = (req->path->cb)( req );
+	}
+	else
+		ret = -1;
+
+	fclose( tfh );
+	req->post->obj = NULL;
+
+	return ret;
 }
 
 

@@ -25,7 +25,7 @@ void ha_set_master( HAPT *p )
 	HA_CTL *ha = _proc->ha;
 	HAPT *q;
 
-	info( "Calling set_master on %s.", p->name );
+	//info( "Calling set_master on %s.", p->name );
 
 	// already master?
 	if( p->is_master )
@@ -65,80 +65,25 @@ void ha_set_master( HAPT *p )
 }
 
 
-int ha_watcher_cb_setting( HAPT *p, WORDS *w )
+int ha_watcher_cb_compare_elector( HAPT *p, const char *el )
 {
-	HA_CTL *ha = _proc->ha;
-	int sett, ev;
+	int ev;
 
-	if( ( sett = ha_clst_line_sett_value( w->wd[1] ) ) < 0 )
+	if( ( ev = ha_elector_value( (char *) el ) ) < 0 )
 	{
-		warn( "Unrecognised cluster setting from %s: %s", p->name, w->wd[1] );
+		warn( "Unrecognised elector setting from %s: %s", p->name, el );
 		return -1;
 	}
 
-	switch( sett )
+	if( ev != _ha->elector )
 	{
-		case HA_CLST_LINE_SETT_ELECTOR:
-			if( ( ev = ha_elector_value( w->wd[2] ) ) < 0 )
-			{
-				warn( "Unrecognised elector setting from %s: %s", p->name, w->wd[2] );
-				return -1;
-			}
-			if( ev != ha->elector )
-			{
-				err( "Mismatched elector scheme!  We use %s, %s uses %s!",
-					ha_elector_name( ha->elector ), p->name,
-					ha_elector_name( ev ) );
-				return -1;
-			}
-			else
-				info( "Agree on elector scheme %s.", ha_elector_name( ev ) );
-				
-			break;
-
-		default:
-			break;
-	}
-
-	return 0;
-}
-
-
-int ha_watcher_cb_partner( HAPT *p, WORDS *w )
-{
-	int is_m, is_s;
-	HAPT *q;
-
-	if( w->wc != 4 )
-	{
-		warn( "Found invalid PARTNER line in cluster report from %s.", p->name );
+		err( "Mismatched elector scheme!  We use %s, %s uses %s!",
+			ha_elector_name( _ha->elector ), p->name,
+			ha_elector_name( ev ) );
 		return -1;
 	}
-
-	if( !( q = ha_find_partner( w->wd[1], w->len[1] ) ) )
-	{
-		warn( "Cannot find partner '%s'", w->wd[1] );
-		return -1;
-	}
-
-	if( p != q )
-	{
-		info( "Ignoring status of %s.", q->name );
-		return -1;
-	}
-
-	is_m = atoi( w->wd[2] );
-	is_s = atoi( w->wd[3] );
-
-	if( is_s && ( p != q ) )
-	{
-		warn( "Found invalid PARTNER (self) line in cluster report from %s.", p->name );
-		return -1;
-	}
-
-	// is this one master?
-	if( is_m )
-		ha_set_master( p );
+	//else
+	//	info( "Agree on elector scheme %s.", ha_elector_name( ev ) );
 
 	return 0;
 }
@@ -146,67 +91,74 @@ int ha_watcher_cb_partner( HAPT *p, WORDS *w )
 
 
 
-
-void ha_watcher_cb( void *arg, IOBUF *b )
+void ha_watcher_jcb( void *arg, json_object *jo )
 {
-	HAPT *p = (HAPT *) arg;
-	char *nl, *s;
-	int l, kind;
-	WORDS w;
+	json_object *o, *pn, *ps, *pm, *jp, *ja;
+	HAPT *p, *pt = (HAPT *) arg;
+	const char *str;
+	size_t i, pc;
 
-	s = b->buf;
-
-	while( b->len > 0 )
+	if( !( o = json_object_object_get( jo, "elector" ) ) )
 	{
-		if( !( nl = memchr( s, '\n', b->len ) ) )
+		warn( "No elector found from partner %s.", pt->name );
+		goto INVALID_JSON;
+	}
+
+	if( ha_watcher_cb_compare_elector( pt, json_object_get_string( o ) ) )
+		return;
+
+	if( !( ja = json_object_object_get( jo, "partners" ) ) )
+	{
+		warn( "No partner listing from partner %s.", pt->name );
+		goto INVALID_JSON;
+	}
+
+	pc = json_object_array_length( ja );
+
+	for( i = 0; i < pc; i++ )
+	{
+		jp = json_object_array_get_idx( ja, i );
+
+		// examine the details
+		if( !( pn = json_object_object_get( jp, "name" ) )
+		 || !( ps = json_object_object_get( jp, "self" ) )
+		 || !( pm = json_object_object_get( jp, "master" ) ) )
 		{
-			warn( "Found partial line in cluster report from %s: '%s'",
-				p->name, s );
-			break;
+			warn( "Invalid partner listing %d from partner %s.", i, pt->name );
+			goto INVALID_JSON;
 		}
 
-		l = nl - s;
-		*nl++ = '\0';
-
-		if( strwords( &w, s, l, ' ' ) < 2 )
+		str = json_object_get_string( pn );
+		if( !( p = ha_find_partner( str, json_object_get_string_len( pn ) ) ) )
 		{
-			warn( "Found invalid line in cluster report from %s.", p->name );
-			break;
+			warn( "Cannot find partner '%s' referenced from partner %s.", str, pt->name );
+			goto INVALID_JSON;
 		}
 
-		b->len -= l + 1;
-		s = nl;
+		// ignore it's view of other partners (for now)
+		if( p != pt )
+			continue;
 
-		if( ( kind = ha_clst_line_kind_value( w.wd[0] ) ) < 0 )
+		if( !json_object_get_boolean( ps ) )
 		{
-			warn( "Found invalid kind in cluster report from %s: %s", p->name, w.wd[0] );
-			break;
+			warn( "Partner %s doesn't seem to recognise itself as itself.", pt->name );
+			goto INVALID_JSON;
 		}
 
-		switch( kind )
+		// is it master?
+		if( json_object_get_boolean( pm ) )
 		{
-			case HA_CLST_LINE_KIND_SETTING:
-
-				if( ha_watcher_cb_setting( p, &w ) < 0 )
-					return;
-
-				break;
-
-			case HA_CLST_LINE_KIND_STATUS:
-				break;
-
-			case HA_CLST_LINE_KIND_PARTNER:
-
-				if( ha_watcher_cb_partner( p, &w ) < 0 )
-					continue;
-
-				break;
-
-			default:
-				break;
+			//info( "Partner %s thinks it is master.", pt->name );
+			ha_set_master( pt );
 		}
 	}
+
+	return;
+
+INVALID_JSON:
+	warn( "Invalid json seen from partner %s.", pt->name );
 }
+
 
 
 void ha_watcher_pass( int64_t tval, void *arg )
@@ -242,8 +194,13 @@ void ha_watcher( THRD *td )
 	p->ch         = (CURLWH *) allocz( sizeof( CURLWH ) );
 	p->ch->url    = p->check_url;
 	p->ch->arg    = p;	// set ourself as the argument
-	p->ch->cb     = &ha_watcher_cb;
+	p->ch->jcb    = &ha_watcher_jcb;
 	p->ch->iobuf  = p->buf;
+
+	// and say we want json parsing
+	setCurlF( p->ch, PARSE_JSON );
+	setCurlF( p->ch, VERBOSE );
+
 
 	//info( "HA watcher starting for %s.", p->name );
 
@@ -274,18 +231,30 @@ void ha_controller( THRD *td )
 
 int ha_get_cluster( HTREQ *req )
 {
+	json_object *jo, *ja, *jp;
 	HA_CTL *ha = _proc->ha;
 	HAPT *p;
 
-	// fits in the default 4k
-	strbuf_aprintf( req->text, "STATUS UPTIME %ld\n", (int64_t) get_uptime_sec( ) );
-	strbuf_aprintf( req->text, "SETTING ELECTOR %s\n", ha_elector_name( ha->elector ) );
-	strbuf_aprintf( req->text, "SETTING PERIOD %ld\n", ha->period / 1000 );
-	strbuf_aprintf( req->text, "SETTING MASTER %d\n", ha->is_master );
+	jo = json_object_new_object( );
+	json_object_object_add( jo, "uptime",  json_object_new_int( (int64_t) get_uptime_sec( ) ) );
+	json_object_object_add( jo, "elector", json_object_new_string( ha_elector_name( ha->elector ) ) );
+	json_object_object_add( jo, "period",  json_object_new_int( ha->period / 1000 ) );
+	json_object_object_add( jo, "master",  json_object_new_boolean( ha->is_master ) );
+
+	ja = json_object_new_array( );
 
 	for( p = ha->partners; p; p = p->next )
-		strbuf_aprintf( req->text, "PARTNER %s %d %d\n", p->name, p->is_master,
-				( p == ha->self ) ? 1 : 0 );
+	{
+		jp = json_object_new_object( );
+		json_object_object_add( jp, "name",   json_object_new_string( p->name ) );
+		json_object_object_add( jp, "master", json_object_new_boolean( p->is_master ) );
+		json_object_object_add( jp, "self",   json_object_new_boolean( ( p == ha->self ) ) );
+		json_object_array_add( ja, jp );
+	}
+
+	json_object_object_add( jo, "partners", ja );
+
+	strbuf_json( req->text, jo, 1 );
 
 	return 0;
 }
@@ -293,7 +262,7 @@ int ha_get_cluster( HTREQ *req )
 
 int ha_ctl_cluster( HTREQ *req )
 {
-	strbuf_copy( req->text, "Not implemented yet.\n", 0 );
+	create_json_result( req->text, 0, "Not implemented yet." );
 	return 0;
 }
 
@@ -352,7 +321,7 @@ int ha_init( void )
 
 	pthread_mutex_init( &(ha->lock), NULL );
 
-	http_add_simple_get( DEFAULT_HA_CHECK_PATH, "Fetch cluster status", &ha_get_cluster );
+	http_add_json_get( DEFAULT_HA_CHECK_PATH, "Fetch cluster status", &ha_get_cluster );
 	http_add_control( "cluster", "Control cluster status", NULL, &ha_ctl_cluster, NULL, HTTP_FLAGS_NO_REPORT );
 
 	return 0;

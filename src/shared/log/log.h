@@ -46,7 +46,7 @@ int log_line( int fi, int8_t level, const char *file, const int line, const char
 int log_close( void );
 void log_reopen( int sig );
 int log_start( void );
-void log_set_level( int8_t level, int8_t both );
+int log_set_level( int8_t level, int8_t both );
 void log_set_force_stdout( int set );
 
 http_callback log_ctl_setdebug;

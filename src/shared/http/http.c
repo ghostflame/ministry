@@ -28,6 +28,27 @@ int http_access_policy( void *cls, const struct sockaddr *addr, socklen_t addrle
 }
 
 
+int http_check_json( HTREQ *req )
+{
+	const char *ct;
+
+	req->is_json = 0;
+
+	// no content type?  We're not going to guess
+	if( ( ct = MHD_lookup_connection_value( req->conn, MHD_HEADER_KIND, MHD_HTTP_HEADER_CONTENT_TYPE ) )
+	 && !strncasecmp( ct, JSON_CONTENT_TYPE, JSON_CONTENT_TYPE_LEN ) )
+	{
+		//info( "Request is json." );
+		req->is_json = 1;
+		return 1;
+	}
+
+	//info( "Request was not json: %s", ct );
+
+	return 0;
+}
+
+
 
 int http_send_response( HTREQ *req )
 {
@@ -85,9 +106,8 @@ void http_request_complete( void *cls, HTTP_CONN *conn,
 	{
 		req->post->state = HTTP_POST_END;
 
-		if( req->path->flags & HTTP_FLAGS_CONTROL )
-			http_calls_ctl_done( req );
-		else
+		// json has it's own finisher
+		if( !req->is_json )
 			(req->path->cb)( req );
 
 		// free anything on the post object
@@ -130,9 +150,9 @@ int http_request_access_check( IPLIST *src, HTREQ *req, struct sockaddr *sa )
 HTREQ *http_request_creator( HTTP_CONN *conn, const char *url, const char *method )
 {
 	union MHD_ConnectionInfo *ci;
-	int rlen, is_ctl;
 	HTHDLS *hd;
 	HTREQ *req;
+	int rlen;
 
 	req = mem_new_request( );
 	req->conn = conn;
@@ -170,7 +190,7 @@ HTREQ *http_request_creator( HTTP_CONN *conn, const char *url, const char *metho
 	}
 
 	// is this a control call?
-	is_ctl = req->path->flags & HTTP_FLAGS_CONTROL;
+	req->is_ctl = req->path->flags & HTTP_FLAGS_CONTROL;
 
 	ci = (union MHD_ConnectionInfo *) MHD_get_connection_info( conn, MHD_CONNECTION_INFO_CLIENT_ADDRESS );
 	req->sin = *((struct sockaddr_in *) (ci->client_addr));
@@ -189,7 +209,7 @@ HTREQ *http_request_creator( HTTP_CONN *conn, const char *url, const char *metho
 		if( req->first )
 		{
 			// check this IP is allowed
-			if( is_ctl )
+			if( req->is_ctl )
 			{
 				// do we have a controls ip check list?
 				// check it's not the generic one
@@ -216,8 +236,9 @@ HTREQ *http_request_creator( HTTP_CONN *conn, const char *url, const char *metho
 
 			req->post->state = HTTP_POST_START;
 
-			if( is_ctl )
-				http_calls_ctl_init( req );
+			// json gets handled differently
+			if( http_check_json( req ) )
+				http_calls_json_init( req );
 			else
 				(req->path->cb)( req );
 		}
@@ -287,9 +308,9 @@ int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
 			{
 				req->post->state = HTTP_POST_BODY;
 
-				if( req->pproc )
+				if( req->is_json )
 				{
-					if( MHD_post_process( req->pproc, upload_data, *upload_data_size ) != MHD_YES )
+					if( http_calls_json_data( req ) )
 						req->err = 1;
 				}
 				else
@@ -300,6 +321,12 @@ int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
 			}
 			else
 			{
+				// json objects should only just have finished,
+				// so we need to parse it and actually hit the calllback
+				// first
+				if( req->is_json )
+					http_calls_json_done( req );
+
 				http_send_response( req );
 			}
 

@@ -1,9 +1,9 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-SUBS   = config log mem pmet http ha utils strings io
+SUBS   = config log mem pmet http ha utils strings io target
 
-FILES  = iter regexp curlw net iplist target thread loop app
-HEADS  = iter regexp curlw net iplist target thread loop app run json
+FILES  = iter regexp curlw net iplist thread loop app
+HEADS  = iter regexp curlw net iplist thread loop app run json
 
 VERS  ?= 0.1.0
 RKV    = app_shared.a
@@ -19,7 +19,6 @@ DFLAGS = -g -pg -ggdb3 -DDEBUG
 TFLAGS = -pthread
 CFLAGS = -c $(TFLAGS) $(IFLAGS) $(EARGS)
 #CFLAGS = -c $(TFLAGS) $(IFLAGS) -DMIN_MHD_PASS=0
-#LFLAGS = -lm -lcurl -lmicrohttpd
 
 all: WFLAGS += -Wpedantic -Wextra -Wno-unused-parameter
 all: CFLAGS += -O2
@@ -53,3 +52,4 @@ clean:
 
 install:
 	@echo "OK."
+

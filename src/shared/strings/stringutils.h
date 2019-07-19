@@ -85,6 +85,9 @@ BUF *strbuf_resize( BUF *b, uint32_t size );
 BUF *strbuf_copy( BUF *b, char *str, int len );
 BUF *strbuf_add( BUF *b, char *str, int len );
 
+// write json to a buffer
+BUF *strbuf_json( BUF *b, json_object *o, int done );
+
 // these work as macros
 #define strbuf_printf( b, ... )			b->len = snprintf( b->buf, b->sz, ##__VA_ARGS__ )
 #define strbuf_aprintf( b, ... )		b->len += snprintf( b->buf + b->len, b->sz - b->len, ##__VA_ARGS__ )

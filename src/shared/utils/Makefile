@@ -1,6 +1,6 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-FILES  = pidfile time utils var_val
+FILES  = json pidfile time utils var_val
 HEADS  = utils
 
 RKV    = utils_shared.a
@@ -14,8 +14,6 @@ IFLAGS = -I. -I..
 DFLAGS = -g -pg -ggdb3 -DDEBUG
 TFLAGS = -pthread
 CFLAGS = -c $(TFLAGS) $(IFLAGS) $(EARGS)
-#CFLAGS = -c $(TFLAGS) $(IFLAGS) -DMIN_MHD_PASS=0
-#LFLAGS = -lm -lcurl -lmicrohttpd
 
 all: WFLAGS += -Wpedantic -Wextra -Wno-unused-parameter
 all: CFLAGS += -O2

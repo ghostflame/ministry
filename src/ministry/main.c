@@ -110,8 +110,6 @@ void main_create_conf( void )
 	config_register_section( "metrics", &metrics_config_line );
 
 	target_set_type_fn( &targets_set_type );
-
-	http_stats_handler( &stats_self_stats_cb_stats );
 }
 
 

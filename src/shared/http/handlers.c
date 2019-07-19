@@ -103,11 +103,11 @@ int http_add_control( char *path, char *desc, void *arg, http_callback *fp, IPLI
 
 	snprintf( urlbuf, 1024, "/control/%s", path );
 
-	return __http_add_handler( urlbuf, desc, arg, HTTP_METH_POST, fp, srcs, flags|HTTP_FLAGS_CONTROL );
+	return __http_add_handler( urlbuf, desc, arg, HTTP_METH_POST, fp, srcs, flags|HTTP_FLAGS_CONTROL|HTTP_FLAGS_JSON );
 }
 
 // set an extra stats handler
-int http_stats_handler( http_callback *fp )
+int http_stats_handler( json_callback *fp )
 {
 	if( fp )
 	{

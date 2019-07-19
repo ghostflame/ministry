@@ -14,13 +14,13 @@
 
 ssize_t http_unused_reader( void *cls, uint64_t pos, char *buf, size_t max )
 {
-	info( "Called: http_unused_reader." );
+	hinfo( "Called: http_unused_reader." );
 	return -1;
 }
 
 void http_unused_reader_free( void *cls )
 {
-	info( "Called: http_unused_reader_free." );
+	hinfo( "Called: http_unused_reader_free." );
 	return;
 }
 
