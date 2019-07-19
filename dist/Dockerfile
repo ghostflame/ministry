@@ -2,7 +2,7 @@ FROM fedora:30
 
 #RUN apk update && apk upgrade && apk add shadow libmicrohttpd libcurl
 RUN dnf update -y && \
-    dnf install -y shadow-utils libmicrohttpd libcurl openssl man-pages man-db mlocate && \
+    dnf install -y shadow-utils libmicrohttpd libcurl openssl json-c man-pages man-db mlocate && \
     rm -rf /var/log/dnf*.log /var/lib/dnf /var/cache/dnf
 
 RUN groupadd -r ministry && \
