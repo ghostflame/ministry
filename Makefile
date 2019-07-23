@@ -1,5 +1,5 @@
 TARGET  = all
-VERS    = $(shell sed -rn 's/^Version:\t(.*)/\1/p' ministry.spec)
+VERS    = $(shell scripts/getversion.sh)
 
 # set some defaults if they are not in the environment
 CFGDIR ?= $(DESTDIR)/etc/ministry
