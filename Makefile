@@ -33,8 +33,11 @@ subdirs:
 code:
 	@cd src && VERS=$(VERS) $(MAKE) $(MFLAGS) $(TARGET)
 
-docker:
+docker: clean
 	docker build -t $(CTPATH):$(VERS) --file dist/Dockerfile .
+
+fedup:
+	docker build -t ghostflame/fedora-patched:latest --file dist/Fedora-Dockerfile dist
 
 dockerpush: docker
 	docker tag $(CTPATH):$(VERS) $(CTPATH):latest

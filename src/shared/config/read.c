@@ -289,7 +289,7 @@ int config_read_file( char *path, int fail_ok )
 	{
 		if( fail_ok )
 		{
-			warn( "Could not open optional config file '%s' -- %s", path, Err );
+			notice( "Could not open optional config file '%s' -- %s", path, Err );
 			return 0;
 		}
 		else

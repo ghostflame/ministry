@@ -137,13 +137,6 @@ void self_stats_pass( ST_THR *t, int64_t tval )
 {
 	struct timespec now;
 
-#ifdef KEEP_LOCK_STATS
-	// report stats usage
-	self_report_dlocks( t, ctl->locks->dstats );
-	self_report_dlocks( t, ctl->locks->dadder );
-	self_report_dlocks( t, ctl->locks->dgauge );
-#endif
-
 	// network stats
 	self_report_nettype( t, ctl->net->relay );
 
