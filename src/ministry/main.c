@@ -11,15 +11,9 @@
 
 void usage( void )
 {
+	config_help( );
 	printf( "%s", "\
-Usage\tministry -h\n\
-\tministry [OPTIONS] [-c <config file>]\n\n\
-Options:\n\
- -h            Print this help\n\
- -p <file>     Override configured pidfile\n\
- -v            Print version number and exit\n" );
-	printf( "%s", config_help( ) );
-	printf( "%s", "\n\
+  -p --pidfile       <file>   Override configured pidfile\n\n\
 Ministry is a statsd-alternative processing engine.  It runs on very\n\
 similiar lines, taking data paths and producing statistics on them.\n\
 It submits data using a graphite format.\n\n" );

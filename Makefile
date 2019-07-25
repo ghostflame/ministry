@@ -1,5 +1,5 @@
 TARGET  = all
-VERS    = $(shell scripts/getversion.sh)
+VERS    = $(shell ./getversion.sh)
 
 # set some defaults if they are not in the environment
 CFGDIR ?= $(DESTDIR)/etc/ministry

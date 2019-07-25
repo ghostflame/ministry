@@ -279,7 +279,7 @@ int iplist_append_net( IPLIST *l, IPNET *n )
 	}
 	else
 	{
-		for( i = l->nets; l; l = l->next )
+		for( i = l->nets; i; i = i->next )
 			if( i->net == n->net && i->bits == n->bits )
 				break;
 
@@ -445,12 +445,11 @@ static int    _iplist_cfg_set = 0;
 // handle iplist parsing here
 int iplist_config_line( AVP *av )
 {
-	IPLIST *l;
+	IPLIST *l = &_iplist_cfg_tmp;
 	int32_t hs;
 
 	if( !_iplist_cfg_set )
 	{
-		l = &_iplist_cfg_tmp;
 		memset( l, 0, sizeof( IPLIST ) );
 	}
 

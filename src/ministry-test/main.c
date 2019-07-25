@@ -12,13 +12,7 @@
 
 void usage( void )
 {
-	printf( "%s", "\
-Usage\tministry_test -h\n\
-\tministry_test [OPTIONS] [-c <config file>]\n\n\
-Options:\n\
- -h            Print this help\n\
- -v            Print version number and exit\n" );
-	printf( "%s", config_help( ) );
+	config_help( );
 	printf( "%s", "\n\
 Ministry_test is a load-generator for ministry.  It takes config specifying\n\
 metric synthesis profiles, and profile generators with a prefix for metrics.\n\

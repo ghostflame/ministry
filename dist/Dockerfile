@@ -1,7 +1,7 @@
 FROM registry.fedoraproject.org/fedora-minimal:30 AS builder
 
 RUN mkdir /app && microdnf install -y gcc make libmicrohttpd-devel libcurl-devel openssl-devel json-c-devel
-COPY Makefile ministry.spec /app/
+COPY Makefile ministry.spec getversion.sh /app/
 COPY src/ /app/src
 RUN cd /app && mkdir bin && make all
 

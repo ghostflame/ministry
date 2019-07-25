@@ -115,6 +115,8 @@ int strwords_multi( WORDS *w, char *src, int len, char sep, int8_t multi );
 #define strmwords( _w, _s, _l, _c )		strwords_multi( _w, _s, _l, _c, 1 )
 
 
+#define BOOL_ENABLED( _b )				( _b ) ? "en" : "dis"
+#define VAL_PLURAL( _v )				( _v == 1 ) ? "" : "s"
 
 
 // string store - store strings as keys with optional values

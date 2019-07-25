@@ -87,7 +87,7 @@ void tcp_close_active_host( HOST *h )
 
 	info( "Closing connection to host %s after %.3fs and %lu data point%s.",
 	    h->net->name, ctime,
-		h->points, ( h->points == 1 ) ? "" : "s" );
+		h->points, VAL_PLURAL( h->points ) );
 
 	// mark closing a connection
 	lock_ntype( h->type );

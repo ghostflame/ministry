@@ -54,6 +54,33 @@ void http_clean_password( HTTP_CTL *h )
 }
 
 
+int http_resolve_filters( void )
+{
+	HTTP_CTL *h = _http;
+
+	if( h->web_iplist )
+	{
+		if( !( h->web_ips = iplist_find( h->web_iplist ) ) )
+		{
+			err( "Could not find requested HTTP IP filter list." );
+			return -1;
+		}
+	}
+
+	if( h->ctl_iplist )
+	{
+		if( !( h->ctl_ips = iplist_find( h->ctl_iplist ) ) )
+		{
+			err( "Could not find requested HTTP controls IP filter list." );
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+
+
 
 #define mop( _o )		MHD_OPTION_ ## _o
 
@@ -66,6 +93,12 @@ int http_start( void )
 	{
 		http_clean_password( h );
 		return 0;
+	}
+
+	if( http_resolve_filters( ) != 0 )
+	{
+		http_clean_password( h );
+		return -1;
 	}
 
 	// are we doing overall connect restriction?
