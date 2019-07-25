@@ -36,7 +36,9 @@ HTTP_CTL *http_config_defaults( void )
 	h->flags           = MHD_USE_THREAD_PER_CONNECTION|MHD_USE_INTERNAL_POLLING_THREAD|MHD_USE_AUTO|MHD_USE_TCP_FASTOPEN|MHD_USE_ERROR_LOG;
 
 	h->enabled         = 0;
+	h->ctl_enabled     = 0;
 	h->tls->enabled    = 0;
+	h->ctl_iplist      = str_copy( "localhost-only", 0 );
 
 	// only allow 1.3, 1.2 by default
 	h->tls->priorities = str_copy( "SECURE256:!VERS-TLS1.1:!VERS-TLS1.0:!VERS-SSL3.0:%SAFE_RENEGOTIATION", 0 );
@@ -102,7 +104,28 @@ int http_config_line( AVP *av )
 		else if( attIs( "enable" ) )
 		{
 			h->enabled = config_bool( av );
-			debug( "Http server is %sabled.", ( h->enabled ) ? "en" : "dis" );
+			debug( "Http server is %sabled.", BOOL_ENABLED( h->enabled ) );
+		}
+		else if( attIs( "controls" ) )
+		{
+			h->ctl_enabled = config_bool( av );
+			debug( "Http controls are %sabled.", BOOL_ENABLED( h->ctl_enabled ) );
+		}
+		else if( attIs( "httpFilter" ) )
+		{
+			if( h->web_iplist )
+				free( h->web_iplist );
+
+			h->web_iplist = str_copy( av->vptr, av->vlen );
+			debug( "Using HTTP IP filter %s.", h->web_iplist );
+		}
+		else if( attIs( "controlFilter" ) )
+		{
+			if( h->ctl_iplist )
+				free( h->ctl_iplist );
+
+			h->ctl_iplist = str_copy( av->vptr, av->vlen );
+			debug( "Using HTTP controls IP filter %s.", h->ctl_iplist );
 		}
 		else
 			return -1;

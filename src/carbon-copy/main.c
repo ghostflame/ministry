@@ -11,13 +11,9 @@
 
 void usage( void )
 {
+	config_help( );
 	printf( "%s", "\
-Usage\tcarbon_copy -h\n\
-\tcarbon_copy [OPTIONS] -c <config file>\n\n\
-Options:\n" );
-	printf( "%s", config_help( ) );
-	printf( "%s", "\
- -p <file>     Override configured pidfile\n\n\
+  -p --pidfile       <file>   Override configured pidfile\n\n\
 Carbon-copy is a carbon-relay alternative data router.  It runs on very similar\n\
 lines, matching lines against patterns or rules and forwarding them to coal\n\
 or carbon-cache (or other copies of carbon-copy).\n\n" );

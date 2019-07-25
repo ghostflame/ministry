@@ -18,4 +18,4 @@ esac
 # and execute it
 # fix the config - mount over it if you want
 # fix stdout logging - no local logging!
-su ministry -c "/${prog} -V $*"
+su ministry sh -c "/${prog} -V $*"

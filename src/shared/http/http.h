@@ -138,9 +138,13 @@ struct http_control
 	char				*	addr;
 	char				*	proto;
 
+	char				*	ctl_iplist;
+	char				*	web_iplist;
+
 	int64_t					requests;
 
 	int8_t					enabled;
+	int8_t					ctl_enabled;
 };
 
 

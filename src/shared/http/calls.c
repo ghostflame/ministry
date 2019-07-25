@@ -239,9 +239,12 @@ void http_calls_init( void )
 	// prometheus support
 	http_add_simple_get( "/metrics", "HTTP prometheus metrics endpoint", &http_calls_metrics );
 
-	// add target control
 	http_add_json_get( "/targets", "List metric targets", &target_http_list );
-	http_add_simple_get( "/control", "List control paths", &http_calls_ctl_list );
+
+	if( _http->ctl_enabled )
+		http_add_simple_get( "/control", "List control paths", &http_calls_ctl_list );
+
+	// add target control
 	http_add_control( "target", "Enable/disable target", NULL, &target_http_toggle, NULL, 0 );
 }
 

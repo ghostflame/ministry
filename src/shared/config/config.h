@@ -95,7 +95,7 @@ struct process_control
 
 conf_line_fn config_line;
 
-char *config_help( void );
+void config_help( void );
 
 char *config_arg_string( char *argstr );
 void config_args( int ac, char **av, char *optstr, help_fn *hfp );

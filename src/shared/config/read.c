@@ -289,7 +289,7 @@ int config_read_file( char *path, int fail_ok )
 	{
 		if( fail_ok )
 		{
-			warn( "Could not open optional config file '%s' -- %s", path, Err );
+			notice( "Could not open optional config file '%s' -- %s", path, Err );
 			return 0;
 		}
 		else
@@ -437,7 +437,7 @@ int config_read( char *inpath, WORDS *w )
 	debug( "Opening config %s '%s', section '%s', %d arg%s.",
 		( context->is_url ) ? "url" : "file", path,
 		context->section->name, context->argc,
-		( context->argc == 1 ) ? "" : "s" );
+		VAL_PLURAL( context->argc ) );
 
 	// so go do it
 	if( context->is_url )

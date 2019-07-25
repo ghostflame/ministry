@@ -12,38 +12,69 @@
 #include "local.h"
 
 
-static char config_help_buffer[4096];
-
-char *config_help( void )
+void config_help( void )
 {
-	snprintf( config_help_buffer, 4096, "%s",
+	printf( 
+"Usage\t%s --help | -h\n\
+\t%s [OPTIONS] -c <config file>\n\n\
+Options:\n", _proc->app_name, _proc->app_name );
+
+	printf( "%s",
 "\
- -h            Print this help\n\
- -v            Print version number and exit\n\
- -t            Just test the config is valid and exit\n\
- -c <path>     Select config file or URI to use\n\
- -C <path>     As -c but with strict processing\n\
- -E            Disable reading environment variables\n\
- -P <prefix>   Set environment variable prefix\n\
- -F            Disable reading a config file (env only)\n\
- -U            Disable all reading of URI's\n\
- -u            Disable URI config including other URI's\n\
- -i            Allow insecure URI's\n\
- -I            Allow secure URI's to include insecure URI's\n\
- -K            Interactively ask for an SSL key password\n\
- -T            Validate certificates for HTTPS (if available)\n\
- -W            Permit invalid certificates from fetch targets\n\
- -d            Daemonize in the background\n\
- -D            Switch on debug output (overrides config)\n\
- -V            Logging to console (prevents daemonizing)\n\
- -s            Strict config parsing\n\
+  -h --help                   Print this help\n\
+  -v --version                Print version number and exit\n\
+  -t --config-test            Just test the config is valid and exit\n\
+  -s --strict                 Strict config parsing\n\
+  -c --config        <path>   Select config file or URI to use\n\
+  -P --env-prefix  <prefix>   Set environment variable prefix\n\
+  -E --no-environment         Disable reading environment variables\n\
+  -F --no-config              Disable reading a config file (env only)\n\
+  -U --no-uri                 Disable all reading of URI's\n\
+  -u --no-uri-include         Disable URI config including other URI's\n\
+  -i --insecure-uri           Allow insecure URI's\n\
+  -I --insecure-include       Allow secure URI's to include insecure URI's\n\
+  -K --interactive-pass       Interactively ask for an SSL key password\n\
+  -T --validate-certs         Validate certificates for HTTPS (if available)\n\
+  -W --invalid-fetch          Permit invalid certificates from fetch targets\n\
+  -d --daemon                 Daemonize in the background\n\
+  -D --debug                  Switch on debug output (overrides config)\n\
+  -V --verbose                Logging to console (prevents daemonizing)\n\
 " );
-	return config_help_buffer;
 }
 
 
-const char *config_args_opt_string = "HhDVvtsUuiIEKTWFdC:c:";
+const char *config_args_opt_string = "HhDVvtsUuiIEKTWFdP:c:";
 char config_args_opt_merged[CONF_LINE_MAX];
+
+struct option long_options[] = {
+	// behaviours
+	{ "help",               no_argument,          NULL, 'h' },
+	{ "version",            no_argument,          NULL, 'v' },
+	{ "config-test",        no_argument,          NULL, 't' },
+	{ "daemon",             no_argument,          NULL, 'd' },
+	// config
+	{ "config",             required_argument,    NULL, 'c' },
+	{ "env-prefix",         required_argument,    NULL, 'P' },
+	{ "pidfile",            required_argument,    NULL, 'p' },
+	{ "strict",             no_argument,          NULL, 's' },
+	// switches
+	{ "no-environment",     no_argument,          NULL, 'E' },
+	{ "no-config",          no_argument,          NULL, 'F' },
+	{ "no-uri",             no_argument,          NULL, 'U' },
+	{ "no-uri-include",     no_argument,          NULL, 'u' },
+	// security
+	{ "insecure-uri",       no_argument,          NULL, 'i' },
+	{ "insecure-include",   no_argument,          NULL, 'I' },
+	{ "interactive-pass",   no_argument,          NULL, 'K' },
+	{ "validate-certs",     no_argument,          NULL, 'T' },
+	{ "invalid-fetch",      no_argument,          NULL, 'W' },
+	// logging
+	{ "verbose",            no_argument,          NULL, 'V' },
+	{ "debug",              no_argument,          NULL, 'D' },
+	// termination
+	{ NULL,                 0,                    NULL,  0  }
+};
+
 
 char *config_arg_string( char *argstr )
 {
@@ -87,9 +118,9 @@ void config_set_env_prefix( char *prefix )
 
 void config_args( int ac, char **av, char *optstr, help_fn *hfp )
 {
-	int oc;
+	int oc, idx;
 
-	while( ( oc = getopt( ac, av, optstr ) ) != -1 )
+	while( ( oc = getopt_long( ac, av, optstr, long_options, &idx ) ) != -1 )
 		switch( oc )
 		{
 			case 'H':
