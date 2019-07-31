@@ -225,7 +225,7 @@ void synth_pass( int64_t tval, void *arg )
 	// we are a go
 
 	sc->tready = 0;
-	debug( "Generating synthetics." );
+	//debug( "Generating synthetics." );
 
 	for( s = sc->list; s; s = s->next )
 		synth_generate( s );
