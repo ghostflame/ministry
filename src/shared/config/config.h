@@ -88,6 +88,7 @@ struct process_control
 	TGT_CTL				*	tgt;
 	HA_CTL				*	ha;
 	PMET_CTL			*	pmet;
+	NET_CTL				*	net;
 };
 
 

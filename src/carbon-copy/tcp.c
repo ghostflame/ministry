@@ -27,7 +27,7 @@ static inline void tcp_flush_host( HOST *h, int replace )
 	int i;
 
 	// send all bufs that have data in
-	for( hb = h->hbufs; hb; hb = hb->next )
+	for( hb = (HBUFS *) h->data; hb; hb = hb->next )
 		switch( hb->rule->type )
 		{
 			case RTYPE_REGEX:
@@ -117,7 +117,7 @@ HOST *tcp_get_host( int sock, NET_PORT *np )
 	}
 
 	// and try to get a buffer set
-	h->hbufs = relay_buf_set( );
+	h->data = (void *) relay_buf_set( );
 
 	np->accepts.count++;
 	return h;
@@ -240,7 +240,7 @@ __attribute__((hot)) void tcp_connection( THRD *t )
 	}
 
 	info( "Closing connection to host %s after relaying %lu : %lu lines.",
-			n->name, h->relayed, h->lines );
+			n->name, h->handled, h->lines );
 
 	// mark closing a connection
 	lock_ntype( h->type );

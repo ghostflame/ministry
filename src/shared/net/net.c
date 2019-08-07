@@ -106,3 +106,43 @@ int net_ip_check( IPLIST *l, struct sockaddr_in *sin )
 	return 0;
 }
 
+
+// set prefix data on a host
+int net_set_host_prefix( HOST *h, IPNET *n )
+{
+	// not a botch - simplifies other callers
+	if( !n || !n->text )
+		return 0;
+
+	h->ipn = n;
+
+	// change the parser function to one that does prefixing
+	h->parser = h->type->prfx_parser;
+
+	// and copy the prefix into the workbuf
+	if( !h->workbuf && !( h->workbuf = (char *) allocz( HPRFX_BUFSZ ) ) )
+	{
+		mem_free_host( &h );
+		fatal( "Could not allocate host work buffer" );
+		return -1;
+	}
+
+	// and make a copy of the prefix for this host
+	memcpy( h->workbuf, n->text, n->tlen );
+	h->workbuf[n->tlen] = '\0';
+	h->plen = n->tlen;
+
+	// set the max line we like and the target to copy to
+	h->lmax = HPRFX_BUFSZ - h->plen - 1;
+	h->ltarget = h->workbuf + h->plen;
+
+	// report on that?
+	if( n->list->verbose )
+		info( "Connection from %s:%hu gets prefix %s",
+			inet_ntoa( h->peer->sin_addr ), ntohs( h->peer->sin_port ),
+			h->workbuf );
+
+	return 0;
+}
+
+

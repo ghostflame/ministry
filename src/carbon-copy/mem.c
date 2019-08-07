@@ -10,7 +10,7 @@
 #include "carbon_copy.h"
 
 
-
+/*
 HOST *mem_new_host( struct sockaddr_in *peer, uint32_t bufsz )
 {
 	HOST *h;
@@ -75,7 +75,7 @@ void mem_free_host( HOST **h )
 
 	mtype_free( ctl->mem->hosts, sh );
 }
-
+*/
 
 
 HBUFS *mem_new_hbufs( void )
@@ -160,9 +160,7 @@ MEMT_CTL *memt_config_defaults( void )
 	MEMT_CTL *m;
 
 	m = (MEMT_CTL *) allocz( sizeof( MEMT_CTL ) );
-
-	m->hosts  = mem_type_declare( "hosts",  sizeof( HOST ),   MEM_ALLOCSZ_HOSTS,  0, 1 );
-	m->hbufs  = mem_type_declare( "hbufs",  sizeof( HBUFS ),  MEM_ALLOCSZ_HBUFS,  0, 1 );
+	m->hbufs = mem_type_declare( "hbufs",  sizeof( HBUFS ),  MEM_ALLOCSZ_HBUFS,  0, 1 );
 
 	return m;
 }

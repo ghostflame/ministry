@@ -79,7 +79,8 @@ line_fn relay_simple;
 line_fn relay_prefix;
 
 HBUFS *relay_buf_set( void );
-int relay_parse_buf( HOST *h, IOBUF *b );
+
+buf_fn relay_parse_buf;
 
 int relay_resolve( void );
 

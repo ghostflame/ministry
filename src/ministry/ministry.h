@@ -25,7 +25,7 @@
 
 // in order
 #include "locks.h"
-#include "net.h"
+#include "network.h"
 #include "udp.h"
 #include "tcp/tcp.h"
 #include "fetch.h"

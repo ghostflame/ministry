@@ -1,9 +1,9 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-FILES  = thread pool epoll tcp
-HEADS  = local tcp
+FILES  = thread pool epoll tcp net
+HEADS  = local net
 
-RKV    = tcp_shared.a
+RKV    = net_shared.a
 EARGS ?=
 
 OBJS   = $(FILES:%=%.o)

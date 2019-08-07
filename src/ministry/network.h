@@ -37,99 +37,6 @@
 
 
 
-struct host_data	// size 160+
-{
-	HOST				*	next;
-	SOCK				*	net;
-
-	NET_TYPE			*	type;
-	NET_PORT			*	port;
-	line_fn				*	parser;
-	add_fn				*	handler;
-
-	struct sockaddr_in	*	peer;
-
-	uint64_t				points;
-	uint64_t				invalid;
-
-	int64_t					connected;	// first timestamp seen (nsec)
-	time_t					last;		// last timestamp sec
-
-	struct epoll_event		ep_evt;		// used in epoll option
-
-	IPNET				*	ipn;
-	char				*	workbuf;	// gets set to fixed size
-	char				*	ltarget;
-	int						plen;
-	int						lmax;
-	int						quiet;
-
-	uint32_t				ip;			// because we want it
-};
-
-
-
-struct net_in_port
-{
-	int						fd;
-	uint64_t				counter;
-
-	uint16_t				port;
-	uint16_t				back;
-	uint32_t				ip;
-
-	TCPTH				**	threads;
-
-	LLCT					errors;
-	LLCT					drops;
-	LLCT					accepts;
-
-	HOST				**	phosts;
-	uint64_t				phsz;
-
-	NET_TYPE			*	type;
-};
-
-
-struct net_type
-{
-	NET_PORT			*	tcp;
-	NET_PORT			**	udp;
-	line_fn				*	flat_parser;
-	line_fn				*	prfx_parser;
-	add_fn				*	handler;
-	char				*	label;
-	char				*	name;
-
-	pthread_mutex_t			lock;
-	int64_t					threads;
-	int64_t					pollmax;
-	int64_t					conns;
-
-	uint16_t				flags;
-	uint16_t				udp_count;
-	uint32_t				udp_bind;
-
-	int32_t					token_type;
-
-	int						tcp_style;
-	tcp_setup_fn		*	tcp_setup;
-	tcp_fn				*	tcp_hdlr;
-};
-
-
-
-struct net_prefix
-{
-	NET_PFX				*	next;
-	IPLIST				*	list;
-	char				*	name;
-	char				*	text;
-	int						tlen;
-};
-
-
-
 struct network_control
 {
 	NET_TYPE			*	stats;
@@ -157,7 +64,6 @@ int net_set_host_prefix( HOST *h, IPNET *n );
 // set a host parser fn
 int net_set_host_parser( HOST *h, int token_check, int prefix_check );
 
-//int net_port_sock( PORT_CTL *pc, uint32_t ip, int backlog );
 void net_disconnect( int *sock, char *name );
 
 // dns

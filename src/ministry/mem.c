@@ -10,7 +10,7 @@
 #include "ministry.h"
 
 
-
+/*
 HOST *mem_new_host( struct sockaddr_in *peer, uint32_t bufsz )
 {
 	HOST *h;
@@ -47,7 +47,7 @@ void mem_free_host( HOST **h )
 	sh = *h;
 	*h = NULL;
 
-	sh->points     = 0;
+	sh->lines      = 0;
 	sh->invalid    = 0;
 	sh->connected  = 0;
 	sh->type       = NULL;
@@ -78,7 +78,7 @@ void mem_free_host( HOST **h )
 
 	mtype_free( ctl->mem->hosts, sh );
 }
-
+*/
 
 
 PTLIST *mem_new_point( void )
@@ -469,7 +469,6 @@ MEMT_CTL *memt_config_defaults( void )
 
 	m = (MEMT_CTL *) allocz( sizeof( MEMT_CTL ) );
 
-	m->hosts  = mem_type_declare( "hosts",  sizeof( HOST ),   MEM_ALLOCSZ_HOSTS,  0, 1 );
 	m->points = mem_type_declare( "points", sizeof( PTLIST ), MEM_ALLOCSZ_POINTS, 0, 1 );
 	m->dhash  = mem_type_declare( "dhashs", sizeof( DHASH ),  MEM_ALLOCSZ_DHASH,  128, 1 ); // guess on path length
 	m->token  = mem_type_declare( "tokens", sizeof( TOKEN ),  MEM_ALLOCSZ_TOKEN,  0, 1 );

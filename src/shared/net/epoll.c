@@ -2,7 +2,7 @@
 * This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
 *                                                                         *
-* tcp/pool.c - handles tcp thread pool functions                          *
+* tcp/epoll.c - handles TCP connections with epoll                        *
 *                                                                         *
 * Updates:                                                                *
 **************************************************************************/
@@ -11,61 +11,36 @@
 #include "local.h"
 
 
-void tcp_pool_find_slot( TCPTH *th, HOST *h )
+void tcp_epoll_add_host( TCPTH *th, HOST *h )
 {
-	int64_t i;
-
-	// are we full?
-	if( th->curr == th->type->pollmax || th->pmin < 0 )
+	if( th->curr >= th->type->pollmax )
 	{
 		twarn( "Closing socket to host %s because we cannot take on any more.",
-		       h->net->name );
+			h->net->name );
 		tcp_close_host( h );
 		return;
 	}
 
-	// find the first free slot
-	i = th->pmin;
-
-	// is this the new highest?
-	if( i >= th->pmax )
-		th->pmax = i + 1;
-
-	// set this host up in the poll structure
-	th->polls[i].fd = h->net->fd;
-	th->hosts[i]    = h;
-
-	// count it
+	// keep count
 	th->curr++;
 
-	// find the next free slot
-	for( i += 1; i < th->type->pollmax; i++ )
-		if( th->polls[i].fd < 0 )
-		{
-			th->pmin = i;
-			break;
-		}
+	// add that in
+	h->ep_evt.events   = EPOLL_EVENTS;
+	h->ep_evt.data.ptr = h;
+	epoll_ctl( th->ep_fd, EPOLL_CTL_ADD, h->net->fd, &(h->ep_evt) );
 
-	// this will bark if we ever screw up
-	if( i == th->type->pollmax )
-	{
-		th->pmin = -1;
-		twarn( "Setting pmin to %d.", th->pmin );
-	}
-
-	tinfo( "Accepted %s connection from host %s into slot %ld, curr %ld.",
-	       h->type->label, h->net->name, th->pmin, th->curr );
+	tinfo( "Accepted %s connection from host %s curr %ld.",
+		h->type->label, h->net->name, th->curr );
 }
 
 
-
-__attribute__((hot)) void tcp_pool_handler( TCPTH *th, struct pollfd *p, HOST *h )
+__attribute__((hot)) void tcp_epoll_handler( TCPTH *th, struct epoll_event *e, HOST *h )
 {
 	SOCK *n = h->net;
 
-	if( !( p->revents & POLL_EVENTS ) )
+	if( !( e->events & POLL_EVENTS ) )
 	{
-		if( (ctl->proc->curr_time.tv_sec - h->last) > ctl->net->dead_time )
+		if( (_proc->curr_tval - h->last) > _net->dead_time )
 		{
 			tnotice( "Connection from host %s timed out.", n->name );
 			n->flags |= IO_CLOSE;
@@ -73,7 +48,7 @@ __attribute__((hot)) void tcp_pool_handler( TCPTH *th, struct pollfd *p, HOST *h
 		return;
 	}
 
-	if( p->revents & POLLHUP )
+	if( e->events & POLLHUP )
 	{
 		tdebug( "Received pollhup event from %s", n->name );
 
@@ -83,7 +58,7 @@ __attribute__((hot)) void tcp_pool_handler( TCPTH *th, struct pollfd *p, HOST *h
 	}
 
 	// host has data
-	h->last = ctl->proc->curr_tval;
+	h->last = _proc->curr_tval;
 	n->flags |= IO_CLOSE_EMPTY;
 
 	// we need to loop until there's nothing left to read
@@ -107,7 +82,7 @@ __attribute__((hot)) void tcp_pool_handler( TCPTH *th, struct pollfd *p, HOST *h
 		n->flags &= ~IO_CLOSE_EMPTY;
 
 		// and parse that buffer
-		data_parse_buf( h, n->in );
+		(*(h->type->buf_parser))( h, n->in );
 	}
 }
 
@@ -124,12 +99,12 @@ __attribute__((hot)) void tcp_pool_handler( TCPTH *th, struct pollfd *p, HOST *h
 //  to push back to the start of the buffer.
 //
 
-__attribute__((hot)) void tcp_pool_thread( THRD *td )
+__attribute__((hot)) void tcp_epoll_thread( THRD *td )
 {
-	struct pollfd *pf;
-	int64_t i, max;
+	struct epoll_event *ep;
+	HOST *h, *prv, *nxt;
+	int64_t i;
 	TCPTH *th;
-	HOST *h;
 	int rv;
 
 	th = (TCPTH *) td->arg;
@@ -150,7 +125,11 @@ __attribute__((hot)) void tcp_pool_thread( THRD *td )
 
 			unlock_tcp( th );
 
-			tcp_pool_find_slot( th, h );
+			// link it up
+			h->next   = th->hlist;
+			th->hlist = h;
+
+			tcp_epoll_add_host( th, h );
 		}
 
 		if( !th->curr )
@@ -161,94 +140,83 @@ __attribute__((hot)) void tcp_pool_thread( THRD *td )
 			continue;
 		}
 
-		// poll all active connections
-		if( ( rv = poll( th->polls, th->pmax, 500 ) ) < 0 )
+		// and wait for something
+		if( ( rv = epoll_wait( th->ep_fd, th->ep_events, th->type->pollmax, 500 ) ) < 0 )
 		{
 			// don't sweat interruptions
 			if( errno == EINTR )
 				continue;
 
-			twarn( "Poll error -- %s", Err );
+			twarn( "Epoll error -- %s", Err );
 			break;
 		}
 
 		// run through the answers
-		for( i = 0, pf = th->polls; i < th->pmax; i++, pf++ )
-			if( pf->fd >= 0 )
-				tcp_pool_handler( th, pf, th->hosts[i] );
+		for( i = 0, ep = th->ep_events; i < rv; i++, ep++ )
+			tcp_epoll_handler( th, ep, (HOST *) ep->data.ptr );
 
-		// and run through looking for connections to close
-		max = 0;
-		for( i = 0; i < th->pmax; i++ )
+
+		// run through the list of hosts, looking for ones to close
+		for( prv = NULL, h = th->hlist; h; h = nxt )
 		{
-			// look for valid hosts structures
-			if( !( h = th->hosts[i] ) )
-			    continue;
+			nxt = h->next;
 
-			// are we done?  If not, track max
+			// is this one OK?
 			if( !( h->net->flags & IO_CLOSE ) )
 			{
-				max = i;
+				prv = h;
 				continue;
 			}
 
+			// step over this host
+			if( prv )
+				prv->next = nxt;
+			else
+				th->hlist = nxt;
+
 			tcp_close_active_host( h );
-
-			// and update our structs
-			th->hosts[i] = NULL;
-			th->polls[i].fd = -1;
-
-			// and counters
 			th->curr--;
-
-			// is this a new first-available-slot?
-			if( i < th->pmin )
-			    th->pmin = i;
 		}
 
-		// have we reduced the max?
-		if( ( max + 1 ) < th->pmax )
-			th->pmax = max + 1;
-
-		// and sleep a very little, to avoid poll-spam
+		// and sleep a very little, to avoid epoll-spam
 		//usleep( 2000 );
 	}
 
 	// close everything!
-	for( i = 0; i < th->pmax; i++ )
+	for( h = th->hlist; h; h = nxt )
 	{
-		if( ( h = th->hosts[i] ) )
-			tcp_close_active_host( h );
+		nxt = h->next;
+		tcp_close_active_host( h );
+		th->curr--;
 	}
 }
 
 
+// uses the same handler as pool
+// tcp_epoll_handler == tcp_pool_handler
 
 
-void tcp_pool_setup( NET_TYPE *nt )
+void tcp_epoll_setup( NET_TYPE *nt )
 {
 	TCPTH *th;
-	int i, j;
+	int i;
 
-	// start up our handler threads
+	// create an epoll fd for each thread
 	nt->tcp->threads = (TCPTH **) allocz( nt->threads * sizeof( TCPTH * ) );
 	for( i = 0; i < nt->threads; i++ )
 	{
 		th = (TCPTH *) allocz( sizeof( TCPTH ) );
 
-		th->type  = nt;
-		th->hosts = (HOST **) allocz( nt->pollmax * sizeof( HOST * ) );
-		th->polls = (struct pollfd *) allocz( nt->pollmax * sizeof( struct pollfd ) );
-		for( j = 0; j < nt->pollmax; j++ )
-		{
-			th->polls[j].fd     = -1;  // makes poll ignore this one
-			th->polls[j].events = POLL_EVENTS;
-		}
+		th->type      = nt;
+		th->ep_fd     = epoll_create1( 0 );
+		// make space for the return events
+		th->ep_events = (struct epoll_event *) allocz( nt->pollmax * sizeof( struct epoll_event ) );
 
 		pthread_mutex_init( &(th->lock), NULL );
 		nt->tcp->threads[i] = th;
 
-		thread_throw_named_f( tcp_pool_thread, th, i, "tcp_pool_%d", i );
+		thread_throw_named_f( tcp_epoll_thread, th, i, "tcp_epoll_%d", i );
 	}
 }
+
 

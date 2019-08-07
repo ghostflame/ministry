@@ -43,6 +43,7 @@
 #include <sys/time.h>
 #include <arpa/inet.h>
 #include <curl/curl.h>
+#include <sys/epoll.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -69,8 +70,8 @@
 #include "iter.h"
 #include "curlw.h"
 #include "regexp.h"
-#include "net.h"
 #include "iplist.h"
+#include "net/net.h"
 #include "mem/mem.h"
 #include "target/target.h"
 #include "io/io.h"

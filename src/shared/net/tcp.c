@@ -74,7 +74,7 @@ void tcp_close_host( HOST *h )
 	debug( "Closed connection from host %s.", h->net->name );
 
 	// give us a moment
-	usleep( 1000 );
+	usleep( 5000 );
 
 	mem_free_host( &h );
 }
@@ -116,9 +116,9 @@ HOST *tcp_get_host( int sock, NET_PORT *np )
 	}
 
 	// are we doing blacklisting/whitelisting?
-	if( net_ip_check( ctl->net->filter, &from ) != 0 )
+	if( net_ip_check( _net->filter, &from ) != 0 )
 	{
-		if( ctl->net->filter && ctl->net->filter->verbose )
+		if( _net->filter && _net->filter->verbose )
 			notice( "Denying connection from %s:%hu based on ip check.",
 				inet_ntoa( from.sin_addr ), ntohs( from.sin_port ) );
 
@@ -138,8 +138,13 @@ HOST *tcp_get_host( int sock, NET_PORT *np )
 	h->port    = np;
 	h->type    = np->type;
 
+	// default handlers/parsers
+	h->parser   = h->type->flat_parser;
+	h->handler  = h->type->handler;
+	h->reeiver  = h->type->buf_parser;;
+
 	// set the last time to now
-	h->last = ctl->proc->curr_tval;
+	h->last = _proc->curr_tval;
 	// and the connected time
 	h->connected = get_time64( );
 

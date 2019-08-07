@@ -11,7 +11,6 @@
 #ifndef CARBON_COPY_MEM_H
 #define CARBON_COPY_MEM_H
 
-#define MEM_ALLOCSZ_HOSTS			128
 #define MEM_ALLOCSZ_HBUFS			128
 
 // 1GB
@@ -20,13 +19,9 @@
 
 struct memt_control
 {
-	MTYPE			*	hosts;
 	MTYPE			*	hbufs;
 };
 
-
-HOST *mem_new_host( struct sockaddr_in *peer, uint32_t bufsz );
-void mem_free_host( HOST **h );
 
 HBUFS *mem_new_hbufs( void );
 void mem_free_hbufs( HBUFS **h );

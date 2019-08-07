@@ -85,6 +85,7 @@ int app_init( char *name, char *cfgdir )
 	_proc->ipl  = iplist_config_defaults( );
 	_proc->tgt  = target_config_defaults( );
 	_proc->ha   = ha_config_defaults( );
+	_proc->net  = net_config_defaults( );
 
 	// set up our shared config
 	config_register_section( "main",     &config_line );
@@ -96,6 +97,8 @@ int app_init( char *name, char *cfgdir )
 	config_register_section( "io",       &io_config_line );
 	config_register_section( "target",   &target_config_line );
 	config_register_section( "ha",       &ha_config_line );
+	config_register_section( "net",      &net_config_line );
+
 
 	if( set_signals( ) )
 	{

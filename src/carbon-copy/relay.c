@@ -125,14 +125,14 @@ __attribute__((hot)) void relay_simple( HOST *h, char *line, int len )
 	h->lines++;
 
 	// run through until we get a match and a last
-	for( hb = h->hbufs; hb; hb = hb->next )
+	for( hb = (HBUFS *) h->data; hb; hb = hb->next )
 	{
 		r = hb->rule;
 
 		if( (*(r->rfp))( hb, &l ) )
 		{
 			r->lines++;
-			h->relayed++;
+			h->handled++;
 			if( r->last )
 				break;
 		}
@@ -182,14 +182,14 @@ __attribute__((hot)) void relay_prefix( HOST *h, char *line, int len )
 	l.plen = l.plen + h->plen;
 
 	// run through using the prefixed 
-	for( hb = h->hbufs; hb; hb = hb->next )
+	for( hb = (HBUFS *) h->data; hb; hb = hb->next )
 	{
 		r = hb->rule;
 
 		if( (*(r->rfp))( hb, &l ) )
 		{
 			r->lines++;
-			h->relayed++;
+			h->handled++;
 			if( r->last )
 				break;
 		}

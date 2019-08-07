@@ -53,7 +53,7 @@ __attribute__((hot)) void tcp_thrd_thread( THRD *t )
 		// anything to do?
 		if( !pf.revents )
 		{
-			if( (ctl->proc->curr_time.tv_sec - h->last) > ctl->net->dead_time )
+			if( (_proc->curr_tval - h->last) > _net->dead_time )
 			{
 				notice( "Connection from host %s timed out.", n->name );
 				n->flags |= IO_CLOSE;
@@ -73,7 +73,7 @@ __attribute__((hot)) void tcp_thrd_thread( THRD *t )
 			break;
 		}
 		
-		h->last = ctl->proc->curr_tval;
+		h->last = _proc->curr_tval;
 		n->flags |= IO_CLOSE_EMPTY;
 
 		// we need to loop until there's nothing left to read
@@ -97,7 +97,7 @@ __attribute__((hot)) void tcp_thrd_thread( THRD *t )
 			n->flags &= ~IO_CLOSE_EMPTY;
 
 			// and parse that buffer
-			data_parse_buf( h, n->in );
+			(*(h->type->buf_parser))( h, n->in );
 		}
 
 		// are we done with this one?

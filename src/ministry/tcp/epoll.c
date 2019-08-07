@@ -58,7 +58,7 @@ __attribute__((hot)) void tcp_epoll_handler( TCPTH *th, struct epoll_event *e, H
 	}
 
 	// host has data
-	h->last = ctl->proc->curr_time.tv_sec;
+	h->last = ctl->proc->curr_tval;;
 	n->flags |= IO_CLOSE_EMPTY;
 
 	// we need to loop until there's nothing left to read

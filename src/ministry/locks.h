@@ -49,14 +49,9 @@ typedef pthread_mutex_t			dhash_lock_t;
 #define lock_synth( )			pthread_mutex_lock(   &(ctl->locks->synth) )
 #define unlock_synth( )			pthread_mutex_unlock( &(ctl->locks->synth) )
 
-#define lock_ntype( nt )		pthread_mutex_lock(   &(nt->lock) )
-#define unlock_ntype( nt )		pthread_mutex_unlock( &(nt->lock) )
-
 #define lock_tokens( )			pthread_mutex_lock(   &(ctl->locks->tokens) )
 #define unlock_tokens( )		pthread_mutex_unlock( &(ctl->locks->tokens) )
 
-#define lock_tcp( th )          pthread_mutex_lock(   &(th->lock) )
-#define unlock_tcp( th )        pthread_mutex_unlock( &(th->lock) )
 
 
 struct lock_control

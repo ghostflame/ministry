@@ -11,45 +11,6 @@
 
 
 
-// set prefix data on a host
-int net_set_host_prefix( HOST *h, IPNET *n )
-{
-	// not a botch - simplifies other callers
-	if( !n || !n->text )
-		return 0;
-
-	h->ipn = n;
-
-	// change the parser function to one that does prefixing
-	h->parser = h->type->prfx_parser;
-
-	// and copy the prefix into the workbuf
-	if( !h->workbuf && !( h->workbuf = (char *) allocz( HPRFX_BUFSZ ) ) )
-	{
-		mem_free_host( &h );
-		fatal( "Could not allocate host work buffer" );
-		return -1;
-	}
-
-	// and make a copy of the prefix for this host
-	memcpy( h->workbuf, n->text, n->tlen );
-	h->workbuf[n->tlen] = '\0';
-	h->plen = n->tlen;
-
-	// set the max line we like and the target to copy to
-	h->lmax = HPRFX_BUFSZ - h->plen - 1;
-	h->ltarget = h->workbuf + h->plen;
-
-	// report on that?
-	if( n->list->verbose )
-		info( "Connection from %s:%hu gets prefix %s",
-			inet_ntoa( h->peer->sin_addr ), ntohs( h->peer->sin_port ),
-			h->workbuf );
-
-	return 0;
-}
-
-
 // set the line parser on a host.  We prefer the flat parser, but if
 // tokens are on for that type, set the token handler.
 int net_set_host_parser( HOST *h, int token_check, int prefix_check )
@@ -161,6 +122,9 @@ int net_startup( NET_TYPE *nt )
 	notice( "Type %s has TCP dead time %ds, TCP handler style %s.",
 		nt->name, ctl->net->dead_time, tcp_styles[nt->tcp_style].name );
 
+	// convert dead time to nsec
+	ctl->net->dead_time *= MILLION;
+
 	if( nt->flags & NTYPE_UDP_ENABLED )
 		for( i = 0; i < nt->udp_count; i++ )
 		{
@@ -265,10 +229,10 @@ void net_stop( void )
 {
 	notice( "Stopping networking." );
 
-	net_shutdown( ctl->net->stats );
-	net_shutdown( ctl->net->adder );
-	net_shutdown( ctl->net->gauge );
-	net_shutdown( ctl->net->compat );
+	net_shutdown( ctl->anet->stats );
+	net_shutdown( ctl->anet->adder );
+	net_shutdown( ctl->anet->gauge );
+	net_shutdown( ctl->anet->compat );
 }
 
 
@@ -286,6 +250,7 @@ NET_TYPE *net_type_defaults( int type )
 	nt->flat_parser = d->lf;
 	nt->prfx_parser = d->pf;
 	nt->handler     = d->af;
+	nt->buf_parser  = d->bp;
 	nt->udp_bind    = INADDR_ANY;
 	nt->threads     = d->thrd;
 	nt->pollmax     = TCP_MAX_POLLS;
@@ -293,19 +258,22 @@ NET_TYPE *net_type_defaults( int type )
 	nt->label       = strdup( d->sock );
 	nt->name        = strdup( d->name );
 	nt->flags       = NTYPE_ENABLED|NTYPE_TCP_ENABLED|NTYPE_UDP_ENABLED;
-	nt->token_type  = d->tokn;
+	nt->token_bit   = d->tokn;
 
 	// and hook up the dtype
 	d->nt = nt;
+
+	nt->next = _proc->net->types;
+	_proc->net->types = nt;
 
 	return nt;
 }
 
 
 
-NET_CTL *net_config_defaults( void )
+ANET_CTL *net_config_defaults( void )
 {
-	NET_CTL *net;
+	ANET_CTL *net;
 
 	net              = (NET_CTL *) allocz( sizeof( NET_CTL ) );
 	net->dead_time   = NET_DEAD_CONN_TIMER;

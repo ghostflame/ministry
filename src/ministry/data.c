@@ -19,6 +19,7 @@ DTYPE data_type_defns[DATA_TYPE_MAX] =
 		.lf   = &data_line_ministry,
 		.pf   = &data_line_min_prefix,
 		.af   = &data_point_stats,
+		.bp   = &data_parse_buf,
 		.tokn = TOKEN_TYPE_STATS,
 		.port = DEFAULT_STATS_PORT,
 		.thrd = TCP_THRD_DSTATS,
@@ -32,6 +33,7 @@ DTYPE data_type_defns[DATA_TYPE_MAX] =
 		.lf   = &data_line_ministry,
 		.pf   = &data_line_min_prefix,
 		.af   = &data_point_adder,
+		.bp   = &data_parse_buf,
 		.tokn = TOKEN_TYPE_ADDER,
 		.port = DEFAULT_ADDER_PORT,
 		.thrd = TCP_THRD_DADDER,
@@ -45,6 +47,7 @@ DTYPE data_type_defns[DATA_TYPE_MAX] =
 		.lf   = &data_line_ministry,
 		.pf   = &data_line_min_prefix,
 		.af   = &data_point_gauge,
+		.bp   = &data_parse_buf,
 		.tokn = TOKEN_TYPE_GAUGE,
 		.port = DEFAULT_GAUGE_PORT,
 		.thrd = TCP_THRD_DGAUGE,
@@ -58,6 +61,7 @@ DTYPE data_type_defns[DATA_TYPE_MAX] =
 		.lf   = &data_line_compat,
 		.pf   = &data_line_com_prefix,
 		.af   = NULL,
+		.bp   = &data_parse_buf,
 		.tokn = 0,
 		.port = DEFAULT_COMPAT_PORT,
 		.thrd = TCP_THRD_DCOMPAT,
@@ -497,7 +501,7 @@ __attribute__((hot)) void data_line_com_prefix( HOST *h, char *line, int len )
 	if( __data_line_compat_dispatch( h->workbuf, plen, data, *type ) < 0 )
 		h->invalid++;
 	else
-		h->points++;
+		h->lines++;
 }
 
 
@@ -521,7 +525,7 @@ __attribute__((hot)) void data_line_compat( HOST *h, char *line, int len )
 	if( __data_line_compat_dispatch( line, plen, data, *type ) < 0 )
 		h->invalid++;
 	else
-		h->points++;
+		h->lines++;
 }
 
 
@@ -541,7 +545,7 @@ __attribute__((hot)) void data_line_min_prefix( HOST *h, char *line, int len )
 		return;  // probably a keepalive
 
 	// looks OK
-	h->points++;
+	h->lines++;
 
 	// copy that into place
 	memcpy( h->workbuf + h->plen, line, plen );
@@ -570,7 +574,7 @@ __attribute__((hot)) void data_line_ministry( HOST *h, char *line, int len )
 		return;  // probably a keepalive
 
 	// looks OK
-	h->points++;
+	h->lines++;
 
 	// and put that in
 	(*(h->handler))( line, plen, ep );
@@ -617,7 +621,7 @@ __attribute__((hot)) void data_line_token( HOST *h, char *line, int len )
 // parse the lines
 // put any partial lines back at the start of the buffer
 // and return the length, if any
-__attribute__((hot)) void data_parse_buf( HOST *h, IOBUF *b )
+__attribute__((hot)) int data_parse_buf( HOST *h, IOBUF *b )
 {
 	register char *s = b->buf;
 	register char *q;
@@ -627,7 +631,7 @@ __attribute__((hot)) void data_parse_buf( HOST *h, IOBUF *b )
 	// can't parse without a handler function
 	// and those live on the host object
 	if( !h )
-		return;
+		return 0;
 
 	len = b->len;
 
@@ -695,6 +699,7 @@ __attribute__((hot)) void data_parse_buf( HOST *h, IOBUF *b )
 
 	// and update the buffer length
 	b->len = len;
+	return len;
 }
 
 

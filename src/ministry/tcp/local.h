@@ -30,7 +30,7 @@
 
 
 
-
+/*
 struct tcp_thread
 {
 	struct pollfd		*	polls;
@@ -53,7 +53,7 @@ struct tcp_thread
 	int						ep_fd;	// used for epoll
 	struct epoll_event	*	ep_events;
 };
-
+*/
 
 
 void tcp_close_host( HOST *h );

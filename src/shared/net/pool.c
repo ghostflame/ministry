@@ -65,7 +65,7 @@ __attribute__((hot)) void tcp_pool_handler( TCPTH *th, struct pollfd *p, HOST *h
 
 	if( !( p->revents & POLL_EVENTS ) )
 	{
-		if( (ctl->proc->curr_time.tv_sec - h->last) > ctl->net->dead_time )
+		if( (_proc->curr_tval - h->last) > _net->dead_time )
 		{
 			tnotice( "Connection from host %s timed out.", n->name );
 			n->flags |= IO_CLOSE;
@@ -83,7 +83,7 @@ __attribute__((hot)) void tcp_pool_handler( TCPTH *th, struct pollfd *p, HOST *h
 	}
 
 	// host has data
-	h->last = ctl->proc->curr_tval;
+	h->last = _proc->curr_tval;
 	n->flags |= IO_CLOSE_EMPTY;
 
 	// we need to loop until there's nothing left to read
@@ -107,7 +107,7 @@ __attribute__((hot)) void tcp_pool_handler( TCPTH *th, struct pollfd *p, HOST *h
 		n->flags &= ~IO_CLOSE_EMPTY;
 
 		// and parse that buffer
-		data_parse_buf( h, n->in );
+		(*(h->type->buf_parser))( h, n->in );
 	}
 }
 

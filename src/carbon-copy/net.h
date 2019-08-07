@@ -50,7 +50,7 @@ struct host_buffers
 
 
 
-
+/*
 struct host_data
 {
 	HOST				*	next;
@@ -75,9 +75,9 @@ struct host_data
 
 	uint32_t				ip;
 };
+*/
 
-
-
+/*
 struct net_in_port
 {
 	int						fd;
@@ -96,8 +96,9 @@ struct net_in_port
 
 	NET_TYPE			*	type;
 };
+*/
 
-
+/*
 struct net_type
 {
 	NET_PORT			*	tcp;
@@ -114,7 +115,7 @@ struct net_type
 	uint16_t				udp_count;
 	uint32_t				udp_bind;
 };
-
+*/
 
 
 

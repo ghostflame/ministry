@@ -11,7 +11,6 @@
 #ifndef MINISTRY_MEM_H
 #define MINISTRY_MEM_H
 
-#define MEM_ALLOCSZ_HOSTS			128
 #define MEM_ALLOCSZ_POINTS			2048
 #define MEM_ALLOCSZ_DHASH			512
 #define MEM_ALLOCSZ_TOKEN			128
@@ -25,7 +24,6 @@
 
 struct memt_control
 {
-	MTYPE			*	hosts;
 	MTYPE			*	points;
 	MTYPE			*	dhash;
 	MTYPE			*	token;
@@ -38,9 +36,6 @@ struct memt_control
 	int64_t				gc_gg_thresh;
 };
 
-
-HOST *mem_new_host( struct sockaddr_in *peer, uint32_t bufsz );
-void mem_free_host( HOST **h );
 
 PTLIST *mem_new_point( void );
 void mem_free_point( PTLIST **p );
