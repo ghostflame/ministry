@@ -1,7 +1,7 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-FILES  = mem net tcp udp hash relay main
-HEADS  = mem carbon_copy net tcp udp hash relay selfstats typedefs 
+FILES  = mem network  hash relay main
+HEADS  = mem carbon_copy network hash relay selfstats typedefs 
 
 OBJS   = $(FILES:%=%.o)
 HDRS   = $(HEADS:%=%.h)

@@ -8,7 +8,7 @@
 **************************************************************************/
 
 
-#include "ministry.h"
+#include "local.h"
 
 int64_t token_gen_value( void )
 {
@@ -21,7 +21,7 @@ int64_t token_gen_value( void )
 
 	// ugh, we must not return 0
 	if( v == 0 )
-		v = tsll( ctl->proc->curr_time );
+		v = tsll( _proc->curr_time );
 
 	return v;
 }
@@ -43,13 +43,13 @@ uint64_t token_hashval( uint32_t ip, int16_t type )
 	hval += (uint64_t) ip; 
 
 	// and hashed on token hashsize
-	return hval % ctl->net->tokens->hsize;
+	return hval % _net->tokens->hsize;
 }
 
 
-TOKEN *token_find( uint32_t ip, int16_t type, int64_t val )
+TOKEN *token_find( uint32_t ip, int8_t bit, int64_t val )
 {
-	TOKENS *ts = ctl->net->tokens;
+	TOKENS *ts = _net->tokens;
 	TOKEN *t;
 	uint64_t hval;
 
@@ -57,7 +57,7 @@ TOKEN *token_find( uint32_t ip, int16_t type, int64_t val )
 	if( !val )
 		return NULL;
 
-	hval = token_hashval( ip, type );
+	hval = token_hashval( ip, 1 << bit );
 
 	// search under lock - avoids problems with the purger
 	// both the purge and the lookup happen in single-purpose
@@ -95,7 +95,7 @@ static char *token_type_names[4] = {
 
 TOKEN *__token_generate_type( uint32_t ip, int16_t type )
 {
-	TOKENS *ts = ctl->net->tokens;
+	TOKENS *ts = _net->tokens;
 	uint64_t hval;
 	TOKEN *t;
 
@@ -105,7 +105,7 @@ TOKEN *__token_generate_type( uint32_t ip, int16_t type )
 	t->ip      = ip;
 	t->id      = ++token_id; // NOT THREAD SAFE
 	t->type    = type;
-	t->expires = ts->lifetime + tsll( ctl->proc->curr_time );
+	t->expires = ts->lifetime + tsll( _proc->curr_time );
 	t->nonce   = token_gen_value( );
 
 	switch( type )
@@ -149,10 +149,10 @@ void token_generate( uint32_t ip, int16_t types, TOKEN **ptrs, int max, int *cou
 	memset( ptrs, 0, max * sizeof( TOKEN * ) );
 	*count = 0;
 
-	if( !ctl->net->tokens->enable )
+	if( !_net->tokens->enable )
 		return;
 
-	types &= ctl->net->tokens->mask;
+	types &= _net->tokens->mask;
 
 	if( types & TOKEN_TYPE_STATS )
 	{
@@ -206,7 +206,7 @@ void token_table_purge( int64_t now, uint64_t pos, TOKEN **flist )
 	TOKENS *ts;
 	int lock;
 
-	ts = ctl->net->tokens;
+	ts = _net->tokens;
 
 	prev = NULL;
 	lock = 0;
@@ -248,7 +248,7 @@ void token_table_purge( int64_t now, uint64_t pos, TOKEN **flist )
 
 void token_purge( int64_t tval, void *arg )
 {
-	TOKENS *ts = ctl->net->tokens;
+	TOKENS *ts = _net->tokens;
 	TOKEN *free = NULL;
 	uint64_t i;
 
@@ -280,17 +280,21 @@ void token_purge( int64_t tval, void *arg )
 void token_loop( THRD *t )
 {
 	// loop every second, about, purging tokens
-	if( ctl->net->tokens->enable )
+	if( _net->tokens->enable )
 		loop_control( "token purge", &token_purge, NULL, 1010203, 0, 0 );
 }
 
 
 
+void token_finish( void )
+{
+	pthread_mutex_destroy( &(_net->tokens->lock) );
+}
 
 
 int token_init( void )
 {
-	TOKENS *ts = ctl->net->tokens;
+	TOKENS *ts = _net->tokens;
 
 	if( ts->enable )
 	{
@@ -328,6 +332,8 @@ TOKENS *token_setup( void )
 
 	// all types by default
 	ts->mask     = DEFAULT_TOKEN_MASK;
+
+	pthread_mutex_init( &(ts->lock), &(_proc->mtxa) );
 
 	return ts;
 }

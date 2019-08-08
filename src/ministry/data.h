@@ -127,7 +127,6 @@ add_fn data_point_adder;
 add_fn data_point_gauge;
 
 line_fn data_line_ministry;
-line_fn data_line_token;
 line_fn data_line_compat;
 line_fn data_line_min_prefix;
 line_fn data_line_com_prefix;

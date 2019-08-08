@@ -8,7 +8,7 @@
 **************************************************************************/
 
 
-#include "carbon_copy.h"
+#include "local.h"
 
 
 
@@ -50,6 +50,10 @@ void udp_add_phost( void *arg, IPNET *ip )
 	uint64_t hval;
 	HOST *h;
 
+	// don't do this for empty prefixes
+	if( !ip->tlen )
+		return;
+
 	hval = ((uint64_t) ip) % n->phsz;
 
 	sa.sin_addr.s_addr = ip->net;
@@ -72,13 +76,13 @@ void udp_add_phost( void *arg, IPNET *ip )
 
 
 
-
 void udp_loop_checks( THRD *t )
 {
 	struct sockaddr_in sa;
 	struct sockaddr *sp;
 	socklen_t sl;
 	NET_PORT *n;
+	NET_PFX *p;
 	IPNET *ipn;
 	IOBUF *b;
 	HOST *h;
@@ -94,16 +98,17 @@ void udp_loop_checks( THRD *t )
 	n->phosts = (HOST **) allocz( NET_IP_HASHSZ * sizeof( HOST * ) );
 	n->phsz = NET_IP_HASHSZ;
 
-	h = mem_new_host( &sa, RR_NETBUF_SZ );
+	h = mem_new_host( &sa, NET_BUF_SZ );
 	b = h->net->in;
 
-	h->type   = n->type;
-	// for now we don't do prefixing on UDP
-	h->parser = n->type->flat_parser;
+	h->type = n->type;
+
+	// for now we don't do prefixing or tokens on UDP
+	net_set_host_parser( h, 0, 0 );
 
 	// prepopulate the hash table with prefixes
-	if( ctl->net->prefix )
-		iplist_call_data( ctl->net->prefix, &udp_add_phost, n );
+	for( p = _net->prefix; p; p = p->next )
+		iplist_call_data( p->list, &udp_add_phost, n );
 
 	loop_mark_start( "udp" );
 
@@ -130,7 +135,7 @@ void udp_loop_checks( THRD *t )
 			continue;
 
 		// do IP whitelist/blacklist check
-		if( net_ip_check( ctl->net->filter, h->peer ) != 0 )
+		if( net_ip_check( _net->filter, h->peer ) != 0 )
 		{
 			n->drops.count++;
 			continue;
@@ -148,11 +153,14 @@ void udp_loop_checks( THRD *t )
 		b->buf[b->len] = '\0';
 
 		// do a prefix check on that
-		iplist_test_ip( ctl->net->prefix, h->ip, &ipn );
+		for( p = _net->prefix; p; p = p->next )
+			if( iplist_test_ip( p->list, h->ip, &ipn ) != IPLIST_NOMATCH )
+				break;
+
 		if( ipn && ipn->tlen )
-			relay_parse_buf( udp_get_phost( n, ipn ), b );
+			(*(h->receiver))( udp_get_phost( n, ipn ), b );
 		else
-			relay_parse_buf( h, b );
+			(*(h->receiver))( h, b );
 	}
 
 	loop_mark_done( "udp", 0, 0 );
@@ -179,12 +187,12 @@ void udp_loop_flat( THRD *t )
 	sa.sin_addr.s_addr = n->ip;
 	sa.sin_port = htons( n->port );
 
-	h = mem_new_host( &sa, RR_NETBUF_SZ );
+	h = mem_new_host( &sa, NET_BUF_SZ );
 	b = h->net->in;
 
 	h->type   = n->type;
-	// for now we don't do prefixing on UDP
-	h->parser = n->type->flat_parser;
+	// for now we don't do prefixing or tokens on UDP
+	net_set_host_parser( h, 0, 0 );
 
 	loop_mark_start( "udp" );
 
@@ -222,7 +230,7 @@ void udp_loop_flat( THRD *t )
 		b->buf[b->len] = '\0';
 
 		// and try to parse that log
-		relay_parse_buf( h, b );
+		(*(h->receiver))( h, b );
 	}
 
 	loop_mark_done( "udp", 0, 0 );
@@ -244,7 +252,7 @@ int udp_listen( unsigned short port, uint32_t ip )
 		return -1;
 	}
 
-	tv.tv_sec  = ctl->net->rcv_tmout;
+	tv.tv_sec  = _net->rcv_tmout;
 	tv.tv_usec = 0;
 
 	debug( "Setting receive timeout to %ld.%06ld", tv.tv_sec, tv.tv_usec );

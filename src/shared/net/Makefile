@@ -1,7 +1,7 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-FILES  = thread pool epoll tcp net
-HEADS  = local net
+FILES  = thread pool epoll tcp udp token conf net
+HEADS  = local udp token net
 
 RKV    = net_shared.a
 EARGS ?=

@@ -29,6 +29,7 @@ MEM_CTL *mem_config_defaults( void )
 	_mem->iobps       = mem_type_declare( "iobps",  sizeof( IOBP ),  MEM_ALLOCSZ_IOBP,  0, 1 );
 	_mem->htreq       = mem_type_declare( "htreqs", sizeof( HTREQ ), MEM_ALLOCSZ_HTREQ, 2048, 0 );
 	_mem->hosts       = mem_type_declare( "hosts",  sizeof( HOST ),  MEM_ALLOCSZ_HOSTS, 0, 1 );
+	_mem->token       = mem_type_declare( "tokens", sizeof( TOKEN ), MEM_ALLOCSZ_TOKENS, 0, 0 );
 
 	return _mem;
 }

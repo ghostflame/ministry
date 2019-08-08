@@ -54,21 +54,12 @@ void main_loop( void )
 	// and token cleanup
 	thread_throw_named( &token_loop, NULL, 0, "token_loop" );
 
-	// throw the data listener loop
-	net_start_type( ctl->net->stats );
-	net_start_type( ctl->net->adder );
-	net_start_type( ctl->net->gauge );
-	net_start_type( ctl->net->compat );
-
 	// and any fetch loops
 	fetch_init( );
 
 	// and wait
 	while( RUNNING( ) )
 		sleep( 1 );
-
-	// shut down ports
-	net_stop( );
 
 	// and http server
 	http_stop( );
@@ -89,14 +80,13 @@ void main_create_conf( void )
 	ctl->mem        = memt_config_defaults( );
 	ctl->gc         = gc_config_defaults( );
 	ctl->locks      = lock_config_defaults( );
-	ctl->net        = net_config_defaults( );
+	ctl->net        = network_config_defaults( );
 	ctl->stats      = stats_config_defaults( );
 	ctl->synth      = synth_config_defaults( );
 	ctl->tgt        = targets_config_defaults( );
 	ctl->fetch      = fetch_config_defaults( );
 	ctl->metric     = metrics_config_defaults( );
 
-	config_register_section( "network", &net_config_line );
 	config_register_section( "gc",      &gc_config_line );
 	config_register_section( "stats",   &stats_config_line );
 	config_register_section( "synth",   &synth_config_line );

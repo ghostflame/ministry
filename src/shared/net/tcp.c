@@ -131,7 +131,7 @@ HOST *tcp_get_host( int sock, NET_PORT *np )
 		return NULL;
 	}
 
-	if( !( h = mem_new_host( &from, MIN_NETBUF_SZ ) ) )
+	if( !( h = mem_new_host( &from, NET_BUF_SZ ) ) )
 		fatal( "Could not allocate new host." );
 
 	h->net->fd = d;
@@ -141,7 +141,7 @@ HOST *tcp_get_host( int sock, NET_PORT *np )
 	// default handlers/parsers
 	h->parser   = h->type->flat_parser;
 	h->handler  = h->type->handler;
-	h->reeiver  = h->type->buf_parser;;
+	h->receiver = h->type->buf_parser;;
 
 	// set the last time to now
 	h->last = _proc->curr_tval;

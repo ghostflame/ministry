@@ -68,6 +68,7 @@ struct mem_control
 	MTYPE			*	iobps;
 	MTYPE			*	htreq;
 	MTYPE			*	hosts;
+	MTYPE			*	token;
 };
 
 
@@ -118,6 +119,9 @@ void mem_free_request( HTREQ **h );
 HOST *mem_new_host( struct sockaddr_in *peer, uint32_t bufsz );
 void mem_free_host( HOST **h );
 
+TOKEN *mem_new_token( void );
+void mem_free_token( TOKEN **t );
+void mem_free_token_list( TOKEN *list );
 
 
 #endif

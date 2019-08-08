@@ -44,10 +44,10 @@ void main_create_conf( void )
 	ctl				= (RCTL *) allocz( sizeof( RCTL ) );
 	ctl->proc		= app_control( );
 	ctl->mem		= memt_config_defaults( );
-	ctl->net		= net_config_defaults( );
+	ctl->net		= network_config_defaults( );
 	ctl->relay		= relay_config_defaults( );
 
-	config_register_section( "network", &net_config_line );
+	config_register_section( "network", &network_config_line );
 	config_register_section( "relay",   &relay_config_line );
 }
 

@@ -13,7 +13,6 @@
 
 #define MEM_ALLOCSZ_POINTS			2048
 #define MEM_ALLOCSZ_DHASH			512
-#define MEM_ALLOCSZ_TOKEN			128
 #define MEM_ALLOCSZ_PREDS			128
 #define MEM_ALLOCSZ_HISTY			128
 #define MEM_ALLOCSZ_METRY			128
@@ -26,7 +25,6 @@ struct memt_control
 {
 	MTYPE			*	points;
 	MTYPE			*	dhash;
-	MTYPE			*	token;
 	MTYPE			*	preds;
 	MTYPE			*	histy;
 	MTYPE			*	metry;
@@ -44,10 +42,6 @@ void mem_free_point_list( PTLIST *list );
 DHASH *mem_new_dhash( char *str, int len );
 void mem_free_dhash( DHASH **d );
 void mem_free_dhash_list( DHASH *list );
-
-TOKEN *mem_new_token( void );
-void mem_free_token( TOKEN **t );
-void mem_free_token_list( TOKEN *list );
 
 PRED *mem_new_pred( void );
 void mem_free_pred( PRED **p );

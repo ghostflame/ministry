@@ -12,7 +12,7 @@
 
 int post_handle_init( HTREQ *req )
 {
-	HOST *h = mem_new_host( &(req->sin), MIN_NETBUF_SZ );
+	HOST *h = mem_new_host( &(req->sin), NET_BUF_SZ );
 
 	h->type = ((DTYPE *) req->path->arg)->nt;
 	req->post->obj = h;

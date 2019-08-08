@@ -7,31 +7,41 @@
 * Updates:                                                                *
 **************************************************************************/
 
-#ifndef MINISTRY_NETWORK_H
-#define MINISTRY_NETWORK_H
+#ifndef CARBON_COPY_NETWORK_H
+#define CARBON_COPY_NETWORK_H
 
-#define DEFAULT_STATS_PORT				9125
-#define DEFAULT_ADDER_PORT				9225
-#define DEFAULT_GAUGE_PORT				9325
-#define DEFAULT_COMPAT_PORT				8125
+#define DEFAULT_RR_PORT					3901
+#define DEFAULT_COAL_PORT				3801
+#define DEFAULT_CARBON_PORT				2003
+
+
+#define NET_IO_MSEC						500		// in msec
+#define NET_FLUSH_MSEC					2000	// in msec
 
 #define DEFAULT_TARGET_HOST				"127.0.0.1"
 #define DEFAULT_TARGET_PORT				2003	// graphite
 
 
+struct host_buffers
+{
+	HBUFS				*	next;
+	RELAY				*	rule;
+	IOBUF				**	bufs;
+	int						bcount;
+};
+
+
 
 struct network_control
 {
-	NET_TYPE			*	stats;
-	NET_TYPE			*	adder;
-	NET_TYPE			*	gauge;
-	NET_TYPE			*	compat;
+	NET_TYPE			*	relay;
+	int						flush_nsec;
 };
 
 
 
 // config
 NETW_CTL *network_config_defaults( void );
-
+int network_config_line( AVP *av );
 
 #endif

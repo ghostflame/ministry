@@ -7,8 +7,8 @@
 * Updates:                                                                *
 **************************************************************************/
 
-#ifndef CARBON_COPY_UDP_H
-#define CARBON_COPY_UDP_H
+#ifndef SHARED_NET_UDP_H
+#define SHARED_NET_UDP_H
 
 throw_fn udp_loop_flat;
 throw_fn udp_loop_checks;

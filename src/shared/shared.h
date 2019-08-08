@@ -72,6 +72,8 @@
 #include "regexp.h"
 #include "iplist.h"
 #include "net/net.h"
+#include "net/token.h"
+#include "net/udp.h"
 #include "mem/mem.h"
 #include "target/target.h"
 #include "io/io.h"

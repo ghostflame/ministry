@@ -55,6 +55,9 @@ typedef struct net_prefix           NET_PFX;
 typedef struct net_type             NET_TYPE;
 typedef struct net_in_port          NET_PORT;
 
+typedef struct token_data			TOKEN;
+typedef struct token_info			TOKENS;
+
 typedef struct thread_data          THRD;
 typedef struct av_pair              AVP;
 typedef struct lockless_counter     LLCT;

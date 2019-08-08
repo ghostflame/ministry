@@ -11,8 +11,17 @@
 #define SHARED_NETWORK_H
 
 
-#define MIN_NETBUF_SZ						0x10000		// 64k
+#define NET_BUF_SZ						0x10000		// 64k
+#define DEFAULT_NET_BACKLOG				32
 
+
+#define NTYPE_ENABLED					0x0001
+#define NTYPE_TCP_ENABLED				0x0002
+#define NTYPE_UDP_ENABLED				0x0004
+#define NTYPE_UDP_CHECKS				0x0008
+
+
+extern uint32_t net_masks[33];
 
 struct net_prefix
 {
@@ -78,6 +87,7 @@ struct net_type
 	int						tcp_style;
 
 	int						token_bit;
+	int						nlen;
 };
 
 
@@ -128,14 +138,18 @@ struct net_control
 {
 	char				*	filter_list;
 	IPLIST				*	filter;
+	NET_PFX				*	prefix;
+	TOKENS				*	tokens;
 
 	NET_TYPE			*	ntypes;
 
 	int64_t					dead_time;
 	unsigned int			rcv_tmout;
+	int						ntcount;
 };
 
 
+line_fn net_token_parser;
 
 throw_fn tcp_loop;
 
@@ -143,5 +157,22 @@ int tcp_listen( unsigned short port, uint32_t ip, int backlog );
 
 int net_lookup_host( char *str, struct sockaddr_in *res );
 int net_ip_check( IPLIST *l, struct sockaddr_in *sin );
+
+
+// set a host parser fn
+int net_set_host_parser( HOST *h, int token_check, int prefix_check );
+
+
+void net_disconnect( int *sock, char *name );
+
+// init/shutdown
+void net_start_type( NET_TYPE *nt );
+int net_start( void );
+void net_stop( void );
+
+// config
+int net_add_type( NET_TYPE *nt );
+NET_CTL *net_config_defaults( void );
+int net_config_line( AVP *av );
 
 #endif

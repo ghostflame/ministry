@@ -26,11 +26,9 @@
 // in order
 #include "locks.h"
 #include "network.h"
-#include "udp.h"
 #include "tcp/tcp.h"
 #include "fetch.h"
 #include "post.h"
-#include "token.h"
 #include "targets.h"
 #include "data.h"
 #include "metrics.h"
@@ -61,12 +59,12 @@ struct ministry_control
 	LOCK_CTL			*	locks;
 	MEMT_CTL			*	mem;
 	GC_CTL				*	gc;
-	NET_CTL				*	net;
 	STAT_CTL			*	stats;
 	SYN_CTL				*	synth;
 	TGTS_CTL			*	tgt;
 	FTCH_CTL			*	fetch;
 	MET_CTL				*	metric;
+	NETW_CTL			*	net;
 };
 
 

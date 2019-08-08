@@ -7,8 +7,8 @@
 * Updates:                                                                *
 **************************************************************************/
 
-#ifndef MINISTRY_TOKEN_H
-#define MINISTRY_TOKEN_H
+#ifndef SHARED_NET_TOKEN_H
+#define SHARED_NET_TOKEN_H
 
 #define DEFAULT_TOKEN_LIFETIME		2000	// msec
 #define DEFAULT_TOKEN_MASK			0xff	// all types
@@ -47,16 +47,18 @@ struct token_info
 	int64_t				lifetime;
 	int64_t				mask;
 	int					enable;
+	pthread_mutex_t		lock;
 };
 
 
 void token_burn( TOKEN *t );
-TOKEN *token_find( uint32_t ip, int16_t type, int64_t val );
+TOKEN *token_find( uint32_t ip, int8_t bit, int64_t val );
 void token_generate( uint32_t ip, int16_t types, TOKEN **ptrs, int max, int *count );
 
 
 throw_fn token_loop;
 
+void token_finish( void );
 int token_init( void );
 TOKENS *token_setup( void );
 

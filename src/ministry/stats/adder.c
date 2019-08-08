@@ -177,6 +177,9 @@ void stats_adder_pass( ST_THR *t )
 			for( d = t->conf->data[i]; d && d->valid; d = d->next )
 				if( d->do_pass && d->proc.count > 0 )
 				{
+					// capture this? - needs a post-report capture mechanism
+					// lock, do all the steals, then unlock?
+					// spread the cond_signal across all steals?
 					if( d->empty > 0 )
 						d->empty = 0;
 

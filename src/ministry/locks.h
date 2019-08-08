@@ -49,14 +49,12 @@ typedef pthread_mutex_t			dhash_lock_t;
 #define lock_synth( )			pthread_mutex_lock(   &(ctl->locks->synth) )
 #define unlock_synth( )			pthread_mutex_unlock( &(ctl->locks->synth) )
 
-#define lock_tokens( )			pthread_mutex_lock(   &(ctl->locks->tokens) )
-#define unlock_tokens( )		pthread_mutex_unlock( &(ctl->locks->tokens) )
+
 
 
 
 struct lock_control
 {
-	pthread_mutex_t			tokens;						// token control
 	pthread_mutex_t			hashstats;					// used for counters
 	pthread_mutex_t			synth;						// synthetics control
 	pthread_mutex_t			bufref;						// controlled buffer refcount

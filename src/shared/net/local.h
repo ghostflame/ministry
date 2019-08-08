@@ -10,22 +10,21 @@
 #ifndef SHARED_NETWORK_LOCAL_H
 #define SHARED_NETWORK_LOCAL_H
 
+#define HPRFX_BUFSZ						0x2000	// 8k
+
 
 #define TCP_MAX_POLLS					128
 // used to hash (port<<32)+ip to give a nice
 // spread of tcp slots even with a power-of-two
 // number of threads
 #define TCP_MODULO_PRIME				1316779
-#define DEFAULT_NET_BACKLOG				32
 #define NET_DEAD_CONN_TIMER				600     // 10 mins
 #define NET_RCV_TMOUT					3       // in sec
 #define NET_RECONN_MSEC					3000    // in msec
 #define NET_IO_MSEC						500     // in msec
+#define NET_IP_HASHSZ					2003
 
-#define NTYPE_ENABLED					0x0001
-#define NTYPE_TCP_ENABLED				0x0002
-#define NTYPE_UDP_ENABLED				0x0004
-#define NTYPE_UDP_CHECKS				0x0008
+
 
 
 enum tcp_style_types
@@ -55,6 +54,10 @@ enum tcp_style_types
 
 #define lock_tcp( th )					pthread_mutex_lock(   &(th->lock) )
 #define unlock_tcp( th )				pthread_mutex_unlock( &(th->lock) )
+
+#define lock_tokens( )					pthread_mutex_lock(   &(_net->tokens->lock) )
+#define unlock_tokens( )				pthread_mutex_unlock( &(_net->tokens->lock) )
+
 
 
 struct tcp_style_data
@@ -89,10 +92,11 @@ struct tcp_thread
 };
 
 extern const struct tcp_style_data tcp_styles[];
-extern uint32_t net_masks[33];
+
 
 void tcp_close_active_host( HOST *h );
 void tcp_close_host( HOST *h );
+int net_set_host_prefix( HOST *h, IPNET *n );
 
 tcp_fn tcp_choose_thread;
 tcp_fn tcp_throw_thread;

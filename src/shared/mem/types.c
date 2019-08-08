@@ -236,3 +236,43 @@ void mem_free_host( HOST **h )
 	mtype_free( _mem->hosts, sh );
 }
 
+TOKEN *mem_new_token( void )
+{
+	return (TOKEN *) mtype_new( _mem->token );
+}
+
+
+void mem_free_token( TOKEN **t )
+{
+	TOKEN *tp;
+
+	tp = *t;
+	*t = NULL;
+
+	memset( tp, 0, sizeof( TOKEN ) );
+	mtype_free( _mem->token, tp );
+}
+
+void mem_free_token_list( TOKEN *list )
+{
+	TOKEN *t, *freed, *end;
+	int j = 0;
+
+	freed = NULL;
+	end   = list;
+
+	while( list )
+	{
+		t    = list;
+		list = t->next;
+
+		memset( t, 0, sizeof( TOKEN ) );
+
+		t->next = freed;
+		freed   = t;
+
+		j++;
+	}
+
+	mtype_free_list( _mem->token, j, freed, end );
+}

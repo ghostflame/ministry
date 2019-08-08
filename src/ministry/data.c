@@ -583,39 +583,6 @@ __attribute__((hot)) void data_line_ministry( HOST *h, char *line, int len )
 
 
 
-__attribute__((hot)) void data_line_token( HOST *h, char *line, int len )
-{
-	int64_t tval;
-	TOKEN *t;
-
-	// have we flagged them already?
-	if( h->net->flags & IO_CLOSE )
-	{
-		debug( "Host already flagged as closed - ignoring line: %s", line );
-		return;
-	}
-
-	// read the token
-	tval = strtoll( line, NULL, 10 );
-
-	// look up a token based on that information
-	if( !( t = token_find( h->ip, h->type->token_type, tval ) ) )
-	{
-		debug( "Found no token: %p", t );
-
-		// we were expecting a token, so, no.
-		h->net->flags |= IO_CLOSE;
-		return;
-	}
-
-	// burn that token
-	token_burn( t );
-
-	// reset the handler function
-	net_set_host_parser( h, 0, 1 );
-}
-
-
 
 
 // parse the lines
