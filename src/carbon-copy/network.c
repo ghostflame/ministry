@@ -13,11 +13,7 @@
 
 NETW_CTL *network_config_defaults( void )
 {
-	NETW_CTL *net;
 	NET_TYPE *nt;
-
-	net              = (NETW_CTL *) allocz( sizeof( NETW_CTL ) );
-	net->flush_nsec  = 1000000 * NET_FLUSH_MSEC;
 
 	nt               = (NET_TYPE *) allocz( sizeof( NET_TYPE ) );
 	nt->tcp          = (NET_PORT *) allocz( sizeof( NET_PORT ) );
@@ -35,29 +31,12 @@ NETW_CTL *network_config_defaults( void )
 
 	net_add_type( nt );
 
+	net              = (NETW_CTL *) allocz( sizeof( NETW_CTL ) );
 	net->relay       = nt;
 
 	// can't add default target, it's a linked list
 
 	return net;
-}
-
-
-
-
-int network_config_line( AVP *av )
-{
-	if( attIs( "flush_msec" ) )
-	{
-		ctl->net->flush_nsec = 1000000 * atoll( av->vptr );
-		if( ctl->net->flush_nsec < 0 )
-			ctl->net->flush_nsec = 1000000 * NET_FLUSH_MSEC;
-		debug( "Host flush time set to %ld usec.", ctl->net->flush_nsec / 1000 );
-	}
-	else
-		return -1;
-
-	return 0;
 }
 
 

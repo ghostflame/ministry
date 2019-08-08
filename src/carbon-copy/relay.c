@@ -279,7 +279,7 @@ __attribute__((hot)) int relay_parse_buf( HOST *h, IOBUF *b )
 }
 
 
-HBUFS *relay_buf_set( void )
+void relay_buf_set( HOST *h )
 {
 	HBUFS *b, *tmp, *list;
 	RELAY *r;
@@ -320,7 +320,7 @@ HBUFS *relay_buf_set( void )
 		list = b;
 	}
 
-	return list;
+	h->data = (void *) list;
 }
 
 
@@ -373,6 +373,7 @@ static int __relay_cfg_state = 0;
 int relay_config_line( AVP *av )
 {
 	RELAY *n, *r = &__relay_cfg_tmp;
+	int64_t ms;
 	char *s;
 
 	if( !__relay_cfg_state )
@@ -386,7 +387,19 @@ int relay_config_line( AVP *av )
 		r->invert  = (uint8_t *) allocz( RELAY_MAX_REGEXES * sizeof( uint8_t ) );
 	}
 
-	if( attIs( "name" ) )
+	if( attIs( "flush" ) || attIs( "flushMsec" ) )
+	{
+		if( parse_number( av, &ms, NULL ) == NUM_INVALID )
+		{
+			err( "Invalid flush milliseconds value '%s'", av->vptr );
+			return -1;
+		}
+		ctl->relay->flush_nsec = MILLION * ms;
+
+		if( ctl->relay->flush_nsec <= 0 )
+			ctl->relay->flush_nsec = MILLION * NET_FLUSH_MSEC;
+	}
+	else if( attIs( "name" ) )
 	{
 		if( r->name && strcmp( r->name, "- unnamed -" ) )
 		{

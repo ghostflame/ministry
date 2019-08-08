@@ -47,8 +47,9 @@ void main_create_conf( void )
 	ctl->net		= network_config_defaults( );
 	ctl->relay		= relay_config_defaults( );
 
-	config_register_section( "network", &network_config_line );
-	config_register_section( "relay",   &relay_config_line );
+	config_register_section( "relay", &relay_config_line );
+
+	net_host_setup_fn( 
 }
 
 

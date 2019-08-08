@@ -143,6 +143,8 @@ struct net_control
 
 	NET_TYPE			*	ntypes;
 
+	tcp_fn				*	host_setup;
+
 	int64_t					dead_time;
 	unsigned int			rcv_tmout;
 	int						ntcount;
@@ -166,6 +168,7 @@ int net_set_host_parser( HOST *h, int token_check, int prefix_check );
 void net_disconnect( int *sock, char *name );
 
 // init/shutdown
+void net_host_callbacks( tcp_fn *setup, tcp_fn *finish );
 void net_start_type( NET_TYPE *nt );
 int net_start( void );
 void net_stop( void );

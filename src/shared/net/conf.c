@@ -64,6 +64,13 @@ int net_add_type( NET_TYPE *nt )
 }
 
 
+void net_host_callbacks( tcp_fn *setup, tcp_fn *finish )
+{
+	_net->host_setup  = setup;
+	_net->host_finish = finish;
+}
+
+
 
 NET_CTL *net_config_defaults( void )
 {

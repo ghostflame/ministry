@@ -73,11 +73,14 @@ void tcp_close_host( HOST *h )
 	io_disconnect( h->net );
 	debug( "Closed connection from host %s.", h->net->name );
 
+	if( _net->host_finish )
+		(*(_net->host_finish))( h );
+
 	// give us a moment
 	usleep( 5000 );
-
 	mem_free_host( &h );
 }
+
 
 void tcp_close_active_host( HOST *h )
 {
@@ -160,6 +163,10 @@ HOST *tcp_get_host( int sock, NET_PORT *np )
 	lock_ntype( h->type );
 	h->type->conns++;
 	unlock_ntype( h->type );
+
+	// do we have a host callback?
+	if( _net->host_fn )
+		(*(_net->host_fn))( h );
 
 	np->accepts.count++;
 	return h;

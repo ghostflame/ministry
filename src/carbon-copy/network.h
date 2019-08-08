@@ -35,13 +35,11 @@ struct host_buffers
 struct network_control
 {
 	NET_TYPE			*	relay;
-	int						flush_nsec;
 };
 
 
 
 // config
 NETW_CTL *network_config_defaults( void );
-int network_config_line( AVP *av );
 
 #endif

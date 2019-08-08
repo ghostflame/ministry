@@ -68,6 +68,8 @@ struct relay_rule
 struct relay_control
 {
 	RELAY			*	rules;
+	int64_t				flush_msec;
+
 	int					bcount;
 };
 
@@ -78,7 +80,7 @@ relay_fn relay_hash;
 line_fn relay_simple;
 line_fn relay_prefix;
 
-HBUFS *relay_buf_set( void );
+void relay_buf_set( HOST *h );
 
 buf_fn relay_parse_buf;
 
