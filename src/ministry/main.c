@@ -54,6 +54,9 @@ void main_loop( void )
 	// and token cleanup
 	thread_throw_named( &token_loop, NULL, 0, "token_loop" );
 
+	// get network threads going
+	net_begin( );
+
 	// and any fetch loops
 	fetch_init( );
 

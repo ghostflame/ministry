@@ -193,13 +193,16 @@ int net_set_host_parser( HOST *h, int token_check, int prefix_check )
 
 
 
-void net_start_type( NET_TYPE *nt )
+void net_begin_type( NET_TYPE *nt )
 {
 	throw_fn *fp;
 	int i;
 
 	if( !( nt->flags & NTYPE_ENABLED ) )
+	{
+		info( "Network type %s is not enabled.", nt->name );
 		return;
+	}
 
 	if( nt->flags & NTYPE_TCP_ENABLED )
 	{
@@ -254,9 +257,6 @@ int ntype_startup( NET_TYPE *nt )
 
 	notice( "Type %s has TCP dead time %ds, TCP handler style %s.",
 		nt->name, _net->dead_time, tcp_styles[nt->tcp_style].name );
-
-	// convert dead time to nsec
-	_net->dead_time *= MILLION;
 
 	if( nt->flags & NTYPE_UDP_ENABLED )
 		for( i = 0; i < nt->udp_count; i++ )
@@ -315,6 +315,15 @@ void ntype_shutdown( NET_TYPE *nt )
 }
 
 
+void net_begin( void )
+{
+	NET_TYPE *nt;
+
+	for( nt = _net->ntypes; nt; nt = nt->next )
+		net_begin_type( nt );
+}
+
+
 int net_start( void )
 {
 	NET_TYPE *t;
@@ -349,6 +358,9 @@ int net_start( void )
 
 	notice( "Starting networking." );
 
+	// convert dead time to nsec
+	_net->dead_nsec = BILLION * _net->dead_time;
+
 	for( t = _net->ntypes; t; t = t->next )
 		ret += ntype_startup( t );
 
@@ -369,10 +381,6 @@ void net_stop( void )
 
 	token_finish( );
 }
-
-
-
-
 
 
 

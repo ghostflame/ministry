@@ -74,16 +74,14 @@ void net_host_callbacks( tcp_fn *setup, tcp_fn *finish )
 
 NET_CTL *net_config_defaults( void )
 {
-	NET_CTL *net;
-
-	net              = (NET_CTL *) allocz( sizeof( NET_CTL ) );
-	net->dead_time   = NET_DEAD_CONN_TIMER;
-	net->rcv_tmout   = NET_RCV_TMOUT;
+	_net              = (NET_CTL *) allocz( sizeof( NET_CTL ) );
+	_net->dead_time   = NET_DEAD_CONN_TIMER;
+	_net->rcv_tmout   = NET_RCV_TMOUT;
 
 	// create our tokens structure
-	net->tokens      = token_setup( );
+	_net->tokens      = token_setup( );
 
-	return net;
+	return _net;
 }
 
 

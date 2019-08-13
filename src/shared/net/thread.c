@@ -53,7 +53,7 @@ __attribute__((hot)) void tcp_thrd_thread( THRD *t )
 		// anything to do?
 		if( !pf.revents )
 		{
-			if( (_proc->curr_tval - h->last) > _net->dead_time )
+			if( (_proc->curr_tval - h->last) > _net->dead_nsec )
 			{
 				notice( "Connection from host %s timed out.", n->name );
 				n->flags |= IO_CLOSE;

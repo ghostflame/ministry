@@ -28,7 +28,7 @@ void main_loop( void )
 	target_run( );
 
 	// throw the data listener loop
-	net_start_type( ctl->net->relay );
+	net_begin( );
 
 	while( RUNNING( ) )
 		sleep( 1 );
@@ -49,7 +49,7 @@ void main_create_conf( void )
 
 	config_register_section( "relay", &relay_config_line );
 
-	net_host_setup_fn( 
+	net_host_callbacks( &relay_buf_set, &relay_buf_end );
 }
 
 

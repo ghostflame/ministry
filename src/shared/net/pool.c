@@ -65,7 +65,7 @@ __attribute__((hot)) void tcp_pool_handler( TCPTH *th, struct pollfd *p, HOST *h
 
 	if( !( p->revents & POLL_EVENTS ) )
 	{
-		if( (_proc->curr_tval - h->last) > _net->dead_time )
+		if( (_proc->curr_tval - h->last) > _net->dead_nsec )
 		{
 			tnotice( "Connection from host %s timed out.", n->name );
 			n->flags |= IO_CLOSE;

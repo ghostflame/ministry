@@ -19,6 +19,7 @@ typedef struct target_control		TGT_CTL;
 typedef struct stat_config			ST_CFG;
 typedef struct stat_thread_ctl		ST_THR;
 typedef struct stat_threshold		ST_THOLD;
+typedef struct relay_data           RDATA;
 typedef struct relay_rule			RELAY;
 typedef struct relay_line			RLINE;
 typedef struct host_prefix			HPRFX;

@@ -13,6 +13,7 @@
 
 NETW_CTL *network_config_defaults( void )
 {
+	NETW_CTL *net;
 	NET_TYPE *nt;
 
 	nt               = (NET_TYPE *) allocz( sizeof( NET_TYPE ) );

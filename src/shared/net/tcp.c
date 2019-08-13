@@ -165,8 +165,8 @@ HOST *tcp_get_host( int sock, NET_PORT *np )
 	unlock_ntype( h->type );
 
 	// do we have a host callback?
-	if( _net->host_fn )
-		(*(_net->host_fn))( h );
+	if( _net->host_setup )
+		(*(_net->host_setup))( h );
 
 	np->accepts.count++;
 	return h;

@@ -97,7 +97,7 @@ int app_init( char *name, char *cfgdir )
 	config_register_section( "io",       &io_config_line );
 	config_register_section( "target",   &target_config_line );
 	config_register_section( "ha",       &ha_config_line );
-	config_register_section( "net",      &net_config_line );
+	config_register_section( "network",  &net_config_line );
 
 
 	if( set_signals( ) )

@@ -40,7 +40,7 @@ __attribute__((hot)) void tcp_epoll_handler( TCPTH *th, struct epoll_event *e, H
 
 	if( !( e->events & POLL_EVENTS ) )
 	{
-		if( (_proc->curr_tval - h->last) > _net->dead_time )
+		if( (_proc->curr_tval - h->last) > _net->dead_nsec )
 		{
 			tnotice( "Connection from host %s timed out.", n->name );
 			n->flags |= IO_CLOSE;

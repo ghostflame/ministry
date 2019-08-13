@@ -10,72 +10,27 @@
 #include "carbon_copy.h"
 
 
-/*
-HOST *mem_new_host( struct sockaddr_in *peer, uint32_t bufsz )
+RDATA *mem_new_rdata( void )
 {
-	HOST *h;
+	RDATA *r = (RDATA *) mtype_new( ctl->mem->rdata );
 
-	h = (HOST *) mtype_new( ctl->mem->hosts );
+	pthread_mutex_init( &(r->lock), &(ctl->proc->mtxa) );
 
-	// is this one set up?
-	if( ! h->net )
-	{
-		h->net  = io_make_sock( bufsz, 0, peer );
-		h->peer = &(h->net->peer);
-	}
-
-	// copy the peer details in
-	*(h->peer) = *peer;
-	h->ip      = h->peer->sin_addr.s_addr;
-
-	// and make our name
-	snprintf( h->net->name, 32, "%s:%hu", inet_ntoa( h->peer->sin_addr ),
-		ntohs( h->peer->sin_port ) );
-
-	return h;
+	return r;
 }
 
-
-
-void mem_free_host( HOST **h )
+void mem_free_rdata( RDATA **r )
 {
-	HOST *sh;
+	RDATA *rd;
 
-	if( !h || !*h )
-		return;
+	rd = *r;
+	*r = NULL;
 
-	sh = *h;
-	*h = NULL;
+	pthread_mutex_destroy( &(rd->lock) );
 
-	sh->type       = NULL;
-	sh->net->fd    = -1;
-	sh->net->flags = 0;
-	sh->ipn        = NULL;
-	sh->ip         = 0;
-
-	sh->peer->sin_addr.s_addr = INADDR_ANY;
-	sh->peer->sin_port = 0;
-
-	if( sh->net->in )
-		sh->net->in->len = 0;
-
-	if( sh->net->out )
-		sh->net->out->len = 0;
-
-	if( sh->net->name )
-		sh->net->name[0] = '\0';
-
-	if( sh->workbuf )
-	{
-		sh->workbuf[0] = '\0';
-		sh->plen = 0;
-		sh->lmax = 0;
-		sh->ltarget = sh->workbuf;
-	}
-
-	mtype_free( ctl->mem->hosts, sh );
+	memset( &rd, 0, sizeof( RDATA ) );
+	mtype_free( ctl->mem->rdata, rd );
 }
-*/
 
 
 HBUFS *mem_new_hbufs( void )
@@ -160,7 +115,8 @@ MEMT_CTL *memt_config_defaults( void )
 	MEMT_CTL *m;
 
 	m = (MEMT_CTL *) allocz( sizeof( MEMT_CTL ) );
-	m->hbufs = mem_type_declare( "hbufs",  sizeof( HBUFS ),  MEM_ALLOCSZ_HBUFS,  0, 1 );
+	m->hbufs = mem_type_declare( "hbufs", sizeof( HBUFS ), MEM_ALLOCSZ_HBUFS, 0, 1 );
+	m->rdata = mem_type_declare( "rdata", sizeof( RDATA ), MEM_ALLOCSZ_RDATA, 0, 1 );
 
 	return m;
 }

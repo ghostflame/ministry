@@ -91,7 +91,6 @@ struct net_type
 };
 
 
-
 struct host_data
 {
 	HOST				*	next;
@@ -144,8 +143,10 @@ struct net_control
 	NET_TYPE			*	ntypes;
 
 	tcp_fn				*	host_setup;
+	tcp_fn				*	host_finish;
 
 	int64_t					dead_time;
+	int64_t					dead_nsec;
 	unsigned int			rcv_tmout;
 	int						ntcount;
 };
@@ -169,7 +170,7 @@ void net_disconnect( int *sock, char *name );
 
 // init/shutdown
 void net_host_callbacks( tcp_fn *setup, tcp_fn *finish );
-void net_start_type( NET_TYPE *nt );
+void net_begin( void );
 int net_start( void );
 void net_stop( void );
 

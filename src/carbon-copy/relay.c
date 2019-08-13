@@ -12,6 +12,63 @@
 
 
 
+void relay_flush_host( HOST *h )
+{
+	HBUFS *hb;
+	RDATA *r;
+	int i;
+
+	r = (RDATA *) h->data;
+
+	lock_rdata( r );
+
+	// send all bufs that have data in
+	for( hb = r->hbufs; hb; hb = hb->next )
+		switch( hb->rule->type )
+		{
+			case RTYPE_REGEX:
+				// single buffer, multi-target
+				if( hb->bufs[0] && hb->bufs[0]->len > 0 )
+				{
+					io_buf_post( hb->rule->targets[0], hb->bufs[0] );
+					hb->bufs[0] = mem_new_iobuf( IO_BUF_SZ );
+				}
+				break;
+
+			case RTYPE_HASH:
+				// multiple buffers
+				for( i = 0; i < hb->bcount; i++ )
+					if( hb->bufs[i] && hb->bufs[i]->len > 0 )
+					{
+						io_buf_post( hb->rule->targets[i], hb->bufs[i] );
+						hb->bufs[i] = mem_new_iobuf( IO_BUF_SZ );
+					}
+				break;
+		}
+
+	unlock_rdata( r );
+}
+
+
+void relay_buf_end( HOST *h )
+{
+	RDATA *r;
+
+	r = (RDATA *) h->data;
+
+	// signal the tracking function to end
+	r->running = 0;
+
+	// flush the host explicitly
+	relay_flush_host( h );
+
+	h->data = NULL;
+
+	mem_free_rdata( &r );
+}
+
+
+
 __attribute__((hot)) int relay_write( IOBUF *b, RLINE *l )
 {
 	// add path
@@ -73,6 +130,7 @@ __attribute__((hot)) int relay_regex( HBUFS *h, RLINE *l )
 }
 
 
+
 __attribute__((hot)) int relay_hash( HBUFS *h, RLINE *l )
 {
 	uint32_t j = 0;
@@ -125,7 +183,7 @@ __attribute__((hot)) void relay_simple( HOST *h, char *line, int len )
 	h->lines++;
 
 	// run through until we get a match and a last
-	for( hb = (HBUFS *) h->data; hb; hb = hb->next )
+	for( hb = ((RDATA*) h->data)->hbufs; hb; hb = hb->next )
 	{
 		r = hb->rule;
 
@@ -182,7 +240,7 @@ __attribute__((hot)) void relay_prefix( HOST *h, char *line, int len )
 	l.plen = l.plen + h->plen;
 
 	// run through using the prefixed 
-	for( hb = (HBUFS *) h->data; hb; hb = hb->next )
+	for( hb = ((RDATA *) h->data)->hbufs; hb; hb = hb->next )
 	{
 		r = hb->rule;
 
@@ -195,6 +253,8 @@ __attribute__((hot)) void relay_prefix( HOST *h, char *line, int len )
 		}
 	}
 }
+
+
 
 // parse the lines
 // put any partial lines back at the start of the buffer
@@ -279,9 +339,55 @@ __attribute__((hot)) int relay_parse_buf( HOST *h, IOBUF *b )
 }
 
 
+
+/*
+ *  Handle periodic flush of data
+ *  Based on minimum flush time
+ *
+ *  Set it low for timely data without timestamps
+ *  High for data with timestamps
+ */
+void relay_track_host( THRD *t )
+{
+	int64_t ns, thr, hlf, sns;
+	struct timespec ts;
+	RDATA *r;
+	HOST *h;
+
+	r = (RDATA *) t->arg;
+	h = r->host;
+
+	thr = ctl->relay->flush_nsec;
+	hlf = thr / 2;
+
+	while( r->running )
+	{
+		ns = h->last - r->last;
+
+		if( ns > thr )
+		{
+			relay_flush_host( h );
+			sns = thr;
+		}
+		else if( ns > hlf )
+		{
+			sns = hlf;
+		}
+		else
+			sns = thr;
+
+		llts( sns, ts );
+		nanosleep( &ts, NULL );
+	}
+}
+
+
+
+
 void relay_buf_set( HOST *h )
 {
 	HBUFS *b, *tmp, *list;
+	RDATA *rd;
 	RELAY *r;
 	int i;
 
@@ -320,8 +426,21 @@ void relay_buf_set( HOST *h )
 		list = b;
 	}
 
-	h->data = (void *) list;
+	// make a tracking thread to flush periodically
+	rd = mem_new_rdata( );
+	rd->host    = h;
+	rd->running = 1;
+	rd->hbufs   = list;
+
+	thread_throw_named_f( &relay_track_host, rd, 0, "t_%08x:%04x",
+		ntohl( h->net->peer.sin_addr.s_addr ),
+		ntohs( h->net->peer.sin_port ) );
+
+	h->data = (void *) rd;
 }
+
+
+
 
 
 
@@ -361,8 +480,9 @@ int relay_resolve( void )
 
 RLY_CTL *relay_config_defaults( void )
 {
-	RLY_CTL *r;
-	r = (RLY_CTL *) allocz( sizeof( RLY_CTL ) );
+	RLY_CTL *r = (RLY_CTL *) allocz( sizeof( RLY_CTL ) );
+
+	r->flush_nsec = MILLION * NET_FLUSH_MSEC;
 
 	return r;
 }
@@ -389,7 +509,7 @@ int relay_config_line( AVP *av )
 
 	if( attIs( "flush" ) || attIs( "flushMsec" ) )
 	{
-		if( parse_number( av, &ms, NULL ) == NUM_INVALID )
+		if( parse_number( av->vptr, &ms, NULL ) == NUM_INVALID )
 		{
 			err( "Invalid flush milliseconds value '%s'", av->vptr );
 			return -1;
@@ -541,5 +661,7 @@ int relay_config_line( AVP *av )
 
 	return 0;
 }
+
+
 
 

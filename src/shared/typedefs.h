@@ -48,6 +48,7 @@ typedef struct target_alter         TGTALT;
 typedef struct iplist_net           IPNET;
 typedef struct iplist               IPLIST;
 
+typedef struct host_tracker         HTRACK;
 typedef struct host_data            HOST;
 typedef struct tcp_thread           TCPTH;
 
