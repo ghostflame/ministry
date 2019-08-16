@@ -28,7 +28,7 @@ int pmet_summary_render( int64_t mval, BUF *b, PMET *item, PMET_LBL *with )
 	dc = (double) c;
 	mem_sort_dlist( s->values, c );
 
-	for( i = 0; i < s->qcount; i++ )
+	for( i = 0; i < s->qcount; ++i )
 	{
 		strbuf_add( b, met->path, met->plen );
 		pmet_label_render( b, 3, item->labels, with, s->labels[i] );
@@ -120,7 +120,7 @@ int pmet_summary_value( PMET *item, double value, int set )
 	{
 		s->values[item->count] = value;
 		s->sum += value;
-		item->count++;
+		++(item->count);
 	}
 	else
 		ret = -1;

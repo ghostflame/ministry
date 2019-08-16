@@ -15,7 +15,6 @@
 #define DEFAULT_CARBON_PORT				2003
 
 
-#define NET_IO_MSEC						500		// in msec
 #define NET_FLUSH_MSEC					2000	// in msec
 
 #define DEFAULT_TARGET_HOST				"127.0.0.1"

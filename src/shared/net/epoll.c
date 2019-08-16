@@ -22,7 +22,7 @@ void tcp_epoll_add_host( TCPTH *th, HOST *h )
 	}
 
 	// keep count
-	th->curr++;
+	++(th->curr);
 
 	// add that in
 	h->ep_evt.events   = EPOLL_EVENTS;
@@ -136,7 +136,7 @@ __attribute__((hot)) void tcp_epoll_thread( THRD *td )
 		{
 			// sleep a little
 			// check again
-			usleep( 50000 );
+			microsleep( 50000 );
 			continue;
 		}
 
@@ -152,7 +152,7 @@ __attribute__((hot)) void tcp_epoll_thread( THRD *td )
 		}
 
 		// run through the answers
-		for( i = 0, ep = th->ep_events; i < rv; i++, ep++ )
+		for( i = 0, ep = th->ep_events; i < rv; ++i, ++ep )
 			tcp_epoll_handler( th, ep, (HOST *) ep->data.ptr );
 
 
@@ -179,7 +179,7 @@ __attribute__((hot)) void tcp_epoll_thread( THRD *td )
 		}
 
 		// and sleep a very little, to avoid epoll-spam
-		//usleep( 2000 );
+		//microsleep( 2000 );
 	}
 
 	// close everything!
@@ -203,7 +203,7 @@ void tcp_epoll_setup( NET_TYPE *nt )
 
 	// create an epoll fd for each thread
 	nt->tcp->threads = (TCPTH **) allocz( nt->threads * sizeof( TCPTH * ) );
-	for( i = 0; i < nt->threads; i++ )
+	for( i = 0; i < nt->threads; ++i )
 	{
 		th = (TCPTH *) allocz( sizeof( TCPTH ) );
 

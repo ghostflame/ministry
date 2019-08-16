@@ -102,7 +102,7 @@ void mem_free_iobuf_list( IOBUF *list )
 		b->next = freed;
 		freed   = b;
 
-		j++;
+		++j;
 	}
 
 	mtype_free_list( _mem->iobufs, j, freed, end );
@@ -271,7 +271,7 @@ void mem_free_token_list( TOKEN *list )
 		t->next = freed;
 		freed   = t;
 
-		j++;
+		++j;
 	}
 
 	mtype_free_list( _mem->token, j, freed, end );

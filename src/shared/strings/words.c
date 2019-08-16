@@ -34,7 +34,7 @@ int strqwords( WORDS *w, char *src, int len, char sep )
 	// step over leading separators
 	while( *p == sep )
 	{
-		p++;
+		++p;
 		l--;
 	}
 
@@ -59,7 +59,7 @@ int strqwords( WORDS *w, char *src, int len, char sep )
 
 		if( qc )
 		{
-			p++;
+			++p;
 			l--;
 
 			w->wd[i] = p;
@@ -85,7 +85,7 @@ int strqwords( WORDS *w, char *src, int len, char sep )
 			// step over any separators following the quotes
 			while( *p == sep )
 			{
-				p++;
+				++p;
 				l--;
 			}
 		}
@@ -144,7 +144,7 @@ int strwords_multi( WORDS *w, char *src, int len, char sep, int8_t multi )
 	// step over leading separators
 	while( *p == sep )
 	{
-		p++;
+		++p;
 		l--;
 	}
 

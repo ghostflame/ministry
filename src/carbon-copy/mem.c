@@ -54,7 +54,7 @@ void mem_free_hbufs( HBUFS **h )
 	hp = *h;
 	*h = NULL;
 
-	for( i = 0; i < hp->bcount; i++ )
+	for( i = 0; i < hp->bcount; ++i )
 		if( hp->bufs[i] )
 		{
 			hp->bufs[i]->next = bufs;
@@ -85,7 +85,7 @@ void mem_free_hbufs_list( HBUFS *list )
 		h = list;
 		list = h->next;
 
-		for( i = 0; i < h->bcount; i++ )
+		for( i = 0; i < h->bcount; ++i )
 			if( h->bufs[i] )
 			{
 				h->bufs[i]->next = bufs;
@@ -99,7 +99,7 @@ void mem_free_hbufs_list( HBUFS *list )
 		h->next = hfree;
 		hfree   = h;
 
-		hc++;
+		++hc;
 	}
 
 	mtype_free_list( ctl->mem->hbufs,  hc, hfree, hend );

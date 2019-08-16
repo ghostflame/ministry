@@ -111,7 +111,7 @@ HOST *tcp_get_host( int sock, NET_PORT *np )
 	{
 		// broken
 		err( "Accept error -- %s", Err );
-		np->errors.count++;
+		++(np->errors.count);
 		return NULL;
 	}
 
@@ -123,7 +123,7 @@ HOST *tcp_get_host( int sock, NET_PORT *np )
 				inet_ntoa( from.sin_addr ), ntohs( from.sin_port ) );
 
 		// keep track
-		np->drops.count++;
+		++(np->drops.count);
 
 		// and done
 		shutdown( d, SHUT_RDWR );
@@ -147,16 +147,16 @@ HOST *tcp_get_host( int sock, NET_PORT *np )
 	// and maybe set a profile
 	if( net_set_host_parser( h, 1, 1 ) )
 	{
-		np->errors.count++;
+		++(np->errors.count);
 		return NULL;
 	}
 
 	// and keep score against the type
 	lock_ntype( h->type );
-	h->type->conns++;
+	++(h->type->conns);
 	unlock_ntype( h->type );
 
-	np->accepts.count++;
+	++(np->accepts.count);
 	return h;
 }
 

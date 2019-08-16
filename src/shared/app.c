@@ -59,7 +59,7 @@ int set_limits( void )
 {
 	int i, ret = 0;
 
-	for( i = 0; i < RLIMIT_NLIMITS; i++ )
+	for( i = 0; i < RLIMIT_NLIMITS; ++i )
 		if( _proc->setlim[i] )
 			ret += setlimit( i, _proc->limits[i] );
 
@@ -235,7 +235,7 @@ void app_ready( void )
 
 
 
-void app_finish( int exval )
+__attribute__((noreturn)) void app_finish( int exval )
 {
 	int i;
 
@@ -245,9 +245,9 @@ void app_finish( int exval )
 	info( "Shutting down after %.3fs", get_uptime( ) );
 	info( "Waiting for all threads to stop." );
 
-	for( i = 0; i < 300 && _proc->loop_count > 0; i++ )
+	for( i = 0; i < 300 && _proc->loop_count > 0; ++i )
 	{
-		usleep( 100000 );
+		microsleep( 100000 );
 		if( !( i & 0x1f ) )
 			debug( "Waiting..." );
 	}

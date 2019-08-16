@@ -34,7 +34,7 @@ void bprintf( ST_THR *t, char *fmt, ... )
 
 	// loop through the target sets, making sure we can
 	// send to them
-	for( i = 0; i < ctl->tgt->set_count; i++ )
+	for( i = 0; i < ctl->tgt->set_count; ++i )
 	{
 		s = ctl->tgt->setarr[i];
 
@@ -62,7 +62,7 @@ void self_report_mtypes( ST_THR *t )
 	MTSTAT ms;
 	int i;
 
-	for( i = 0; i < MEM_TYPES_MAX; i++ )
+	for( i = 0; i < MEM_TYPES_MAX; ++i )
 	{
 		mem_type_stats( i, &ms );
 
@@ -82,7 +82,7 @@ void self_report_dlocks( ST_THR *t, DLOCKS *d )
 	uint64_t total, diff;
 	int i;
 
-	for( total = 0, i = 0; i < d->len; i++ )
+	for( total = 0, i = 0; i < d->len; ++i )
 	{
 		diff = lockless_fetch( &(d->used[i]) );
 		total += diff;
@@ -127,7 +127,7 @@ void self_report_nettype( ST_THR *t, NET_TYPE *n )
 		drops = 1;
 
 	if( n->flags & NTYPE_UDP_ENABLED )
-		for( i = 0; i < n->udp_count; i++ )
+		for( i = 0; i < n->udp_count; ++i )
 			self_report_netport( t, n->udp[i], n->name, "udp", drops );
 }
 

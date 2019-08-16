@@ -42,7 +42,7 @@ function sendSet( sk, base, rval ) {
 	for( x = 0; x < dict.first.length; x++ ) {
 		for( y = 0; y < dict.second.length; y++ ) {
 			for( z = 0; z < dict.third.length; z++ ) {
-				for( i = 10; i < 99; i++, k++ ) {
+				for( i = 10; i < 99; i++, ++k ) {
 					sk.write( dict.first[x] + '.' + dict.second[y] + '.' + dict.third[z] + i + ' ' + k + '\n' );
 				}
 			}

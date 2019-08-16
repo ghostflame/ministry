@@ -65,7 +65,7 @@ int io_init( void )
 
 	i->locks = (io_lock_t *) allocz( i->lock_size * sizeof( io_lock_t ) );
 
-	for( k = 0; k < i->lock_size; k++ )
+	for( k = 0; k < i->lock_size; ++k )
 	{
 		io_lock_init( i->locks[k] );
 	}
@@ -81,7 +81,7 @@ void io_stop( void )
 	IO_CTL *i = _io;
 	uint64_t k;
 
-	for( k = 0; k < i->lock_size; k++ )
+	for( k = 0; k < i->lock_size; ++k )
 	{
 		io_lock_destroy( i->locks[k] );
 	}

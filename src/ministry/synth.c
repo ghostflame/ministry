@@ -13,7 +13,7 @@ static inline int __synth_set_first( SYNTH *s )
 {
 	int i;
 
-	for( i = 0; i < s->parts; i++ )
+	for( i = 0; i < s->parts; ++i )
 		if( s->dhash[i]->proc.count > 0 )
 		{
 			s->target->proc.total = s->dhash[i]->proc.total;
@@ -30,7 +30,7 @@ void synth_sum( SYNTH *s )
 
 	s->target->proc.total = 0;
 
-	for( i = 0; i < s->parts; i++ )
+	for( i = 0; i < s->parts; ++i )
 		s->target->proc.total += s->dhash[i]->proc.total;
 
 	s->target->proc.total *= s->factor;
@@ -61,7 +61,7 @@ void synth_prod( SYNTH *s )
 	s->target->proc.total = s->factor;
 
 	// only use present values
-	for( i = 0; i < s->parts; i++ )
+	for( i = 0; i < s->parts; ++i )
 		if( s->dhash[i]->proc.count > 0 )
 			s->target->proc.total *= s->dhash[i]->proc.total;
 }
@@ -82,7 +82,7 @@ void synth_max( SYNTH *s )
 
 	i = __synth_set_first( s );
 
-	for( ; i < s->parts; i++ )
+	for( ; i < s->parts; ++i )
 		if( s->target->proc.total < s->dhash[i]->proc.total )
 			s->target->proc.total = s->dhash[i]->proc.total;
 
@@ -95,7 +95,7 @@ void synth_min( SYNTH *s )
 
 	i = __synth_set_first( s );
 
-	for( ; i < s->parts; i++ )
+	for( ; i < s->parts; ++i )
 		if( s->target->proc.total > s->dhash[i]->proc.total )
 			s->target->proc.total = s->dhash[i]->proc.total;
 
@@ -111,7 +111,7 @@ void synth_spread( SYNTH *s )
 
 	min = max = s->target->proc.total;
 
-	for( ; i < s->parts; i++ )
+	for( ; i < s->parts; ++i )
 	{
 		if( max < s->dhash[i]->proc.total )
 			max = s->dhash[i]->proc.total;
@@ -157,7 +157,7 @@ void synth_generate( SYNTH *s )
 	if( s->missing > 0 )
 	{
 		// some missing - go looking
-		for( i = 0; i < s->parts; i++ )
+		for( i = 0; i < s->parts; ++i )
 		{
 			if( s->dhash[i] )
 				continue;
@@ -186,10 +186,10 @@ void synth_generate( SYNTH *s )
 		s->absent = 0;
 
 		// check to see if there's any data
-		for( pt = 0, i = 0; i < s->parts; i++ )
+		for( pt = 0, i = 0; i < s->parts; ++i )
 		{
 			if( ( ct = s->dhash[i]->proc.count ) == 0 )
-				s->absent++;
+				++(s->absent);
 			else
 				pt += ct;
 		}
@@ -351,7 +351,7 @@ int synth_config_path( SYNTH *s, AVP *av )
 	s->paths[s->parts] = str_copy( av->vptr, av->vlen );
 	s->plens[s->parts] = av->vlen;
 
-	s->parts++;
+	++(s->parts);
 
 	return 0;
 }
@@ -401,12 +401,12 @@ int synth_config_line( AVP *av )
 	}
 	else if( attIs( "maxAbsent" ) )
 	{
-		s->max_absent = atoi( av->vptr );
+		s->max_absent = strtol( av->vptr, NULL, 10 );
 		__synth_cfg_state = 1;
 	}
 	else if( attIs( "operation" ) )
 	{
-		for( def = synth_fn_defs; def->fn; def++ )
+		for( def = synth_fn_defs; def->fn; ++def )
 		{
 			if( valIs( def->names[0] )
 			 || ( def->names[1] && valIs( def->names[1] ) )
@@ -460,7 +460,7 @@ int synth_config_line( AVP *av )
 			// and link it
 			ns->next = ctl->synth->list;
 			ctl->synth->list = ns;
-			ctl->synth->scount++;
+			++(ctl->synth->scount);
 
 			debug( "Added synthetic %s (%s/%d).", ns->target_path,
 				ns->def->names[0], ns->parts );
@@ -477,7 +477,7 @@ int synth_config_line( AVP *av )
 				s->target_path = NULL;
 			}
 
-			for( i = 0; i < s->parts; i++ )
+			for( i = 0; i < s->parts; ++i )
 				if( s->paths[i] )
 				{
 					free( s->paths[i] );

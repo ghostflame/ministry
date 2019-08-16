@@ -126,7 +126,7 @@ void udp_loop_checks( THRD *t )
 			if( errno == EINTR || errno == EAGAIN )
 				continue;
 
-			n->errors.count++;
+			++(n->errors.count);
 			err( "Recvfrom error -- %s", Err );
 			loop_end( "receive error on udp socket" );
 			break;
@@ -137,11 +137,11 @@ void udp_loop_checks( THRD *t )
 		// do IP whitelist/blacklist check
 		if( net_ip_check( _net->filter, h->peer ) != 0 )
 		{
-			n->drops.count++;
+			++(n->drops.count);
 			continue;
 		}
 
-		n->accepts.count++;
+		++(n->accepts.count);
 
 		// make sure we end in a newline or else we will trip over
 		// ourself on daft apps that just send one line without a \n
@@ -210,7 +210,7 @@ void udp_loop_flat( THRD *t )
 			if( errno == EINTR || errno == EAGAIN )
 				continue;
 
-			n->errors.count++;
+			++(n->errors.count);
 			err( "Recvfrom error -- %s", Err );
 			loop_end( "receive error on udp socket" );
 			break;
@@ -218,7 +218,7 @@ void udp_loop_flat( THRD *t )
 		else if( !b->len )
 			continue;
 
-		n->accepts.count++;
+		++(n->accepts.count);
 
 		// make sure we end in a newline or else we will trip over
 		// ourself on daft apps that just send one line without a \n

@@ -73,7 +73,7 @@ int mem_config_line( AVP *av )
 
 	// after this, it's per-type control
 	// so go find it.
-	for( i = 0; i < MEM_TYPES_MAX; i++ )
+	for( i = 0; i < MEM_TYPES_MAX; ++i )
 	{
 		if( !( mt = _mem->types[i] ) )
 			break;

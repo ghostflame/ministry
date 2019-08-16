@@ -302,7 +302,7 @@ int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
 			req->post->data   = upload_data;
 			req->post->bytes  = *upload_data_size;
 			req->post->total += req->post->bytes;
-			req->post->calls++;
+			++(req->post->calls);
 
 			if( req->post->bytes )
 			{

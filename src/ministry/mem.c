@@ -49,7 +49,7 @@ void mem_free_point_list( PTLIST *list )
 		p->next  = freed;
 		freed    = p;
 
-		j++;
+		++j;
 	}
 
 	mtype_free_list( ctl->mem->points, j, freed, end );
@@ -156,7 +156,7 @@ void mem_free_dhash_list( DHASH *list )
 		d->next = freed;
 		freed   = d;
 
-		j++;
+		++j;
 	}
 
 	mtype_free_list( ctl->mem->dhash, j, freed, end );
@@ -219,7 +219,7 @@ void mem_free_pred_list( PRED *list )
 		p->next = freed;
 		freed   = p;
 
-		j++;
+		++j;
 	}
 
 	mtype_free_list( ctl->mem->preds, j, freed, end );
@@ -286,7 +286,7 @@ void mem_free_history_list( HIST *list )
 		h->next = freed;
 		freed   = h;
 
-		j++;
+		++j;
 	}
 
 	mtype_free_list( ctl->mem->histy, j, freed, end );
@@ -345,7 +345,7 @@ void mem_free_metry_list( METRY *list )
 		m->next = freed;
 		freed   = m;
 
-		j++;
+		++j;
 	}
 
 	mtype_free_list( ctl->mem->metry, j, freed, end );

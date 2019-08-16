@@ -48,7 +48,7 @@ void mem_sort_list( void **list, int count, sort_fn *cmp )
 
 	// relink them
 	j = count - 1;
-	for( i = 0; i < j; i++ )
+	for( i = 0; i < j; ++i )
 		tmp[i]->next = tmp[i+1];
 
 	tmp[j]->next = NULL;
@@ -100,11 +100,11 @@ void mem_check( int64_t tval, void *arg )
 		return;
 	}
 
-	m->proc_kb = atoi( m->w->wd[23] ) * m->psize;
+	m->proc_kb = strtol( m->w->wd[23], NULL, 10 ) * m->psize;
 	//info( "/proc/self/stat[23] reports %d KB", m->proc_kb );
 
 	// get our virtual size - comes in bytes, turn into kb
-	m->virt_kb = atoi( m->w->wd[22] ) >> 10;
+	m->virt_kb = strtol( m->w->wd[22], NULL, 10 ) >> 10;
 
 	// use the higher of the two
 	m->curr_kb = ( m->rusage_kb > m->proc_kb ) ? m->rusage_kb : m->proc_kb;
@@ -141,7 +141,7 @@ void mem_shutdown( void )
 	MTYPE *mt;
 	int i;
 
-	for( i = 0; i < MEM_TYPES_MAX; i++ )
+	for( i = 0; i < MEM_TYPES_MAX; ++i )
 	{
 		if( !( mt = _mem->types[i] ) )
 			break;

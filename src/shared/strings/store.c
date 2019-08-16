@@ -212,7 +212,7 @@ SSTE *string_store_add( SSTR *store, char *str, int len )
 		e->next = store->hashtable[hv];
 		store->hashtable[hv] = e;
 
-		store->entries++;
+		++(store->entries);
 	}
 
 	// OK, renew the value

@@ -21,7 +21,7 @@ function randVal( count ) {
 
     var value = 10 * Math.random( );
 
-    for( var i = 0; i < count; i++ ) {
+    for( var i = 0; i < count; ++i ) {
         value += 10 * Math.random( );
     }
 

@@ -46,7 +46,7 @@ int http_calls_stats( HTREQ *req )
 	json_object_object_add( jo, "mem",    json_object_new_int64( mem_curr_kb( ) ) );
 
 
-	for( j = 0; j < _proc->mem->type_ct; j++ )
+	for( j = 0; j < _proc->mem->type_ct; ++j )
 	{
 		if( mem_type_stats( j, &ms ) != 0 )
 			continue;

@@ -37,7 +37,7 @@ void relay_flush_host( HOST *h )
 
 			case RTYPE_HASH:
 				// multiple buffers
-				for( i = 0; i < hb->bcount; i++ )
+				for( i = 0; i < hb->bcount; ++i )
 					if( hb->bufs[i] && hb->bufs[i]->len > 0 )
 					{
 						io_buf_post( hb->rule->targets[i], hb->bufs[i] );
@@ -101,7 +101,7 @@ __attribute__((hot)) int relay_regex( HBUFS *h, RLINE *l )
 	int j;
 
 	// try each regex
-	for( j = 0; j < r->mcount; j++ )
+	for( j = 0; j < r->mcount; ++j )
 	{
 		mat  = regexec( r->matches + j, l->path, 0, NULL, 0 ) ? 0 : 1;
 		mat ^= r->invert[j];
@@ -180,7 +180,7 @@ __attribute__((hot)) void relay_simple( HOST *h, char *line, int len )
 	l.rest = s;
 	l.rlen = len - l.plen - 1;
 
-	h->lines++;
+	++(h->lines);
 
 	// run through until we get a match and a last
 	for( hb = ((RDATA*) h->data)->hbufs; hb; hb = hb->next )
@@ -189,8 +189,8 @@ __attribute__((hot)) void relay_simple( HOST *h, char *line, int len )
 
 		if( (*(r->rfp))( hb, &l ) )
 		{
-			r->lines++;
-			h->handled++;
+			++(r->lines);
+			++(h->handled);
 			if( r->last )
 				break;
 		}
@@ -231,7 +231,7 @@ __attribute__((hot)) void relay_prefix( HOST *h, char *line, int len )
 		return;
 	}
 
-	h->lines++;
+	++(h->lines);
 
 	// copy the path onto the end of the prefix
 	memcpy( h->ltarget, line, l.plen );
@@ -246,8 +246,8 @@ __attribute__((hot)) void relay_prefix( HOST *h, char *line, int len )
 
 		if( (*(r->rfp))( hb, &l ) )
 		{
-			r->lines++;
-			h->handled++;
+			++(r->lines);
+			++(h->handled);
 			if( r->last )
 				break;
 		}
@@ -312,8 +312,8 @@ __attribute__((hot)) int relay_parse_buf( HOST *h, IOBUF *b )
 		// clean leading \r's
 		if( *s == '\r' )
 		{
-			s++;
-			l--;
+			++s;
+			--l;
 		}
 
 		// get the length
@@ -321,7 +321,7 @@ __attribute__((hot)) int relay_parse_buf( HOST *h, IOBUF *b )
 		if( l > 0 && *r == '\r' )
 		{
 			*r-- = '\0';
-			l--;
+			--l;
 		}
 
 		// still got anything?
@@ -406,7 +406,7 @@ void relay_buf_set( HOST *h )
 				break;
 			case RTYPE_HASH:
 				b->bcount = r->tcount;
-				for( i = 0; i < r->tcount; i++ )
+				for( i = 0; i < r->tcount; ++i )
 					b->bufs[i] = mem_new_iobuf( IO_BUF_SZ );
 				break;
 		}
@@ -460,7 +460,7 @@ int relay_resolve( void )
 		}
 
 		strwords( &w, r->target_str, strlen( r->target_str ), ',' );
-		for( i = 0; i < w.wc; i++ )
+		for( i = 0; i < w.wc; ++i )
 		{
 			if( !target_list_find( w.wd[i] ) )
 				return -1;
@@ -469,7 +469,7 @@ int relay_resolve( void )
 		r->tcount  = w.wc;
 		r->targets = (TGTL **) allocz( w.wc * sizeof( TGTL * ) );
 
-		for( i = 0; i < w.wc; i++ )
+		for( i = 0; i < w.wc; ++i )
 			r->targets[i] = target_list_find( w.wd[i] );
 	}
 
@@ -543,7 +543,7 @@ int relay_config_line( AVP *av )
 		if( *s == '!' )
 		{
 			r->invert[r->mcount] = 1;
-			s++;
+			++s;
 		}
 
 		if( regcomp( r->matches + r->mcount, s, REG_EXTENDED|REG_ICASE|REG_NOSUB ) )
@@ -556,7 +556,7 @@ int relay_config_line( AVP *av )
 		// keep a copy of the string
 		r->rgxstr[r->mcount] = str_dup( av->vptr, av->vlen );
 
-		r->mcount++;
+		++(r->mcount);
 		r->type = RTYPE_REGEX;
 
 		__relay_cfg_state = 1;

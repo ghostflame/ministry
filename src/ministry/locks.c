@@ -29,7 +29,7 @@ LOCK_CTL *lock_config_defaults( void )
 	pthread_mutex_init( &(l->bufref), &(ctl->proc->mtxa) );
 
 	// used to lock table positions
-	for( i = 0; i < HASHT_MUTEX_COUNT; i++ )
+	for( i = 0; i < HASHT_MUTEX_COUNT; ++i )
 		pthread_mutex_init( l->table + i, &(ctl->proc->mtxa) );
 
 	l->init_done = 1;
@@ -54,7 +54,7 @@ void lock_shutdown( void )
 	pthread_mutex_destroy( &(l->bufref) );
 
 	// used to lock table positions
-	for( i = 0; i < HASHT_MUTEX_COUNT; i++ )
+	for( i = 0; i < HASHT_MUTEX_COUNT; ++i )
 		pthread_mutex_destroy( l->table + i );
 
 	l->init_done = 0;

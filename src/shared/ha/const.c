@@ -57,7 +57,7 @@ int __ha_string_val( int which, char *str )
 	struct ha_string_set *hss = ha_string_sets + which;
 	int i;
 
-	for( i = 0; i < hss->max; i++ )
+	for( i = 0; i < hss->max; ++i )
 		if( !strcasecmp( str, hss->arr[i] ) )
 			return i;
 

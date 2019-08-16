@@ -150,7 +150,7 @@ uint32_t data_get_id( ST_CFG *st )
 	id = ++(st->did);
 
 	// and keep stats - gc reduces this
-	st->dcurr++;
+	++(st->dcurr);
 
 	pthread_mutex_unlock( &(ctl->locks->hashstats) );
 
@@ -486,7 +486,7 @@ __attribute__((hot)) void data_line_com_prefix( HOST *h, char *line, int len )
 
 	if( ( plen = __data_line_compat_check( line, len, &data, &type ) ) < 0 || plen > h->lmax )
 	{
-		h->invalid++;
+		++(h->invalid);
 		return;
 	}
 
@@ -499,9 +499,9 @@ __attribute__((hot)) void data_line_com_prefix( HOST *h, char *line, int len )
 	h->ltarget[plen] = '\0';
 
 	if( __data_line_compat_dispatch( h->workbuf, plen, data, *type ) < 0 )
-		h->invalid++;
+		++(h->invalid);
 	else
-		h->lines++;
+		++(h->lines);
 }
 
 
@@ -515,7 +515,7 @@ __attribute__((hot)) void data_line_compat( HOST *h, char *line, int len )
 
 	if( ( plen = __data_line_compat_check( line, len, &data, &type ) ) < 0 )
 	{
-		h->invalid++;
+		++(h->invalid);
 		return;
 	}
 
@@ -523,9 +523,9 @@ __attribute__((hot)) void data_line_compat( HOST *h, char *line, int len )
 		return;  // probably a keepalive
 
 	if( __data_line_compat_dispatch( line, plen, data, *type ) < 0 )
-		h->invalid++;
+		++(h->invalid);
 	else
-		h->lines++;
+		++(h->lines);
 }
 
 
@@ -537,7 +537,7 @@ __attribute__((hot)) void data_line_min_prefix( HOST *h, char *line, int len )
 
 	if( ( plen = __data_line_ministry_check( line, len, &ep ) ) < 0 || plen > h->lmax )
 	{
-		h->invalid++;
+		++(h->invalid);
 		return;
 	}
 
@@ -545,7 +545,7 @@ __attribute__((hot)) void data_line_min_prefix( HOST *h, char *line, int len )
 		return;  // probably a keepalive
 
 	// looks OK
-	h->lines++;
+	++(h->lines);
 
 	// copy that into place
 	memcpy( h->workbuf + h->plen, line, plen );
@@ -566,7 +566,7 @@ __attribute__((hot)) void data_line_ministry( HOST *h, char *line, int len )
 
 	if( ( plen = __data_line_ministry_check( line, len, &ep ) ) < 0 )
 	{
-		h->invalid++;
+		++(h->invalid);
 		return;
 	}
 
@@ -574,7 +574,7 @@ __attribute__((hot)) void data_line_ministry( HOST *h, char *line, int len )
 		return;  // probably a keepalive
 
 	// looks OK
-	h->lines++;
+	++(h->lines);
 
 	// and put that in
 	(*(h->handler))( line, plen, ep );
@@ -641,7 +641,7 @@ __attribute__((hot)) int data_parse_buf( HOST *h, IOBUF *b )
 		// clean leading \r's
 		if( *s == '\r' )
 		{
-			s++;
+			++s;
 			l--;
 		}
 

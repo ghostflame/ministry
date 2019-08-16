@@ -81,7 +81,7 @@ void stats_set_bufs( ST_THR *t, ST_CFG *c, int64_t tval )
 	t->prefix = c->prefix;
 
 	// grab new buffers
-	for( i = 0; i < ctl->tgt->set_count; i++ )
+	for( i = 0; i < ctl->tgt->set_count; ++i )
 	{
 		s = ctl->tgt->setarr[i];
 

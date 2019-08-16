@@ -22,7 +22,7 @@ void tcp_epoll_add_host( TCPTH *th, HOST *h )
 	}
 
 	// keep count
-	th->curr++;
+	++(th->curr);
 
 	// add that in
 	h->ep_evt.events   = EPOLL_EVENTS;
@@ -203,7 +203,7 @@ void tcp_epoll_setup( NET_TYPE *nt )
 
 	// create an epoll fd for each thread
 	nt->tcp->threads = (TCPTH **) allocz( nt->threads * sizeof( TCPTH * ) );
-	for( i = 0; i < nt->threads; i++ )
+	for( i = 0; i < nt->threads; ++i )
 	{
 		th = (TCPTH *) allocz( sizeof( TCPTH ) );
 

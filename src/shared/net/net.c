@@ -220,7 +220,7 @@ void net_begin_type( NET_TYPE *nt )
 		else
 			fp = &udp_loop_flat;
 
-		for( i = 0; i < nt->udp_count; i++ )
+		for( i = 0; i < nt->udp_count; ++i )
 			thread_throw_named_f( fp, nt->udp[i], i, "udp_loop_%hu", nt->udp[i]->port );
 	}
 
@@ -259,7 +259,7 @@ int ntype_startup( NET_TYPE *nt )
 		nt->name, _net->dead_time, tcp_styles[nt->tcp_style].name );
 
 	if( nt->flags & NTYPE_UDP_ENABLED )
-		for( i = 0; i < nt->udp_count; i++ )
+		for( i = 0; i < nt->udp_count; ++i )
 		{
 			// grab the udp ip variable
 			nt->udp[i]->ip   = nt->udp_bind;
@@ -272,7 +272,7 @@ int ntype_startup( NET_TYPE *nt )
 					nt->tcp->fd = -1;
 				}
 
-				for( j = 0; j < i; j++ )
+				for( j = 0; j < i; ++j )
 				{
 					close( nt->udp[j]->fd );
 					nt->udp[j]->fd = -1;
@@ -303,7 +303,7 @@ void ntype_shutdown( NET_TYPE *nt )
 	}
 
 	if( nt->flags & NTYPE_UDP_ENABLED )
-		for( i = 0; i < nt->udp_count; i++ )
+		for( i = 0; i < nt->udp_count; ++i )
 			if( nt->udp[i]->fd > -1 )
 			{
 				close( nt->udp[i]->fd );

@@ -90,7 +90,7 @@ void __io_buf_post_one( TGT *t, IOBUF *b )
 		t->tail = bp;
 	}
 
-	t->curr++;
+	++(t->curr);
 	//tgdebug( "Target now has %d bufs.", t->curr );
 
 	unlock_target( t );

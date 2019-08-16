@@ -142,7 +142,7 @@ int http_config_line( AVP *av )
 
 		if( attIs( "max" ) )
 		{
-			if( parse_number( av->vptr, &v, NULL ) == NUM_INVALID )
+			if( av_int( v ) == NUM_INVALID )
 			{
 				err( "Invalid max connections '%s'", av->vptr );
 				return -1;
@@ -151,7 +151,7 @@ int http_config_line( AVP *av )
 		}
 		else if( attIs( "maxPerIp" ) || attIs( "maxPerHost" ) )
 		{
-			if( parse_number( av->vptr, &v, NULL ) == NUM_INVALID )
+			if( av_int( v ) == NUM_INVALID )
 			{
 				err( "Invalid max-per-ip connections '%s'", av->vptr );
 				return -1;
@@ -160,7 +160,7 @@ int http_config_line( AVP *av )
 		}
 		else if( attIs( "timeout" ) || attIs( "tmout" ) )
 		{
-			if( parse_number( av->vptr, &v, NULL ) == NUM_INVALID )
+			if( av_int( v ) == NUM_INVALID )
 			{
 				err( "Invalid connection timeout '%s'", av->vptr );
 				return -1;

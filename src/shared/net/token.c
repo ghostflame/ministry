@@ -40,7 +40,7 @@ uint64_t token_hashval( uint32_t ip, int16_t type )
 	// hash on IP address and type
 	hval  = (uint64_t) type;
 	hval  = hval << 33;
-	hval += (uint64_t) ip; 
+	hval += (uint64_t) ip;
 
 	// and hashed on token hashsize
 	return hval % _net->tokens->hsize;
@@ -184,7 +184,7 @@ int token_url_handler( HTREQ *req )
 	jo = json_object_new_object( );
 
 	// run down the tokens
-	for( i = 0; i < count; i++ )
+	for( i = 0; i < count; ++i )
 	{
 		t = tlist[i];
 		json_object_object_add( jo, t->name, json_object_new_int64( t->nonce ) );
@@ -252,7 +252,7 @@ void token_purge( int64_t tval, void *arg )
 	TOKEN *free = NULL;
 	uint64_t i;
 
-	for( i = 0; i < ts->hsize; i++ )
+	for( i = 0; i < ts->hsize; ++i )
 		token_table_purge( tval, i, &free );
 
 

@@ -42,7 +42,7 @@ int pmet_gauge_value( PMET *item, double value, int set )
 	else
 		item->value.dval += value;
 
-	item->count++;
+	++(item->count);
 
 	unlock_pmet( item );
 

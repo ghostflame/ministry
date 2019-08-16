@@ -53,8 +53,12 @@ enum num_types
 #define BILLIONF			1000000000.0
 
 
-#define tsll( a )			( ( BILLION * (int64_t) a.tv_sec ) + (int64_t) a.tv_nsec )
-#define llts( a, _s )		_s.tv_sec = (time_t) ( a / BILLION ); _s.tv_nsec = (long)   ( a % BILLION )
+#define tsll( a )			( ( BILLION * (int64_t) a.tv_sec  ) + (int64_t) a.tv_nsec )
+#define tsllp( a )			( ( BILLION * (int64_t) a->tv_sec ) + (int64_t) a->tv_nsec )
+
+#define llts( a, _s )		_s.tv_sec  = (time_t) ( a / BILLION ); _s.tv_nsec  = (long)   ( a % BILLION )
+#define lltsp( a, _s )		_s->tv_sec = (time_t) ( a / BILLION ); _s->tv_nsec = (long)   ( a % BILLION )
+
 #define lltv( a, _v )		_v.tv_sec = (time_t) ( a / BILLION ); _v.tv_usec = (long) ( ( a % BILLION ) / 1000 )
 #define tsdupe( a, b )		b.tv_sec = a.tv_sec; b.tv_nsec = a.tv_nsec
 
@@ -99,6 +103,10 @@ int64_t get_time64( void );
 
 // get a number from 0 <= x < n
 int64_t get_rand( int64_t n );
+
+// sleep some microseconds
+// wraps nanosleep
+void microsleep( int64_t usec );
 
 // get a percentage - 1-100
 int8_t percent( void );

@@ -128,7 +128,7 @@ struct pmet_metric
 struct pmet_item
 {
 	PMET			*	next;
-	PMETM			*	metric;	
+	PMETM			*	metric;
 	PMETS			*	source;
 
 	PMET_GEN			gen;

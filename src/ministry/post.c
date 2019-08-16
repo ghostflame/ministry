@@ -115,7 +115,7 @@ int post_init( void )
 	int i;
 
 	// create a post target for each type
-	for( i = 0; i < DATA_TYPE_MAX; i++ )
+	for( i = 0; i < DATA_TYPE_MAX; ++i )
 	{
 		d = data_type_defns + i;
 		snprintf( buf1, 24, "/submit/%s", d->name );

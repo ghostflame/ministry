@@ -139,7 +139,7 @@ void metric_report( int64_t tval, METRIC *m )
 			m->path->buf, m->sep, m->curr,
 			( m->tlen ) ? m->trlr : "" );
 
-	for( i = 0; i < g->repeat; i++ )
+	for( i = 0; i < g->repeat; ++i )
 	{
 		memcpy( g->buf->buf + g->buf->len, g->wtmp, l );
 		g->buf->len += l;
@@ -437,7 +437,7 @@ int metric_add_group( MGRP *g )
 	MTRC_CTL *c = ctl->metric;
 
 	// keep count
-	c->gcount++;
+	++(c->gcount);
 	c->mcount += g->mcount;
 
 	// put it in the flat list for parent lookups
@@ -474,7 +474,7 @@ int metric_get_interval( char *str, int64_t *res )
 
 	if( *str == '/' )
 	{
-		str++;
+		++str;
 		inv = 1;
 	}
 
@@ -522,7 +522,7 @@ int metric_add( MGRP *g, char *str, int len )
 	strbuf_copy( nm.path, w.wd[METRIC_FLD_PATH], w.len[METRIC_FLD_PATH] );
 
 	if( w.len[METRIC_FLD_MODEL] )
-		for( i = 0; i < METRIC_MODEL_MAX; i++ )
+		for( i = 0; i < METRIC_MODEL_MAX; ++i )
 			if( !strcasecmp( w.wd[METRIC_FLD_MODEL], metric_types[i].name ) )
 			{
 				nm.model = metric_types[i].model;
@@ -571,7 +571,7 @@ int metric_add( MGRP *g, char *str, int len )
 	// link it
 	m->next = g->list;
 	g->list = m;
-	g->mcount++;
+	++(g->mcount);
 
 	debug( "Group %s adds metric: %s", g->name, m->path->buf );
 

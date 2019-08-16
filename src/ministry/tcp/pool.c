@@ -36,10 +36,10 @@ void tcp_pool_find_slot( TCPTH *th, HOST *h )
 	th->hosts[i]    = h;
 
 	// count it
-	th->curr++;
+	++(th->curr);
 
 	// find the next free slot
-	for( i += 1; i < th->type->pollmax; i++ )
+	for( i += 1; i < th->type->pollmax; ++i )
 		if( th->polls[i].fd < 0 )
 		{
 			th->pmin = i;
@@ -179,7 +179,7 @@ __attribute__((hot)) void tcp_pool_thread( THRD *td )
 
 		// and run through looking for connections to close
 		max = 0;
-		for( i = 0; i < th->pmax; i++ )
+		for( i = 0; i < th->pmax; ++i )
 		{
 			// look for valid hosts structures
 			if( !( h = th->hosts[i] ) )
@@ -215,7 +215,7 @@ __attribute__((hot)) void tcp_pool_thread( THRD *td )
 	}
 
 	// close everything!
-	for( i = 0; i < th->pmax; i++ )
+	for( i = 0; i < th->pmax; ++i )
 	{
 		if( ( h = th->hosts[i] ) )
 			tcp_close_active_host( h );
@@ -232,14 +232,14 @@ void tcp_pool_setup( NET_TYPE *nt )
 
 	// start up our handler threads
 	nt->tcp->threads = (TCPTH **) allocz( nt->threads * sizeof( TCPTH * ) );
-	for( i = 0; i < nt->threads; i++ )
+	for( i = 0; i < nt->threads; ++i )
 	{
 		th = (TCPTH *) allocz( sizeof( TCPTH ) );
 
 		th->type  = nt;
 		th->hosts = (HOST **) allocz( nt->pollmax * sizeof( HOST * ) );
 		th->polls = (struct pollfd *) allocz( nt->pollmax * sizeof( struct pollfd ) );
-		for( j = 0; j < nt->pollmax; j++ )
+		for( j = 0; j < nt->pollmax; ++j )
 		{
 			th->polls[j].fd     = -1;  // makes poll ignore this one
 			th->polls[j].events = POLL_EVENTS;

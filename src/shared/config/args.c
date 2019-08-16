@@ -14,7 +14,7 @@
 
 void config_help( void )
 {
-	printf( 
+	printf(
 "Usage\t%s --help | -h\n\
 \t%s [OPTIONS] -c <config file>\n\n\
 Options:\n", _proc->app_name, _proc->app_name );
@@ -97,7 +97,7 @@ void config_set_env_prefix( char *prefix )
 	int i;
 
 	// it needs to be uppercase
-	for( i = 0, p = prefix; i < 125 && *p; p++, i++ )
+	for( i = 0, p = prefix; i < 125 && *p; ++p, ++i )
 	{
 		if( *p == '-' )
 			_proc->env_prfx[i] = '_';

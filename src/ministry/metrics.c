@@ -147,7 +147,7 @@ void metrics_add_entry( FETCH *f, METRY *parent )
 		 	return;
 
 	// find the type
-	for( t = metrics_types_defns, i = 0; i < METR_TYPE_MAX; i++, t++ )
+	for( t = metrics_types_defns, i = 0; i < METR_TYPE_MAX; ++i, ++t )
 		if( lt == t->nlen && !strncasecmp( pt, t->name, lt ) )
 			break;
 
@@ -164,7 +164,7 @@ void metrics_add_entry( FETCH *f, METRY *parent )
 	e->next   = m->entries[hval];
 	e->parent = parent;
 	m->entries[hval] = e;
-	m->entct++;
+	++(m->entct);
 
 	debug( "Added entry '%s', type %s, for fetch block %s.", e->metric, e->mtype->name, f->name );
 
@@ -263,7 +263,7 @@ static inline int metrics_check_attr( METRY *e, char *p, int l, char *attr, int 
 			e->apl[order] = l;
 
 			// known case - quantile.  Flatten the dots
-			for( i = 0; i < l; i++, q++ )
+			for( i = 0; i < l; ++i, ++q )
 				if( *q == '.' || *q == '+' )
 					*q = '_';
 		}
@@ -298,12 +298,12 @@ void metrics_parse_line( FETCH *f, char *line, int len )
 	m = f->metdata;
 
 	//info( "Saw line [%03d]: %s", len, line );
-	m->lines++;
+	++(m->lines);
 
 	while( len > 0 && isspace( *p ) )
 	{
 		len--;
-		p++;
+		++p;
 	}
 
 	// it's no use if it's shorter than this
@@ -344,7 +344,7 @@ void metrics_parse_line( FETCH *f, char *line, int len )
 	if( !( q = memchr( p, ' ', len ) ) )
 	{
 		// broken line
-		m->broken++;
+		++(m->broken);
 		debug( "Line broken - no space." );
 		return;
 	}
@@ -356,10 +356,10 @@ void metrics_parse_line( FETCH *f, char *line, int len )
 	// was this space in an attribute value?
 	if( ( q = memrchr( r, '}', len ) ) )
 	{
-		q++;
+		++q;
 		if( *q != ' ' )
 		{
-			m->broken++;
+			++(m->broken);
 			debug( "Line broken - no space after close brace." );
 			return;
 		}
@@ -392,7 +392,7 @@ void metrics_parse_line( FETCH *f, char *line, int len )
 	  	if( !( e = metrics_find_entry( m, p, l ) ) )
 		{
 			// unknown metric
-			m->unknown++;
+			++(m->unknown);
 			debug( "Line dropped - metric '%s' unknown.", p );
 			return;
 		}
@@ -407,7 +407,7 @@ void metrics_parse_line( FETCH *f, char *line, int len )
 	// so we have labels - do we have a start?
 	if( !( q = memchr( p, '{', l ) ) )
 	{
-		m->broken++;
+		++(m->broken);
 		debug( "Line broken - } but no {" );
 		return;
 	}
@@ -418,7 +418,7 @@ void metrics_parse_line( FETCH *f, char *line, int len )
 	if( !( e = metrics_find_entry( m, p, q - p ) ) )
 	{
 		// unknown metric again
-		m->unknown++;
+		++(m->unknown);
 		debug( "Line broken - labelled metric '%s' unknown.", p );
 		return;
 	}
@@ -432,7 +432,7 @@ void metrics_parse_line( FETCH *f, char *line, int len )
 	}
 
 	// so let's read our labels
-	q++;
+	++q;
 	*r = '\0';
 	l = r - q;
 
@@ -445,7 +445,7 @@ void metrics_parse_line( FETCH *f, char *line, int len )
 
 	strwords( m->wds, q, l, ',' );
 
-	for( j = 0; j < m->wds->wc; j++ )
+	for( j = 0; j < m->wds->wc; ++j )
 		if( metrics_check_attr( e, m->wds->wd[j], m->wds->len[j], NULL, 0 ) != 0 )
 			return;
 
@@ -471,7 +471,7 @@ void metrics_parse_line( FETCH *f, char *line, int len )
 	memcpy( m->buf, e->metric, e->len );
 	m->buf[e->len] = '.';
 
-	for( j = 0; j < attct; j++ )
+	for( j = 0; j < attct; ++j )
 		if( e->apl[j] > 0 )
 		{
 			memcpy( m->buf + blen, e->aps[j], e->apl[j] );
@@ -547,7 +547,7 @@ void metrics_parse_buf( FETCH *f, IOBUF *b )
 		// clean leading and trailing \r's
 		while( *s == '\r' )
 		{
-			s++;
+			++s;
 			l--;
 		}
 		if( l > 0 && *r == '\r' )
@@ -651,7 +651,7 @@ int metrics_add_attr( METAL *m, char *str, int len )
 	{
 		*cl++ = '\0';
 		len -= cl - str;
-		tmp.order = atoi( str );
+		tmp.order = strtol( str, NULL, 10 );
 		str = cl;
 	}
 	// if not use order of processing
@@ -672,7 +672,7 @@ int metrics_add_attr( METAL *m, char *str, int len )
 
 	a->next = m->ats;
 	m->ats  = a;
-	m->atct++;
+	++(m->atct);
 
 	return 0;
 }
@@ -706,7 +706,7 @@ int metrics_init( void )
 		// run through the paths entries, which was path:list
 		// make sure we can resolve each one of those
 		string_store_locking( p->paths, 1 );
-		for( i = 0; i < p->paths->hsz; i++ )
+		for( i = 0; i < p->paths->hsz; ++i )
 		{
 			for( e = p->paths->hashtable[i]; e; e = e->next )
 			{
@@ -859,7 +859,7 @@ int metrics_config_line( AVP *av )
 
 			mp->id = p->_idctr++;
 			mp->enable = 1;
-			p->mapct++;
+			++(p->mapct);
 		}
 		else if( attIs( "enable" ) )
 		{
@@ -928,7 +928,7 @@ int metrics_config_line( AVP *av )
 
 			na->next = ctl->metric->alists;
 			ctl->metric->alists = na;
-			ctl->metric->alist_ct++;
+			++(ctl->metric->alist_ct);
 
 			__metrics_metal_state = 0;
 		}
@@ -970,7 +970,7 @@ int metrics_config_line( AVP *av )
 
 			np->next = ctl->metric->profiles;
 			ctl->metric->profiles = np;
-			ctl->metric->prof_ct++;
+			++(ctl->metric->prof_ct);
 
 			__metrics_prof_state = 0;
 		}

@@ -133,7 +133,7 @@ int str_sub( char **ptr, int *len, int argc, char **argv, int *argl )
 		memcpy( numbuf, a + mtc[2].rm_so, l );
 		numbuf[l] = '\0';
 
-		if( ( i = atoi( numbuf ) ) > argc )
+		if( ( i = strtol( numbuf, NULL, 10 ) ) > argc )
 		{
 			warn( "str_sub: config substitution referenced non-existent arg %d, aborting.", i );
 			return c;
@@ -155,7 +155,7 @@ int str_sub( char **ptr, int *len, int argc, char **argv, int *argl )
 
 		*ptr = a;
 		*len = l;
-		c++;
+		++c;
 	}
 
 #ifdef DEBUG

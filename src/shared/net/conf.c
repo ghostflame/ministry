@@ -58,7 +58,7 @@ int net_add_type( NET_TYPE *nt )
 	nt->next = _net->ntypes;
 	_net->ntypes = nt;
 
-	_net->ntcount++;
+	++(_net->ntcount);
 
 	return 0;
 }
@@ -160,7 +160,7 @@ int net_config_line( AVP *av )
 	}
 
 	/* then it's data., statsd. or adder. (or ipcheck) */
-	d++;
+	++d;
 
 
 
@@ -173,13 +173,17 @@ int net_config_line( AVP *av )
 			_net->tokens->enable = config_bool( av );
 		else if( attIs( "msec" ) || attIs( "lifetime" ) )
 		{
-			i = atoi( av->vptr );
-			if( i < 10 )
+			if( av_int( v ) == NUM_INVALID )
 			{
-				i = DEFAULT_TOKEN_LIFETIME;
-				warn( "Minimum token lifetime is 10msec - setting to %d", i );
+				err( "Invalid token lifetime '%s'", av->vptr );
+				return -1;
 			}
-			_net->tokens->lifetime = i;
+			if( v < 10 )
+			{
+				v = DEFAULT_TOKEN_LIFETIME;
+				warn( "Minimum token lifetime is 10msec - setting to %d", v );
+			}
+			_net->tokens->lifetime = v;
 		}
 		else if( attIs( "hashsize" ) )
 		{
@@ -263,7 +267,7 @@ int net_config_line( AVP *av )
 			warn( "Threads is only for TCP connections - there is one thread per UDP port." );
 		else
 		{
-			if( parse_number( av->vptr, &v, NULL ) == NUM_INVALID )
+			if( av_int( v ) == NUM_INVALID )
 			{
 				err( "Invalid TCP thread count: %s", av->vptr );
 				return -1;
@@ -283,7 +287,7 @@ int net_config_line( AVP *av )
 			warn( "Pollmax is only for TCP connections." );
 		else
 		{
-			if( parse_number( av->vptr, &v, NULL ) == NUM_INVALID )
+			if( av_int( v ) == NUM_INVALID )
 			{
 				err( "Invalid TCP pollmax count: %s", av->vptr );
 				return -1;
@@ -302,7 +306,7 @@ int net_config_line( AVP *av )
 		if( tcp )
 		{
 			// do we recognise it?
-			for( i = 0; i < TCP_STYLE_MAX; i++ )
+			for( i = 0; i < TCP_STYLE_MAX; ++i )
 				if( !strcasecmp( av->vptr, tcp_styles[i].name ) )
 				{
 					debug( "TCP handling style set to %s", av->vptr );
@@ -363,7 +367,7 @@ int net_config_line( AVP *av )
 
 				debug( "Discovered %d udp ports for %s", w->wc, nt->label );
 
-				for( i = 0; i < w->wc; i++ )
+				for( i = 0; i < w->wc; ++i )
 				{
 					nt->udp[i]       = (NET_PORT *) allocz( sizeof( NET_PORT ) );
 					nt->udp[i]->port = (unsigned short) strtoul( w->wd[i], NULL, 10 );
