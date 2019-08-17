@@ -304,6 +304,20 @@ int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
 			req->post->total += req->post->bytes;
 			++(req->post->calls);
 
+			// check upload against max size
+			if( req->post->total > _http->post_max )
+			{
+				hwarn( "Closing down post that exceeds maximum size." );
+				req->err = 1;
+
+				if( req->is_json )
+					http_calls_json_done( req );
+
+				req->code = MHD_HTTP_PAYLOAD_TOO_LARGE;
+				http_send_response( req );
+				return MHD_NO;
+			}
+
 			if( req->post->bytes )
 			{
 				req->post->state = HTTP_POST_BODY;

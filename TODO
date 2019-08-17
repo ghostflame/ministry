@@ -2,8 +2,7 @@ Refactor
 	none
 	
 HTTP
-	Limit post uploads by stopping after X bytes, configurable
-	Should allow use of memfd_create, rather than tmpfile()
+	none
 
 Network
 	none

@@ -208,6 +208,14 @@ int http_calls_json_done( HTREQ *req )
 		return -1;
 	}
 
+	// did we finish badly?
+	if( req->err )
+	{
+		fclose( tfh );
+		req->post->obj = NULL;
+		return -1;
+	}
+
 	//info( "Parsing request upload file." );
 
 	// let's try to parse what we've got

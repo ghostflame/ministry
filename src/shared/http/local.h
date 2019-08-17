@@ -28,9 +28,10 @@
 #define DEFAULT_HTTP_CONN_IP_LIMIT      64
 #define DEFAULT_HTTP_CONN_TMOUT         10
 
-#define DEFAULT_POST_BUF_SZ             0x4000  // 16k
+#define DEFAULT_POST_BUF_SZ             0x4000		// 16k
+#define DEFAULT_POST_MAX_SZ             0x200000	// 2M
 
-#define MAX_TLS_FILE_SIZE               0x10000 // 64k
+#define MAX_TLS_FILE_SIZE               0x10000		// 64k
 #define MAX_TLS_PASS_SIZE               512
 
 
