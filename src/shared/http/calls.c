@@ -78,6 +78,21 @@ int http_calls_stats( HTREQ *req )
 }
 
 
+int http_calls_version( HTREQ *req )
+{
+	json_object *jo;
+
+	jo = json_object_new_object( );
+	json_object_object_add( jo, "app",     json_object_new_string( _proc->app_name ) );
+	json_object_object_add( jo, "uptime",  json_object_new_double( get_uptime( ) ) );
+	json_object_object_add( jo, "version", json_object_new_string( _proc->version ) );
+
+	strbuf_json( req->text, jo, 1 );
+	return 0;
+}
+
+
+
 
 void __http_calls_count_one( json_object *a, HTPATH *pt )
 {
@@ -241,13 +256,12 @@ void http_calls_init( void )
 	http_add_simple_get( "/", "Usage information", &http_calls_usage );
 
 	http_add_json_get( "/stats", "Internal stats", &http_calls_stats );
-
 	http_add_json_get( "/counts", "HTTP request counts", &http_calls_count );
+	http_add_json_get( "/targets", "List metric targets", &target_http_list );
+	http_add_json_get( "/version", "Display version information", &http_calls_version );
 
 	// prometheus support
 	http_add_simple_get( "/metrics", "HTTP prometheus metrics endpoint", &http_calls_metrics );
-
-	http_add_json_get( "/targets", "List metric targets", &target_http_list );
 
 	if( _http->ctl_enabled )
 		http_add_simple_get( "/control", "List control paths", &http_calls_ctl_list );

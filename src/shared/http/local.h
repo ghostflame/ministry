@@ -38,7 +38,7 @@
 #include "shared.h"
 
 
-typedef void (*cb_RequestLogger) ( void *cls, const char *uri, HTTP_CONN *conn );
+typedef void * (*cb_RequestLogger) ( void *cls, const char *uri, HTTP_CONN *conn );
 
 
 
@@ -111,7 +111,7 @@ int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
 
 // utils
 void http_server_panic( void *cls, const char *file, unsigned int line, const char *reason );
-void http_log_request( void *cls, const char *uri, HTTP_CONN *conn );
+void *http_log_request( void *cls, const char *uri, HTTP_CONN *conn );
 void http_log( void *arg, const char *fm, va_list ap );
 void http_set_reporter( http_reporter *fp, void *arg );
 
@@ -131,6 +131,7 @@ http_callback http_calls_metrics;
 http_callback http_calls_stats;
 http_callback http_calls_count;
 http_callback http_calls_usage;
+http_callback http_calls_version;
 
 http_callback http_calls_json_init;
 http_callback http_calls_json_data;

@@ -254,24 +254,18 @@ int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
 	const char *method, const char *version, const char *upload_data,
 	size_t *upload_data_size, void **con_cls )
 {
-	HTREQ *req;
+	HTREQ *req = *((HTREQ **) con_cls);
 
-	// WHISKEY TANGO FOXTROT, libmicrohttpd?
-	if( ((int64_t) *con_cls) < 0x1fff )
+	// quick sanity check on our request
+	if( req && req->check != HTTP_CLS_CHECK )
 	{
-		//info( "Flattening bizarre arg value %p -> %p.", *con_cls );
+		info( "Flattening weird con_cls %p -> %p.", con_cls, req );
 		*con_cls = NULL;
-	}
-
-	// what the hell is it putting in con_cls, that's supposed to be // null?
-	if( ( req = *((HTREQ **) con_cls) ) && req->check != HTTP_CLS_CHECK )
-	{
-		//info( "Flattening weird con_cls %p -> %p.", con_cls, req );
-		*con_cls = NULL;
+		req = NULL;
 	}
 
 	// do we have an object?
-	if( !( req = *((HTREQ **) con_cls) ) )
+	if( !req )
 	{
 		req = http_request_creator( conn, url, method );
 
