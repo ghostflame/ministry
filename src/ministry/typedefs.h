@@ -42,11 +42,6 @@ typedef struct host_prefixes		HPRFXS;
 typedef struct synth_data			SYNTH;
 typedef struct synth_fn_def			SYNDEF;
 typedef struct fetch_target			FETCH;
-typedef struct metrics_type			METTY;
-typedef struct metrics_attr			METAT;
-typedef struct metrics_attr_list	METAL;
-typedef struct metrics_attr_map		METMP;
-typedef struct metrics_profile		METPR;
 typedef struct metrics_entry		METRY;
 typedef struct metrics_data			MDATA;
 

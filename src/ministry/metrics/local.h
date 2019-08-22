@@ -2,16 +2,19 @@
 * This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
 *                                                                         *
-* metrics.h - structures and functions for prometheus-style metrics       *
+* metrics/local.h - structures and functions for prometheus-style metrics *
 *                                                                         *
 * Updates:                                                                *
 **************************************************************************/
 
-#ifndef MINISTRY_METRICS_H
-#define MINISTRY_METRICS_H
+#ifndef MINISTRY_METRICS_LOCAL_H
+#define MINISTRY_METRICS_LOCAL_H
 
 #define METR_BUF_SZ			4096
-#define METR_HASH_SZ		307
+
+
+#include "ministry.h"
+
 
 enum metric_type_ids
 {
@@ -104,70 +107,23 @@ struct metrics_profile
 	int					is_default;
 };
 
-
-// METRY
-struct metrics_entry
-{
-	METRY			*	next;
-	METRY			*	parent;
-	char			*	metric;
-	METTY			*	mtype;
-	DTYPE			*	dtype;
-	add_fn			*	afp;
-	METAL			*	attrs;
-	char			**  aps;
-	int16_t			*	apl;
-	int32_t				len;
-	int32_t				sz;
-};
+extern const METTY metrics_types_defns[];
+extern MET_CTL *_met;
 
 
-// MDATA
-struct metrics_data
-{
-	METRY			**	entries;
-	WORDS			*	wds;
-	char			*	buf;
-	char			*	profile_name;
-	METPR			*	profile;
-
-	uint64_t			hsz;
-
-	int64_t				lines;
-	int64_t				broken;
-	int64_t				unknown;
-
-	int32_t				attct;
-	int32_t				entct;
-};
+// helpers.c
+int metrics_cmp_attrs( const void *ap1, const void *ap2 );
+int metrics_cmp_maps( const void *ap1, const void *ap2 );
+void metrics_sort_attrs( METAL *a );
+METPR *metrics_find_profile( char *name );
+METRY *metrics_find_entry( MDATA *m, char *str, int len );
 
 
-// MET_CTL
-struct metrics_control
-{
-	METAL			*	alists;
-	METPR			*	profiles;
-
-	int32_t				alist_ct;
-	int32_t				prof_ct;
-};
-
-
-
-
-curlw_cb metrics_fetch_cb;
-
+// metrics.c
 void metrics_parse_buf( FETCH *f, IOBUF *b );
 void metrics_add_entry( FETCH *f, METRY *parent );
 
-void metrics_init_data( MDATA *m );
+
 int metrics_add_attr( METAL *m, char *str, int len );
-
-int metrics_init( void );
-
-METPR *metrics_find_profile( char *name );
-
-conf_line_fn metrics_config_line;
-MET_CTL *metrics_config_defaults( void );
 
 #endif
