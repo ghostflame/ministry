@@ -148,4 +148,31 @@ void io_buf_next( TGT *t )
 	t->curr_len  = b->len;
 }
 
+// keep the data from the end of the buffer
+// put it at the start of the buffer
+void io_buf_keep( IOBUF *buf, int len )
+{
+	register char *p, *q;
+	register int l = len;
 
+	if( l > buf->len )
+		return;
+
+	if( l > 0 )
+	{
+		p = buf->buf + ( buf->len - l );
+
+		if( p > ( buf->buf + l ) )
+			memcpy( buf->buf, p, l );
+		else
+		{
+			q = buf->buf;
+			while( l-- ) {
+				*q++ = *p++;
+			}
+		}
+	}
+
+	buf->buf[len] = '\0';
+	buf->len = len;
+}

@@ -27,7 +27,7 @@ void *http_log_request( void *cls, const char *uri, HTTP_CONN *conn )
 
 	hinfo( "[HTTP] Request {%s}: %s", inet_ntoa( ((struct sockaddr_in *) (ci->client_addr))->sin_addr ), uri );
 
-	return req;
+	return NULL;
 }
 
 

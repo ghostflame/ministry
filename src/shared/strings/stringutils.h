@@ -24,16 +24,18 @@ struct words_data
 {
 	char				*	wd[STRWORDS_MAX];
 	char				*	end;
-	int						len[STRWORDS_MAX];
-	int						end_len;
-	int						in_len;
-	int						wc;
+	int32_t					len[STRWORDS_MAX];
+	int32_t					end_len;
+	int32_t					in_len;
+	int16_t					wc;
+	int8_t					end_on_sep;
 };
 
 struct string_store_entry
 {
 	SSTE				*	next;
 	char				*	str;
+	uint64_t				hv;
 	int32_t					len;
 	int32_t					val;	// if you want to store something here
 	void				*	ptr;	// if you want to store something here
@@ -101,6 +103,12 @@ BUF *strbuf_json( BUF *b, json_object *o, int done );
 // get string length, up to a maximum
 int str_nlen( char *src, int max );
 
+// remove NL\CR and report len change
+int chomp( char *s, int len );
+
+// remove surrounding whitespace
+int trim( char **str, int *len );
+
 // substitute args into strings, using %\d%
 int str_sub( char **ptr, int *len, int argc, char **argv, int *argl );
 
@@ -113,6 +121,7 @@ int strwords_multi( WORDS *w, char *src, int len, char sep, int8_t multi );
 // with and without multi separate behaviour
 #define strwords( _w, _s, _l, _c )		strwords_multi( _w, _s, _l, _c, 0 )
 #define strmwords( _w, _s, _l, _c )		strwords_multi( _w, _s, _l, _c, 1 )
+#define strlines( _w, _s, _l )			strwords_multi( _w, _s, _l, '\n', 1 )
 
 
 #define BOOL_ENABLED( _b )				( _b ) ? "en" : "dis"

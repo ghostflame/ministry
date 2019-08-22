@@ -141,11 +141,6 @@ HOST *tcp_get_host( int sock, NET_PORT *np )
 	h->port    = np;
 	h->type    = np->type;
 
-	// default handlers/parsers
-	h->parser   = h->type->flat_parser;
-	h->handler  = h->type->handler;
-	h->receiver = h->type->buf_parser;;
-
 	// set the last time to now
 	h->last = _proc->curr_tval;
 	// and the connected time

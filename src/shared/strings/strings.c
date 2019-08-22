@@ -167,5 +167,61 @@ int str_sub( char **ptr, int *len, int argc, char **argv, int *argl )
 }
 
 
+// remove trailing newlines\carriage returns,
+// report the amount removed
+int chomp( char *s, int len )
+{
+	char *p;
+	int l;
+
+	if( !s || !*s )
+		return 0;
+
+	if( len )
+		l = len;
+	else
+		l = strlen( s );
+
+	p = s + ( l - 1 );
+
+	while( l > 0 && ( *p == '\n' || *p == '\r' ) )
+	{
+		*p-- = '\0';
+		l--;
+	}
+
+	return len - l;
+}
+
+// remove leading and trailing whitespace
+int trim( char **str, int *len )
+{
+	register char *p, *q;
+	register int l, o;
+
+	if( !str || !*str || !**str || !len || !*len )
+		return 0;
+
+	p = *str;
+	l = *len;
+	o = *len;
+	q = p + ( l - 1 );
+
+	while( l > 0 && isspace( *p ) )
+	{
+		p++;
+		l--;
+	}
+	while( l > 0 && isspace( *q ) )
+	{
+		*q-- = '\0';
+		l--;
+	}
+
+	*str = p;
+	*len = l;
+
+	return o - l;
+}
 
 

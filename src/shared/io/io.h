@@ -91,6 +91,7 @@ void io_disconnect( SOCK *s );
 // buffers
 void io_buf_post_one( TGT *t, IOBUF *buf );
 void io_buf_post( TGTL *l, IOBUF *buf );
+void io_buf_keep( IOBUF *buf, int len );
 
 // io fns
 io_fn io_send_net_tcp;

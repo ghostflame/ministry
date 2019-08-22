@@ -157,6 +157,11 @@ int net_set_host_parser( HOST *h, int token_check, int prefix_check )
 	NET_PFX *p;
 	IPNET *n;
 
+	// set some defaults
+	h->parser   = h->type->flat_parser;
+	h->handler  = h->type->handler;
+	h->receiver = h->type->buf_parser;
+
 	// are we doing a token check?
 	if(   token_check
 	 &&   ts->enable
