@@ -199,7 +199,7 @@ SSTE *string_store_add( SSTR *store, char *str, int len )
 	// now check again under lock
 	pthread_mutex_lock( &(store->mtx) );
 
-	for( e = store->hashtable[hv]; e; e = e->next )
+	for( e = store->hashtable[pos]; e; e = e->next )
 		if( len == e->len && !memcmp( str, e->str, len ) )
 			break;
 
