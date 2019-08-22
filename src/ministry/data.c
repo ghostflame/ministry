@@ -592,7 +592,8 @@ __attribute__((hot)) int data_parse_buf( HOST *h, IOBUF *b )
 {
 	register char *s = b->buf;
 	register char *q;
-	int len, l;
+	register int l;
+	int len;
 	char *r;
 
 	// can't parse without a handler function
@@ -608,23 +609,6 @@ __attribute__((hot)) int data_parse_buf( HOST *h, IOBUF *b )
 		if( !( q = memchr( s, LINE_SEPARATOR, len ) ) )
 		{
 			// partial last line
-			l = s - b->buf;
-
-			if( len < l )
-			{
-				memcpy( b->buf, s, len );
-				*(b->buf + len) = '\0';
-			}
-			else
-			{
-				q = b->buf;
-				l = len;
-
-				while( l-- > 0 )
-					*q++ = *s++;
-				*q = '\0';
-			}
-
 			// and we're done, with len > 0
 			break;
 		}
@@ -664,8 +648,7 @@ __attribute__((hot)) int data_parse_buf( HOST *h, IOBUF *b )
 		s = q;
 	}
 
-	// and update the buffer length
-	b->len = len;
+	io_buf_keep( b, len );
 	return len;
 }
 
