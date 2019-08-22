@@ -289,7 +289,7 @@ void metrics_parse_line( FETCH *f, char *line, int len )
 	val = r;
 
 	// find the metric
-	if( !( e = metrics_find_entry( p, metlen ) ) )
+	if( !( e = metrics_find_entry( m, p, metlen ) ) )
 	{
 		++(m->unknown);
 		debug( "Line dropped - metric '%s' unknown.", p );
