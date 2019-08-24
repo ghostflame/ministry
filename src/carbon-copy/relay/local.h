@@ -9,18 +9,17 @@
 
 
 
-#ifndef CARBON_COPY_RELAY_H
-#define CARBON_COPY_RELAY_H
+#ifndef CARBON_COPY_RELAY_LOCAL_H
+#define CARBON_COPY_RELAY_LOCAL_H
 
 
 #define LINE_SEPARATOR				'\n'
 #define RELAY_MAX_REGEXES			32
-#define RELAY_MAX_TARGETS			32
 
 #define lock_rdata( _r )			pthread_mutex_lock(   &(_r->lock) )
 #define unlock_rdata( _r )			pthread_mutex_unlock( &(_r->lock) )
 
-
+#include "../carbon_copy.h"
 
 enum relay_rule_types
 {
@@ -44,72 +43,10 @@ struct relay_line
 };
 
 
-struct relay_data
-{
-	RDATA				*	next;
 
-	HOST				*	host;
-	int64_t					last;
-	int						running;
-
-	pthread_mutex_t			lock;
-
-	HBUFS				*	hbufs;
-};
+extern RLY_CTL *_relay;
 
 
-struct relay_rule
-{
-	RELAY				*	next;
-	TGTL				**	targets;
-	regex_t				*	matches;
-	char				**  rgxstr;
-	uint8_t				*	invert;
-	int64_t				*	mstats;
-	char				*	name;
-	char				*	target_str;
-	hash_fn				*	hfp;
-	relay_fn			*	rfp;
-
-	int64_t					lines;
-
-	int						type;
-	int						last;
-	int						tcount;
-	int						mcount;
-	int						drop;
-};
-
-
-
-struct relay_control
-{
-	RELAY				*	rules;
-	int64_t					flush_nsec;
-
-	int						bcount;
-};
-
-
-relay_fn relay_regex;
-relay_fn relay_hash;
-
-line_fn relay_simple;
-line_fn relay_prefix;
-
-throw_fn relay_track_host;
-
-tcp_fn relay_flush_host;
-tcp_fn relay_buf_end;
-tcp_fn relay_buf_set;
-
-
-buf_fn relay_parse_buf;
-
-int relay_resolve( void );
-
-RLY_CTL *relay_config_defaults( void );
-int relay_config_line( AVP *av );
 
 
 #endif

@@ -207,6 +207,7 @@ void mem_free_host( HOST **h )
 	sh->overlength = 0;
 	sh->olwarn     = 0;
 	sh->type       = NULL;
+	sh->data       = NULL;
 
 	sh->net->fd    = -1;
 	sh->net->flags = 0;

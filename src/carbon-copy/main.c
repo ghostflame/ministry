@@ -97,7 +97,7 @@ int main( int ac, char **av, char **env )
 	app_start( 1 );
 
 	// resolve relay targets
-	if( relay_resolve( ) )
+	if( relay_init( ) )
 		fatal( "Unable to resolve all relay targets." );
 
 	// lights up networking and starts listening

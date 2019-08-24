@@ -22,6 +22,11 @@
 #define DHASH_CHECK_MODE		0x02
 #define DHASH_CHECK_PREDICT		0x04
 
+#define TCP_THRD_DADDER			30
+#define TCP_THRD_DSTATS			60
+#define TCP_THRD_DGAUGE			10
+#define TCP_THRD_DCOMPAT		20
+
 
 enum data_conn_type
 {

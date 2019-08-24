@@ -13,12 +13,21 @@
 
 #define NET_BUF_SZ						0x10000		// 64k
 #define DEFAULT_NET_BACKLOG				32
+#define TCP_MAX_POLLS					128
 
 
 #define NTYPE_ENABLED					0x0001
 #define NTYPE_TCP_ENABLED				0x0002
 #define NTYPE_UDP_ENABLED				0x0004
 #define NTYPE_UDP_CHECKS				0x0008
+
+enum tcp_style_types
+{
+	TCP_STYLE_POOL = 0,
+	TCP_STYLE_THRD,
+	TCP_STYLE_EPOLL,
+	TCP_STYLE_MAX
+};
 
 
 extern uint32_t net_masks[33];

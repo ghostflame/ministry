@@ -22,6 +22,7 @@ NETW_CTL *network_config_defaults( void )
 	nt->tcp->back    = DEFAULT_NET_BACKLOG;
 	nt->tcp->port    = DEFAULT_RR_PORT;
 	nt->tcp->type    = nt;
+	nt->tcp_style    = TCP_STYLE_THRD;
 	nt->flat_parser  = &relay_simple;
 	nt->prfx_parser  = &relay_prefix;
 	nt->buf_parser   = &relay_parse_buf;

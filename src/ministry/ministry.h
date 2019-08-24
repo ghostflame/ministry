@@ -26,7 +26,6 @@
 // in order
 #include "locks.h"
 #include "network.h"
-#include "tcp/tcp.h"
 #include "fetch.h"
 #include "post.h"
 #include "targets.h"

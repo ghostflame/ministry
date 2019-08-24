@@ -194,7 +194,7 @@ int chomp( char *s, int len )
 }
 
 // remove leading and trailing whitespace
-int trim( char **str, int *len )
+__attribute__((hot)) int trim( char **str, int *len )
 {
 	register char *p, *q;
 	register int l, o;

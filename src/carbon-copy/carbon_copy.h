@@ -19,7 +19,7 @@
 #include "network.h"
 #include "mem.h"
 #include "hash.h"
-#include "relay.h"
+#include "relay/relay.h"
 #include "selfstats.h"
 
 

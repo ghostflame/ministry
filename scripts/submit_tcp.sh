@@ -103,7 +103,10 @@ case $cmd in
             ;;
     compat) submit_stats
             ;;
-    *)      echo "$0 <stats|paths|compat|single|one>"
+	relay)  PORT=2003
+			submit_ministry
+			;;
+    *)      echo "$0 <delay> <stats|paths|compat|single|one>"
             ;;
 esac
 

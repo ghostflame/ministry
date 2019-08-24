@@ -14,7 +14,11 @@ RDATA *mem_new_rdata( void )
 {
 	RDATA *r = (RDATA *) mtype_new( ctl->mem->rdata );
 
-	pthread_mutex_init( &(r->lock), &(ctl->proc->mtxa) );
+	if( !r->linit )
+	{
+		pthread_mutex_init( &(r->lock), &(ctl->proc->mtxa) );
+		r->linit = 1;
+	}
 
 	return r;
 }
@@ -22,13 +26,21 @@ RDATA *mem_new_rdata( void )
 void mem_free_rdata( RDATA **r )
 {
 	RDATA *rd;
+	int8_t l;
 
 	rd = *r;
 	*r = NULL;
 
-	pthread_mutex_destroy( &(rd->lock) );
+	if( rd->shutdown )
+	{
+		pthread_mutex_destroy( &(rd->lock) );
+		rd->linit = 0;
+	}
 
-	memset( &rd, 0, sizeof( RDATA ) );
+	l = rd->linit;
+	memset( rd, 0, sizeof( RDATA ) );
+	rd->linit = l;
+
 	mtype_free( ctl->mem->rdata, rd );
 }
 

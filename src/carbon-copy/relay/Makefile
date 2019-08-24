@@ -1,9 +1,9 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-FILES  = thread pool epoll tcp
-HEADS  = local tcp
+FILES  = conf host init relay
+HEADS  = local relay
 
-RKV    = tcp_shared.a
+RKV    = relay_shared.a
 EARGS ?=
 
 OBJS   = $(FILES:%=%.o)

@@ -13,7 +13,6 @@
 #define HPRFX_BUFSZ						0x2000	// 8k
 
 
-#define TCP_MAX_POLLS					128
 // used to hash (port<<32)+ip to give a nice
 // spread of tcp slots even with a power-of-two
 // number of threads
@@ -25,15 +24,6 @@
 #define NET_IP_HASHSZ					2003
 
 
-
-
-enum tcp_style_types
-{
-	TCP_STYLE_POOL = 0,
-	TCP_STYLE_THRD,
-	TCP_STYLE_EPOLL,
-	TCP_STYLE_MAX
-};
 
 
 #include "shared.h"
