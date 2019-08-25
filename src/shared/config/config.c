@@ -159,6 +159,7 @@ PROC_CTL *config_defaults( char *app_name, char *conf_dir )
 	XsetcfFlag( _proc, READ_FILE );
 	XsetcfFlag( _proc, READ_ENV );
 	XsetcfFlag( _proc, READ_URL );
+	XsetcfFlag( _proc, READ_INCLUDE );
 	XsetcfFlag( _proc, URL_INC_URL );
 	// but not: sec include non-sec, read non-sec, validate
 

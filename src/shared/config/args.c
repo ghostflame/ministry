@@ -29,6 +29,7 @@ Options:\n", _proc->app_name, _proc->app_name );
   -P --env-prefix  <prefix>   Set environment variable prefix\n\
   -E --no-environment         Disable reading environment variables\n\
   -F --no-config              Disable reading a config file (env only)\n\
+  -R --no-include             Disable all including of other config\n\
   -U --no-uri                 Disable all reading of URI's\n\
   -u --no-uri-include         Disable URI config including other URI's\n\
   -i --insecure-uri           Allow insecure URI's\n\
@@ -63,6 +64,7 @@ struct option long_options[] = {
 	{ "no-uri",             no_argument,          NULL, 'U' },
 	{ "no-uri-include",     no_argument,          NULL, 'u' },
 	// security
+	{ "no-include",         no_argument,          NULL, 'R' },
 	{ "insecure-uri",       no_argument,          NULL, 'i' },
 	{ "insecure-include",   no_argument,          NULL, 'I' },
 	{ "interactive-pass",   no_argument,          NULL, 'K' },
@@ -157,6 +159,9 @@ void config_args( int ac, char **av, char *optstr, help_fn *hfp )
 				break;
 			case 'P':
 				config_set_env_prefix( optarg );
+				break;
+			case 'R':
+				cutcfFlag( READ_INCLUDE );
 				break;
 			case 'U':
 				cutcfFlag( URL_INC_URL );

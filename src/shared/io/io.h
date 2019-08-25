@@ -93,6 +93,9 @@ void io_buf_post_one( TGT *t, IOBUF *buf );
 void io_buf_post( TGTL *l, IOBUF *buf );
 void io_buf_keep( IOBUF *buf, int len );
 
+// this does no length checking, that's the caller's problem
+#define io_buf_append( _b, _s, _l )			memcpy( _b->buf + _b->len, _s, _l ); _b->len += _l
+
 // io fns
 io_fn io_send_net_tcp;
 io_fn io_send_net_udp;

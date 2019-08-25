@@ -152,6 +152,12 @@ int __config_handle_line( AVP *av )
 	{
 		WORDS w;
 
+		if( !chkcfFlag( READ_INCLUDE ) )
+		{
+			warn( "Ignoring include directive due to --no-include option." );
+			return 0;
+		}
+
 		strwords( &w, av->vptr, av->vlen, ' ' );
 
 		if( config_read( w.wd[0], &w ) != 0 )

@@ -93,9 +93,11 @@ BUF *strbuf_json( BUF *b, json_object *o, int done );
 // these work as macros
 #define strbuf_printf( b, ... )			b->len = snprintf( b->buf, b->sz, ##__VA_ARGS__ )
 #define strbuf_aprintf( b, ... )		b->len += snprintf( b->buf + b->len, b->sz - b->len, ##__VA_ARGS__ )
+#define strbuf_avprintf( b, ... )		b->len += vsnprintf( b->buf + b->len, b->sz - b->len, ##__VA_ARGS__ )
 #define strbuf_empty( b )				b->len = 0; b->buf[0] = '\0'
 #define strbuf_chop( b )				if( b->len > 0 ) { b->len--; b->buf[b->len] = '\0'; }
 #define strbuf_chopn( b, n )			if( b->len > n ) { b->len -= n; b->buf[b->len] = '\0'; } else { strbuf_empty( b ); }
+#define strbuf_trunc( b, l )			if( l > b->len ) { b->buf[l] = '\0'; b->len = l; }
 #define strbuf_lastchar( b )			( ( b->len ) ? b->buf[b->len - 1] : '\0' )
 #define strbuf_append( b, o )			strbuf_copy( strbuf_resize( b, b->len + o->len ), o->buf, o->len )
 
