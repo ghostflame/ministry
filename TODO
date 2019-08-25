@@ -1,18 +1,3 @@
-Refactor
-	none
-	
-HTTP
-	none
-
-Network
-	none
-
-Data types
-	none
-
-Logging
-	none
-
 Stats generation
 	Allow for usec timestamps - multiple buffers
 
@@ -24,6 +9,9 @@ Operational Readiness
 	Pen Testing
     review:  https://cwe.mitre.org/data/definitions/658.html
 		done:	https://cwe.mitre.org/data/definitions/14.html
+
+Carbon-Copy
+    Crashing with multiple sources (from ministry test)
 
 Clustering
 	Make sure existing connections are not closed until shutdown
