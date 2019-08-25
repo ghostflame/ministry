@@ -14,19 +14,14 @@
 
 __attribute__((hot)) int relay_write( IOBUF *b, RLINE *l )
 {
-//printf( "[%3d] %s\n",   l->plen, l->path );
-//printf( "[%3d] %s\n\n", l->rlen, l->rest );
-
 	// add path
-	memcpy( b->buf + b->len, l->path, l->plen );
-	b->len += l->plen;
+	io_buf_append( b, l->path, l->plen );
 
 	// and a space
 	b->buf[b->len++] = ' ';
 
 	// and the rest
-	memcpy( b->buf + b->len, l->rest, l->rlen );
-	b->len += l->rlen;
+	io_buf_append( b, l->rest, l->rlen );
 
 	// and the newline
 	b->buf[b->len++] = '\n';
@@ -109,8 +104,6 @@ __attribute__((hot)) void relay_simple( HOST *h, char *line, int len )
 	RELAY *r;
 	RLINE l;
 	char *s;
-
-//printf( "[%3d] %s\n", len, line );
 
 	// we can handle ministry or statsd format
 	// relies on statsd format not containing a space

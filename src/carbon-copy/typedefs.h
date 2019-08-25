@@ -10,11 +10,12 @@
 #ifndef CARBON_COPY_TYPEDEFS_H
 #define CARBON_COPY_TYPEDEFS_H
 
-typedef struct carbon_copy_control		RCTL;
+typedef struct carbon_copy_control	RCTL;
 typedef struct memt_control			MEMT_CTL;
 typedef struct network_control		NETW_CTL;
 typedef struct relay_control		RLY_CTL;
 typedef struct target_control		TGT_CTL;
+typedef struct selfstats_control    SST_CTL;
 
 typedef struct stat_config			ST_CFG;
 typedef struct stat_thread_ctl		ST_THR;

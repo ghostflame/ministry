@@ -30,6 +30,9 @@ void main_loop( void )
 	// throw the data listener loop
 	net_begin( );
 
+	// begin sending our own stats
+	self_stats_init( );
+
 	while( RUNNING( ) )
 		sleep( 1 );
 
@@ -46,8 +49,10 @@ void main_create_conf( void )
 	ctl->mem		= memt_config_defaults( );
 	ctl->net		= network_config_defaults( );
 	ctl->relay		= relay_config_defaults( );
+	ctl->stats		= self_stats_config_defaults( );
 
 	config_register_section( "relay", &relay_config_line );
+	config_register_section( "stats", &self_stats_config_line );
 
 	net_host_callbacks( &relay_buf_set, &relay_buf_end );
 }

@@ -9,55 +9,43 @@
 
 #include "carbon_copy.h"
 
+
+const char *self_ts_types[SELF_TSTYPE_MAX] =
+{
+	"second",
+	"milli",
+	"micro",
+	"nano",
+	"none"
+};
+
+
+
 // a little caution so we cannot write off the
 // end of the buffer
-void bprintf( ST_THR *t, char *fmt, ... )
+void bprintf( char *fmt, ... )
 {
-	int i, total;
+	SST_CTL *sc = ctl->stats;
 	va_list args;
-	uint32_t l;
-	TSET *s;
+
+	// truncate at the prefix length
+	strbuf_trunc( sc->buf, sc->prlen );
 
 	// write the variable part into the thread's path buffer
 	va_start( args, fmt );
-	l = (uint32_t) vsnprintf( t->path->buf, t->path->sz, fmt, args );
+	strbuf_avprintf( sc->buf, fmt, args );
 	va_end( args );
 
-	// check for truncation
-	if( l > t->path->sz )
-		l = t->path->sz;
+	// write the timestamp
+	strbuf_add( sc->buf, sc->ts, sc->tslen );
 
-	t->path->len = l;
-
-	// length of prefix and path and max ts buf
-	total = t->prefix->len + t->path->len + TSBUF_SZ;
-
-	// loop through the target sets, making sure we can
-	// send to them
-	for( i = 0; i < ctl->tgt->set_count; ++i )
-	{
-		s = ctl->tgt->setarr[i];
-
-		// are we ready for a new buffer?
-		if( ( t->bp[i]->len + total ) >= IO_BUF_SZ )
-		{
-			target_buf_send( s, t->bp[i] );
-
-			if( !( t->bp[i] = mem_new_iobuf( IO_BUF_SZ ) ) )
-			{
-				fatal( "Could not allocate a new IOBUF." );
-				return;
-			}
-		}
-
-		// so write out the new data
-		(*(s->stype->wrfp))( t, t->ts[i], t->bp[i] );
-	}
+	// relay this
+	relay_simple( sc->host, sc->buf->buf, sc->buf->len );
 }
 
 
 
-void self_report_mtypes( ST_THR *t )
+void self_report_mtypes( void )
 {
 	MTSTAT ms;
 	int i;
@@ -70,56 +58,39 @@ void self_report_mtypes( ST_THR *t )
 			return;
 
 		// and report them
-		bprintf( t, "mem.%s.free %u",  ms.name, ms.freec );
-		bprintf( t, "mem.%s.alloc %u", ms.name, ms.alloc );
-		bprintf( t, "mem.%s.kb %lu",   ms.name, ms.bytes / 1024 );
+		bprintf( "mem.%s.free %u",  ms.name, ms.ctrs.fcount );
+		bprintf( "mem.%s.alloc %u", ms.name, ms.ctrs.total );
+		bprintf( "mem.%s.kb %lu",   ms.name, ms.bytes / 1024 );
 	}
 }
 
 
-void self_report_dlocks( ST_THR *t, DLOCKS *d )
-{
-	uint64_t total, diff;
-	int i;
-
-	for( total = 0, i = 0; i < d->len; ++i )
-	{
-		diff = lockless_fetch( &(d->used[i]) );
-		total += diff;
-
-		bprintf( t, "locks.%s.%03d %lu", d->name, i, diff );
-	}
-
-	bprintf( t, "locks.%s.total %lu", d->name, total );
-}
-
-
-void self_report_netport( ST_THR *t, NET_PORT *p, char *name, char *proto, int do_drops )
+void self_report_netport( NET_PORT *p, char *name, char *proto, int do_drops )
 {
 	uint64_t diff;
 
 	diff = lockless_fetch( &(p->errors)  );
-	bprintf( t, "network.%s.%s.%hu.errors %lu",  name, proto, p->port, diff );
+	bprintf( "network.%s.%s.%hu.errors %lu",  name, proto, p->port, diff );
 
 	if( do_drops )
 	{
 		diff = lockless_fetch( &(p->drops)   );
-		bprintf( t, "network.%s.%s.%hu.drops %lu",   name, proto, p->port, diff );
+		bprintf( "network.%s.%s.%hu.drops %lu",   name, proto, p->port, diff );
 	}
 
 	diff = lockless_fetch( &(p->accepts) );
-	bprintf( t, "network.%s.%s.%hu.accepts %lu", name, proto, p->port, diff );
+	bprintf( "network.%s.%s.%hu.accepts %lu", name, proto, p->port, diff );
 }
 
 
-void self_report_nettype( ST_THR *t, NET_TYPE *n )
+void self_report_nettype( NET_TYPE *n )
 {
 	int i, drops = 0;
 
 	if( n->flags & NTYPE_TCP_ENABLED )
 	{
-		bprintf( t, "network.%s.tcp.%hu.connections %d", n->name, n->tcp->port, n->conns );
-		self_report_netport( t, n->tcp, n->name, "tcp", 1 );
+		bprintf( "network.%s.tcp.%hu.connections %d", n->name, n->tcp->port, n->conns );
+		self_report_netport( n->tcp, n->name, "tcp", 1 );
 	}
 
 	// without checks we cannot drop UDP packets so no stats
@@ -128,24 +99,153 @@ void self_report_nettype( ST_THR *t, NET_TYPE *n )
 
 	if( n->flags & NTYPE_UDP_ENABLED )
 		for( i = 0; i < n->udp_count; ++i )
-			self_report_netport( t, n->udp[i], n->name, "udp", drops );
+			self_report_netport( n->udp[i], n->name, "udp", drops );
 }
 
 
 // report our own pass
-void self_stats_pass( ST_THR *t, int64_t tval )
+void self_stats_pass( int64_t tval, void *arg )
 {
-	struct timespec now;
+	SST_CTL *sc = ctl->stats;
+
+	// do we need set a timestamp?
+	if( sc->tsdiv )
+		sc->tslen = snprintf( sc->ts, 32, " %ld\n", tval / sc->tsdiv );
 
 	// network stats
-	self_report_nettype( t, ctl->net->relay );
+	self_report_nettype( ctl->net->relay );
 
 	// memory
-	self_report_mtypes( t );
+	self_report_mtypes( );
 
-	bprintf( t, "mem.total.kb %d", ctl->mem->curr_kb );
-	llts( tval, now );
-	bprintf( t, "uptime %.3f", ts_diff( now, ctl->init_time, NULL ) );
+	bprintf( "mem.total.kb %ld", mem_curr_kb( ) );
+	bprintf( "uptime %.3f", get_uptime( ) );
+
+	sc->host->last = tval;
 }
 
+
+void self_stats_loop( THRD *t )
+{
+	notice( "Starting the self-stats loop, interval %d sec.", ctl->stats->intv );
+	loop_control( "selfstats", &self_stats_pass, NULL, ctl->stats->intv * MILLION, LOOP_TRIM|LOOP_SYNC, 0 );
+}
+
+
+void self_stats_init( void )
+{
+	SST_CTL *sc = ctl->stats;
+	struct sockaddr_in sai;
+	char *tmp;
+
+	if( !sc->enabled )
+		return;
+
+	memset( &sai, 0, sizeof( struct sockaddr_in ) );
+
+	sc->host = mem_new_host( &sai, 1 );
+	sc->host->type = ctl->net->relay;
+	net_set_host_parser( sc->host, 0, 0 );
+	relay_buf_set( sc->host );
+
+	sc->ts = (char *) allocz( 32 );
+
+	switch( sc->tstype )
+	{
+		case SELF_TSTYPE_SEC:
+			sc->tsdiv = BILLION;
+			break;
+
+		case SELF_TSTYPE_MSEC:
+			sc->tsdiv = MILLION;
+			break;
+
+		case SELF_TSTYPE_USEC:
+			sc->tsdiv = 1000;
+			break;
+
+		case SELF_TSTYPE_NSEC:
+			sc->tsdiv = 1;
+			break;
+	}
+
+	// fix the prefix
+	sc->prlen = (uint32_t) strlen( sc->prefix );
+	if( sc->prefix[sc->prlen - 1] != '.' )
+	{
+		tmp = (char *) allocz( sc->prlen + 2 );
+		memcpy( tmp, sc->prefix, sc->prlen );
+		tmp[sc->prlen++] = '.';
+		tmp[sc->prlen]   = '\0';
+
+		free( sc->prefix );
+		sc->prefix = tmp;
+	}
+
+	sc->buf = strbuf( 4096 );
+	strbuf_copy( sc->buf, sc->prefix, sc->prlen );
+
+	thread_throw_named( &self_stats_loop, NULL, 0, "self-stats" );
+}
+
+
+
+SST_CTL *self_stats_config_defaults( void )
+{
+	SST_CTL *sc = (SST_CTL *) allocz( sizeof( SST_CTL ) );
+
+	sc->enabled = 1;
+	sc->intv    = DEFAULT_SELF_INTERVAL;
+	sc->prefix  = str_copy( DEFAULT_SELF_PREFIX, 0 );
+
+	return sc;
+}
+
+
+int self_stats_config_line( AVP *av )
+{
+	SST_CTL *sc = ctl->stats;
+	int64_t v;
+	int i;
+
+	if( attIs( "enable" ) )
+	{
+		sc->enabled = config_bool( av );
+	}
+	else if( attIs( "prefix" ) )
+	{
+		free( sc->prefix );
+		sc->prefix = str_copy( av->vptr, av->vlen );
+	}
+	else if( attIs( "timestamp" ) )
+	{
+		for( i = 0; i < SELF_TSTYPE_MAX; i++ )
+			if( valIs( self_ts_types[i] ) )
+			{
+				sc->tstype = i;
+				return 0;
+			}
+
+		err( "Unrecognised timestamp type '%s'.", av->vptr );
+		return -1;
+	}
+	else if( attIs( "interval" ) || attIs( "intvSec" ) )
+	{
+		if( av_int( v ) == NUM_INVALID )
+		{
+			err( "Invalid self-stats reporting interval '%s'.", av->vptr );
+			return -1;
+		}
+		if( v < 1 )
+		{
+			warn( "Minimum self-stats reporting interval is 1 sec." );
+			v = 1;
+		}
+		sc->intv = v;
+	}
+	else
+		return -1;
+
+	return 0;
+}
 

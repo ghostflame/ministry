@@ -26,11 +26,11 @@
 struct carbon_copy_control
 {
 	PROC_CTL			*	proc;
-	LOG_CTL				*	log;
 	RLY_CTL				*	relay;
 	MEMT_CTL			*	mem;
 	NETW_CTL			*	net;
 	TGT_CTL				*	target;
+	SST_CTL				*	stats;
 };
 
 

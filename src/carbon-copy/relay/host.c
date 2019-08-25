@@ -43,6 +43,7 @@ void relay_flush_host( RDATA *r )
 				break;
 		}
 
+	r->last = _proc->curr_tval;
 	unlock_rdata( r );
 }
 
