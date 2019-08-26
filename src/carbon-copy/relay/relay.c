@@ -12,16 +12,13 @@
 
 
 
-__attribute__((hot)) int relay_write( IOBUF *b, RLINE *l )
+__attribute__((hot)) static inline int relay_write( IOBUF *b, RLINE *l )
 {
-	// add path
-	io_buf_append( b, l->path, l->plen );
+	// reconstruct the line
+	l->line[l->plen] = l->sep;
 
-	// and a space
-	b->buf[b->len++] = ' ';
-
-	// and the rest
-	io_buf_append( b, l->rest, l->rlen );
+	// add it to the buffer
+	io_buf_append( b, l->line, l->len );
 
 	// and the newline
 	b->buf[b->len++] = '\n';
@@ -44,7 +41,7 @@ __attribute__((hot)) int relay_regex( HBUFS *h, RLINE *l )
 	// try each regex
 	for( j = 0; j < r->mcount; ++j )
 	{
-		mat  = regexec( r->matches + j, l->path, 0, NULL, 0 ) ? 0 : 1;
+		mat  = regexec( r->matches + j, l->line, 0, NULL, 0 ) ? 0 : 1;
 		mat ^= r->invert[j];
 
 		if( mat )
@@ -81,7 +78,7 @@ __attribute__((hot)) int relay_hash( HBUFS *h, RLINE *l )
 		return 1;
 
 	if( h->rule->tcount > 1 )
-		j = (*(h->rule->hfp))( l->path, l->plen ) % h->rule->tcount;
+		j = (*(h->rule->hfp))( l->line, l->plen ) % h->rule->tcount;
 
 	// hash writes to just one target
 	if( relay_write( h->bufs[j], l ) )
@@ -96,69 +93,12 @@ __attribute__((hot)) int relay_hash( HBUFS *h, RLINE *l )
 
 
 
-
-
-__attribute__((hot)) void relay_simple( HOST *h, char *line, int len )
+__attribute__((hot)) static inline int relay_line( HOST *h, RLINE *l, char *line, int len )
 {
-	HBUFS *hb;
-	RELAY *r;
-	RLINE l;
-	char *s;
+	register char *s;
 
-	// we can handle ministry or statsd format
-	// relies on statsd format not containing a space
-	if( !( s = memchr( line, ' ', len ) )
-	 && !( s = memchr( line, ':', len ) ) )
-	{
-		// not a valid line
-		return;
-	}
-
-	// we will reconstruct the line later on
-	l.path = line;
-	l.plen = s - line;
-	*s++ = '\0';
-	l.rest = s;
-	l.rlen = len - l.plen - 1;
-
-	++(h->lines);
-
-	// run through until we get a match and a last
-	for( hb = ((RDATA*) h->data)->hbufs; hb; hb = hb->next )
-	{
-		r = hb->rule;
-
-		if( (*(r->rfp))( hb, &l ) )
-		{
-			++(r->lines);
-			++(h->handled);
-			if( r->last )
-				break;
-		}
-	}
-}
-
-
-__attribute__((hot)) void relay_prefix( HOST *h, char *line, int len )
-{
-	HBUFS *hb;
-	RELAY *r;
-	RLINE l;
-	char *s;
-
-	if( !( s = memchr( line, ' ', len ) ) )
-		// not a valid line
-		return;
-
-	// we will reconstruct the line later on
-	l.path = line;
-	l.plen = s - line;
-	*s++ = '\0';
-	l.rest = s;
-	l.rlen = len - l.plen - 1;
-
-	// can't handle a line that long
-	if( l.plen >= h->lmax )
+	// length check - don't permit silly lines
+	if( len > h->lmax )
 	{
 		if( ++(h->overlength) >= h->olwarn )
 		{
@@ -167,31 +107,75 @@ __attribute__((hot)) void relay_prefix( HOST *h, char *line, int len )
 			while( h->overlength >= h->olwarn )
 				h->olwarn <<= 1;
 		}
-
-		// done with that
-		return;
+		return 1;
 	}
+
+	l->line = line;
+	l->len  = len;
+
+	// we can handle ministry or statsd format
+	// relies on statsd format not containing a space
+	if( !( s = memchr( line, ' ', len ) )
+	 && !( s = memchr( line, ':', len ) ) )
+		return 1;
+
+	l->plen = s - line;
+	l->sep  = *s;
+	*s = '\0';
 
 	++(h->lines);
 
-	// copy the path onto the end of the prefix
-	memcpy( h->ltarget, line, l.plen );
-	h->ltarget[l.plen] = '\0';
-	l.path = h->workbuf;
-	l.plen = l.plen + h->plen;
+	return 0;
+}
 
-	// run through using the prefixed 
+__attribute__((hot)) static inline void relay_dispatch( HOST *h, RLINE *l )
+{
+	HBUFS *hb;
+	RELAY *r;
+
 	for( hb = ((RDATA *) h->data)->hbufs; hb; hb = hb->next )
 	{
 		r = hb->rule;
 
-		if( (*(r->rfp))( hb, &l ) )
+		if( (*(r->rfp))( hb, l ) )
 		{
 			++(r->lines);
 			++(h->handled);
+
 			if( r->last )
 				break;
 		}
+	}
+}
+
+
+__attribute__((hot)) void relay_simple( HOST *h, char *line, int len )
+{
+	RLINE l;
+
+	if( relay_line( h, &l, line, len ) == 0 )
+	{
+		relay_dispatch( h, &l );
+	}
+}
+
+
+__attribute__((hot)) void relay_prefix( HOST *h, char *line, int len )
+{
+	RLINE l;
+
+	if( relay_line( h, &l, line, len ) == 0 )
+	{
+		// copy the path onto the end of the prefix
+		memcpy( h->ltarget, line, len );
+		h->ltarget[len] = '\0';
+
+		// fix l's params - start, and lengths
+		l.line  = h->workbuf;
+		l.plen += h->plen;
+		l.len  += h->plen;
+
+		relay_dispatch( h, &l );
 	}
 }
 

@@ -2,14 +2,14 @@
 * This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
 *                                                                         *
-* data.h - defines data simulator structures                              *
+* metric/local.h - defines metric-specific fns and structs                *
 *                                                                         *
 * Updates:                                                                *
 **************************************************************************/
 
 
-#ifndef MINISTRY_TEST_DATA_H
-#define MINISTRY_TEST_DATA_H
+#ifndef MINISTRY_TEST_METRIC_LOCAL_H
+#define MINISTRY_TEST_METRIC_LOCAL_H
 
 
 #define METRIC_MAX_AGE				100			// msec
@@ -17,6 +17,8 @@
 #define METRIC_DEFAULT_REP_INTV		10000000	// usec
 #define METRIC_MAX_PATH				1024		// bytes
 #define METRIC_WTMP_SZ				4096		// bytes
+
+#include "ministry_test.h"
 
 
 struct metric_types_data
@@ -27,14 +29,8 @@ struct metric_types_data
 };
 
 
-enum metric_type_vals
-{
-	METRIC_TYPE_ADDER = 0,
-	METRIC_TYPE_STATS,
-	METRIC_TYPE_GAUGE,
-	METRIC_TYPE_COMPAT,
-	METRIC_TYPE_MAX
-};
+extern const struct metric_types_data metric_types[];
+
 
 enum metric_model_vals
 {
@@ -109,14 +105,6 @@ struct metric_group
 };
 
 
-struct metric_control
-{
-	MGRP				*	groups;
-	MGRP				*	flat_list;
-	int64_t					gcount;
-	int64_t					mcount;
-	int64_t					max_age;
-};
 
 
 
@@ -132,11 +120,5 @@ loop_call_fn metric_group_io;
 throw_fn metric_group_update_loop;
 throw_fn metric_group_report_loop;
 throw_fn metric_group_io_loop;
-
-void metric_start_all( void );
-
-MTRC_CTL *metric_config_defaults( void );
-conf_line_fn metric_config_line;
-
 
 #endif

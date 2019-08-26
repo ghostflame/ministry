@@ -120,6 +120,11 @@ void relay_buf_set( HOST *h )
 	RELAY *r;
 	int i;
 
+	// even if it's not a prefix host, we still want
+	// a max relay line size that is sub 64k
+	if( h->lmax == 0 )
+		h->lmax = 0x4000;	// 16k
+
 	tmp = list = NULL;
 
 	for( r = _relay->rules; r; r = r->next )

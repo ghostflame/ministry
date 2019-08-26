@@ -35,11 +35,10 @@ enum relay_rule_types
 
 struct relay_line
 {
-	char				*	path;
-	char				*	rest;
-
-	int						plen;
-	int						rlen;
+	char				*	line;
+	int32_t					len;
+	int16_t					plen;
+	char					sep;
 };
 
 

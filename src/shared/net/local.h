@@ -10,8 +10,8 @@
 #ifndef SHARED_NETWORK_LOCAL_H
 #define SHARED_NETWORK_LOCAL_H
 
-#define HPRFX_BUFSZ						0x2000	// 8k
 
+#define HPRFX_BUFSZ						0x4000	// 16k
 
 // used to hash (port<<32)+ip to give a nice
 // spread of tcp slots even with a power-of-two
