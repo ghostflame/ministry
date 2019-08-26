@@ -18,10 +18,20 @@
 #define METRIC_MAX_PATH				1024		// bytes
 #define METRIC_WTMP_SZ				4096		// bytes
 
+
+// random number generator
+#define metrand( )					( (double) random( ) / ( 1.0 * RAND_MAX ) )
+#define metrandM( )					( -0.5 + metrand( ) )
+
+
+
 #include "ministry_test.h"
 
+typedef struct metric_model_data    MODEL;
 
-struct metric_types_data
+
+
+struct metric_model_data
 {
 	const char			*	name;
 	update_fn			*	updater;
@@ -29,7 +39,7 @@ struct metric_types_data
 };
 
 
-extern const struct metric_types_data metric_types[];
+extern const MODEL metric_types[];
 
 
 enum metric_model_vals
@@ -62,6 +72,7 @@ struct metric
 	BUF					*	path;
 	update_fn			*	ufp;
 	char				*	trlr;
+	const MODEL			*	model;
 
 	double					curr;
 	double					d1;
@@ -71,7 +82,6 @@ struct metric
 
 	int64_t					intv;
 
-	int8_t					model;
 	int8_t					type;
 	int8_t					tlen;
 	char					sep;
@@ -120,5 +130,9 @@ loop_call_fn metric_group_io;
 throw_fn metric_group_update_loop;
 throw_fn metric_group_report_loop;
 throw_fn metric_group_io_loop;
+
+// const.c
+const MODEL *metric_get_model( char *name );
+int metric_get_type( char *name );
 
 #endif

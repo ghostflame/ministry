@@ -11,32 +11,6 @@
 
 
 
-const struct metric_types_data metric_types[METRIC_MODEL_MAX] =
-{
-	{
-		.name    = "track_mean",
-		.updater = &metric_update_track_mean,
-		.model   = METRIC_MODEL_TRACK_MEAN,
-	},
-	{
-		.name    = "track_mean_pos",
-		.updater = &metric_update_track_mean_pos,
-		.model   = METRIC_MODEL_TRACK_MEAN_POS,
-	},
-	{
-		.name    = "floor_up",
-		.updater = &metric_update_floor_up,
-		.model   = METRIC_MODEL_FLOOR_UP,
-	},
-	{
-		.name    = "sometimes_track",
-		.updater = &metric_update_sometimes_track,
-		.model   = METRIC_MODEL_SMTS_TRACK,
-	}
-};
-
-
-
 
 MGRP *metric_find_group_parent( char *name, int nlen )
 {
@@ -116,10 +90,8 @@ int metric_get_interval( char *str, int64_t *res )
 
 int metric_add( MGRP *g, char *str, int len )
 {
-	METRIC *m, nm;
-	char *p;
+	METRIC *m, nm;;
 	WORDS w;
-	int i;
 
 	if( strwords( &w, str, len, ' ' ) != METRIC_FLD_MAX )
 	{
@@ -140,33 +112,15 @@ int metric_add( MGRP *g, char *str, int len )
 	strbuf_copy( nm.path, w.wd[METRIC_FLD_PATH], w.len[METRIC_FLD_PATH] );
 
 	if( w.len[METRIC_FLD_MODEL] )
-		for( i = 0; i < METRIC_MODEL_MAX; ++i )
-			if( !strcasecmp( w.wd[METRIC_FLD_MODEL], metric_types[i].name ) )
-			{
-				nm.model = metric_types[i].model;
-				nm.ufp   = metric_types[i].updater;
-				break;
-			}
-
-	if( !nm.ufp )
 	{
-		err( "Unrecognised model: %s", w.wd[METRIC_FLD_MODEL] );
-		return -1;
+		if( !( nm.model = metric_get_model( w.wd[METRIC_FLD_MODEL] ) ) )
+			return -1;
+
+		nm.ufp = nm.model->updater;
 	}
 
-	p = w.wd[METRIC_FLD_TYPE];
-
-	if( !strcasecmp( p, "adder" ) )
-		nm.type = METRIC_TYPE_ADDER;
-	else if( !strcasecmp( p, "stats" ) )
-		nm.type = METRIC_TYPE_STATS;
-	else if( !strcasecmp( p, "gauge" ) )
-		nm.type = METRIC_TYPE_GAUGE;
-	else
-	{
-		err( "Metric type %s unrecognised.", p );
+	if( ( nm.type = metric_get_type( w.wd[METRIC_FLD_TYPE] ) ) < 0 )
 		return -1;
-	}
 
 	if( parse_number( w.wd[METRIC_FLD_D1], NULL, &(nm.d1) ) == NUM_INVALID
 	 || parse_number( w.wd[METRIC_FLD_D2], NULL, &(nm.d2) ) == NUM_INVALID
@@ -298,19 +252,8 @@ int metric_config_line( AVP *av )
 			return -1;
 		}
 
-		if( valIs( "adder" ) )
-			g->tgttype = METRIC_TYPE_ADDER;
-		else if( valIs( "stats" ) )
-			g->tgttype = METRIC_TYPE_STATS;
-		else if( valIs( "gauge" ) )
-			g->tgttype = METRIC_TYPE_GAUGE;
-		else if( valIs( "compat" ) )
-			g->tgttype = METRIC_TYPE_COMPAT;
-		else
-		{
-			err( "Unrecognised target type %s.", av->vptr );
-			return -1;
-		}
+		if( ( g->tgttype = metric_get_type( av->vptr ) ) < 0 )
+			return -1; 
 	}
 	else if( attIs( "update" ) )
 	{

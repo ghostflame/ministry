@@ -12,6 +12,16 @@
 #define MINISTRY_TEST_METRIC_H
 
 
+enum metric_type_vals
+{
+	METRIC_TYPE_ADDER = 0,
+	METRIC_TYPE_STATS,
+	METRIC_TYPE_GAUGE,
+	METRIC_TYPE_COMPAT,
+	METRIC_TYPE_MAX
+};
+
+
 
 struct metric_control
 {
