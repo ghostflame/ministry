@@ -76,6 +76,20 @@ Continue processing even if this rule matches (this is the default behaviour).
 Comma-separated list of target names.  The special value (on it's own) \fIblackhole\fP is
 interpreted as drop matching metrics.  It is a botch to combine blackhole target and the
 \fBcontinue\fP statement.  This/these names will be resolved against \fBTarget\fP config.
+.PP
+Separate from the relay rules are two settings which control the rate at which lines are
+flushed to the targets.  Both control the same variable.
+.TP
+\fBflushMsec\fP
+Set the number of msec that is the maximum age of unflushed metrics.  Flushing does not
+guarantee immediate delivery - there may be a send queue.  Default: 2000.
+.TP
+\fBrealtime\fP
+If set it sets the msec to one of two values, depending on whether true or false.  If true,
+the msec value is very low, which comes with some CPU overhead.  If false, the msec value
+is set quite high - this is intended for values with timestamps in, where near-realtime is
+acceptable.
+
 
 .SH SEE ALSO
 .BR carbon-copy (1)
