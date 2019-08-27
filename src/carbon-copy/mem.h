@@ -11,8 +11,8 @@
 #ifndef CARBON_COPY_MEM_H
 #define CARBON_COPY_MEM_H
 
-#define MEM_ALLOCSZ_HOSTS			128
 #define MEM_ALLOCSZ_HBUFS			128
+#define MEM_ALLOCSZ_RDATA			128
 
 // 1GB
 #define DEFAULT_CC_MAX_KB			( 1 * 1024 * 1024 )
@@ -20,17 +20,17 @@
 
 struct memt_control
 {
-	MTYPE			*	hosts;
 	MTYPE			*	hbufs;
+	MTYPE			*	rdata;
 };
 
-
-HOST *mem_new_host( struct sockaddr_in *peer, uint32_t bufsz );
-void mem_free_host( HOST **h );
 
 HBUFS *mem_new_hbufs( void );
 void mem_free_hbufs( HBUFS **h );
 void mem_free_hbufs_list( HBUFS *list );
+
+RDATA *mem_new_rdata( void );
+void mem_free_rdata( RDATA **r );
 
 MEMT_CTL *memt_config_defaults( void );
 

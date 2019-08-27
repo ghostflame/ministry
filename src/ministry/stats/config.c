@@ -134,9 +134,9 @@ int stats_config_line( AVP *av )
 				return -1;
 			}
 
-			for( i = 0; i < wd.wc; i++ )
+			for( i = 0; i < wd.wc; ++i )
 			{
-				t = atoi( wd.wd[i] );
+				t = strtol( wd.wd[i], NULL, 10 );
 
 				// sort out percent from per-mille
 				if( ( pm = memchr( wd.wd[i], 'm', wd.len[i] ) ) )
@@ -207,7 +207,7 @@ int stats_config_line( AVP *av )
 		return 0;
 	}
 
-	d++;
+	++d;
 
 	if( !strncasecmp( av->aptr, "stats.", 6 ) )
 		sc = s->stats;

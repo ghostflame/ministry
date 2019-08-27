@@ -17,6 +17,7 @@
 #define CONF_FLAG_READ_ENV			0x00000001
 #define CONF_FLAG_READ_FILE			0x00000002
 #define CONF_FLAG_READ_URL			0x00000004
+#define CONF_FLAG_READ_INCLUDE      0x00000008
 #define CONF_FLAG_URL_INSEC			0x00000100
 #define CONF_FLAG_URL_INC_URL		0x00000200
 #define CONF_FLAG_SEC_INC_INSEC		0x00000400
@@ -88,6 +89,7 @@ struct process_control
 	TGT_CTL				*	tgt;
 	HA_CTL				*	ha;
 	PMET_CTL			*	pmet;
+	NET_CTL				*	net;
 };
 
 

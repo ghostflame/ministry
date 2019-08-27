@@ -140,7 +140,7 @@ int targets_init( void )
 
 		s->next = c->sets;
 		c->sets = s;
-		c->set_count++;
+		++(c->set_count);
 	}
 
 	if( !c->set_count )
@@ -155,7 +155,7 @@ int targets_init( void )
 
 	// start each target set
 	// and make the flat list
-	for( i = 0, s = c->sets; s; s = s->next, i++ )
+	for( i = 0, s = c->sets; s; s = s->next, ++i )
 		c->setarr[i] = s;
 
 	return 0;
@@ -185,7 +185,7 @@ int targets_set_type( TGT *t, char *type, int len )
 	TTYPE *tt = targets_type_defns;
 	int i;
 
-	for( i = 0; i < TGTS_TYPE_MAX; i++, tt++ )
+	for( i = 0; i < TGTS_TYPE_MAX; ++i, ++tt )
 	{
 		if( strcasecmp( tt->name, type ) )
 			continue;

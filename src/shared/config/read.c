@@ -45,7 +45,7 @@ int config_get_line( FILE *f, AVP *av )
 			break;
 
 		// where are we?
-		context->lineno++;
+		++(context->lineno);
 
 		// find the line end
 		if( !( n = memchr( __cfg_read_line, '\n', 1023 ) ) )
@@ -151,6 +151,12 @@ int __config_handle_line( AVP *av )
 	if( !strcasecmp( av->aptr, "include" ) )
 	{
 		WORDS w;
+
+		if( !chkcfFlag( READ_INCLUDE ) )
+		{
+			warn( "Ignoring include directive due to --no-include option." );
+			return 0;
+		}
 
 		strwords( &w, av->vptr, av->vlen, ' ' );
 
@@ -317,7 +323,7 @@ int config_read_url( char *url, int fail_ok )
 
 	if( context->is_ssl )
 		setCurlFl( ch, SSL );
-	
+
 	if( chkcfFlag( SEC_VALIDATE ) )
 		setCurlFl( ch, VALIDATE );
 
@@ -358,7 +364,7 @@ int config_read( char *inpath, WORDS *w )
 	if( *inpath == '?' )
 	{
 		fail_ok = 1;
-		inpath++;
+		++inpath;
 	}
 
 	// prune the path
@@ -456,7 +462,7 @@ void config_choose_section( CCTXT *c, char *section )
 {
 	int i;
 
-	for( i = 0; i < CONF_SECT_MAX; i++ )
+	for( i = 0; i < CONF_SECT_MAX; ++i )
 	{
 		if( !config_sections[i].name )
 			break;

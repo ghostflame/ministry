@@ -28,11 +28,8 @@ LOCK_CTL *lock_config_defaults( void )
 	// used to control io buffer expiry
 	pthread_mutex_init( &(l->bufref), &(ctl->proc->mtxa) );
 
-	// used to control network tokens
-	pthread_mutex_init( &(l->tokens), &(ctl->proc->mtxa) );
-
 	// used to lock table positions
-	for( i = 0; i < HASHT_MUTEX_COUNT; i++ )
+	for( i = 0; i < HASHT_MUTEX_COUNT; ++i )
 		pthread_mutex_init( l->table + i, &(ctl->proc->mtxa) );
 
 	l->init_done = 1;
@@ -56,11 +53,8 @@ void lock_shutdown( void )
 	// used in buffer refs
 	pthread_mutex_destroy( &(l->bufref) );
 
-	// used to control network tokens
-	pthread_mutex_destroy( &(l->tokens) );
-
 	// used to lock table positions
-	for( i = 0; i < HASHT_MUTEX_COUNT; i++ )
+	for( i = 0; i < HASHT_MUTEX_COUNT; ++i )
 		pthread_mutex_destroy( l->table + i );
 
 	l->init_done = 0;

@@ -37,7 +37,7 @@ void bprintf( ST_THR *t, char *fmt, ... )
 
 	// loop through the target sets, making sure we can
 	// send to them
-	for( i = 0; i < ctl->tgt->set_count; i++ )
+	for( i = 0; i < ctl->tgt->set_count; ++i )
 	{
 		s = ctl->tgt->setarr[i];
 

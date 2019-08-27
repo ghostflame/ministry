@@ -19,6 +19,7 @@ DTYPE data_type_defns[DATA_TYPE_MAX] =
 		.lf   = &data_line_ministry,
 		.pf   = &data_line_min_prefix,
 		.af   = &data_point_stats,
+		.bp   = &data_parse_buf,
 		.tokn = TOKEN_TYPE_STATS,
 		.port = DEFAULT_STATS_PORT,
 		.thrd = TCP_THRD_DSTATS,
@@ -32,6 +33,7 @@ DTYPE data_type_defns[DATA_TYPE_MAX] =
 		.lf   = &data_line_ministry,
 		.pf   = &data_line_min_prefix,
 		.af   = &data_point_adder,
+		.bp   = &data_parse_buf,
 		.tokn = TOKEN_TYPE_ADDER,
 		.port = DEFAULT_ADDER_PORT,
 		.thrd = TCP_THRD_DADDER,
@@ -45,6 +47,7 @@ DTYPE data_type_defns[DATA_TYPE_MAX] =
 		.lf   = &data_line_ministry,
 		.pf   = &data_line_min_prefix,
 		.af   = &data_point_gauge,
+		.bp   = &data_parse_buf,
 		.tokn = TOKEN_TYPE_GAUGE,
 		.port = DEFAULT_GAUGE_PORT,
 		.thrd = TCP_THRD_DGAUGE,
@@ -58,6 +61,7 @@ DTYPE data_type_defns[DATA_TYPE_MAX] =
 		.lf   = &data_line_compat,
 		.pf   = &data_line_com_prefix,
 		.af   = NULL,
+		.bp   = &data_parse_buf,
 		.tokn = 0,
 		.port = DEFAULT_COMPAT_PORT,
 		.thrd = TCP_THRD_DCOMPAT,
@@ -146,7 +150,7 @@ uint32_t data_get_id( ST_CFG *st )
 	id = ++(st->did);
 
 	// and keep stats - gc reduces this
-	st->dcurr++;
+	++(st->dcurr);
 
 	pthread_mutex_unlock( &(ctl->locks->hashstats) );
 
@@ -482,7 +486,7 @@ __attribute__((hot)) void data_line_com_prefix( HOST *h, char *line, int len )
 
 	if( ( plen = __data_line_compat_check( line, len, &data, &type ) ) < 0 || plen > h->lmax )
 	{
-		h->invalid++;
+		++(h->invalid);
 		return;
 	}
 
@@ -495,9 +499,9 @@ __attribute__((hot)) void data_line_com_prefix( HOST *h, char *line, int len )
 	h->ltarget[plen] = '\0';
 
 	if( __data_line_compat_dispatch( h->workbuf, plen, data, *type ) < 0 )
-		h->invalid++;
+		++(h->invalid);
 	else
-		h->points++;
+		++(h->lines);
 }
 
 
@@ -511,7 +515,7 @@ __attribute__((hot)) void data_line_compat( HOST *h, char *line, int len )
 
 	if( ( plen = __data_line_compat_check( line, len, &data, &type ) ) < 0 )
 	{
-		h->invalid++;
+		++(h->invalid);
 		return;
 	}
 
@@ -519,9 +523,9 @@ __attribute__((hot)) void data_line_compat( HOST *h, char *line, int len )
 		return;  // probably a keepalive
 
 	if( __data_line_compat_dispatch( line, plen, data, *type ) < 0 )
-		h->invalid++;
+		++(h->invalid);
 	else
-		h->points++;
+		++(h->lines);
 }
 
 
@@ -533,7 +537,7 @@ __attribute__((hot)) void data_line_min_prefix( HOST *h, char *line, int len )
 
 	if( ( plen = __data_line_ministry_check( line, len, &ep ) ) < 0 || plen > h->lmax )
 	{
-		h->invalid++;
+		++(h->invalid);
 		return;
 	}
 
@@ -541,7 +545,7 @@ __attribute__((hot)) void data_line_min_prefix( HOST *h, char *line, int len )
 		return;  // probably a keepalive
 
 	// looks OK
-	h->points++;
+	++(h->lines);
 
 	// copy that into place
 	memcpy( h->workbuf + h->plen, line, plen );
@@ -562,7 +566,7 @@ __attribute__((hot)) void data_line_ministry( HOST *h, char *line, int len )
 
 	if( ( plen = __data_line_ministry_check( line, len, &ep ) ) < 0 )
 	{
-		h->invalid++;
+		++(h->invalid);
 		return;
 	}
 
@@ -570,7 +574,7 @@ __attribute__((hot)) void data_line_ministry( HOST *h, char *line, int len )
 		return;  // probably a keepalive
 
 	// looks OK
-	h->points++;
+	++(h->lines);
 
 	// and put that in
 	(*(h->handler))( line, plen, ep );
@@ -579,55 +583,23 @@ __attribute__((hot)) void data_line_ministry( HOST *h, char *line, int len )
 
 
 
-__attribute__((hot)) void data_line_token( HOST *h, char *line, int len )
-{
-	int64_t tval;
-	TOKEN *t;
-
-	// have we flagged them already?
-	if( h->net->flags & IO_CLOSE )
-	{
-		debug( "Host already flagged as closed - ignoring line: %s", line );
-		return;
-	}
-
-	// read the token
-	tval = strtoll( line, NULL, 10 );
-
-	// look up a token based on that information
-	if( !( t = token_find( h->ip, h->type->token_type, tval ) ) )
-	{
-		debug( "Found no token: %p", t );
-
-		// we were expecting a token, so, no.
-		h->net->flags |= IO_CLOSE;
-		return;
-	}
-
-	// burn that token
-	token_burn( t );
-
-	// reset the handler function
-	net_set_host_parser( h, 0, 1 );
-}
-
-
 
 
 // parse the lines
 // put any partial lines back at the start of the buffer
 // and return the length, if any
-__attribute__((hot)) void data_parse_buf( HOST *h, IOBUF *b )
+__attribute__((hot)) int data_parse_buf( HOST *h, IOBUF *b )
 {
 	register char *s = b->buf;
 	register char *q;
-	int len, l;
+	register int l;
+	int len;
 	char *r;
 
 	// can't parse without a handler function
 	// and those live on the host object
 	if( !h )
-		return;
+		return 0;
 
 	len = b->len;
 
@@ -637,23 +609,6 @@ __attribute__((hot)) void data_parse_buf( HOST *h, IOBUF *b )
 		if( !( q = memchr( s, LINE_SEPARATOR, len ) ) )
 		{
 			// partial last line
-			l = s - b->buf;
-
-			if( len < l )
-			{
-				memcpy( b->buf, s, len );
-				*(b->buf + len) = '\0';
-			}
-			else
-			{
-				q = b->buf;
-				l = len;
-
-				while( l-- > 0 )
-					*q++ = *s++;
-				*q = '\0';
-			}
-
 			// and we're done, with len > 0
 			break;
 		}
@@ -670,7 +625,7 @@ __attribute__((hot)) void data_parse_buf( HOST *h, IOBUF *b )
 		// clean leading \r's
 		if( *s == '\r' )
 		{
-			s++;
+			++s;
 			l--;
 		}
 
@@ -693,8 +648,8 @@ __attribute__((hot)) void data_parse_buf( HOST *h, IOBUF *b )
 		s = q;
 	}
 
-	// and update the buffer length
-	b->len = len;
+	io_buf_keep( b, len );
+	return len;
 }
 
 

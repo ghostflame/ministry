@@ -28,12 +28,17 @@ HTTP_CTL *http_config_defaults( void )
 	h->conns_max       = DEFAULT_HTTP_CONN_LIMIT;
 	h->conns_max_ip    = DEFAULT_HTTP_CONN_IP_LIMIT;
 	h->conns_tmout     = DEFAULT_HTTP_CONN_TMOUT;
+	h->post_max        = DEFAULT_POST_MAX_SZ;
 	h->port            = DEFAULT_HTTP_PORT;
 	h->addr            = NULL;
 	// MHD_USE_DEBUG does *weird* things.  Points *con_cls at the request buffer
 	// without it, *con_cls seems to relate to the length of the requested url
 	// either way, whiskey tango foxtrot libmicrohttpd
-	h->flags           = MHD_USE_THREAD_PER_CONNECTION|MHD_USE_INTERNAL_POLLING_THREAD|MHD_USE_AUTO|MHD_USE_TCP_FASTOPEN|MHD_USE_ERROR_LOG;
+	h->flags           = MHD_USE_THREAD_PER_CONNECTION\
+						|MHD_USE_INTERNAL_POLLING_THREAD\
+						|MHD_USE_AUTO\
+						|MHD_USE_TCP_FASTOPEN\
+						|MHD_USE_ERROR_LOG;
 
 	h->enabled         = 0;
 	h->ctl_enabled     = 0;
@@ -127,6 +132,24 @@ int http_config_line( AVP *av )
 			h->ctl_iplist = str_copy( av->vptr, av->vlen );
 			debug( "Using HTTP controls IP filter %s.", h->ctl_iplist );
 		}
+		else if( attIs( "postMax" ) )
+		{
+			if( av_int( v ) == NUM_INVALID )
+			{
+				err( "Invalid maximum post size '%s'.", av->vptr );
+				return -1;
+			}
+
+			// we allow 4k - 16M
+			if( v < 0x1000 || v > 0x1000000 )
+			{
+				warn( "Post max size must be between 4k and 16M - resetting to %ld.",
+					DEFAULT_POST_MAX_SZ );
+				v = DEFAULT_POST_MAX_SZ;
+			}
+
+			h->post_max = (size_t) v;
+		}
 		else
 			return -1;
 
@@ -142,7 +165,7 @@ int http_config_line( AVP *av )
 
 		if( attIs( "max" ) )
 		{
-			if( parse_number( av->vptr, &v, NULL ) == NUM_INVALID )
+			if( av_int( v ) == NUM_INVALID )
 			{
 				err( "Invalid max connections '%s'", av->vptr );
 				return -1;
@@ -151,7 +174,7 @@ int http_config_line( AVP *av )
 		}
 		else if( attIs( "maxPerIp" ) || attIs( "maxPerHost" ) )
 		{
-			if( parse_number( av->vptr, &v, NULL ) == NUM_INVALID )
+			if( av_int( v ) == NUM_INVALID )
 			{
 				err( "Invalid max-per-ip connections '%s'", av->vptr );
 				return -1;
@@ -160,7 +183,7 @@ int http_config_line( AVP *av )
 		}
 		else if( attIs( "timeout" ) || attIs( "tmout" ) )
 		{
-			if( parse_number( av->vptr, &v, NULL ) == NUM_INVALID )
+			if( av_int( v ) == NUM_INVALID )
 			{
 				err( "Invalid connection timeout '%s'", av->vptr );
 				return -1;

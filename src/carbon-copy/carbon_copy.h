@@ -16,23 +16,21 @@
 #include "typedefs.h"
 
 // in order
-#include "net.h"
-#include "udp.h"
-#include "tcp.h"
 #include "mem.h"
 #include "hash.h"
-#include "relay.h"
+#include "host.h"
+#include "relay/relay.h"
 #include "selfstats.h"
 
 
 struct carbon_copy_control
 {
 	PROC_CTL			*	proc;
-	LOG_CTL				*	log;
 	RLY_CTL				*	relay;
 	MEMT_CTL			*	mem;
-	NET_CTL				*	net;
+	NETW_CTL			*	net;
 	TGT_CTL				*	target;
+	SST_CTL				*	stats;
 };
 
 

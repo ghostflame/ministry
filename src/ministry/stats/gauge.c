@@ -23,11 +23,11 @@ void stats_gauge_pass( ST_THR *t )
 	st_thr_time( steal );
 
 	// take the data
-	for( i = 0; i < t->conf->hsize; i++ )
+	for( i = 0; i < t->conf->hsize; ++i )
 		if( ( i % t->max ) == t->id )
 		{
 			for( d = t->conf->data[i]; d && d->valid; d = d->next )
-				if( d->in.count ) 
+				if( d->in.count )
 				{
 					lock_gauge( d );
 
@@ -39,7 +39,7 @@ void stats_gauge_pass( ST_THR *t )
 					unlock_gauge( d );
 				}
 				else if( d->empty >= 0 )
-					d->empty++;
+					++(d->empty);
 		}
 
 #ifdef DEBUG
@@ -49,7 +49,7 @@ void stats_gauge_pass( ST_THR *t )
 	st_thr_time( stats );
 
 	// and report it
-	for( i = 0; i < t->conf->hsize; i++ )
+	for( i = 0; i < t->conf->hsize; ++i )
 		if( ( i % t->max ) == t->id )
 			for( d = t->conf->data[i]; d; d = d->next )
 			{
@@ -65,7 +65,7 @@ void stats_gauge_pass( ST_THR *t )
 					t->points += d->proc.count;
 					d->proc.count = 0;
 
-					t->active++;
+					++(t->active);
 				}
 			}
 

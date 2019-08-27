@@ -177,7 +177,7 @@ int fetch_init( void )
 	// fix the order, for what it matters
 	ctl->fetch->targets = mem_reverse_list( ctl->fetch->targets );
 
-	for( i = 0, f = ctl->fetch->targets; f; i++, f = f->next )
+	for( i = 0, f = ctl->fetch->targets; f; ++i, f = f->next )
 		thread_throw_named_f( fetch_loop, f, i, "fetch_loop_%d", i );
 
 	return ctl->fetch->fcount;
@@ -323,7 +323,7 @@ int fetch_config_line( AVP *av )
 	{
 		f->dtype = NULL;
 
-		for( i = 0, d = (DTYPE *) data_type_defns; i < DATA_TYPE_MAX; i++, d++ )
+		for( i = 0, d = (DTYPE *) data_type_defns; i < DATA_TYPE_MAX; ++i, ++d )
 			if( !strcasecmp( d->name, av->vptr ) )
 			{
 				f->dtype = d;
@@ -424,7 +424,7 @@ int fetch_config_line( AVP *av )
 		// link it up
 		n->next = ctl->fetch->targets;
 		ctl->fetch->targets = n;
-		ctl->fetch->fcount++;
+		++(ctl->fetch->fcount);
 	}
 	else
 		return -1;

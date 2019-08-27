@@ -93,7 +93,7 @@ void iplist_call_data( IPLIST *l, iplist_data_fn *fp, void *arg )
 	for( n = l->nets; n; n = n->next )
 		(*(fp))( arg, n );
 
-	for( i = 0; i < l->hashsz; i++ )
+	for( i = 0; i < l->hashsz; ++i )
 		for( n = l->ips[i]; n; n = n->next )
 			(*(fp))( arg, n );
 }
@@ -159,7 +159,7 @@ void iplist_explain( IPLIST *l, char *pos, char *neg, char *nei, char *pre )
 	snprintf( fmt, 64, "%%s%%-%ds%%22s    %%s", sz );
 
 	info( "IP list %s: ", l->name );
-	for( i = 0; i < l->hashsz; i++ )
+	for( i = 0; i < l->hashsz; ++i )
 		__iplist_explain_list( l->ips[i], pos, neg, nei, pre, fmt );
 
 	__iplist_explain_list( l->nets, pos, neg, nei, pre, fmt );
@@ -195,7 +195,7 @@ IPNET *iplist_parse_spec( char *str, int len )
 		str[rm[1].rm_eo] = '\0';
 
 		if( rm[6].rm_so > -1 )
-			bits = (int8_t) atoi( str + rm[6].rm_so );
+			bits = (int8_t) strtol( str + rm[6].rm_so, NULL, 10 );
 		else
 			bits = 32;
 
@@ -303,7 +303,7 @@ int iplist_append_net( IPLIST *l, IPNET *n )
 				( n->act == IPLIST_POSITIVE ) ? "positive" :
 				( n->act == IPLIST_NEGATIVE ) ? "negative" : "neither" );
 		}
-		l->count++;
+		++(l->count);
 		return 0;
 	}
 
@@ -333,7 +333,7 @@ void iplist_add( IPLIST *l )
 
 	l->next = _iplist->lists;
 	_iplist->lists = l;
-	_iplist->lcount++;
+	++(_iplist->lcount);
 }
 
 
@@ -357,7 +357,7 @@ void iplist_init( void )
 					n->tlen = l->tlen;
 				}
 
-			for( i = 0; i < l->hashsz; i++ )
+			for( i = 0; i < l->hashsz; ++i )
 				for( n = l->ips[i]; n; n = n->next )
 					if( !n->text )
 					{

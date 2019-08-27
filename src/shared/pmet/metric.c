@@ -107,7 +107,7 @@ PMETM *pmet_metric_create( int type, char *path, char *help )
 	if( help )
 		met->help = str_dup( help, 0 );
 
-	for( i = 0; i < PMET_TYPE_MAX; i++ )
+	for( i = 0; i < PMET_TYPE_MAX; ++i )
 		if( pmet_types[i].type == type )
 		{
 			met->type = pmet_types + i;

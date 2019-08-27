@@ -68,7 +68,7 @@ __attribute__((hot)) int gc_hash_list( DHASH **list, DHASH **flist, PRED **plist
 			// unset the valid flag in the first pass
 			// then tidy up in the second pass
 			h->valid = 0;
-			freed++;
+			++freed;
 		}
 	}
 
@@ -84,7 +84,7 @@ void gc_one_set( ST_CFG *c, DHASH **flist, PRED **plist, int thresh )
 	int hits = 0;
 	uint64_t i;
 
-	for( i = 0; i < c->hsize; i++ )
+	for( i = 0; i < c->hsize; ++i )
 		hits += gc_hash_list( &(c->data[i]), flist, plist, i, thresh );
 
 	if( hits > 0 )

@@ -10,72 +10,39 @@
 #include "carbon_copy.h"
 
 
-
-HOST *mem_new_host( struct sockaddr_in *peer, uint32_t bufsz )
+RDATA *mem_new_rdata( void )
 {
-	HOST *h;
+	RDATA *r = (RDATA *) mtype_new( ctl->mem->rdata );
 
-	h = (HOST *) mtype_new( ctl->mem->hosts );
-
-	// is this one set up?
-	if( ! h->net )
+	if( !r->linit )
 	{
-		h->net  = io_make_sock( bufsz, 0, peer );
-		h->peer = &(h->net->peer);
+		pthread_mutex_init( &(r->lock), &(ctl->proc->mtxa) );
+		r->linit = 1;
 	}
 
-	// copy the peer details in
-	*(h->peer) = *peer;
-	h->ip      = h->peer->sin_addr.s_addr;
-
-	// and make our name
-	snprintf( h->net->name, 32, "%s:%hu", inet_ntoa( h->peer->sin_addr ),
-		ntohs( h->peer->sin_port ) );
-
-	return h;
+	return r;
 }
 
-
-
-void mem_free_host( HOST **h )
+void mem_free_rdata( RDATA **r )
 {
-	HOST *sh;
+	RDATA *rd;
+	int8_t l;
 
-	if( !h || !*h )
-		return;
+	rd = *r;
+	*r = NULL;
 
-	sh = *h;
-	*h = NULL;
-
-	sh->type       = NULL;
-	sh->net->fd    = -1;
-	sh->net->flags = 0;
-	sh->ipn        = NULL;
-	sh->ip         = 0;
-
-	sh->peer->sin_addr.s_addr = INADDR_ANY;
-	sh->peer->sin_port = 0;
-
-	if( sh->net->in )
-		sh->net->in->len = 0;
-
-	if( sh->net->out )
-		sh->net->out->len = 0;
-
-	if( sh->net->name )
-		sh->net->name[0] = '\0';
-
-	if( sh->workbuf )
+	if( rd->shutdown )
 	{
-		sh->workbuf[0] = '\0';
-		sh->plen = 0;
-		sh->lmax = 0;
-		sh->ltarget = sh->workbuf;
+		pthread_mutex_destroy( &(rd->lock) );
+		rd->linit = 0;
 	}
 
-	mtype_free( ctl->mem->hosts, sh );
-}
+	l = rd->linit;
+	memset( rd, 0, sizeof( RDATA ) );
+	rd->linit = l;
 
+	mtype_free( ctl->mem->rdata, rd );
+}
 
 
 HBUFS *mem_new_hbufs( void )
@@ -99,7 +66,7 @@ void mem_free_hbufs( HBUFS **h )
 	hp = *h;
 	*h = NULL;
 
-	for( i = 0; i < hp->bcount; i++ )
+	for( i = 0; i < hp->bcount; ++i )
 		if( hp->bufs[i] )
 		{
 			hp->bufs[i]->next = bufs;
@@ -130,7 +97,7 @@ void mem_free_hbufs_list( HBUFS *list )
 		h = list;
 		list = h->next;
 
-		for( i = 0; i < h->bcount; i++ )
+		for( i = 0; i < h->bcount; ++i )
 			if( h->bufs[i] )
 			{
 				h->bufs[i]->next = bufs;
@@ -144,7 +111,7 @@ void mem_free_hbufs_list( HBUFS *list )
 		h->next = hfree;
 		hfree   = h;
 
-		hc++;
+		++hc;
 	}
 
 	mtype_free_list( ctl->mem->hbufs,  hc, hfree, hend );
@@ -160,9 +127,8 @@ MEMT_CTL *memt_config_defaults( void )
 	MEMT_CTL *m;
 
 	m = (MEMT_CTL *) allocz( sizeof( MEMT_CTL ) );
-
-	m->hosts  = mem_type_declare( "hosts",  sizeof( HOST ),   MEM_ALLOCSZ_HOSTS,  0, 1 );
-	m->hbufs  = mem_type_declare( "hbufs",  sizeof( HBUFS ),  MEM_ALLOCSZ_HBUFS,  0, 1 );
+	m->hbufs = mem_type_declare( "hbufs", sizeof( HBUFS ), MEM_ALLOCSZ_HBUFS, 0, 1 );
+	m->rdata = mem_type_declare( "rdata", sizeof( RDATA ), MEM_ALLOCSZ_RDATA, 0, 1 );
 
 	return m;
 }

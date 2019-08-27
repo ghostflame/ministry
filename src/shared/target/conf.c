@@ -79,7 +79,7 @@ int __target_set_host( TGT *t, char *host )
 		}
 
 		t->to_stdout = 1;
-		io->stdout_count++;
+		++(io->stdout_count);
 		debug( "Target writing to stdout." );
 	}
 
@@ -110,7 +110,7 @@ TGTL *__target_list_find_create( char *name )
 		l->name     = str_dup( name, 0 );
 		l->next     = _tgt->lists;
 		_tgt->lists = l;
-		_tgt->count++;
+		++(_tgt->count);
 	}
 
 	return l;
@@ -126,7 +126,7 @@ void target_list_check_enabled( TGTL *l )
 
 	for( t = l->targets; t; t = t->next )
 		if( t->enabled )
-			e++;
+			++e;
 
 	if( !e && l->enabled )
 		info( "All targets in list %s are now disabled.", l->name );
@@ -168,7 +168,7 @@ TGT *target_create( char *list, char *name, char *proto, char *host, uint16_t po
 	// and link it up
 	t->next = t->list->targets;
 	t->list->targets = t;
-	_tgt->tcount++;
+	++(_tgt->tcount);
 
 	target_list_check_enabled( t->list );
 
@@ -191,10 +191,10 @@ TGT *target_create_str( char *src, int len, char sep )
 		err( "Invalid target all-in-one source." );
 		return NULL;
 	}
-	
+
 	return target_create( w.wd[0], w.wd[1], w.wd[2], w.wd[3],
 		(uint16_t) strtoul( w.wd[4], NULL, 10 ),
-		w.wd[5], atoi( w.wd[6] ) );
+		w.wd[5], strtol( w.wd[6], NULL, 10 ) );
 }
 
 
@@ -220,7 +220,7 @@ TGT_CTL *target_config_defaults( void )
 	m->source = pmet_add_source( "targets" );
 	m->bytes = pmet_new( PMET_TYPE_COUNTER, "ministry_target_sent_bytes",
 	                    "Number of bytes sent to a target" );
-	m->conn = pmet_new( PMET_TYPE_GAUGE, "ministry_target_connected", 
+	m->conn = pmet_new( PMET_TYPE_GAUGE, "ministry_target_connected",
                         "Connection status of target" );
 
 	_tgt->metrics = m;
@@ -363,8 +363,8 @@ int target_config_line( AVP *av )
 
 			p->next = n;
 		}
-		n->list->count++;
-		_tgt->tcount++;
+		++(n->list->count);
+		++(_tgt->tcount);
 
 		target_list_check_enabled( n->list );
 

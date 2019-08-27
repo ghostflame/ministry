@@ -82,7 +82,7 @@ ITER *iter_init( ITER *it, char *str, int len )
 	else
 	{
 		// get the longest word
-		for( j = 0; j < w->wc; j++ )
+		for( j = 0; j < w->wc; ++j )
 			if( w->len[j] > it->max )
 				it->max = w->len[j];
 	}
@@ -138,7 +138,7 @@ int iter_next( ITER *it, char **ptr, int *len )
 	*len = it->w.len[it->curr];
 	*ptr = it->w.wd[it->curr];
 
-	it->curr++;
+	++(it->curr);
 	return 0;
 }
 

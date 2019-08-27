@@ -28,7 +28,10 @@ void main_loop( void )
 	target_run( );
 
 	// throw the data listener loop
-	net_start_type( ctl->net->relay );
+	net_begin( );
+
+	// begin sending our own stats
+	self_stats_init( );
 
 	while( RUNNING( ) )
 		sleep( 1 );
@@ -44,11 +47,13 @@ void main_create_conf( void )
 	ctl				= (RCTL *) allocz( sizeof( RCTL ) );
 	ctl->proc		= app_control( );
 	ctl->mem		= memt_config_defaults( );
-	ctl->net		= net_config_defaults( );
 	ctl->relay		= relay_config_defaults( );
+	ctl->stats		= self_stats_config_defaults( );
 
-	config_register_section( "network", &net_config_line );
-	config_register_section( "relay",   &relay_config_line );
+	config_register_section( "relay", &relay_config_line );
+	config_register_section( "stats", &self_stats_config_line );
+
+	net_host_callbacks( &relay_buf_set, &relay_buf_end );
 }
 
 
@@ -96,7 +101,7 @@ int main( int ac, char **av, char **env )
 	app_start( 1 );
 
 	// resolve relay targets
-	if( relay_resolve( ) )
+	if( relay_init( ) )
 		fatal( "Unable to resolve all relay targets." );
 
 	// lights up networking and starts listening

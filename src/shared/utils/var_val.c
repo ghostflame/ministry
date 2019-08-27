@@ -35,8 +35,8 @@ int var_val( char *line, int len, AVP *av, int flags )
 
 	while( len && isspace( *p ) )
 	{
-		p++;
-		len--;
+		++p;
+		--len;
 	}
 	if( !( flags & VV_VAL_WHITESPACE )
 	 || ( flags & VV_NO_VALS ) )
@@ -44,7 +44,7 @@ int var_val( char *line, int len, AVP *av, int flags )
 		while( s > p && isspace( *(s-1) ) )
 		{
 			*--s = '\0';
-			len--;
+			--len;
 		}
 	}
 
@@ -71,7 +71,7 @@ int var_val( char *line, int len, AVP *av, int flags )
 		// if we're automatically setting vals, set 1
 		if( flags & VV_AUTO_VAL )
 		{
-			v  = "1";
+			v = "1";
 			av->vlen = 1;
 			// say we found it blank
 			av->blank = 1;
@@ -110,13 +110,13 @@ int var_val( char *line, int len, AVP *av, int flags )
 
 		// blat the separator
 		*q = '\0';
-		r  = q + 1; 
+		r  = q + 1;
 
 		if( !( flags & VV_VAL_WHITESPACE ) )
 		{
 			// start off from here with the value
 			while( r < s && isspace( *r ) )
-				r++;
+				++r;
 		}
 
 		while( q > p && isspace( *(q-1) ) )
@@ -182,7 +182,7 @@ vv_finish:
 
 	// are were lower-casing the attributes?
 	if( flags && VV_LOWER_ATT )
-		for( p = av->att, q = p + av->alen; p < q; p++ )
+		for( p = av->att, q = p + av->alen; p < q; ++p )
 			*p = tolower( *p );
 
 	/* looks good */

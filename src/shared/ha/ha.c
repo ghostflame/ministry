@@ -115,7 +115,7 @@ void ha_watcher_jcb( void *arg, json_object *jo )
 
 	pc = json_object_array_length( ja );
 
-	for( i = 0; i < pc; i++ )
+	for( i = 0; i < pc; ++i )
 	{
 		jp = json_object_array_get_idx( ja, i );
 
@@ -347,7 +347,7 @@ int ha_start( void )
 	}
 
 	// run a watcher thread for each one
-	for( i = 0, p = ha->partners; p; p = p->next, i++ )
+	for( i = 0, p = ha->partners; p; p = p->next, ++i )
 		if( p != ha->self )
 		{
 			thread_throw_named_f( ha_watcher, p, i, "ha_watcher_%d", i );

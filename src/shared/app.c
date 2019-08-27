@@ -59,7 +59,7 @@ int set_limits( void )
 {
 	int i, ret = 0;
 
-	for( i = 0; i < RLIMIT_NLIMITS; i++ )
+	for( i = 0; i < RLIMIT_NLIMITS; ++i )
 		if( _proc->setlim[i] )
 			ret += setlimit( i, _proc->limits[i] );
 
@@ -85,6 +85,7 @@ int app_init( char *name, char *cfgdir )
 	_proc->ipl  = iplist_config_defaults( );
 	_proc->tgt  = target_config_defaults( );
 	_proc->ha   = ha_config_defaults( );
+	_proc->net  = net_config_defaults( );
 
 	// set up our shared config
 	config_register_section( "main",     &config_line );
@@ -96,6 +97,8 @@ int app_init( char *name, char *cfgdir )
 	config_register_section( "io",       &io_config_line );
 	config_register_section( "target",   &target_config_line );
 	config_register_section( "ha",       &ha_config_line );
+	config_register_section( "network",  &net_config_line );
+
 
 	if( set_signals( ) )
 	{
@@ -232,7 +235,7 @@ void app_ready( void )
 
 
 
-void app_finish( int exval )
+__attribute__((noreturn)) void app_finish( int exval )
 {
 	int i;
 
@@ -242,9 +245,9 @@ void app_finish( int exval )
 	info( "Shutting down after %.3fs", get_uptime( ) );
 	info( "Waiting for all threads to stop." );
 
-	for( i = 0; i < 300 && _proc->loop_count > 0; i++ )
+	for( i = 0; i < 300 && _proc->loop_count > 0; ++i )
 	{
-		usleep( 100000 );
+		microsleep( 100000 );
 		if( !( i & 0x1f ) )
 			debug( "Waiting..." );
 	}

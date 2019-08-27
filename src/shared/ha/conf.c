@@ -146,7 +146,7 @@ HAPT *ha_add_partner( char *spec, int dupe_fail )
 
 	p->next = _ha->partners;
 	_ha->partners = p;
-	_ha->pcount++;
+	++(_ha->pcount);
 
 	return p;
 
@@ -204,7 +204,7 @@ int ha_config_line( AVP *av )
 	}
 	else if( attIs( "checkPeriod" ) )
 	{
-		if( parse_number( av->vptr, &v, NULL ) == NUM_INVALID )
+		if( av_int( v ) == NUM_INVALID )
 		{
 			err( "Invalid check period msec '%s'", av->vptr );
 			return -1;
@@ -213,7 +213,7 @@ int ha_config_line( AVP *av )
 	}
 	else if( attIs( "updatePeriod" ) )
 	{
-		if( parse_number( av->vptr, &v, NULL ) == NUM_INVALID )
+		if( av_int( v ) == NUM_INVALID )
 		{
 			err( "Invalid update period msec '%s'", av->vptr );
 			return -1;
@@ -228,7 +228,7 @@ int ha_config_line( AVP *av )
 			int l;
 
 			l = snprintf( errbuf, 1024, "Unrecognised elector type, choose from:" );
-			for( i = 0; i < HA_ELECT_MAX; i++ )
+			for( i = 0; i < HA_ELECT_MAX; ++i )
 				l += snprintf( errbuf + l, 1024 - l, " %s", ha_elector_name_strings[i] );
 
 			err( errbuf );

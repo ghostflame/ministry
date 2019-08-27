@@ -97,7 +97,7 @@ int pmet_config_line( AVP *av )
 	}
 	else if( attIs( "period" ) || attIs( "interval" ) )
 	{
-		if( parse_number( av->vptr, &v, NULL ) == NUM_INVALID )
+		if( av_int( v ) == NUM_INVALID )
 		{
 			err( "Invalid prometheus metrics generation period '%s'.", av->vptr );
 			return -1;

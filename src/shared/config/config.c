@@ -17,7 +17,7 @@
 
 int config_bool( AVP *av )
 {
-	if( valIs( "true" ) || valIs( "yes" ) || valIs( "y" ) || ( atoi( av->vptr ) != 0 ) )
+	if( valIs( "true" ) || valIs( "yes" ) || valIs( "y" ) || ( strtol( av->vptr, NULL, 10 ) != 0 ) )
 		return 1;
 
 	return 0;
@@ -37,7 +37,7 @@ int config_line( AVP *av )
 
 	if( ( d = strchr( av->aptr, '.' ) ) )
 	{
-		d++;
+		++d;
 
 		if( !strncasecmp( av->aptr, "limits.", 7 ) )
 		{
@@ -48,7 +48,7 @@ int config_line( AVP *av )
 			else
 				return -1;
 
-			config_set_limit( _proc, res, atoll( av->vptr ) );
+			config_set_limit( _proc, res, strtoll( av->vptr, NULL, 10 ) );
 		}
 		else
 			return -1;
@@ -75,7 +75,7 @@ int config_line( AVP *av )
 	}
 	else if( attIs( "maxJsonSz" ) )
 	{
-		_proc->max_json_sz = atoi( av->vptr );
+		_proc->max_json_sz = strtol( av->vptr, NULL, 10 );
 	}
 	else if( attIs( "pidFile" ) )
 	{
@@ -105,7 +105,7 @@ void config_register_section( char *name, conf_line_fn *fp )
 	s->fp      = fp;
 	s->section = _proc->sect_count;
 
-	_proc->sect_count++;
+	++(_proc->sect_count);
 }
 
 
@@ -159,6 +159,7 @@ PROC_CTL *config_defaults( char *app_name, char *conf_dir )
 	XsetcfFlag( _proc, READ_FILE );
 	XsetcfFlag( _proc, READ_ENV );
 	XsetcfFlag( _proc, READ_URL );
+	XsetcfFlag( _proc, READ_INCLUDE );
 	XsetcfFlag( _proc, URL_INC_URL );
 	// but not: sec include non-sec, read non-sec, validate
 

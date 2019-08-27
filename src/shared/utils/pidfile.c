@@ -65,7 +65,7 @@ void pidfile_write( void )
 
 	// and our file
 	if( !( fh = fopen( _proc->pidfile, "w" ) ) )
-	{	
+	{
 		warn( "Unable to write to pidfile %s -- %s",
 			_proc->pidfile, Err );
 		return;

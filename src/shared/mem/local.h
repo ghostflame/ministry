@@ -22,6 +22,8 @@
 #define MEM_ALLOCSZ_IOBUF			128
 #define MEM_ALLOCSZ_IOBP			512
 #define MEM_ALLOCSZ_HTREQ			128
+#define MEM_ALLOCSZ_HOSTS			128
+#define MEM_ALLOCSZ_TOKENS			128
 
 
 #define mem_lock( mt )			pthread_mutex_lock(   &(mt->lock) )
