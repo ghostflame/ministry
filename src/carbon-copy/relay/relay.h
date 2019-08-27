@@ -12,8 +12,31 @@
 #ifndef CARBON_COPY_RELAY_H
 #define CARBON_COPY_RELAY_H
 
-
+#define DEFAULT_RELAY_PORT			3901
 #define RELAY_MAX_TARGETS			32
+
+#define lock_rdata( _r )			pthread_mutex_lock(   &(_r->lock) )
+#define unlock_rdata( _r )			pthread_mutex_unlock( &(_r->lock) )
+
+
+
+enum relay_rule_types
+{
+	RTYPE_UNKNOWN = 0,
+	RTYPE_REGEX,
+	RTYPE_HASH,
+	RTYPE_MAX
+};
+
+
+
+struct host_buffers
+{
+	HBUFS				*	next;
+	RELAY				*	rule;
+	IOBUF				**	bufs;
+	int						bcount;
+};
 
 
 struct relay_data
@@ -60,6 +83,7 @@ struct relay_control
 {
 	RELAY				*	rules;
 	int64_t					flush_nsec;
+	NET_TYPE			*	net;
 
 	int						bcount;
 };
@@ -83,4 +107,6 @@ int relay_config_line( AVP *av );
 
 
 #endif
+
+
 

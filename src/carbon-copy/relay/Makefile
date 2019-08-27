@@ -1,6 +1,6 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-FILES  = conf host init relay
+FILES  = conf init relay
 HEADS  = local relay
 
 RKV    = relay_shared.a

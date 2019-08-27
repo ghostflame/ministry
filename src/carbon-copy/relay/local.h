@@ -16,21 +16,14 @@
 #define LINE_SEPARATOR				'\n'
 #define RELAY_MAX_REGEXES			32
 
-#define lock_rdata( _r )			pthread_mutex_lock(   &(_r->lock) )
-#define unlock_rdata( _r )			pthread_mutex_unlock( &(_r->lock) )
+#define RELAY_FLUSH_MSEC			1000L	// in msec
+#define RELAY_FLUSH_MSEC_FAST		25L		// for real-time stats
+#define RELAY_FLUSH_MSEC_SLOW		5000L	// for data with timestamps in - no rush
+
 
 #include "../carbon_copy.h"
 
-enum relay_rule_types
-{
-	RTYPE_UNKNOWN = 0,
-	RTYPE_REGEX,
-	RTYPE_HASH,
-	RTYPE_MAX
-};
 
-#define RTYPE_REGEX					1
-#define RTYPE_HASH					2
 
 
 struct relay_line

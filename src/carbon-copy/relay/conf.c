@@ -18,8 +18,27 @@ RLY_CTL *_relay = NULL;
 RLY_CTL *relay_config_defaults( void )
 {
 	RLY_CTL *r = (RLY_CTL *) allocz( sizeof( RLY_CTL ) );
+	NET_TYPE *nt;
 
-	r->flush_nsec = MILLION * NET_FLUSH_MSEC;
+	nt               = (NET_TYPE *) allocz( sizeof( NET_TYPE ) );
+	nt->tcp          = (NET_PORT *) allocz( sizeof( NET_PORT ) );
+	nt->tcp->ip      = INADDR_ANY;
+	nt->tcp->back    = DEFAULT_NET_BACKLOG;
+	nt->tcp->port    = DEFAULT_RELAY_PORT;
+	nt->tcp->type    = nt;
+	nt->tcp_style    = TCP_STYLE_THRD;
+	nt->flat_parser  = &relay_simple;
+	nt->prfx_parser  = &relay_prefix;
+	nt->buf_parser   = &relay_parse_buf;
+	nt->udp_bind     = INADDR_ANY;
+	nt->label        = strdup( "relay" );
+	nt->name         = strdup( "relay" );
+	nt->flags        = NTYPE_ENABLED|NTYPE_TCP_ENABLED|NTYPE_UDP_ENABLED;
+
+	net_add_type( nt );
+
+	r->flush_nsec    = MILLION * RELAY_FLUSH_MSEC;
+	r->net           = nt;
 
 	_relay = r;
 
@@ -56,7 +75,15 @@ int relay_config_line( AVP *av )
 		_relay->flush_nsec = MILLION * ms;
 
 		if( _relay->flush_nsec <= 0 )
-			_relay->flush_nsec = MILLION * NET_FLUSH_MSEC;
+			_relay->flush_nsec = MILLION * RELAY_FLUSH_MSEC;
+	}
+	// this is the other way of setting the flush times
+	else if( attIs( "realtime" ) )
+	{
+		if( config_bool( av ) )
+			_relay->flush_nsec = MILLION * RELAY_FLUSH_MSEC_FAST;
+		else
+			_relay->flush_nsec = MILLION * RELAY_FLUSH_MSEC_SLOW;
 	}
 	else if( attIs( "name" ) )
 	{

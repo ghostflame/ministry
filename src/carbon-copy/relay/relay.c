@@ -12,8 +12,17 @@
 
 
 
-__attribute__((hot)) static inline int relay_write( IOBUF *b, RLINE *l )
+__attribute__((hot)) static inline void relay_write( HBUFS *hb, int idx, RLINE *l )
 {
+	IOBUF *b = hb->bufs[idx];
+
+	// see if we need to write
+	if( ( b->len + l->len ) > IO_BUF_HWMK )
+	{
+		io_buf_post( hb->rule->targets[idx], b );
+		hb->bufs[idx] = b = mem_new_iobuf( IO_BUF_SZ );
+	}
+
 	// reconstruct the line
 	l->line[l->plen] = l->sep;
 
@@ -22,12 +31,6 @@ __attribute__((hot)) static inline int relay_write( IOBUF *b, RLINE *l )
 
 	// and the newline
 	b->buf[b->len++] = '\n';
-
-	// and see if we need to write
-	if( b->len >= IO_BUF_HWMK )
-		return 1;
-
-	return 0;
 }
 
 
@@ -57,11 +60,7 @@ __attribute__((hot)) int relay_regex( HBUFS *h, RLINE *l )
 		return 1;
 
 	// regex match writes to every target
-	if( relay_write( h->bufs[0], l ) )
-	{
-		io_buf_post( r->targets[0], h->bufs[0] );
-		h->bufs[0] = mem_new_iobuf( IO_BUF_SZ );
-	}
+	relay_write( h, 0, l );
 
 	// and we matched
 	return 1;
@@ -81,11 +80,7 @@ __attribute__((hot)) int relay_hash( HBUFS *h, RLINE *l )
 		j = (*(h->rule->hfp))( l->line, l->plen ) % h->rule->tcount;
 
 	// hash writes to just one target
-	if( relay_write( h->bufs[j], l ) )
-	{
-		io_buf_post( h->rule->targets[j], h->bufs[j] );
-		h->bufs[j] = mem_new_iobuf( IO_BUF_SZ );
-	}
+	relay_write( h, j, l );
 
 	// always matches...
 	return 1;

@@ -1,7 +1,7 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-FILES  = mem network hash selfstats main
-HEADS  = mem carbon_copy network hash selfstats typedefs 
+FILES  = mem hash host selfstats main
+HEADS  = mem carbon_copy hash host selfstats typedefs
 
 SUBS   = relay
 

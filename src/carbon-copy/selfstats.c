@@ -113,7 +113,7 @@ void self_stats_pass( int64_t tval, void *arg )
 		sc->tslen = snprintf( sc->ts, 32, " %ld\n", tval / sc->tsdiv );
 
 	// network stats
-	self_report_nettype( ctl->net->relay );
+	self_report_nettype( ctl->relay->net );
 
 	// memory
 	self_report_mtypes( );
@@ -144,7 +144,7 @@ void self_stats_init( void )
 	memset( &sai, 0, sizeof( struct sockaddr_in ) );
 
 	sc->host = mem_new_host( &sai, 1 );
-	sc->host->type = ctl->net->relay;
+	sc->host->type = ctl->relay->net;
 	net_set_host_parser( sc->host, 0, 0 );
 	relay_buf_set( sc->host );
 
