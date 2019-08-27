@@ -47,9 +47,9 @@ enum num_types
 #define	AVP_MAX_VAL			8192
 
 // avoid typos
-#define MILLION				1000000
+#define MILLION				1000000L
 #define MILLIONF			1000000.0
-#define BILLION				1000000000
+#define BILLION				1000000000L
 #define BILLIONF			1000000000.0
 
 
