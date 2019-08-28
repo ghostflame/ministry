@@ -32,7 +32,7 @@ CCTXT *config_make_context( char *path, WORDS *w )
 		ctx->argc = w->wc - 1;
 		ctx->argl = (int *)   allocz( ctx->argc * sizeof( int ) );
 		ctx->argv = (char **) allocz( ctx->argc * sizeof( char * ) );
-		for( i = 1; i < w->wc; i++ )
+		for( i = 1; i < w->wc; ++i )
 		{
 			ctx->argv[i-1] = str_copy( w->wd[i], w->len[i] );
 			ctx->argl[i-1] = w->len[i];

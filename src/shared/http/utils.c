@@ -18,7 +18,7 @@ void http_server_panic( void *cls, const char *file, unsigned int line, const ch
 
 
 
-void http_log_request( void *cls, const char *uri, HTTP_CONN *conn )
+void *http_log_request( void *cls, const char *uri, HTTP_CONN *conn )
 {
 	union MHD_ConnectionInfo *ci;
 
@@ -26,6 +26,8 @@ void http_log_request( void *cls, const char *uri, HTTP_CONN *conn )
 	ci = (union MHD_ConnectionInfo *) MHD_get_connection_info( conn, MHD_CONNECTION_INFO_CLIENT_ADDRESS );
 
 	hinfo( "[HTTP] Request {%s}: %s", inet_ntoa( ((struct sockaddr_in *) (ci->client_addr))->sin_addr ), uri );
+
+	return NULL;
 }
 
 

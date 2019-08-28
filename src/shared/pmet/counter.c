@@ -38,7 +38,7 @@ int pmet_counter_value( PMET *item, double value, int set )
 	lock_pmet( item );
 
 	item->value.dval += value;
-	item->count++;
+	++(item->count);
 
 	unlock_pmet( item );
 

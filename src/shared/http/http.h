@@ -122,6 +122,8 @@ struct http_control
 	unsigned int			conns_max_ip;
 	unsigned int			conns_tmout;
 
+	size_t					post_max;
+
 	struct sockaddr_in	*	sin;
 
 	json_callback		*	stats_fp;	// extra stats callback
@@ -138,9 +140,13 @@ struct http_control
 	char				*	addr;
 	char				*	proto;
 
+	char				*	ctl_iplist;
+	char				*	web_iplist;
+
 	int64_t					requests;
 
 	int8_t					enabled;
+	int8_t					ctl_enabled;
 };
 
 

@@ -22,7 +22,7 @@ int pmet_histogram_render( int64_t mval, BUF *b, PMET *item, PMET_LBL *with )
 	if( item->gtype == PMET_GEN_NONE )
 		lock_pmet( item );
 
-	for( i = 0; i < h->bcount; i++ )
+	for( i = 0; i < h->bcount; ++i )
 	{
 		strbuf_aprintf( b, "%s_bucket", path );
 		pmet_label_render( b, 3, item->labels, with, h->labels[i] );
@@ -99,7 +99,7 @@ int pmet_histogram_value( PMET *item, double value, int set )
 		return -1;
 
 	// find the right bucket
-	for( j = -1, i = 0; i < h->bcount; i++ )
+	for( j = -1, i = 0; i < h->bcount; ++i )
 		if( value < h->buckets[i] )
 		{
 			j = i;
@@ -109,7 +109,7 @@ int pmet_histogram_value( PMET *item, double value, int set )
 	// update under lock
 	lock_pmet( item );
 
-	item->count++;
+	++(item->count);
 	h->sum += value;
 
 	if( j >= 0 )

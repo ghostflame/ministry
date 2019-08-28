@@ -20,7 +20,7 @@ void stats_self_report_mtypes( ST_THR *t )
 	MTSTAT ms;
 	int16_t i;
 
-	for( i = 0; i < MEM_TYPES_MAX; i++ )
+	for( i = 0; i < MEM_TYPES_MAX; ++i )
 	{
 		if( mem_type_stats( i, &ms ) != 0 )
 			return;
@@ -90,7 +90,7 @@ void stats_self_report_nettype( ST_THR *t, NET_TYPE *n )
 		drops = 1;
 
 	if( n->flags & NTYPE_UDP_ENABLED )
-		for( i = 0; i < n->udp_count; i++ )
+		for( i = 0; i < n->udp_count; ++i )
 			stats_self_report_netport( t, n->udp[i], n->name, "udp", drops );
 }
 

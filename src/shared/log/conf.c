@@ -61,7 +61,7 @@ int8_t log_get_level( char *str )
 
 	if( isdigit( *str ) )
 	{
-		i = atoi( str );
+		i = (int8_t) strtol( str, NULL, 10 );
 		if( i >= 0 && i < LOG_LEVEL_MAX )
 		  	return i;
 
@@ -69,7 +69,7 @@ int8_t log_get_level( char *str )
 		return LOG_LEVEL_DEBUG;
 	}
 
-	for( i = LOG_LEVEL_FATAL; i < LOG_LEVEL_MAX; i++ )
+	for( i = LOG_LEVEL_FATAL; i < LOG_LEVEL_MAX; ++i )
 		if( !strcasecmp( str, log_level_strings[i] ) )
 		  	return i;
 
@@ -93,7 +93,7 @@ int log_get_facility( char *str )
 	if( !strncasecmp( str, "LOG_", 4 ) )
 		str += 4;
 
-	for( lf = log_facilities; lf->name; lf++ )
+	for( lf = log_facilities; lf->name; ++lf )
 		if( !strcasecmp( str, lf->name ) )
 			return lf->facility;
 

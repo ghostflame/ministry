@@ -68,10 +68,11 @@ void target_loop( THRD *th )
 	// make a socket with no buffers of its own
 	t->sock = io_make_sock( 0, 0, &sa );
 
+	// calculate how many sleeps for reconnect
 	r = 1000 * io->rc_msec;
 	t->rc_limit = r / io->send_usec;
 	if( r % io->send_usec )
-		t->rc_limit++;
+		++(t->rc_limit);
 
 	// make sure we have a non-zero max
 	if( t->max == 0 )
@@ -90,7 +91,7 @@ void target_loop( THRD *th )
 	// now loop around sending
 	while( RUNNING( ) )
 	{
-		usleep( io->send_usec );
+		microsleep( io->send_usec );
 
 		// call the io_fn
 		fires += (*(t->iofp))( t );
@@ -123,7 +124,7 @@ int target_run_list( TGTL *list )
 	if( !list )
 		return -1;
 
-	for( i = 0, t = list->targets; t; t = t->next, i++ )
+	for( i = 0, t = list->targets; t; t = t->next, ++i )
 		target_run_one( t, i );
 
 	return 0;

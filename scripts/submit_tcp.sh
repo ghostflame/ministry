@@ -1,6 +1,7 @@
 #!/bin/bash
 
 PORT=9125
+DELAY=''
 
 function submit_ministry( )
 {
@@ -19,7 +20,10 @@ this.that.theother $c
 tx.bets $d
 basic.counter 1
 foo.bar $RANDOM" 
-        #sleep 0.01
+	if [ -n "$DELAY" ]
+	then
+		sleep $DELAY
+	fi
 	done ) | nc 127.0.0.1 $PORT
 }
 
@@ -31,7 +35,10 @@ function submit_ministry_one( )
 
       a=$((100 + ( $RANDOM / 200 ) ))
       echo "lamp.timings.bet.total.mean $a"
-
+	if [ -n "$DELAY" ]
+	then
+		sleep $DELAY
+	fi
     done ) | nc 127.0.0.1 $PORT
 }
 
@@ -42,7 +49,10 @@ function submit_ministry_single( )
 
       a=$((100 + ( $RANDOM / 200 ) ))
       echo "lamp.timings.bet.total.mean $a"
-      sleep 0.01
+	if [ -n "$DELAY" ]
+	then
+		sleep $DELAY
+	fi
 
     done ) | nc 127.0.0.1 $PORT
 }
@@ -63,11 +73,22 @@ lamp.timings.bet.total.mean:$b|ms
 this.that.theother:$c|ms
 tx.bets:$d|ms
 foo.bar:$RANDOM|ms"
+	if [ -n "$DELAY" ]
+	then
+		sleep $DELAY
+	fi
 	done ) | nc -u 127.0.0.1 8125
 }
 
 
-case $1 in
+cmd=$1
+shift
+
+if [ -n "$1" ]; then
+	DELAY="$1"
+fi
+
+case $cmd in
     stats)  PORT=9125
             submit_ministry
             ;;
@@ -82,7 +103,10 @@ case $1 in
             ;;
     compat) submit_stats
             ;;
-    *)      echo "$0 <stats|paths|compat>"
+	relay)  PORT=2003
+			submit_ministry
+			;;
+    *)      echo "$0 <delay> <stats|paths|compat|single|one>"
             ;;
 esac
 

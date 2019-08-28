@@ -136,10 +136,8 @@ BUF *strbuf_create( char *str, int len )
 
 	if( !len )
 		len = strlen( str );
-	if( !len )
-		len = 1;
 
-	for( k = 0, l = len; l > 0; k++ )
+	for( k = 0, l = len; l > 0; ++k )
 		l = l >> 1;
 
 	b = strbuf( 1 << k );

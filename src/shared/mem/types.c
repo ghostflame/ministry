@@ -102,7 +102,7 @@ void mem_free_iobuf_list( IOBUF *list )
 		b->next = freed;
 		freed   = b;
 
-		j++;
+		++j;
 	}
 
 	mtype_free_list( _mem->iobufs, j, freed, end );
@@ -165,3 +165,115 @@ void mem_free_request( HTREQ **h )
 	mtype_free( _mem->htreq, r );
 }
 
+
+HOST *mem_new_host( struct sockaddr_in *peer, uint32_t bufsz )
+{
+	HOST *h;
+
+	h = (HOST *) mtype_new( _mem->hosts );
+
+	// is this one set up?
+	if( ! h->net )
+	{
+		h->net  = io_make_sock( bufsz, 0, peer );
+		h->peer = &(h->net->peer);
+	}
+
+	// copy the peer details in
+	*(h->peer) = *peer;
+	h->ip      = h->peer->sin_addr.s_addr;
+
+	// and make a name
+	snprintf( h->net->name, 32, "%s:%hu", inet_ntoa( h->peer->sin_addr ),
+		ntohs( h->peer->sin_port ) );
+
+	return h;
+}
+
+void mem_free_host( HOST **h )
+{
+	HOST *sh;
+
+	if( !h || !*h )
+		return;
+
+	sh = *h;
+	*h = NULL;
+
+	sh->lines      = 0;
+	sh->invalid    = 0;
+	sh->handled    = 0;
+	sh->connected  = 0;
+	sh->overlength = 0;
+	sh->olwarn     = 0;
+	sh->type       = NULL;
+	sh->data       = NULL;
+
+	sh->net->fd    = -1;
+	sh->net->flags = 0;
+	sh->ipn        = NULL;
+	sh->ip         = 0;
+
+	sh->peer->sin_addr.s_addr = INADDR_ANY;
+	sh->peer->sin_port        = 0;
+
+	if( sh->net->in )
+		sh->net->in->len = 0;
+
+	if( sh->net->out )
+		sh->net->out->len = 0;
+
+	if( sh->net->name )
+		sh->net->name[0] = '\0';
+
+	if( sh->workbuf )
+	{
+		sh->workbuf[0] = '\0';
+		sh->plen = 0;
+		sh->lmax = 0;
+		sh->ltarget = sh->workbuf;
+	}
+
+	mtype_free( _mem->hosts, sh );
+}
+
+TOKEN *mem_new_token( void )
+{
+	return (TOKEN *) mtype_new( _mem->token );
+}
+
+
+void mem_free_token( TOKEN **t )
+{
+	TOKEN *tp;
+
+	tp = *t;
+	*t = NULL;
+
+	memset( tp, 0, sizeof( TOKEN ) );
+	mtype_free( _mem->token, tp );
+}
+
+void mem_free_token_list( TOKEN *list )
+{
+	TOKEN *t, *freed, *end;
+	int j = 0;
+
+	freed = NULL;
+	end   = list;
+
+	while( list )
+	{
+		t    = list;
+		list = t->next;
+
+		memset( t, 0, sizeof( TOKEN ) );
+
+		t->next = freed;
+		freed   = t;
+
+		++j;
+	}
+
+	mtype_free_list( _mem->token, j, freed, end );
+}

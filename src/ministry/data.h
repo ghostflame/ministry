@@ -22,6 +22,11 @@
 #define DHASH_CHECK_MODE		0x02
 #define DHASH_CHECK_PREDICT		0x04
 
+#define TCP_THRD_DADDER			30
+#define TCP_THRD_DSTATS			60
+#define TCP_THRD_DGAUGE			10
+#define TCP_THRD_DCOMPAT		20
+
 
 enum data_conn_type
 {
@@ -39,6 +44,7 @@ struct data_type_params
 	line_fn			*	lf;
 	line_fn			*	pf;
 	add_fn			*	af;
+	buf_fn			*	bp;
 	int16_t				tokn;
 	uint16_t			port;
 	int64_t				thrd;
@@ -126,14 +132,13 @@ add_fn data_point_adder;
 add_fn data_point_gauge;
 
 line_fn data_line_ministry;
-line_fn data_line_token;
 line_fn data_line_compat;
 line_fn data_line_min_prefix;
 line_fn data_line_com_prefix;
 
 curlw_cb data_fetch_cb;
 
-void data_parse_buf( HOST *h, IOBUF *b );
+buf_fn data_parse_buf;
 
 void data_start( NET_TYPE *nt );
 

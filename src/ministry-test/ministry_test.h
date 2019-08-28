@@ -16,7 +16,7 @@
 #include "typedefs.h"
 
 // in order
-#include "metric.h"
+#include "metric/metric.h"
 #include "targets.h"
 
 

@@ -21,7 +21,7 @@ void maths_predict_linear( DHASH *d, ST_PRED *sp )
 	DPT *dp;
 
 	// calculate the new value
-	for( sumy = 0.0, i = 0; i < h->size; i++ )
+	for( sumy = 0.0, i = 0; i < h->size; ++i )
 		sumy += dp_get_v( h->points[i] );
 
 	meany = sumy / (double) h->size;
@@ -36,7 +36,7 @@ void maths_predict_linear( DHASH *d, ST_PRED *sp )
 	//debug( "Means: x - %f, y - %f", meanx, meany );
 
 	sumxx = 0.0, sumyy = 0.0, sumxy = 0.0;
-	for( i = 0; i < h->size; i++ )
+	for( i = 0; i < h->size; ++i )
 	{
 		dp = h->points + i;
 		diffx = dpp_get_t( dp ) - meanx;
@@ -90,7 +90,7 @@ void maths_kahan_summation( double *list, int len, double *sum )
 	double low = 0;
 	int i;
 
-	for( *sum = 0, i = 0; i < len; i++ )
+	for( *sum = 0, i = 0; i < len; ++i )
 		maths_kahan_sum( list[i], sum, &low );
 
 	*sum += low;
@@ -116,13 +116,13 @@ void maths_moments( MOMS *m )
 	{
 		m->mean = 0;
 
-		for( i = 0; i < m->count; i++ )
+		for( i = 0; i < m->count; ++i )
 			m->mean += m->input[i];
 
 		m->mean /= ct;
 	}
 
-	for( i = 0; i < m->count; i++ )
+	for( i = 0; i < m->count; ++i )
 	{
 		// diff from mean
 		diff = m->input[i] - m->mean;

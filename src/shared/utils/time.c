@@ -62,3 +62,12 @@ time_t get_uptime_sec( void )
 }
 
 
+void microsleep( int64_t usec )
+{
+	struct timespec slpr;
+
+	usec *= 1000;
+	llts( usec, slpr );
+
+	nanosleep( &slpr, NULL );
+}

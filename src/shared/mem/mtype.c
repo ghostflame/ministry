@@ -48,7 +48,7 @@ void __mtype_alloc_free( MTYPE *mt, int count, int prefetch )
 	{
 		err( "Mtype %s flist set but fcount 0.", mt->name );
 		__mtype_report_counts( mt );
-		//for( i = 0, p = mt->flist; p; p = p->next; i++ );
+		//for( i = 0, p = mt->flist; p; p = p->next; ++i );
 		//mt->ctrs.fcount = i;
 	}
 
@@ -63,12 +63,12 @@ void __mtype_alloc_free( MTYPE *mt, int count, int prefetch )
 #ifdef MTYPE_TRACING
 	if( prefetch )
 	{
-		mt->ctrs.pre.ctr++;
+		++(mt->ctrs.pre.ctr);
 		mt->ctrs.pre.sum += count;
 	}
 	else
 	{
-		mt->ctrs.ref.ctr++;
+		++(mt->ctrs.ref.ctr);
 		mt->ctrs.ref.sum += count;
 	}
 #endif
@@ -80,7 +80,7 @@ void __mtype_alloc_free( MTYPE *mt, int count, int prefetch )
 	p  = list;
 
 	// link them up
-	for( i = 0; i < count; i++ )
+	for( i = 0; i < count; ++i )
 	{
 #ifdef __GNUC__
 #if __GNUC_PREREQ(4,8)
@@ -89,6 +89,19 @@ void __mtype_alloc_free( MTYPE *mt, int count, int prefetch )
 #endif
 #endif
 		// yes GCC, I know what I'm doing, thanks
+		//
+		// We allocate memory of sz * count
+		// Then step through it by sz, allocating
+		// the next pointers of the generic MTBLANK
+		// list.  When we are asked for a struct off
+		// this list, we explicitly cast it, so the
+		// next pointer of the desired struct points
+		// upwards by the size of the desired struct
+		// 
+		// But GCC freaks out because it's noticed
+		// we are adding more than the size of the
+		// struct size to vp, ie, not doing vp++
+		// and wonders if it's a bug.
 		vp     += mt->alloc_sz;
 #ifdef __GNUC__
 #if __GNUC_PREREQ(4,8)
@@ -123,8 +136,8 @@ inline void *mtype_new( MTYPE *mt )
 	--(mt->ctrs.fcount);
 
 #ifdef MTYPE_TRACING
-	mt->ctrs.all.ctr++;
-	mt->ctrs.all.sum++;
+	++(mt->ctrs.all.ctr);
+	++(mt->ctrs.all.sum);
 #endif
 
 	mem_unlock( mt );
@@ -162,7 +175,7 @@ inline void *mtype_new_list( MTYPE *mt, int count )
 	mt->ctrs.fcount -= c;
 
 #ifdef MTYPE_TRACING
-	mt->ctrs.all.ctr++;
+	++(mt->ctrs.all.ctr);
 	mt->ctrs.all.sum += c;
 #endif
 
@@ -186,8 +199,8 @@ inline void mtype_free( MTYPE *mt, void *p )
 	++(mt->ctrs.fcount);
 
 #ifdef MTYPE_TRACING
-	mt->ctrs.fre.ctr++;
-	mt->ctrs.fre.sum++;
+	++(mt->ctrs.fre.ctr);
+	++(mt->ctrs.fre.sum);
 #endif
 
 	mem_unlock( mt );
@@ -205,7 +218,7 @@ inline void mtype_free_list( MTYPE *mt, int count, void *first, void *last )
 	mt->ctrs.fcount += count;
 
 #ifdef MTYPE_TRACING
-	mt->ctrs.fre.ctr++;
+	++(mt->ctrs.fre.ctr);
 	mt->ctrs.fre.sum += count;
 #endif
 
@@ -251,7 +264,7 @@ void mem_prealloc( int64_t tval, void *arg )
 	MTYPE *mt;
 	int i;
 
-	for( i = 0; i < MEM_TYPES_MAX; i++ )
+	for( i = 0; i < MEM_TYPES_MAX; ++i )
 	{
 		if( !( mt = _mem->types[i] ) )
 			break;

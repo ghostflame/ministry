@@ -24,16 +24,16 @@ void pmet_label_render( BUF *b, int count, ... )
 	strbuf_add( b, "{", 1 );
 
 	// there may be common labels
-	for( l = _proc->pmet->common; l; l = l->next, j++ )
+	for( l = _proc->pmet->common; l; l = l->next, ++j )
 		_lbl_render( l );
 
 	// and let's see what we were given
 	va_start( ap, count );
-	for( i = 0; i < count; i++ )
+	for( i = 0; i < count; ++i )
 	{
 		list = va_arg( ap, PMET_LBL * );
 
-		for( l = list; l; l = l->next, j++ )
+		for( l = list; l; l = l->next, ++j )
 			_lbl_render( l );
 	}
 	va_end( ap );
@@ -108,7 +108,7 @@ int pmet_label_apply_to( PMET_LBL *list, PMETM *metric, PMET *item )
 	while( l->next )
 	{
 		l = l->next;
-		i++;
+		++i;
 	}
 
 	if( metric )
@@ -183,7 +183,7 @@ PMET_LBL **pmet_label_array( char *name, int extra, int count, double *vals )
 
 	ret = (PMET_LBL **) allocz( ( extra + count ) * sizeof( PMET_LBL * ) );
 
-	for( i = 0; i < count; i++ )
+	for( i = 0; i < count; ++i )
 	{
 		snprintf( valtmp, 16, "%0.6f", vals[i] );
 		ret[i] = pmet_label_create( name, valtmp );

@@ -11,15 +11,9 @@
 
 void usage( void )
 {
+	config_help( );
 	printf( "%s", "\
-Usage\tministry -h\n\
-\tministry [OPTIONS] [-c <config file>]\n\n\
-Options:\n\
- -h            Print this help\n\
- -p <file>     Override configured pidfile\n\
- -v            Print version number and exit\n" );
-	printf( "%s", config_help( ) );
-	printf( "%s", "\n\
+  -p --pidfile       <file>   Override configured pidfile\n\n\
 Ministry is a statsd-alternative processing engine.  It runs on very\n\
 similiar lines, taking data paths and producing statistics on them.\n\
 It submits data using a graphite format.\n\n" );
@@ -60,11 +54,8 @@ void main_loop( void )
 	// and token cleanup
 	thread_throw_named( &token_loop, NULL, 0, "token_loop" );
 
-	// throw the data listener loop
-	net_start_type( ctl->net->stats );
-	net_start_type( ctl->net->adder );
-	net_start_type( ctl->net->gauge );
-	net_start_type( ctl->net->compat );
+	// get network threads going
+	net_begin( );
 
 	// and any fetch loops
 	fetch_init( );
@@ -72,9 +63,6 @@ void main_loop( void )
 	// and wait
 	while( RUNNING( ) )
 		sleep( 1 );
-
-	// shut down ports
-	net_stop( );
 
 	// and http server
 	http_stop( );
@@ -95,14 +83,13 @@ void main_create_conf( void )
 	ctl->mem        = memt_config_defaults( );
 	ctl->gc         = gc_config_defaults( );
 	ctl->locks      = lock_config_defaults( );
-	ctl->net        = net_config_defaults( );
+	ctl->net        = network_config_defaults( );
 	ctl->stats      = stats_config_defaults( );
 	ctl->synth      = synth_config_defaults( );
 	ctl->tgt        = targets_config_defaults( );
 	ctl->fetch      = fetch_config_defaults( );
 	ctl->metric     = metrics_config_defaults( );
 
-	config_register_section( "network", &net_config_line );
 	config_register_section( "gc",      &gc_config_line );
 	config_register_section( "stats",   &stats_config_line );
 	config_register_section( "synth",   &synth_config_line );

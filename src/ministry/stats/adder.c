@@ -53,7 +53,7 @@ void stats_predictor( ST_THR *t, DHASH *d )
 	// increment the count
 	if( p->valid == 0 )
 	{
-		p->vcount++;
+		++(p->vcount);
 		if( p->vcount == p->hist->size )
 			p->valid = 1;
 	}
@@ -92,7 +92,7 @@ void stats_predictor( ST_THR *t, DHASH *d )
 	}
 
 	// and keep count
-	t->predict++;
+	++(t->predict);
 }
 
 
@@ -109,7 +109,7 @@ void stats_adder_pass( ST_THR *t )
 	st_thr_time( steal );
 
 	// take the data
-	for( i = 0; i < t->conf->hsize; i++ )
+	for( i = 0; i < t->conf->hsize; ++i )
 		if( ( i % t->max ) == t->id )
 		{
 			for( d = t->conf->data[i]; d && d->valid; d = d->next )
@@ -138,20 +138,20 @@ void stats_adder_pass( ST_THR *t )
 					d->proc.count = 1;
 					d->do_pass    = 1;
 					// mark it as having another prediction used
-					d->predict->pcount++;
+					++(d->predict->pcount);
 					d->predict->pflag = 1;
 
 					unlock_adder( d );
 				}
 				else if( d->empty >= 0 )
-					d->empty++;
+					++(d->empty);
 		}
 
 	st_thr_time( wait );
 
 	// say we are ready
 	lock_synth( );
-	sc->tready++;
+	++(sc->tready);
 	pthread_cond_signal( &(sc->threads_ready) );
 	unlock_synth( );
 
@@ -172,11 +172,14 @@ void stats_adder_pass( ST_THR *t )
 	st_thr_time( stats );
 
 	// and report it
-	for( i = 0; i < t->conf->hsize; i++ )
+	for( i = 0; i < t->conf->hsize; ++i )
 		if( ( i % t->max ) == t->id )
 			for( d = t->conf->data[i]; d && d->valid; d = d->next )
 				if( d->do_pass && d->proc.count > 0 )
 				{
+					// capture this? - needs a post-report capture mechanism
+					// lock, do all the steals, then unlock?
+					// spread the cond_signal across all steals?
 					if( d->empty > 0 )
 						d->empty = 0;
 
@@ -192,7 +195,7 @@ void stats_adder_pass( ST_THR *t )
 					// and remove the pass marker
 					d->do_pass = 0;
 
-					t->active++;
+					++(t->active);
 				}
 
 	// keep track of all points
