@@ -22,7 +22,7 @@ int http_tls_load_file( TLS_FILE *sf, char *type )
 
 	sf->len = MAX_TLS_FILE_SIZE;
 
-	return read_file( sf->path, &(sf->content), &(sf->len), 1, desc );
+	return read_file( sf->path, (char **) &(sf->content), &(sf->len), 1, desc );
 }
 
 
@@ -141,8 +141,8 @@ int http_start( void )
 			mop( CONNECTION_LIMIT ),         h->conns_max,
 			mop( PER_IP_CONNECTION_LIMIT ),  h->conns_max_ip,
 			mop( CONNECTION_TIMEOUT ),       h->conns_tmout,
-			mop( HTTPS_MEM_KEY ),            (const char *) h->tls->key.content,
-			mop( HTTPS_MEM_CERT ),           (const char *) h->tls->cert.content,
+			mop( HTTPS_MEM_KEY ),            h->tls->key.content,
+			mop( HTTPS_MEM_CERT ),           h->tls->cert.content,
 #if MIN_MHD_PASS > 0
 			mop( HTTPS_KEY_PASSWORD ),       (const char *) h->tls->password,
 #endif

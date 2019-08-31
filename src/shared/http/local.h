@@ -43,12 +43,11 @@ typedef void * (*cb_RequestLogger) ( void *cls, const char *uri, HTTP_CONN *conn
 
 
 
-
 struct http_tls_file
 {
     const char              *   type;
-    char                    *   content;
     char                    *   path;
+    const unsigned char     *   content;
     int                         len;
 };
 
