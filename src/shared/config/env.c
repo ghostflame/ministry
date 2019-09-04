@@ -57,12 +57,12 @@ int config_env_path( char *path, int len )
 		len -= pth - path;
 
 		// lower-case the section
-		for( p = path; p < us; p++ )
+		for( p = path; p < us; ++p )
 			*p = tolower( *p );
 
 		// we have to swap any _ for . in the config path here because
 		// env names cannot have dots in
-		for( p = pth; *p; p++ )
+		for( p = pth; *p; ++p )
 			if( *p == '_' )
 				*p = '.';
 
@@ -103,7 +103,7 @@ int config_read_env( char **env )
 
 	context = config_make_context( "environment", NULL );
 
-	for( ; *env; env++ )
+	for( ; *env; ++env )
 	{
 		l = snprintf( buf, ENV_MAX_LENGTH, "%s", *env );
 

@@ -32,7 +32,7 @@ int io_config_line( AVP *av )
 
 	if( attIs( "sendUsec" ) )
 	{
-		if( parse_number( av->vptr, &i, NULL ) == NUM_INVALID )
+		if( av_int( i ) == NUM_INVALID )
 		{
 			err( "Invalid send usec value: %s", av->vptr );
 			return -1;
@@ -45,7 +45,7 @@ int io_config_line( AVP *av )
 	}
 	else if( attIs( "sendMsec" ) )
 	{
-		if( parse_number( av->vptr, &i, NULL ) == NUM_INVALID )
+		if( av_int( i ) == NUM_INVALID )
 		{
 			err( "Invalid send msec value: %s", av->vptr );
 			return -1;
@@ -57,7 +57,7 @@ int io_config_line( AVP *av )
 	}
 	else if( attIs( "reconnectMsec" ) || attIs( "reconnMsec" ) )
 	{
-		if( parse_number( av->vptr, &i, NULL ) == NUM_INVALID )
+		if( av_int( i ) == NUM_INVALID )
 		{
 			err( "Invalid reconnect msec value: %s", av->vptr );
 			return -1;
@@ -70,7 +70,7 @@ int io_config_line( AVP *av )
 	}
 	else if( attIs( "bufLockBits" ) )
 	{
-		if( parse_number( av->vptr, &i, NULL ) == NUM_INVALID )
+		if( av_int( i ) == NUM_INVALID )
 		{
 			err( "Invalid buf lock bits value: %s", av->vptr );
 			return -1;

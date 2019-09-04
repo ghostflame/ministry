@@ -14,6 +14,7 @@
 
 #define HTTP_FLAGS_CONTROL				0x0001
 #define HTTP_FLAGS_JSON					0x0002
+#define HTTP_FLAGS_AUTH					0x0004
 #define HTTP_FLAGS_NO_REPORT			0x0100
 
 
@@ -122,6 +123,8 @@ struct http_control
 	unsigned int			conns_max_ip;
 	unsigned int			conns_tmout;
 
+	size_t					post_max;
+
 	struct sockaddr_in	*	sin;
 
 	json_callback		*	stats_fp;	// extra stats callback
@@ -138,9 +141,13 @@ struct http_control
 	char				*	addr;
 	char				*	proto;
 
+	char				*	ctl_iplist;
+	char				*	web_iplist;
+
 	int64_t					requests;
 
 	int8_t					enabled;
+	int8_t					ctl_enabled;
 };
 
 

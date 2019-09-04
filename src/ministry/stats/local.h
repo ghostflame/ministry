@@ -37,10 +37,10 @@ stats_fn stats_self_stats_pass;
 
 #define DEFAULT_STATS_MSEC			10000
 
-#define DEFAULT_STATS_PREFIX		"stats.timers"
+#define DEFAULT_STATS_PREFIX		"stats.timers."
 #define DEFAULT_ADDER_PREFIX		""
 #define DEFAULT_GAUGE_PREFIX		""
-#define DEFAULT_SELF_PREFIX			"stats.ministry"
+#define DEFAULT_SELF_PREFIX			"self.ministry."
 
 #define DEFAULT_MOM_MIN				30L
 #define DEFAULT_MODE_MIN			30L

@@ -185,7 +185,7 @@ int parse_number( char *str, int64_t *iv, double *dv )
 	}
 
 	while( *str == '+' )
-		str++;
+		++str;
 
 	if( *str != '-' && !isdigit( *str ) )
 		return NUM_INVALID;
@@ -261,7 +261,7 @@ uint64_t hash_size( char *str )
 		return 0;
 	}
 
-	for( i = 0; i < 8; i++ )
+	for( i = 0; i < 8; ++i )
 		if( !strcasecmp( str, hash_sizes[i].name ) )
 			return hash_sizes[i].size;
 
@@ -279,7 +279,7 @@ uint64_t hash_size( char *str )
 
 int is_url( char *str )
 {
-	int l = strlen( str );	
+	int l = strlen( str );
 
 	if( l < 8 )
 		return STR_URL_NO;

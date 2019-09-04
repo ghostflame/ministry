@@ -40,6 +40,13 @@ json_object *parse_json_file( FILE *fh, char *path )
 	s = lseek( d, 0, SEEK_END );
 	lseek( d, 0, SEEK_SET );
 
+	if( s > _proc->max_json_sz )
+	{
+		err( "Chickening out of parsing file, size %ld is > than max allowed %d.",
+			s, _proc->max_json_sz );
+		return NULL;
+	}
+
 	m = mmap( NULL, s, PROT_READ, MAP_PRIVATE, d, 0 );
 
 	if( m == MAP_FAILED )

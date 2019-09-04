@@ -28,6 +28,8 @@ MEM_CTL *mem_config_defaults( void )
 	_mem->iobufs      = mem_type_declare( "iobufs", sizeof( IOBUF ), MEM_ALLOCSZ_IOBUF, IO_BUF_SZ, 1 );
 	_mem->iobps       = mem_type_declare( "iobps",  sizeof( IOBP ),  MEM_ALLOCSZ_IOBP,  0, 1 );
 	_mem->htreq       = mem_type_declare( "htreqs", sizeof( HTREQ ), MEM_ALLOCSZ_HTREQ, 2048, 0 );
+	_mem->hosts       = mem_type_declare( "hosts",  sizeof( HOST ),  MEM_ALLOCSZ_HOSTS, 0, 1 );
+	_mem->token       = mem_type_declare( "tokens", sizeof( TOKEN ), MEM_ALLOCSZ_TOKENS, 0, 0 );
 
 	return _mem;
 }
@@ -71,7 +73,7 @@ int mem_config_line( AVP *av )
 
 	// after this, it's per-type control
 	// so go find it.
-	for( i = 0; i < MEM_TYPES_MAX; i++ )
+	for( i = 0; i < MEM_TYPES_MAX; ++i )
 	{
 		if( !( mt = _mem->types[i] ) )
 			break;

@@ -65,7 +65,7 @@ void pmet_pass( int64_t tval, void *arg )
 
 	p->timestamp = tval / MILLION; // we just need msec
 
-	debug( "Generating prometheus metrics." );
+	//debug( "Generating prometheus metrics." );
 
 	pmet_genlock( );
 

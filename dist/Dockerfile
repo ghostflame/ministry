@@ -1,20 +1,28 @@
-FROM fedora:30
+FROM registry.fedoraproject.org/fedora-minimal:30 AS builder
 
-#RUN apk update && apk upgrade && apk add shadow libmicrohttpd libcurl
-RUN dnf update -y && \
-    dnf install -y shadow-utils libmicrohttpd libcurl openssl json-c man-pages man-db mlocate && \
-    rm -rf /var/log/dnf*.log /var/lib/dnf /var/cache/dnf
+RUN mkdir /app && microdnf install -y gcc make libmicrohttpd-devel libcurl-devel openssl-devel json-c-devel
+COPY Makefile ministry.spec getversion.sh /app/
+COPY src/ /app/src
+RUN cd /app && mkdir bin && make all
+
+
+FROM registry.fedoraproject.org/fedora-minimal:30
 
 RUN groupadd -r ministry && \
     useradd -r -g ministry -M -s /bin/sh -d /etc/ministry -c 'Minister for Statistics' ministry && \
-     mkdir /var/run/ministry /etc/ministry && \
-	 chown ministry:ministry /var/run/ministry
+    mkdir /var/run/ministry /etc/ministry && \
+    chown ministry:ministry /var/run/ministry
+
+RUN microdnf install -y libmicrohttpd libcurl openssl json-c man-pages man-db mlocate && \
+    microdnf clean all && \
+	rm -rf /usr/share/X11 /usr/sbin /var/lib/rpm /var/lib/dnf /usr/share/man/man[02346789]*
 
 COPY dist/run.sh /run.sh
 COPY dist/config/* /etc/ministry/
 COPY dist/man1/* /usr/share/man/man1/
 COPY dist/man5/* /usr/share/man/man5/
-COPY bin/* /
+RUN gzip /usr/share/man/man1/*.1 && gzip /usr/share/man/man5/*.5
+COPY --from=builder /app/bin/* /
 
 RUN updatedb
 

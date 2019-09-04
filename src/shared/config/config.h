@@ -17,6 +17,7 @@
 #define CONF_FLAG_READ_ENV			0x00000001
 #define CONF_FLAG_READ_FILE			0x00000002
 #define CONF_FLAG_READ_URL			0x00000004
+#define CONF_FLAG_READ_INCLUDE      0x00000008
 #define CONF_FLAG_URL_INSEC			0x00000100
 #define CONF_FLAG_URL_INC_URL		0x00000200
 #define CONF_FLAG_SEC_INC_INSEC		0x00000400
@@ -35,6 +36,7 @@
 #define chkcfFlag( K )				XchkcfFlag( _proc, K )
 
 #define TMP_DIR						"/tmp"
+#define MAX_JSON_SZ					0x8000		// 32k
 
 // used all over - so all the config line fns have an AVP called 'av'
 #define attIs( s )      !strcasecmp( av->aptr, s )
@@ -70,6 +72,7 @@ struct process_control
 	int						env_prfx_len;
 	int						strict;
 	int						sect_count;
+	int						max_json_sz;
 
 	int64_t					limits[RLIMIT_NLIMITS];
 	int8_t					setlim[RLIMIT_NLIMITS];
@@ -86,6 +89,7 @@ struct process_control
 	TGT_CTL				*	tgt;
 	HA_CTL				*	ha;
 	PMET_CTL			*	pmet;
+	NET_CTL				*	net;
 };
 
 
@@ -93,7 +97,7 @@ struct process_control
 
 conf_line_fn config_line;
 
-char *config_help( void );
+void config_help( void );
 
 char *config_arg_string( char *argstr );
 void config_args( int ac, char **av, char *optstr, help_fn *hfp );

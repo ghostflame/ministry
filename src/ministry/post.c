@@ -12,7 +12,7 @@
 
 int post_handle_init( HTREQ *req )
 {
-	HOST *h = mem_new_host( &(req->sin), MIN_NETBUF_SZ );
+	HOST *h = mem_new_host( &(req->sin), NET_BUF_SZ );
 
 	h->type = ((DTYPE *) req->path->arg)->nt;
 	req->post->obj = h;
@@ -115,7 +115,7 @@ int post_init( void )
 	int i;
 
 	// create a post target for each type
-	for( i = 0; i < DATA_TYPE_MAX; i++ )
+	for( i = 0; i < DATA_TYPE_MAX; ++i )
 	{
 		d = data_type_defns + i;
 		snprintf( buf1, 24, "/submit/%s", d->name );

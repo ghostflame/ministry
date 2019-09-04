@@ -76,8 +76,8 @@ int __http_add_handler( char *path, char *desc, void *arg, int method, http_call
 	p->next  = hd->list;
 	hd->list = p;
 
-	hd->count++;
-	_http->hdlr_count++;
+	++(hd->count);
+	++(_http->hdlr_count);
 
 	// re-sort that list
 	mem_sort_list( (void **) &(hd->list), hd->count, __http_cmp_handlers );
@@ -98,8 +98,14 @@ int http_add_control( char *path, char *desc, void *arg, http_callback *fp, IPLI
 {
 	char urlbuf[1024];
 
+	if( !_http->ctl_enabled )
+	{
+		debug( "Control %s ignored - controls are disabled.", path );
+		return 0;
+	}
+
 	if( *path == '/' )
-		path++;
+		++path;
 
 	snprintf( urlbuf, 1024, "/control/%s", path );
 

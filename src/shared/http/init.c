@@ -22,7 +22,7 @@ int http_tls_load_file( TLS_FILE *sf, char *type )
 
 	sf->len = MAX_TLS_FILE_SIZE;
 
-	return read_file( sf->path, &(sf->content), &(sf->len), 1, desc );
+	return read_file( sf->path, (char **) &(sf->content), &(sf->len), 1, desc );
 }
 
 
@@ -54,6 +54,33 @@ void http_clean_password( HTTP_CTL *h )
 }
 
 
+int http_resolve_filters( void )
+{
+	HTTP_CTL *h = _http;
+
+	if( h->web_iplist )
+	{
+		if( !( h->web_ips = iplist_find( h->web_iplist ) ) )
+		{
+			err( "Could not find requested HTTP IP filter list." );
+			return -1;
+		}
+	}
+
+	if( h->ctl_iplist )
+	{
+		if( !( h->ctl_ips = iplist_find( h->ctl_iplist ) ) )
+		{
+			err( "Could not find requested HTTP controls IP filter list." );
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+
+
 
 #define mop( _o )		MHD_OPTION_ ## _o
 
@@ -66,6 +93,12 @@ int http_start( void )
 	{
 		http_clean_password( h );
 		return 0;
+	}
+
+	if( http_resolve_filters( ) != 0 )
+	{
+		http_clean_password( h );
+		return -1;
 	}
 
 	// are we doing overall connect restriction?
@@ -108,8 +141,8 @@ int http_start( void )
 			mop( CONNECTION_LIMIT ),         h->conns_max,
 			mop( PER_IP_CONNECTION_LIMIT ),  h->conns_max_ip,
 			mop( CONNECTION_TIMEOUT ),       h->conns_tmout,
-			mop( HTTPS_MEM_KEY ),            (const char *) h->tls->key.content,
-			mop( HTTPS_MEM_CERT ),           (const char *) h->tls->cert.content,
+			mop( HTTPS_MEM_KEY ),            h->tls->key.content,
+			mop( HTTPS_MEM_CERT ),           h->tls->cert.content,
 #if MIN_MHD_PASS > 0
 			mop( HTTPS_KEY_PASSWORD ),       (const char *) h->tls->password,
 #endif

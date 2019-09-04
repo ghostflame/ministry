@@ -34,7 +34,7 @@ int strqwords( WORDS *w, char *src, int len, char sep )
 	// step over leading separators
 	while( *p == sep )
 	{
-		p++;
+		++p;
 		l--;
 	}
 
@@ -59,7 +59,7 @@ int strqwords( WORDS *w, char *src, int len, char sep )
 
 		if( qc )
 		{
-			p++;
+			++p;
 			l--;
 
 			w->wd[i] = p;
@@ -85,7 +85,7 @@ int strqwords( WORDS *w, char *src, int len, char sep )
 			// step over any separators following the quotes
 			while( *p == sep )
 			{
-				p++;
+				++p;
 				l--;
 			}
 		}
@@ -99,6 +99,9 @@ int strqwords( WORDS *w, char *src, int len, char sep )
 				*q++ = '\0';
 				l -= q - p;
 				p = q;
+
+				if( !l )
+					w->end_on_sep = 1;
 			}
 			else
 			{
@@ -107,14 +110,11 @@ int strqwords( WORDS *w, char *src, int len, char sep )
 			}
 		}
 
-		// note any remaining we didn't capture
-		// due to size constraints
+		w->end = p;
+		w->end_len = l;
+
 		if( i == STRWORDS_MAX )
-		{
-			w->end = p;
-			w->end_len = l;
 			break;
-		}
 	}
 
 	return ( w->wc = i );
@@ -144,7 +144,7 @@ int strwords_multi( WORDS *w, char *src, int len, char sep, int8_t multi )
 	// step over leading separators
 	while( *p == sep )
 	{
-		p++;
+		++p;
 		l--;
 	}
 
@@ -168,6 +168,9 @@ int strwords_multi( WORDS *w, char *src, int len, char sep, int8_t multi )
 
 			l -= q - p;
 			p = q;
+
+			if( !l )
+				w->end_on_sep = 1;
 		}
 		else
 		{
@@ -175,14 +178,11 @@ int strwords_multi( WORDS *w, char *src, int len, char sep, int8_t multi )
 			break;
 		}
 
-		// note any remaining we didn't capture
-		// due to size constraints
+		w->end = p;
+		w->end_len = l;
+
 		if( i == STRWORDS_MAX )
-		{
-			w->end = p;
-			w->end_len = l;
 			break;
-		}
 	}
 
 	// done

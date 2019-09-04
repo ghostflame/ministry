@@ -93,7 +93,7 @@ SSTR *string_store_create( int64_t sz, char *size, int *default_value )
 	else if( size )
 		s->hsz = hash_size( size );
 
-	if( s->hsz )
+	if( !s->hsz )
 		s->hsz = hash_size( "medium" );
 
 	s->hashtable = (SSTE **) allocz( s->hsz * sizeof( SSTE * ) );
@@ -135,13 +135,14 @@ SSTE *string_store_look( SSTR *store, char *str, int len, int val_set )
 	if( !len )
 		len = strlen( str );
 
-	hv = str_hash( str, len ) % store->hsz;
+	hv = str_hash( str, len );
 
 	// we can do this without lock because adding a new string
 	// is atomic (overwriting store->hash[hv]), and setting
 	// e->val to zero would also be atomic
-	for( e = store->hashtable[hv]; e; e = e->next )
-		if( len == e->len
+	for( e = store->hashtable[hv % store->hsz]; e; e = e->next )
+		if( hv == e->hv
+		 && len == e->len
 		 && !memcmp( str, e->str, len )
 		 && ( val_set == 0 || e->val ) )
 			return e;
@@ -165,7 +166,7 @@ int string_store_locking( SSTR *store, int lk )
 
 SSTE *string_store_add( SSTR *store, char *str, int len )
 {
-	uint64_t hv;
+	uint64_t hv, pos;
 	SSTE *e, *en;
 
 	if( !store || !store->hashtable )
@@ -189,7 +190,8 @@ SSTE *string_store_add( SSTR *store, char *str, int len )
 		return e;
 	}
 
-	hv = str_hash( str, len ) % store->hsz;
+	hv = str_hash( str, len );
+	pos = hv % store->hsz;
 
 	// don't allocz under lock, as we might brk()
 	en = (SSTE *) allocz( sizeof( SSTE ) );
@@ -197,7 +199,7 @@ SSTE *string_store_add( SSTR *store, char *str, int len )
 	// now check again under lock
 	pthread_mutex_lock( &(store->mtx) );
 
-	for( e = store->hashtable[hv]; e; e = e->next )
+	for( e = store->hashtable[pos]; e; e = e->next )
 		if( len == e->len && !memcmp( str, e->str, len ) )
 			break;
 
@@ -208,11 +210,12 @@ SSTE *string_store_add( SSTR *store, char *str, int len )
 		en = NULL;
 		e->str = str_dup( str, len );
 		e->len = len;
+		e->hv  = hv;
 
-		e->next = store->hashtable[hv];
-		store->hashtable[hv] = e;
+		e->next = store->hashtable[pos];
+		store->hashtable[pos] = e;
 
-		store->entries++;
+		++(store->entries);
 	}
 
 	// OK, renew the value
@@ -221,7 +224,7 @@ SSTE *string_store_add( SSTR *store, char *str, int len )
 
 	pthread_mutex_unlock( &(store->mtx) );
 
-	// did we actually create a new one?
+	// did we actually create a new one and not use it?
 	if( en )
 		free( en );
 

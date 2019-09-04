@@ -53,7 +53,7 @@ void targets_resolve( void )
 
 	td = &(targets_data[0]);
 
-	for( i = 0; i < METRIC_TYPE_MAX; i++, td++ )
+	for( i = 0; i < METRIC_TYPE_MAX; ++i, ++td )
 		if( ( l = target_list_find( td->name ) ) )
 		{
 			if( l->targets )
@@ -84,7 +84,7 @@ int targets_set_type( TGT *t, char *name, int len )
 
 	td = &(targets_data[0]);
 
-	for( i = 0; i < METRIC_TYPE_MAX; i++, td++ )
+	for( i = 0; i < METRIC_TYPE_MAX; ++i, ++td )
 		if( !strcasecmp( name, td->name ) )
 		{
 			t->type = td->type;

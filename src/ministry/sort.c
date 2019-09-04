@@ -81,8 +81,8 @@ void sort_qsort_glibc( ST_THR *t, int32_t ct )
 #define X_counter( x )		b##x[_##x(buf1[n])]++
 #define X_swapper( x )		tsum = b##x[j] + sum##x; b##x[j] = sum##x - 1; sum##x = tsum
 
-//#define X_rdwrLoop( x )		for( n = 0; n < ct; n++ ) { pos = _##x(rdr[n]); wtr[++b##x[pos]] = rdr[n]; }
-#define X_rdwrLoop( x )		for( n = 0; n < ct; n++ ) wtr[++b##x[_##x(rdr[n])]] = rdr[n];
+//#define X_rdwrLoop( x )		for( n = 0; n < ct; ++n ) { pos = _##x(rdr[n]); wtr[++b##x[pos]] = rdr[n]; }
+#define X_rdwrLoop( x )		for( n = 0; n < ct; ++n ) wtr[++b##x[_##x(rdr[n])]] = rdr[n];
 
 #define X_rdr_wtr( x )		rdr = buf1; wtr = buf2; X_rdwrLoop( x )
 #define X_wtr_rdr( x )		wtr = buf1; rdr = buf2; X_rdwrLoop( x )
@@ -124,7 +124,7 @@ void sort_radix11( ST_THR *t, int32_t ct )
 	b4 = b3 + F8_SORT_HIST_SIZE;
 	b5 = b4 + F8_SORT_HIST_SIZE;
 
-	for( n = 0; n < ct; n++ )
+	for( n = 0; n < ct; ++n )
 	{
 		buf1[n] = f8_sort_FloatFlip( buf1[n] );
 
@@ -136,7 +136,7 @@ void sort_radix11( ST_THR *t, int32_t ct )
 		X_counter( 5 );
 	}
 
-	for( j = 0; j < F8_SORT_HIST_SIZE; j++ )
+	for( j = 0; j < F8_SORT_HIST_SIZE; ++j )
 	{
 		X_swapper( 0 );
 		X_swapper( 1 );
@@ -156,7 +156,7 @@ void sort_radix11( ST_THR *t, int32_t ct )
 	wtr = buf1;
 	rdr = buf2;
 	// slightly different
-	for( n = 0; n < ct; n++ )
+	for( n = 0; n < ct; ++n )
 	{
 		pos = _5(rdr[n]);
 		wtr[++b5[pos]] = f8_sort_IFloatFlip( rdr[n] );
@@ -202,7 +202,7 @@ typedef struct
    upper bound for log (total_elements):
    bits per byte (CHAR_BIT) * sizeof(size_t).  */
 #define STACK_SIZE				(CHAR_BIT * sizeof(size_t))
-#define PUSH(low, high)			top->lo = low; top->hi = high; top++
+#define PUSH(low, high)			top->lo = low; top->hi = high; ++top
 #define POP(low, high)			--top; low = top->lo; high = top->hi
 #define STACK_NOT_EMPTY			(stack < top)
 
@@ -284,10 +284,10 @@ void __sort_qsort_dbl( double *arr, int32_t ct )
 			do
 			{
 				while( CMP( left, mid ) )
-					left++;
+					++left;
 
 				while( CMP( mid, right ) )
-					right--;
+					--right;
 
 				if( left < right )
 				{
@@ -298,13 +298,13 @@ void __sort_qsort_dbl( double *arr, int32_t ct )
 					else if( mid == right )
 						mid = left;
 
-					left++;
-					right--;
+					++left;
+					--right;
 				}
 				else if( left == right )
 				{
-					left++;
-					right--;
+					++left;
+					--right;
 					break;
 				}
 			}
@@ -362,7 +362,7 @@ void __sort_qsort_dbl( double *arr, int32_t ct )
 		array's beginning.  This is the smallest array element,
 		and the operation speeds up insertion sort's inner loop. */
 
-		for( run = tmp + 1; run <= thresh; run++ )
+		for( run = tmp + 1; run <= thresh; ++run )
 			if( CMP( run, tmp ) )
 				tmp = run;
 
@@ -379,7 +379,7 @@ void __sort_qsort_dbl( double *arr, int32_t ct )
 		{
 			tmp = run - 1;
 			while( CMP( run, tmp ) )
-				tmp--;
+				--tmp;
 
 			if( ++tmp != run )
 			{

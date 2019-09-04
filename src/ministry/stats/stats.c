@@ -41,10 +41,10 @@ void stats_report_mode( ST_THR *t, DHASH *d, int64_t ct )
 
 	mtmp = t->wkspc[0] - 1;
 
-	for( i = 0; i < ct; i++ )
+	for( i = 0; i < ct; ++i )
 	{
 		if( t->wkspc[i] == mtmp )
-			mdct++;
+			++mdct;
 		else
 		{
 			if( mdct > mdmx )
@@ -77,12 +77,12 @@ void __report_array( double *arr, int64_t ct )
 	i = ( ct > 30 ) ? 15 : ct / 2;
 	j = ( ct > 30 ) ? ( ct - 15 ) : ct / 2;
 
-	for( y = 0, x = 0; x < i; x++ )
+	for( y = 0, x = 0; x < i; ++x )
 		y += snprintf( abuf + y, 8192 - y, " %.1f", arr[x] );
 
 	y += snprintf( abuf + y, 8192 - y, "   .....   " );
 
-	for( x = j; x < ct; x++ )
+	for( x = j; x < ct; ++x )
 		y += snprintf( abuf + y, 8192 - y, " %.1f", arr[x] );
 
 	debug( "Array (%ld): %s", ct, abuf + 1 );
@@ -190,7 +190,7 @@ void stats_report_one( ST_THR *t, DHASH *d )
 		t->highest = ct;
 
 	// and keep track of active
-	t->active++;
+	++(t->active);
 }
 
 
@@ -210,7 +210,7 @@ void stats_stats_pass( ST_THR *t )
 	st_thr_time( steal );
 
 	// take the data
-	for( i = 0; i < t->conf->hsize; i++ )
+	for( i = 0; i < t->conf->hsize; ++i )
 		if( ( i % t->max ) == t->id )
 		{
 			for( d = t->conf->data[i]; d && d->valid; d = d->next )
@@ -233,7 +233,7 @@ void stats_stats_pass( ST_THR *t )
 					unlock_stats( d );
 				}
 				else if( d->empty >= 0 )
-					d->empty++;
+					++(d->empty);
 		}
 
 #ifdef DEBUG
@@ -243,7 +243,7 @@ void stats_stats_pass( ST_THR *t )
 	st_thr_time( stats );
 
 	// and report it
-	for( i = 0; i < t->conf->hsize; i++ )
+	for( i = 0; i < t->conf->hsize; ++i )
 		if( ( i % t->max ) == t->id )
 			for( d = t->conf->data[i]; d && d->valid; d = d->next )
 				if( d->do_pass && d->proc.points )

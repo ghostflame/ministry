@@ -1,18 +1,3 @@
-Refactor
-	none
-	
-HTTP
-	none
-
-Network
-	none
-
-Data types
-	none
-
-Logging
-	HTTP separate log not working
-
 Stats generation
 	Allow for usec timestamps - multiple buffers
 
@@ -20,9 +5,13 @@ Monitoring
 	carbon-copy self-metrics
 
 Operational Readiness
+
 	Pen Testing
     review:  https://cwe.mitre.org/data/definitions/658.html
 		done:	https://cwe.mitre.org/data/definitions/14.html
+
+Carbon-Copy
+    Crashing with multiple sources (from ministry test)
 
 Clustering
 	Make sure existing connections are not closed until shutdown

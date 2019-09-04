@@ -46,7 +46,7 @@ int pmet_setv( PMET *item, int count, ... )
 
 	va_start( ap, count );
 
-	for( i = 0; i < count; i++ )
+	for( i = 0; i < count; ++i )
 		list[i] = va_arg( ap, double );
 
 	va_end( ap );

@@ -1,5 +1,5 @@
 TARGET  = all
-VERS    = $(shell sed -rn 's/^Version:\t(.*)/\1/p' ministry.spec)
+VERS    = $(shell ./getversion.sh)
 
 # set some defaults if they are not in the environment
 CFGDIR ?= $(DESTDIR)/etc/ministry
@@ -33,8 +33,11 @@ subdirs:
 code:
 	@cd src && VERS=$(VERS) $(MAKE) $(MFLAGS) $(TARGET)
 
-docker:
+docker: clean
 	docker build -t $(CTPATH):$(VERS) --file dist/Dockerfile .
+
+fedup:
+	docker build -t ghostflame/fedora-patched:latest --file dist/Fedora-Dockerfile dist
 
 dockerpush: docker
 	docker tag $(CTPATH):$(VERS) $(CTPATH):latest

@@ -24,7 +24,7 @@ void *__thread_wrapper( void *arg )
 			warn( "Could not set thread name to '%s' -- %s.", t->name, Err );
 	}
 
-	(*(t->call))( arg );
+	(*(t->call))( t );
 
 	if( t->name )
 		debug( "Thread has ended: %s", t->name );

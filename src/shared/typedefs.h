@@ -19,6 +19,7 @@ typedef struct io_control           IO_CTL;
 typedef struct target_control       TGT_CTL;
 typedef struct ha_control           HA_CTL;
 typedef struct pmet_control         PMET_CTL;
+typedef struct net_control          NET_CTL;
 
 typedef struct config_section       CSECT;
 typedef struct config_context       CCTXT;
@@ -46,6 +47,17 @@ typedef struct target_alter         TGTALT;
 
 typedef struct iplist_net           IPNET;
 typedef struct iplist               IPLIST;
+
+typedef struct host_tracker         HTRACK;
+typedef struct host_data            HOST;
+typedef struct tcp_thread           TCPTH;
+
+typedef struct net_prefix           NET_PFX;
+typedef struct net_type             NET_TYPE;
+typedef struct net_in_port          NET_PORT;
+
+typedef struct token_data			TOKEN;
+typedef struct token_info			TOKENS;
 
 typedef struct thread_data          THRD;
 typedef struct av_pair              AVP;
@@ -94,7 +106,13 @@ typedef void curlw_cb( void *, IOBUF *b );
 typedef void curlw_jcb( void *, json_object *jso );
 typedef int sort_fn( const void *, const void * );
 typedef double pmet_gen_fn( int64_t, void *, double * );
-
 typedef void iplist_data_fn( void *, IPNET * );
+
+// found in the apps
+typedef int  buf_fn ( HOST *, IOBUF * );
+typedef void line_fn ( HOST *, char *, int );
+typedef void add_fn ( char *, int, char * );
+typedef void tcp_setup_fn ( NET_TYPE * );
+typedef void tcp_fn ( HOST * );
 
 #endif

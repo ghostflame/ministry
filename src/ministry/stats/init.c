@@ -27,7 +27,7 @@ void stats_thread_pass( int64_t tval, void *arg )
 		stats_thread_report( t );
 
 	// send any outstanding data
-	for( i = 0; i < ctl->tgt->set_count; i++ )
+	for( i = 0; i < ctl->tgt->set_count; ++i )
 		if( t->bp[i] )
 		{
 			if( t->bp[i]->len )
@@ -68,7 +68,7 @@ void stats_start( ST_CFG *cf )
 	}
 
 	// throw each of the threads
-	for( i = 0; i < cf->threads; i++ )
+	for( i = 0; i < cf->threads; ++i )
 		thread_throw_named_f( &stats_loop, &(cf->ctls[i]), i, "%s_%d", cf->name, i );
 
 	info( "Started %s data processing loops.", cf->name );
@@ -119,7 +119,7 @@ void stats_init_control( ST_CFG *c, int alloc_data )
 	w.wd[2] = "id";
 	w.wd[3] = idbuf;
 
-	for( i = 0; i < c->threads; i++ )
+	for( i = 0; i < c->threads; ++i )
 	{
 		t = &(c->ctls[i]);
 
@@ -134,7 +134,7 @@ void stats_init_control( ST_CFG *c, int alloc_data )
 
 		// timestamp buffers
 		t->ts = (BUF **) allocz( ctl->tgt->set_count * sizeof( BUF * ) );
-		for( j = 0; j < ctl->tgt->set_count; j++ )
+		for( j = 0; j < ctl->tgt->set_count; ++j )
 			t->ts[j] = strbuf( TSBUF_SZ );
 
 		// and a path workspace

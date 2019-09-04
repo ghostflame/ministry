@@ -45,8 +45,8 @@ __attribute__((hot)) inline uint32_t hash_fnv1( char *str, int32_t len )
 
 __attribute__((hot)) inline uint32_t hash_fnv1a( char *str, int32_t len )
 {
-	uint32_t hval = HASH_FNV32_SEED;
-	uint8_t *p = (uint8_t *) str;
+	register uint32_t hval = HASH_FNV32_SEED;
+	register uint8_t *p = (uint8_t *) str;
 
 	while( len-- )
 	{

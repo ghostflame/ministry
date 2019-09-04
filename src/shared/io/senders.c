@@ -31,7 +31,7 @@ int64_t io_send_stdout( TGT *t )
 			b = write( s->fd, s->out->buf + t->curr_off, s->out->len - t->curr_off );
 			t->curr_off += b;
 			t->bytes += b;
-			f++;
+			++f;
 		}
 		else
 		{
@@ -80,7 +80,7 @@ int64_t io_send_net_tcp( TGT *t )
 		b = io_write_data( s, t->curr_off );
 		t->curr_off += b;
 		t->bytes += b;
-		f++;
+		++f;
 
 		// any problems?
 		if( flagf_has( s, IO_CLOSE ) )

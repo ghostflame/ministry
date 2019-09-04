@@ -28,7 +28,7 @@ void loop_kill( int sig )
 void loop_mark_start( const char *tag )
 {
 	pthread_mutex_lock( &(_proc->loop_lock) );
-	_proc->loop_count++;
+	++(_proc->loop_count);
 	pthread_mutex_unlock( &(_proc->loop_lock) );
 	if( tag )
 		debug( "Some %s loop thread has started.", tag );
@@ -96,7 +96,7 @@ void loop_control( const char *name, loop_call_fn *fp, void *arg, int64_t usec, 
 	// try to avoid issues
 	while( ( flags & LOOP_TRIM ) && intv > MAX_LOOP_NSEC )
 	{
-		for( i = 0; i < 8; i++ )
+		for( i = 0; i < 8; ++i )
 			if( ( intv % loop_control_factors[i] ) == 0 )
 				break;
 
@@ -163,7 +163,7 @@ void loop_control( const char *name, loop_call_fn *fp, void *arg, int64_t usec, 
 				debug( "Calling payload %s", name );
 #endif
 			(*fp)( timer, arg );
-			fires++;
+			++fires;
 			curr = 0;
 		}
 
@@ -185,7 +185,7 @@ void loop_control( const char *name, loop_call_fn *fp, void *arg, int64_t usec, 
 		}
 		else
 		{
-			skips++;
+			++skips;
 #ifdef DEBUG_LOOPS
 			if( flags & LOOP_DEBUG && skips == marker )
 			{

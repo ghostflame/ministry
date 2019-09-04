@@ -45,7 +45,7 @@ int config_get_line( FILE *f, AVP *av )
 			break;
 
 		// where are we?
-		context->lineno++;
+		++(context->lineno);
 
 		// find the line end
 		if( !( n = memchr( __cfg_read_line, '\n', 1023 ) ) )
@@ -151,6 +151,12 @@ int __config_handle_line( AVP *av )
 	if( !strcasecmp( av->aptr, "include" ) )
 	{
 		WORDS w;
+
+		if( !chkcfFlag( READ_INCLUDE ) )
+		{
+			warn( "Ignoring include directive due to --no-include option." );
+			return 0;
+		}
 
 		strwords( &w, av->vptr, av->vlen, ' ' );
 
@@ -289,7 +295,7 @@ int config_read_file( char *path, int fail_ok )
 	{
 		if( fail_ok )
 		{
-			warn( "Could not open optional config file '%s' -- %s", path, Err );
+			notice( "Could not open optional config file '%s' -- %s", path, Err );
 			return 0;
 		}
 		else
@@ -317,7 +323,7 @@ int config_read_url( char *url, int fail_ok )
 
 	if( context->is_ssl )
 		setCurlFl( ch, SSL );
-	
+
 	if( chkcfFlag( SEC_VALIDATE ) )
 		setCurlFl( ch, VALIDATE );
 
@@ -358,7 +364,7 @@ int config_read( char *inpath, WORDS *w )
 	if( *inpath == '?' )
 	{
 		fail_ok = 1;
-		inpath++;
+		++inpath;
 	}
 
 	// prune the path
@@ -437,7 +443,7 @@ int config_read( char *inpath, WORDS *w )
 	debug( "Opening config %s '%s', section '%s', %d arg%s.",
 		( context->is_url ) ? "url" : "file", path,
 		context->section->name, context->argc,
-		( context->argc == 1 ) ? "" : "s" );
+		VAL_PLURAL( context->argc ) );
 
 	// so go do it
 	if( context->is_url )
@@ -456,7 +462,7 @@ void config_choose_section( CCTXT *c, char *section )
 {
 	int i;
 
-	for( i = 0; i < CONF_SECT_MAX; i++ )
+	for( i = 0; i < CONF_SECT_MAX; ++i )
 	{
 		if( !config_sections[i].name )
 			break;

@@ -54,7 +54,7 @@ int regex_list_add( char *str, int negate, RGXL *rl )
 	rg->src  = str_dup( str, rg->slen );
 	rg->ret  = ( negate ) ? REGEX_FAIL : REGEX_MATCH;
 
-	rl->count++;
+	++(rl->count);
 
 	// first one?
 	if( !rl->list )
@@ -80,11 +80,11 @@ int regex_list_test( char *str, RGXL *rl )
 
 	for( r = rl->list; r; r = r->next )
 	{
-		r->tests++;
+		++(r->tests);
 		//debug( "Checking '%s' against regex '%s'", str, r->src );
 		if( regexec( r->r, str, 0, NULL, 0 ) == 0 )
 		{
-			r->matched++;
+			++(r->matched);
 			return r->ret;
 		}
 	}
