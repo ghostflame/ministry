@@ -14,6 +14,7 @@
 
 #define HTTP_FLAGS_CONTROL				0x0001
 #define HTTP_FLAGS_JSON					0x0002
+#define HTTP_FLAGS_AUTH					0x0004
 #define HTTP_FLAGS_NO_REPORT			0x0100
 
 
