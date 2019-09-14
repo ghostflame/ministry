@@ -25,6 +25,7 @@
 #define TCP_THRD_DADDER			30
 #define TCP_THRD_DSTATS			60
 #define TCP_THRD_DGAUGE			10
+#define TCP_THRD_DHISTO			30
 #define TCP_THRD_DCOMPAT		20
 
 
@@ -33,6 +34,7 @@ enum data_conn_type
 	DATA_TYPE_STATS = 0,
 	DATA_TYPE_ADDER,
 	DATA_TYPE_GAUGE,
+	DATA_TYPE_HISTO,
 	DATA_TYPE_COMPAT,
 	DATA_TYPE_MAX
 };
@@ -77,6 +79,13 @@ struct data_point
 };
 
 
+struct data_histogram	// size 16
+{
+	int64_t			*	counts;
+	ST_HIST			*	conf;
+};
+
+
 struct points_list		// 8192
 {
 	PTLIST			*	next;
@@ -85,11 +94,12 @@ struct points_list		// 8192
 };
 
 
-struct data_hash_vals	// size 24
+struct data_hash_vals	// size 40
 {
 	PTLIST			*	points;
+	DHIST				hist;
 	double				total;
-	uint64_t			count;
+	int64_t				count;
 };
 
 
@@ -130,6 +140,7 @@ DHASH *data_locate( char *path, int len, int type );
 add_fn data_point_stats;
 add_fn data_point_adder;
 add_fn data_point_gauge;
+add_fn data_point_histo;
 
 line_fn data_line_ministry;
 line_fn data_line_compat;

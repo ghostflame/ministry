@@ -26,9 +26,6 @@ just test config and exit
 \fB\-c\fR \fI<FILE|URI>\fR
 select config source instead of default file
 .TP
-\fB\-C\fR \fI<FILE|URI>\fR
-as -c but with strict processing
-.TP
 \fB\-E\fR
 disable reading variables from the environment
 .TP
@@ -37,6 +34,9 @@ override the prefix for environment variable
 .TP
 \fB\-F\fR
 disable reading config source (environment only)
+.TP
+\fB\-R\fR
+disable all including of other config
 .TP
 \fB\-U\fR
 disable reading any URI config (even if given with -c)

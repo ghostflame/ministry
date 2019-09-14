@@ -413,8 +413,44 @@ number and nature of the expressions.
 \fBpredict.fallbackMatch\fP
 Set whether matching no regexes results in an overall match or no match (default is to \fBNOT\fP match)
 .PP
-The rest of these are of the form stats.XXX, adder.XXX, gauge.XXX or self.XXX, affecting the behaviour of
-stats reporting, adder reporting, gauge reporting or self reporting.
+\fBMinistry\fP can produce histogram data for metrics, showing the count of values falling into each bucket.
+However, it needs these bucket maps defining, along with a regular expression map to match metrics to the
+right map.  One of these maps must be the default, as every histogram metric path needs a map.  If none of
+the buckets are so labelled, \fBministry\fP will choose the last one to appear in config.  The maps are applied
+in the order they appear in config.  In the absence of any maps, a dummy one will be created, but this is \fInot
+likely to give useful results\fP.
+.TP
+\fBhistogram.begin\fP
+Begin a named histogram map - names should be unique but this is not actually a constraint
+.TP
+\fBhistogram.enable\fP
+A boolean to enable or disable this config (default true)
+.TP
+\fBhistogram.default\fP
+A boolean to make this the default config to choose (default false)
+.PP
+\fBNote\fP, disabling the default config is a botch.  We must have at least one enabled config.  So the enable
+flag may be overridden if all supplied configs are disabled.  The order of choosing is:
+.EX
+		1/ Search in order for one flagged as default
+		2/ Search from the back of the list for an enable block
+		3/ Forcibly enable the last block and choose that
+.EE
+.TP
+\fBhistogram.bounds\fP
+A list of float values representing the \fIupper\fP bound of each bucket.  They will be sorted.  A maximum
+of 10 buckets in a map is supported.  An extra '+Infinity' upper bound is implicit and should not be given.
+.TP
+\fBhistogram.whitelist\fP, \fBhistogram.blacklist\fP
+A set of regular expressions to control histogram map matching.  Each can appear multiple times.  The order
+of the list is preserved and paths are checked against it in order, to decide if they should or should not
+match against this map.  This inevitably has a performance penalty at the creation time for new metrics.
+.TP
+\fBhistogram.end\fP
+Complete the current histogram block.
+.PP
+The rest of these are of the form stats.XXX, adder.XXX, gauge.XXX, histo.XXX or self.XXX, affecting the
+behaviour of stats reporting, adder reporting, gauge reporting, histo reporting or self reporting.
 .TP
 \fBTYPE.threads\fP
 How many reporting threads to run (not used for self) (default 2)
@@ -474,8 +510,9 @@ to create and order an Iplist.
 \fBfilterList\fP
 The named filter list to apply.
 .PP
-All remaining network variables are of the form stats.XXX, compat.XXX, gauge.XXX or adder.XXX, pertaining
-to new-style stats ports, statsd-compatible ports, new-style gauge ports or new-style adder ports.
+All remaining network variables are of the form stats.XXX, compat.XXX, histo.XXX, gauge.XXX or
+adder.XXX, pertaining to new-style stats ports, statsd-compatible ports, new-style histo ports,
+new-style gauge ports or new-style adder ports.
 .TP
 \fBTYPE.enable\fP
 Enable or disable this type of collection (boolean, defaults to 1 for all).
@@ -497,7 +534,8 @@ Enable or disable his protocol for this type of collection (boolean, defaults to
 .TP
 \fBTYPE.PROTO.port\fP
 A list of listen ports, comma separated.  By default, statsd-compatible listens on 8125, the default
-statsd port, new-style stats is on 9125 and new-style adder is on 9225.
+statsd port, new-style stats is on 9125, new-style adder is on 9225, new-style gauge on 9325 and
+new-style histo on 9425.
 .PP
 \fBMinistry\fP allows several different styles of TCP handling.  It can have one thread per connection
 (recommended for stats connections), or use a pool of threads (using either poll of epoll) to which
@@ -516,11 +554,11 @@ This does not change the UDP listener behaviour of one thread per port.
 .TP
 \fBTYPE.tcp.style\fI
 How to handle new connections, either with their own thread or on a thread pool.  The defaults are:
-stats/compat - thread, adder/gauge - epoll.
+stats/histo/compat - thread, adder/gauge - epoll.
 .TP
 \fBTYPE.tcp.threads\fI
 How many threads in the pool for listening for each type.  Defaults are stats:60, adder:30, gauge:10,
-compat:20.
+histo:30, compat:20.
 .TP
 \fBTYPE.tcp.pollMax\fI
 Max connections to a TCP listener thread (default 128).

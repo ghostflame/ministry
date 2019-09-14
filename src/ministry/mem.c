@@ -94,6 +94,7 @@ void mem_free_dhash( DHASH **d )
 	sd = *d;
 	*d = NULL;
 
+	sd->id       = 0;
 	*(sd->path)  = '\0';
 	sd->len      = 0;
 	sd->in.total = 0;

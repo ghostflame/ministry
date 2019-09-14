@@ -10,20 +10,36 @@
 #include "shared.h"
 
 
-void pidfile_mkdir( char *path )
+int recursive_mkdir( char *path )
 {
 	char dbuf[2048], *ls;
 	struct stat sb;
-	int l;
+	int l, ret;
+
+	errno = 0;
 
 	// we have a sensible looking path?
-	if( !( ls = strrchr( path, '/' ) )
-	 || ls == path )
-		return;
+	if( !( ls = strrchr( path, '/' ) ) )
+	{
+		errno = EINVAL;
+		return errno;
+	}
+
+	// are we being asked to create something within /
+	// then just hand back 'ok' because we don't want
+	// to do that
+	if( ls == path )
+	{
+		debug( "Cowardly refusing to create '%s'.", path );
+		return 0;
+	}
 
 	// path too long for us?
 	if( ( l = ls - path ) > 2047 )
-		return;
+	{
+		errno = ENAMETOOLONG;
+		return errno;
+	}
 
 	memcpy( dbuf, path, l );
 	dbuf[l] = '\0';
@@ -33,25 +49,64 @@ void pidfile_mkdir( char *path )
 		dbuf[--l] = '\0';
 
 	// recurse up towards /
-	pidfile_mkdir( dbuf );
+	if( ( ret = recursive_mkdir( dbuf ) ) != 0 )
+		return ret;
 
-	if( stat( dbuf, &sb ) )
+	if( stat( path, &sb ) )
 	{
 		if( errno == ENOENT )
 		{
-			if( mkdir( dbuf, 0755 ) )
-				warn( "Could not create pidfile path parent dir %s -- %s",
-					dbuf, Err );
+			if( mkdir( path, 0755 ) )
+			{
+				ret = errno;
+				warn( "Could not create dir %s -- %s",
+					path, Err );
+				return ret;
+			}
 			else
-				info( "Created pidfile path parent dir %s", dbuf );
+				info( "Created dir %s", path );
 		}
 		else
-			warn( "Cannot stat pidfile parent dir %s -- %s", dbuf, Err );
+		{
+			ret = errno;
+			warn( "Cannot stat dir %s -- %s", path, Err );
+			return ret;
+		}
 	}
 	else if( !S_ISDIR( sb.st_mode ) )
 	{
-		warn( "Pidfile parent %s is not a directory.", dbuf );
+		warn( "%s is not a directory.", path );
+		errno = ENOTDIR;
+		return errno;
 	}
+
+	return 0;
+}
+
+
+int pidfile_mkdir( char *filepath )
+{
+	char dbuf[2028], *s;
+	int l;
+
+	if( !( s = strrchr( filepath, '/' ) ) )
+	{
+		warn( "Invalid pidfile spec: %s", filepath );
+		return -1;
+	}
+
+	if( ( l = s - filepath ) > 2047 )
+	{
+		warn( "Pidfile path is too long, max length 2047." );
+		return -2;
+	}
+
+	memcpy( dbuf, filepath, l );
+	dbuf[l] = '\0';
+
+	notice( "Trying to create dir '%s' for pidfile '%s'", dbuf, filepath );
+
+	return recursive_mkdir( dbuf );
 }
 
 
@@ -61,7 +116,11 @@ void pidfile_write( void )
 	FILE *fh;
 
 	// make our piddir
-	pidfile_mkdir( _proc->pidfile );
+	if( recursive_mkdir( _proc->pidfile ) != 0 )
+	{
+		warn( "Unable to create pidfile directory." );
+		return;
+	}
 
 	// and our file
 	if( !( fh = fopen( _proc->pidfile, "w" ) ) )

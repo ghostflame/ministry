@@ -40,6 +40,7 @@
 
 // used all over - so all the config line fns have an AVP called 'av'
 #define attIs( s )      !strcasecmp( av->aptr, s )
+#define attIsN( s, n )	!strncasecmp( av->aptr, s, n )
 #define valIs( s )      !strcasecmp( av->vptr, s )
 
 

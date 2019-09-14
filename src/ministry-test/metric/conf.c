@@ -132,8 +132,8 @@ int metric_add( MGRP *g, char *str, int len )
 	}
 
 	// a little setup
-	if( nm.type == METRIC_MODEL_TRACK_MEAN
-	 || nm.type == METRIC_MODEL_SMTS_TRACK )
+	if( nm.model->model == METRIC_MODEL_TRACK_MEAN
+	 || nm.model->model == METRIC_MODEL_SMTS_TRACK )
 		nm.d3 = nm.d2 / 2;
 
 	// copy that into a new one

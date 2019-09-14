@@ -102,12 +102,14 @@ void stats_self_stats_pass( ST_THR *t )
 	stats_self_report_nettype( t, ctl->net->stats );
 	stats_self_report_nettype( t, ctl->net->adder );
 	stats_self_report_nettype( t, ctl->net->gauge );
+	stats_self_report_nettype( t, ctl->net->histo );
 	stats_self_report_nettype( t, ctl->net->compat );
 
 	// stats types
 	stats_self_report_types( t, ctl->stats->stats );
 	stats_self_report_types( t, ctl->stats->adder );
 	stats_self_report_types( t, ctl->stats->gauge );
+	stats_self_report_types( t, ctl->stats->histo );
 
 	// memory
 	stats_self_report_mtypes( t );
@@ -139,10 +141,11 @@ void stats_thread_report( ST_THR *t )
 	bprintf( t, "%s.total %ld",  t->wkrstr, t->total  );
 
 	if( t->conf->type == STATS_TYPE_STATS )
-	{
 		bprintf( t, "%s.workspace %d", t->wkrstr, t->wkspcsz );
-		bprintf( t, "%s.highest %d",   t->wkrstr, t->highest );
-	}
+
+	if( t->conf->type == STATS_TYPE_STATS
+	 || t->conf->type == STATS_TYPE_HISTO )
+		bprintf( t, "%s.highest %d", t->wkrstr, t->highest );
 
 	// how many predictions?
 	if( t->predict )
@@ -216,6 +219,7 @@ int stats_self_stats_cb_stats( json_object *jo )
 	stats_self_report_http_types( js, ctl->stats->stats );
 	stats_self_report_http_types( js, ctl->stats->adder );
 	stats_self_report_http_types( js, ctl->stats->gauge );
+	stats_self_report_http_types( js, ctl->stats->histo );
 
 	json_object_object_add( jo, "statsTypes", js );
 

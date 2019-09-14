@@ -56,6 +56,20 @@ DTYPE data_type_defns[DATA_TYPE_MAX] =
 		.nt   = NULL
 	},
 	{
+		.type = DATA_TYPE_HISTO,
+		.name = "histo",
+		.lf   = &data_line_ministry,
+		.pf   = &data_line_min_prefix,
+		.af   = &data_point_histo,
+		.bp   = &data_parse_buf,
+		.tokn = TOKEN_TYPE_HISTO,
+		.port = DEFAULT_HISTO_PORT,
+		.thrd = TCP_THRD_DHISTO,
+		.styl = TCP_STYLE_THRD,
+		.sock = "ministry histogram socket",
+		.nt   = NULL
+	},
+	{
 		.type = DATA_TYPE_COMPAT,
 		.name = "compat",
 		.lf   = &data_line_compat,
@@ -194,6 +208,9 @@ DHASH *data_locate( char *path, int len, int type )
 		case DATA_TYPE_GAUGE:
 			c = ctl->stats->gauge;
 			break;
+		case DATA_TYPE_HISTO:
+			c = ctl->stats->histo;
+			break;
 		default:
 			// try each in turn
 			if( ( d = data_locate( path, len, DATA_TYPE_STATS ) ) )
@@ -201,6 +218,8 @@ DHASH *data_locate( char *path, int len, int type )
 			if( ( d = data_locate( path, len, DATA_TYPE_ADDER ) ) )
 				return d;
 			if( ( d = data_locate( path, len, DATA_TYPE_GAUGE ) ) )
+				return d;
+			if( ( d = data_locate( path, len, DATA_TYPE_HISTO ) ) )
 				return d;
 			return NULL;
 	}
@@ -211,6 +230,8 @@ DHASH *data_locate( char *path, int len, int type )
 
 __attribute__((hot)) static inline void data_get_dhash_extras( DHASH *d )
 {
+	ST_HIST *h = NULL;
+
 	switch( d->type )
 	{
 		case DATA_TYPE_STATS:
@@ -237,6 +258,36 @@ __attribute__((hot)) static inline void data_get_dhash_extras( DHASH *d )
 				d->predict = mem_new_pred( );
 			}
 			break;
+
+		case DATA_TYPE_HISTO:
+
+			// only worth it if we have more than one config
+			if( ctl->stats->histcf_count > 1 )
+			{
+				// try the matches first
+				for( h = ctl->stats->histcf; h; h = h->next )
+					if( h->enabled && regex_list_test( d->path, h->rgx ) == REGEX_MATCH )
+						break;
+			}
+
+			// otherwise, choose the default
+			if( !h )
+				h = ctl->stats->histdefl;
+
+			// are we replacing previous?
+			if( d->in.hist.counts )
+			{
+				free( d->in.hist.counts );
+				free( d->proc.hist.counts );
+			}
+
+			d->in.hist.counts   = (int64_t *) allocz( h->bcount * sizeof( int64_t ) );
+			d->proc.hist.counts = (int64_t *) allocz( h->bcount * sizeof( int64_t ) );
+
+			d->in.hist.conf     = h;
+			d->proc.hist.conf   = h;
+
+			break;
 	}
 }
 
@@ -244,12 +295,11 @@ __attribute__((hot)) static inline void data_get_dhash_extras( DHASH *d )
 
 __attribute__((hot)) static inline DHASH *data_get_dhash( char *path, int len, ST_CFG *c )
 {
-	uint64_t hval, idx, crt;
+	uint64_t hval, idx;
 	DHASH *d;
 
 	hval = data_path_hash( path, len );
 	idx  = hval % c->hsize;
-	crt  = 0;
 
 	if( !( d = data_find_path( c->data[idx], hval, path, len ) ) )
 	{
@@ -269,14 +319,11 @@ __attribute__((hot)) static inline DHASH *data_get_dhash( char *path, int len, S
 			c->data[idx] = d;
 
 			d->valid = 1;
-
-			// mark this newly created
-			crt = 1;
 		}
 
 		unlock_table( idx );
 
-		if( crt )
+		if( !d->id )
 		{
 			d->id = data_get_id( c );
 			data_get_dhash_extras( d );
@@ -288,6 +335,37 @@ __attribute__((hot)) static inline DHASH *data_get_dhash( char *path, int len, S
 
 
 
+__attribute__((hot)) void data_point_histo( char *path, int len, char *dat )
+{
+	ST_HIST *c;
+	double val;
+	DHIST *h;
+	DHASH *d;
+	int i;
+
+	val = strtod( dat, NULL );
+
+	d = data_get_dhash( path, len, ctl->stats->histo );
+	h = &(d->in.hist);
+	c = h->conf;
+
+	lock_histo( d );
+
+	// find the right boundary
+	for( i = 0; i < c->brange; i++ )
+		if( val <= c->bounds[i] )
+		{
+			++(h->counts[i]);
+			break;
+		}
+
+	if( i == c->brange )
+		++(h->counts[c->brange]);
+
+	++(d->in.count);
+
+	unlock_histo( d ); 
+}
 
 
 __attribute__((hot)) void data_point_gauge( char *path, int len, char *dat )

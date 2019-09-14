@@ -151,6 +151,9 @@ int app_start( int writePid )
 
 	notice( "%s v%s starting up.", _proc->app_upper, _proc->version );
 
+	if( recursive_mkdir( _proc->basedir ) )
+		fatal( "Could not create/find base dir %s -- %s", _proc->basedir, Err );
+
 	if( chdir( _proc->basedir ) )
 		fatal( "Could not chdir to base dir %s -- %s", _proc->basedir, Err );
 	else

@@ -13,7 +13,7 @@
 
 const char *stats_type_names[STATS_TYPE_MAX] =
 {
-	"stats", "adder", "gauge", "self"
+	"stats", "adder", "gauge", "histo", "self"
 };
 
 
@@ -31,7 +31,7 @@ STAT_CTL *stats_config_defaults( void )
 	s->stats->type    = STATS_TYPE_STATS;
 	s->stats->dtype   = DATA_TYPE_STATS;
 	s->stats->name    = stats_type_names[STATS_TYPE_STATS];
-	s->stats->hsize   = 0;
+	s->stats->hsize   = MEM_HSZ_MEDIUM;
 	s->stats->enable  = 1;
 	stats_prefix( s->stats, DEFAULT_STATS_PREFIX );
 
@@ -42,7 +42,7 @@ STAT_CTL *stats_config_defaults( void )
 	s->adder->type    = STATS_TYPE_ADDER;
 	s->adder->dtype   = DATA_TYPE_ADDER;
 	s->adder->name    = stats_type_names[STATS_TYPE_ADDER];
-	s->adder->hsize   = 0;
+	s->adder->hsize   = MEM_HSZ_LARGE;
 	s->adder->enable  = 1;
 	stats_prefix( s->adder, DEFAULT_ADDER_PREFIX );
 
@@ -53,9 +53,20 @@ STAT_CTL *stats_config_defaults( void )
 	s->gauge->type    = STATS_TYPE_GAUGE;
 	s->gauge->dtype   = DATA_TYPE_GAUGE;
 	s->gauge->name    = stats_type_names[STATS_TYPE_GAUGE];
-	s->gauge->hsize   = 0;
+	s->gauge->hsize   = MEM_HSZ_TINY;
 	s->gauge->enable  = 1;
 	stats_prefix( s->gauge, DEFAULT_GAUGE_PREFIX );
+
+	s->histo          = (ST_CFG *) allocz( sizeof( ST_CFG ) );
+	s->histo->threads = DEFAULT_HISTO_THREADS;
+	s->histo->statfn  = &stats_histo_pass;
+	s->histo->period  = DEFAULT_STATS_MSEC;
+	s->histo->type    = STATS_TYPE_HISTO;
+	s->histo->dtype   = DATA_TYPE_HISTO;
+	s->histo->name    = stats_type_names[STATS_TYPE_HISTO];
+	s->histo->hsize   = MEM_HSZ_SMALL;
+	s->histo->enable  = 1;
+	stats_prefix( s->histo, DEFAULT_HISTO_PREFIX );
 
 	s->self           = (ST_CFG *) allocz( sizeof( ST_CFG ) );
 	s->self->threads  = 1;
@@ -107,17 +118,27 @@ STAT_CTL *stats_config_defaults( void )
 }
 
 
+static ST_HIST __stats_histcf;
+static int __stats_histcf_state = 0;
+
+#define HistCfCheck			if( !__stats_histcf_state ) { warn( "Histogram block was not begun." ); return -1; }
+
 int stats_config_line( AVP *av )
 {
 	char *d, *pm, *lbl, *fmt, thrbuf[64];
+	ST_HIST *nh, *h = &__stats_histcf;
+	STAT_CTL *s = ctl->stats;
 	int i, t, l, mid, top;
 	ST_THOLD *th;
-	STAT_CTL *s;
 	ST_CFG *sc;
 	int64_t v;
 	WORDS wd;
 
-	s = ctl->stats;
+	if( !__stats_histcf_state )
+	{
+		memset( h, 0, sizeof( ST_HIST ) );
+		h->enabled = 1;
+	}
 
 	if( !( d = strchr( av->aptr, '.' ) ) )
 	{
@@ -128,9 +149,9 @@ int stats_config_line( AVP *av )
 				warn( "Invalid thresholds string: %s", av->vptr );
 				return -1;
 			}
-			if( wd.wc > 20 )
+			if( wd.wc > STATS_THRESH_MAX )
 			{
-				warn( "A maximum of 20 thresholds is allowed." );
+				warn( "A maximum of %d thresholds is allowed.", STATS_THRESH_MAX );
 				return -1;
 			}
 
@@ -184,6 +205,7 @@ int stats_config_line( AVP *av )
 				s->stats->period = v;
 				s->adder->period = v;
 				s->gauge->period = v;
+				s->histo->period = v;
 				s->self->period  = v;
 				debug( "All stats periods set to %d msec.", v );
 			}
@@ -209,16 +231,18 @@ int stats_config_line( AVP *av )
 
 	++d;
 
-	if( !strncasecmp( av->aptr, "stats.", 6 ) )
+	if( attIsN( "stats.", 6 ) )
 		sc = s->stats;
-	else if( !strncasecmp( av->aptr, "adder.", 6 ) )
+	else if( attIsN( "adder.", 6 ) )
 		sc = s->adder;
 	// because I'm nice that way (plus, I keep mis-typing it...)
-	else if( !strncasecmp( av->aptr, "gauge.", 6 ) || !strncasecmp( av->aptr, "guage.", 6 ) )
+	else if( attIsN( "gauge.", 6 ) || attIsN( "guage.", 6 ) )
 		sc = s->gauge;
-	else if( !strncasecmp( av->aptr, "self.", 5 ) )
+	else if( attIsN( "histo.", 6 ) )
+		sc = s->histo;
+	else if( attIsN( "self.", 5 ) )
 		sc = s->self;
-	else if( !strncasecmp( av->aptr, "moments.", 8 ) )
+	else if( attIsN( "moments.", 8 ) )
 	{
 		av->alen -= 8;
 		av->aptr += 8;
@@ -253,7 +277,7 @@ int stats_config_line( AVP *av )
 
 		return 0;
 	}
-	else if( !strncasecmp( av->aptr, "mode.", 5 ) )
+	else if( attIsN( "mode.", 5 ) )
 	{
 		av->alen -= 5;
 		av->aptr += 5;
@@ -288,7 +312,7 @@ int stats_config_line( AVP *av )
 
 		return 0;
 	}
-	else if( !strncasecmp( av->aptr, "predict.", 8 ) )
+	else if( attIsN( "predict.", 8 ) )
 	{
 		av->alen -= 8;
 		av->aptr += 8;
@@ -330,6 +354,146 @@ int stats_config_line( AVP *av )
 			if( regex_list_add( av->vptr, 1, s->pred->rgx ) )
 				return -1;
 			debug( "Added prediction blacklist regex: %s", av->vptr );
+		}
+		else
+			return -1;
+
+		return 0;
+	}
+	else if( attIsN( "histogram.", 10 ) )
+	{
+		av->aptr += 10;
+		av->alen -= 10;
+
+		if( attIs( "begin" ) )
+		{
+			if( s->histcf_count >= MAX_HISTCF_COUNT )
+			{
+				err( "Ministry does not support more than %d histogram configs.", MAX_HISTCF_COUNT );
+				return -1;
+			}
+
+			if( h->name )
+			{
+				warn( "Histogram block '%s' was already in progress.", h->name );
+				free( h->name );
+			}
+
+			h->name = str_copy( av->vptr, av->vlen );
+
+			if( !h->rgx )
+				h->rgx = regex_list_create( 1 );
+
+			__stats_histcf_state = 1;
+		}
+		else if( attIs( "enable" ) )
+		{
+			HistCfCheck;
+
+			h->enabled = config_bool( av );
+		}
+		else if( attIs( "default" ) )
+		{
+			HistCfCheck;
+
+			h->is_default = config_bool( av );
+
+			if( h->is_default )
+			{
+				for( nh = s->histcf; nh; nh = nh->next )
+					if( nh->is_default )
+					{
+						err( "Two histogram configs are labelled default, '%s' and '%s'.",
+							nh->name, h->name );
+						return -1;
+					}
+			}
+		}
+		else if( attIs( "bounds" ) )
+		{
+			HistCfCheck;
+
+			if( strwords( &wd, av->vptr, av->vlen, ',' ) <= 0 )
+			{
+				err( "Invalid bounds string: %s", av->vptr );
+				return -1;
+			}
+
+			if( wd.wc > STATS_HISTO_MAX )
+			{
+				err( "A maximum of %d histogram bounds is supported.", STATS_HISTO_MAX );
+				return -1;
+			}
+
+			if( h->bounds )
+			{
+				warn( "Histogram block '%s' already had bounds set.", h->name );
+				free( h->bounds );
+			}
+
+			h->bcount = wd.wc + 1;
+			h->brange = wd.wc;
+			h->bounds = (double *) allocz( h->brange * sizeof( double ) );
+
+			for( i = 0; i < wd.wc; ++i )
+			{
+				trim( &(wd.wd[i]), &(wd.len[i]) );
+				h->bounds[i] = strtod( wd.wd[i], NULL );
+			}
+
+			// and sort those into ascending order
+			sort_qsort_dbl_arr( h->bounds, wd.wc );
+		}
+		else if( attIs( "whitelist" ) )
+		{
+			HistCfCheck;
+
+			if( regex_list_add( av->vptr, 0, h->rgx ) )
+				return -1;
+
+			debug( "Added histogram %s whitelist regex: %s", h->name, av->vptr );
+		}
+		else if( attIs( "blacklist" ) )
+		{
+			HistCfCheck;
+
+			if( regex_list_add( av->vptr, 1, h->rgx ) )
+				return -1;
+
+			debug( "Added histogram %s blacklist regex: %s", h->name, av->vptr );
+		}
+		else if( attIs( "end" ) )
+		{
+			if( !__stats_histcf_state )
+			{
+				warn( "Saw histogram.end without a histogram.begin." );
+				return -1;
+			}
+			__stats_histcf_state = 0;
+
+			if( !h->name || !h->brange || !h->rgx->count )
+			{
+				err( "Incomplete histogram block - must have a bounds list and regex matches." );
+				return -1;
+			}
+
+			// make a copy
+			nh  = (ST_HIST *) allocz( sizeof( ST_HIST ) );
+			*nh = *h;
+
+			memset( h, 0, sizeof( ST_HIST ) );
+
+			// and link it
+			nh->next  = s->histcf;
+			s->histcf = nh;
+
+			// report our size
+			debug( "Histogram Config %s:", nh->name );
+			for( i = 0; i < nh->brange; ++i )
+				debug( "   %d   <=  %f", i, nh->bounds[i] );
+			debug( "   %d  <=  +Infinity", i );
+
+			++(s->histcf_count);
 		}
 		else
 			return -1;
@@ -389,4 +553,5 @@ int stats_config_line( AVP *av )
 }
 
 
+#undef HistCfCheck
 

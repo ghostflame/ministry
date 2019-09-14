@@ -32,10 +32,12 @@ typedef pthread_mutex_t			dhash_lock_t;
 #define lock_adder( d )			lock_dhash( d )
 #define lock_stats( d )			lock_dhash( d )
 #define lock_gauge( d )			lock_dhash( d )
+#define lock_histo( d )			lock_dhash( d )
 
 #define unlock_adder( d )		unlock_dhash( d )
 #define unlock_stats( d )		unlock_dhash( d )
 #define unlock_gauge( d )		unlock_dhash( d )
+#define unlock_histo( d )		unlock_dhash( d )
 
 #define lock_table( idx )		pthread_mutex_lock(   &(ctl->locks->table[idx & HASHT_MUTEX_MASK]) )
 #define unlock_table( idx )		pthread_mutex_unlock( &(ctl->locks->table[idx & HASHT_MUTEX_MASK]) )

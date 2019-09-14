@@ -15,6 +15,7 @@ struct targets_defaults targets_data[METRIC_TYPE_MAX] =
 	{	METRIC_TYPE_ADDER,	DEFAULT_ADDER_PORT,		"adder"		},
 	{	METRIC_TYPE_STATS,	DEFAULT_STATS_PORT,		"stats"		},
 	{	METRIC_TYPE_GAUGE,	DEFAULT_GAUGE_PORT,		"gauge"		},
+	{	METRIC_TYPE_HISTO,	DEFAULT_HISTO_PORT,		"histo"		},
 	{	METRIC_TYPE_COMPAT,	DEFAULT_COMPAT_PORT,	"compat"	}
 };
 
