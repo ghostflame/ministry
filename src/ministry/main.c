@@ -37,10 +37,7 @@ void main_loop( void )
 	targets_start( );
 
 	// throw the data submission loops
-	stats_start( ctl->stats->stats );
-	stats_start( ctl->stats->adder );
-	stats_start( ctl->stats->gauge );
-	stats_start( ctl->stats->self );
+	stats_start( );
 
 	// and init posts
 	post_init( );

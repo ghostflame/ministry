@@ -57,7 +57,7 @@ void stats_loop( THRD *t )
 
 
 
-void stats_start( ST_CFG *cf )
+void stats_start_one( ST_CFG *cf )
 {
 	int i;
 
@@ -72,6 +72,16 @@ void stats_start( ST_CFG *cf )
 		thread_throw_named_f( &stats_loop, &(cf->ctls[i]), i, "%s_%d", cf->name, i );
 
 	info( "Started %s data processing loops.", cf->name );
+}
+
+
+void stats_start( void )
+{
+	stats_start_one( ctl->stats->stats );
+	stats_start_one( ctl->stats->adder );
+	stats_start_one( ctl->stats->gauge );
+	stats_start_one( ctl->stats->histo );
+	stats_start_one( ctl->stats->self );
 }
 
 
@@ -171,13 +181,74 @@ void stats_init_control( ST_CFG *c, int alloc_data )
 
 
 
+void stats_init_histograms( void )
+{
+	ST_HIST *h;
+
+	// do we need to create one?
+	if( !ctl->stats->histcf )
+	{
+		info( "There are no configured histograms - installing a dummy one." );
+
+		h             = (ST_HIST *) allocz( sizeof( ST_HIST ) );
+		h->rgx        = regex_list_create( 1 );
+		h->bounds     = (double *) allocz( sizeof( double ) );
+		h->bounds[0]  = 1.0;
+		h->brange     = 1;
+		h->bcount     = 2;
+		regex_list_add( ".", 0, h->rgx );
+		h->is_default = 1;
+		h->enabled    = 1;
+
+		ctl->stats->histcf = h;
+	}
+
+	// look for a default
+	for( h = ctl->stats->histcf; h; h = h->next )
+		if( h->enabled && h->is_default )
+		{
+			ctl->stats->histdefl = h;
+			break;
+		}
+
+	// without a configured default, we choose the 'last' one, that's enabled
+	// start at the top of the list
+	if( !ctl->stats->histdefl )
+	{
+		for( h = ctl->stats->histcf; h; h = h->next )
+			if( h->enabled )
+			{
+				ctl->stats->histdefl = h;
+				info( "Nominated histogram block '%s' as default.", h->name );
+				break;
+			}
+
+		// OK, seriously - NO enabled configs?
+		// Fine, we are switching the last one one.
+		if( !h )
+		{
+			ctl->stats->histdefl = ctl->stats->histcf;
+			ctl->stats->histdefl->enabled = 1;
+			warn( "Forcibly enabling histogram block '%s' as the nominated default block.",
+				ctl->stats->histdefl->name );
+		}
+	}
+
+	// reverse the list, back into config order
+	mem_reverse_list( &(ctl->stats->histcf) );
+}
+
+
 void stats_init( void )
 {
 	struct timespec ts;
 
+	stats_init_histograms( );
+
 	stats_init_control( ctl->stats->stats, 1 );
 	stats_init_control( ctl->stats->adder, 1 );
 	stats_init_control( ctl->stats->gauge, 1 );
+	stats_init_control( ctl->stats->histo, 1 );
 
 	// let's not always seed from 1, eh?
 	clock_gettime( CLOCK_REALTIME, &ts );

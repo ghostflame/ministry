@@ -19,4 +19,6 @@ void sort_qsort_glibc( ST_THR *t, int32_t ct );		// legacy
 void sort_qsort_dbl( ST_THR *t, int32_t ct );		// faster below 10k
 void sort_radix11( ST_THR *t, int32_t ct );			// faster above 10k
 
+void sort_qsort_dbl_arr( double *arr, int32_t ct );	// fn exposed for histogram bounds
+
 #endif

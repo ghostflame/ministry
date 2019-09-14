@@ -53,6 +53,7 @@ NETW_CTL *network_config_defaults( void )
 	netw->stats  = network_type_defaults( DATA_TYPE_STATS );
 	netw->adder  = network_type_defaults( DATA_TYPE_ADDER );
 	netw->gauge  = network_type_defaults( DATA_TYPE_GAUGE );
+	netw->histo  = network_type_defaults( DATA_TYPE_HISTO );
 	netw->compat = network_type_defaults( DATA_TYPE_COMPAT );
 
 	return netw;

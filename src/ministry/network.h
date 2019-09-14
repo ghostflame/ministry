@@ -13,6 +13,7 @@
 #define DEFAULT_STATS_PORT				9125
 #define DEFAULT_ADDER_PORT				9225
 #define DEFAULT_GAUGE_PORT				9325
+#define DEFAULT_HISTO_PORT				9425
 #define DEFAULT_COMPAT_PORT				8125
 
 #define DEFAULT_TARGET_HOST				"127.0.0.1"
@@ -25,6 +26,7 @@ struct network_control
 	NET_TYPE			*	stats;
 	NET_TYPE			*	adder;
 	NET_TYPE			*	gauge;
+	NET_TYPE			*	histo;
 	NET_TYPE			*	compat;
 };
 

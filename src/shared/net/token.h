@@ -16,6 +16,7 @@
 #define TOKEN_TYPE_STATS			0x01
 #define TOKEN_TYPE_ADDER			0x02
 #define TOKEN_TYPE_GAUGE			0x04
+#define TOKEN_TYPE_HISTO			0x08
 
 #define TOKEN_TYPE_ALL				0xff
 

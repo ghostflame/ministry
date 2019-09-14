@@ -245,7 +245,7 @@ int __config_read_file( FILE *fh )
 				{
 					err( "Bad config in file '%s', line %d (repeat arg %s)",
 						context->source, context->lineno, arg );
-					info( "Bad line: %s = %s", av.aptr, av.vptr );
+					info( "Bad line: %s = %s", av.att, av.val );
 					break;
 				}
 			}

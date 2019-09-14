@@ -41,6 +41,7 @@ const char *metric_type_names[METRIC_TYPE_MAX] =
 	"adder",
 	"stats",
 	"gauge",
+	"histo",
 	"compat"
 };
 

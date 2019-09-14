@@ -89,8 +89,8 @@ TOKEN *token_find( uint32_t ip, int8_t bit, int64_t val )
 
 static int64_t token_id = 0;
 
-static char *token_type_names[4] = {
-	"stats", "adder", "gauge", "weird"
+static char *token_type_names[5] = {
+	"stats", "adder", "gauge", "histo", "weird"
 };
 
 TOKEN *__token_generate_type( uint32_t ip, int16_t type )
@@ -116,11 +116,14 @@ TOKEN *__token_generate_type( uint32_t ip, int16_t type )
 		case TOKEN_TYPE_ADDER:
 			t->name = token_type_names[1];
 			break;
-			case TOKEN_TYPE_GAUGE:
+		case TOKEN_TYPE_GAUGE:
 			t->name = token_type_names[2];
 			break;
-		default:
+		case TOKEN_TYPE_HISTO:
 			t->name = token_type_names[3];
+			break;
+		default:
+			t->name = token_type_names[4];
 			break;
 	}
 

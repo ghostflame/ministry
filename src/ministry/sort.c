@@ -237,7 +237,7 @@ typedef struct
       stack size is needed (actually O(1) in this case)!  */
 
 
-void __sort_qsort_dbl( double *arr, int32_t ct )
+void sort_qsort_dbl_arr( double *arr, int32_t ct )
 {
 	double swtmp = 0.0;
 
@@ -402,7 +402,7 @@ void __sort_qsort_dbl( double *arr, int32_t ct )
 // sorter fn
 void sort_qsort_dbl( ST_THR *t, int32_t ct )
 {
-	__sort_qsort_dbl( t->wkspc, ct );
+	sort_qsort_dbl_arr( t->wkspc, ct );
 }
 
 

@@ -16,12 +16,16 @@ loop_call_fn stats_thread_pass;
 throw_fn stats_loop;
 
 
+#define STATS_HISTO_MAX			10
+#define STATS_THRESH_MAX		20
+
 
 enum stats_types
 {
 	STATS_TYPE_STATS = 0,
 	STATS_TYPE_ADDER,
 	STATS_TYPE_GAUGE,
+	STATS_TYPE_HISTO,
 	STATS_TYPE_SELF,
 	STATS_TYPE_MAX
 };
@@ -98,6 +102,22 @@ struct stat_moments
 
 
 
+struct stat_hist_conf
+{
+	ST_HIST			*	next;
+	RGXL			*	rgx;
+	char			*	name;
+	double			*	bounds;
+
+	int32_t				matches;
+
+	int8_t				bcount;
+	int8_t				brange; // == count - 1
+	int8_t				enabled;
+	int8_t				is_default;
+};
+
+
 
 struct stat_config
 {
@@ -137,6 +157,7 @@ struct stats_control
 	ST_CFG			*	stats;
 	ST_CFG			*	adder;
 	ST_CFG			*	gauge;
+	ST_CFG			*	histo;
 	ST_CFG			*	self;
 
 	ST_THOLD		*	thresholds;
@@ -144,10 +165,14 @@ struct stats_control
 	ST_MOM			*	mode;
 	ST_PRED			*	pred;
 
+	ST_HIST			*	histcf;
+	ST_HIST			*	histdefl;
+
 	ST_MET			*	metrics;
 
 	// for new sorting
 	int32_t				qsort_thresh;
+	int32_t				histcf_count;
 };
 
 // target timestamp functions
@@ -160,7 +185,7 @@ tsf_fn stats_tsf_dotusec;
 tsf_fn stats_tsf_dotnsec;
 
 
-void stats_start( ST_CFG *cf );
+void stats_start( void );
 void stats_init( void );
 void stats_stop( void );
 

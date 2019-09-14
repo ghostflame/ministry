@@ -114,6 +114,9 @@ int8_t percent( void );
 // processing a config line in variable/value
 int var_val( char *line, int len, AVP *av, int flags );
 
+// make a directory
+int recursive_mkdir( char *path );
+
 // handle our pidfile
 void pidfile_write( void );
 void pidfile_remove( void );
