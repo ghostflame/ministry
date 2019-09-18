@@ -15,18 +15,9 @@
 // rounds the structure to 16k with a spare space
 #define PTLIST_SIZE				2046
 
-#define LINE_SEPARATOR			'\n'
-#define FIELD_SEPARATOR			' '
-
 #define DHASH_CHECK_MOMENTS		0x01
 #define DHASH_CHECK_MODE		0x02
 #define DHASH_CHECK_PREDICT		0x04
-
-#define TCP_THRD_DADDER			30
-#define TCP_THRD_DSTATS			60
-#define TCP_THRD_DGAUGE			10
-#define TCP_THRD_DHISTO			30
-#define TCP_THRD_DCOMPAT		20
 
 
 enum data_conn_type
@@ -46,6 +37,7 @@ struct data_type_params
 	line_fn			*	lf;
 	line_fn			*	pf;
 	add_fn			*	af;
+	dupd_fn			*	uf;
 	buf_fn			*	bp;
 	int16_t				tokn;
 	uint16_t			port;
@@ -53,6 +45,7 @@ struct data_type_params
 	int8_t				styl;
 	char			*	sock;
 	NET_TYPE		*	nt;
+	ST_CFG			*	stc;
 };
 
 extern DTYPE data_type_defns[];
@@ -136,6 +129,13 @@ struct data_hash_entry	// size 104
 uint64_t data_path_hash_wrap( char *path, int len );
 
 DHASH *data_locate( char *path, int len, int type );
+DHASH *data_get_dhash( char *path, int len, ST_CFG *c );
+
+
+dupd_fn data_update_stats;
+dupd_fn data_update_histo;
+dupd_fn data_update_adder;
+dupd_fn data_update_gauge;
 
 add_fn data_point_stats;
 add_fn data_point_adder;
@@ -147,9 +147,13 @@ line_fn data_line_compat;
 line_fn data_line_min_prefix;
 line_fn data_line_com_prefix;
 
-curlw_cb data_fetch_cb;
+curlw_cb  data_fetch_cb;
+curlw_jcb data_fetch_jcb;
 
 buf_fn data_parse_buf;
+
+// handle json data
+int data_parse_json( json_object *jo, DTYPE *dt );
 
 void data_start( NET_TYPE *nt );
 

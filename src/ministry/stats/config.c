@@ -78,6 +78,12 @@ STAT_CTL *stats_config_defaults( void )
 	s->self->enable   = 1;
 	stats_prefix( s->self, DEFAULT_SELF_PREFIX );
 
+	// type these up to the data type definitions
+	data_type_defns[s->stats->dtype].stc = s->stats;
+	data_type_defns[s->adder->dtype].stc = s->adder;
+	data_type_defns[s->gauge->dtype].stc = s->gauge;
+	data_type_defns[s->histo->dtype].stc = s->histo;
+
 	// moment checks are off by default
 	s->mom            = (ST_MOM *) allocz( sizeof( ST_MOM ) );
 	s->mom->min_pts   = DEFAULT_MOM_MIN;

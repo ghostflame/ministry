@@ -53,6 +53,7 @@ typedef void targets_fn ( ST_THR *, BUF *, IOBUF * );
 typedef void tsf_fn ( ST_THR *, BUF * );
 typedef void stats_fn ( ST_THR * );
 typedef void pred_fn ( ST_THR *, DHASH * );
+typedef void dupd_fn ( DHASH *, double, char );
 typedef void synth_fn( SYNTH * );
 
 

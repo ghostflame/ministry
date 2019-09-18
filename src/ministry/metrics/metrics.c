@@ -1,3 +1,4 @@
+
 /**************************************************************************
 * This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
@@ -380,7 +381,7 @@ void metrics_fetch_cb( void *arg, IOBUF *b )
 	while( len > 0 )
 	{
 		// look for newlines
-		if( !( q = memchr( s, LINE_SEPARATOR, len ) ) )
+		if( !( q = memchr( s, LINE_SEP_CHAR, len ) ) )
 			// and we're done, with len > 0
 			break;
 

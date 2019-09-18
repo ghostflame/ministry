@@ -152,7 +152,8 @@ void fetch_loop( THRD *t )
 			return;
 		}
 
-		f->ch->cb = &data_fetch_cb;
+		f->ch->cb  = &data_fetch_cb;
+		f->ch->jcb = &data_fetch_jcb;
 	}
 
 	// we may well have got 0-ttl dns, eg in Kubernetes, or from consul

@@ -29,7 +29,7 @@
 #include "fetch.h"
 #include "post.h"
 #include "targets.h"
-#include "data.h"
+#include "data/data.h"
 #include "metrics/metrics.h"
 #include "gc.h"
 #include "mem.h"

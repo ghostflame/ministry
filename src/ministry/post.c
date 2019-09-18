@@ -91,8 +91,26 @@ int post_handle_data( HTREQ *req )
 
 
 
+
+
 int post_handler( HTREQ *req )
 {
+	int ret = 0;
+
+	if( req->is_json )
+	{
+		//notice( "Received a submission as json." );
+
+		// we won't get called until the json is parsed
+		// and called just a single time
+		ret = data_parse_json( req->post->jo, (DTYPE *) req->path->arg );
+
+		if( ret < 0 )
+			req->code = MHD_HTTP_UNPROCESSABLE_ENTITY;
+
+		return ret;
+	}
+
 	switch( req->post->state )
 	{
 		case HTTP_POST_START:
