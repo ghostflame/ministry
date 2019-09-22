@@ -11,7 +11,7 @@
 #define MINISTRY_METRICS_LOCAL_H
 
 #define METR_BUF_SZ			4096
-
+#define LINE_SEP_CHAR		'\n'
 
 #include "ministry.h"
 

@@ -137,6 +137,7 @@ int http_calls_count( HTREQ *req )
 
 void __http_calls_usage_type( HTHDLS *hd, BUF *b )
 {
+	char *jflag;
 	HTPATH *p;
 
 	if( hd->count )
@@ -144,10 +145,10 @@ void __http_calls_usage_type( HTHDLS *hd, BUF *b )
 		strbuf_aprintf( b, "[%s]\n", hd->method );
 
 		for( p = hd->list; p; p = p->next )
-			strbuf_aprintf( b, "%-24s  %s  %s\n",
-				p->path,
-				( p->flags & HTTP_FLAGS_JSON ) ? "json" : "    ",
-				p->desc );
+		{
+			jflag = ( p->flags & HTTP_FLAGS_JSON ) ? "json" : "    ";
+			strbuf_aprintf( b, "%-24s  %s  %s\n", p->path, jflag, p->desc );
+		}
 	}
 }
 

@@ -71,6 +71,9 @@ void fetch_make_url( FETCH *f )
 	f->ch->url = str_perm( l + 1 );
 	memcpy( f->ch->url, urlbuf, l );
 	f->ch->url[l] = '\0';
+
+	// we might get json
+	setCurlF( f->ch, PARSE_JSON );
 }
 
 
@@ -152,7 +155,8 @@ void fetch_loop( THRD *t )
 			return;
 		}
 
-		f->ch->cb = &data_fetch_cb;
+		f->ch->cb  = &data_fetch_cb;
+		f->ch->jcb = &data_fetch_jcb;
 	}
 
 	// we may well have got 0-ttl dns, eg in Kubernetes, or from consul
@@ -177,8 +181,12 @@ int fetch_init( void )
 	// fix the order, for what it matters
 	ctl->fetch->targets = mem_reverse_list( ctl->fetch->targets );
 
-	for( i = 0, f = ctl->fetch->targets; f; ++i, f = f->next )
-		thread_throw_named_f( fetch_loop, f, i, "fetch_loop_%d", i );
+	for( i = 0, f = ctl->fetch->targets; f; f = f->next )
+		if( f->enabled )
+		{
+			thread_throw_named_f( fetch_loop, f, i, "fetch_loop_%d", i );
+			++i;
+		}
 
 	return ctl->fetch->fcount;
 }
@@ -213,6 +221,7 @@ int fetch_config_line( AVP *av )
 		f->bufsz = DEFAULT_FETCH_BUF_SZ;
 		f->metdata = (MDATA *) allocz( sizeof( MDATA ) );
 		f->metdata->hsz = METR_HASH_SZ;
+		f->enabled = 1;
 
 		// set validate by default if we are given it on
 		// the command line.  It principally affects config
@@ -396,6 +405,11 @@ int fetch_config_line( AVP *av )
 	else if( attIs( "attribute" ) )
 	{
 		// prometheus attribute map
+		__fetch_config_state = 1;
+	}
+	else if( attIs( "enable" ) )
+	{
+		f->enabled = config_bool( av );
 		__fetch_config_state = 1;
 	}
 	else if( attIs( "done" ) )

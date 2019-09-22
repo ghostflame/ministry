@@ -136,7 +136,7 @@ int read_file( char *path, char **buf, int *len, int perm, char *desc )
 		return -4;
 	}
 
-	if( ( fd = open( path, O_RDONLY ) ) < 0 )
+	if( ( fd = open( path, O_RDONLY|O_CLOEXEC ) ) < 0 )
 	{
 		err( "Cannot open %s %s: %s", desc, path, Err );
 		return -5;

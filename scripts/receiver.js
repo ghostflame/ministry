@@ -5,7 +5,7 @@ var util = require( 'util' );
 
 // listens on 12003-12005 and reports counts
 
-function PortCounter( port ) {
+function PortCounter( port, show ) {
 
 	var svr = null;
 	var ctr = 0;
@@ -25,6 +25,10 @@ function PortCounter( port ) {
 			buf  = lns.pop( );
 			ctr += lns.length;
 			cct += lns.length;
+
+			if( show ) {
+				process.stdout.write( d );
+			}
 		});
 		sk.on( 'close', function( ) {
 			console.log( 'Connection from ' + remote + ' closed after ' + cct + ' lines.' );
@@ -37,7 +41,7 @@ function PortCounter( port ) {
 
 	svr = net.createServer( connHandler );
 	svr.listen( port, '0.0.0.0', function( ) {
-		console.log( 'Server listening on port ' + port + '.' );
+		console.log( 'Server listening on port ' + port + ( show ? ' (echoing).' : '.' ) );
 	});
 }
 
@@ -45,10 +49,16 @@ function PortCounter( port ) {
 var ctrs = { };
 var prts = [ 12003, 12004, 12005 ];
 var totl = 0;
+var show = false;
 
 for( var i = 0; i < prts.length; i++ ) {
+	if( prts[i] === 12003 ) {
+		show = true;
+	} else {
+		show = false;
+	}
 	ctrs[prts[i]] = {
-		ctr:	new PortCounter( prts[i] ),
+		ctr:	new PortCounter( prts[i], show ),
 		sum:	0,
 		prv:    0,
 		lps:    0,
