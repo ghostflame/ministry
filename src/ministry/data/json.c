@@ -122,6 +122,7 @@ int data_parse_json( json_object *jo, DTYPE *dt )
 		return -1;
 
 	pl = json_object_array_length( jo );
+
 	for( i = 0; i < pl; ++i )
 	{
 		if( !( el = json_object_array_get_idx( jo, i ) ) )
@@ -136,6 +137,5 @@ int data_parse_json( json_object *jo, DTYPE *dt )
 void data_fetch_jcb( void *arg, json_object *jo )
 {
 	FETCH *f = (FETCH *) arg;
-
-	data_parse_json( f->dtype, jo );
+	data_parse_json( jo, f->dtype );
 }

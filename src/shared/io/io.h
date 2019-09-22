@@ -95,6 +95,8 @@ void io_buf_keep( IOBUF *buf, int len );
 
 // this does no length checking, that's the caller's problem
 #define io_buf_append( _b, _s, _l )			memcpy( _b->buf + _b->len, _s, _l ); _b->len += _l
+#define io_buf_zero( _b )					_b->buf = _b->ptr; _b->len = 0; _b->buf[0] = '\0'
+#define io_buf_space( _b )					( _b->sz - _b->len - 1 )
 
 // io fns
 io_fn io_send_net_tcp;

@@ -169,6 +169,42 @@ static size_t curlw_write_buf( void *contents, size_t size, size_t nmemb, void *
 
 
 
+void curlw_file_to_cb( CURLWH *ch )
+{
+	off_t sz, rb;
+	int d;
+
+	d = fileno( ch->fh );
+
+	// how big?
+	sz = lseek( d, 0L, SEEK_END );
+	lseek( d, 0L, SEEK_SET );
+
+	io_buf_zero( ch->iobuf );
+
+	while( sz > 0 )
+	{
+		rb = io_buf_space( ch->iobuf );
+		if( rb > sz )
+			rb = sz;
+
+		// read it in, continuing lines if needed
+		if( !fread( ch->iobuf->buf + ch->iobuf->len, rb, 1, ch->fh ) )
+		{
+			warn( "Failed to read in tmpfile from fetch -- %s", Err );
+			break;
+		}
+		ch->iobuf->len += rb;
+
+		// and call the callback on the buffer
+		(*(ch->cb))( ch->arg, ch->iobuf );
+
+		sz -= rb;
+	}
+}
+
+
+
 // try to curl to buffer, but fall back to file if the
 // response is bigger than we say we're allowed
 int curlw_fetch( CURLWH *ch )
@@ -219,12 +255,8 @@ int curlw_fetch( CURLWH *ch )
 	ret = 0;
 
 	// was it json?
-	if( chkCurlF( ch, PARSE_JSON )
-	 && !curlw_is_json( ch ) )
-	{
-		warn( "Parse json requested, but response is not json from url '%s'", ch->url );
+	if( chkCurlF( ch, PARSE_JSON ) && !curlw_is_json( ch ) )
 		cutCurlF( ch, PARSE_JSON );
-	}
 
 	if( chkCurlF( ch, TIMINGS ) )
 		curlw_get_times( ch );
@@ -257,21 +289,20 @@ CURLW_FETCH_CLEANUP:
 					if( ch->jcb )
 						(*(ch->jcb))( ch->arg, ch->jso );
 
-					// close the file down
-					fclose( ch->fh );
-					ch->fh = NULL;
-
 					// and delete that
 					json_object_put( ch->jso );
 					ch->jso = NULL;
 				}
 			}
+			else
+			{
+				// read it back in and hand it to the callback
+				curlw_file_to_cb( ch );
+			}
 		}
-		else
-		{
-			fclose( ch->fh );
-			ch->fh = NULL;
-		}
+
+		fclose( ch->fh );
+		ch->fh = NULL;
 	}
 	// or call the buffer callback one last time
 	else if( ch->iobuf && ch->iobuf->len > 0 && ch->cb )

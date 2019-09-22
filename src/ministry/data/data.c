@@ -275,7 +275,6 @@ __attribute__((hot)) int data_parse_buf( HOST *h, IOBUF *b )
 void data_fetch_cb( void *arg, IOBUF *b )
 {
 	FETCH *f = (FETCH *) arg;
-
 	data_parse_buf( f->host, b );
 }
 

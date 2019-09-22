@@ -43,6 +43,8 @@ struct fetch_target
 
 	int8_t				metrics;	// is it a metrics type?
 	int8_t				ready;
+	int8_t				enabled;
+
 	uint16_t			port;
 
 };
