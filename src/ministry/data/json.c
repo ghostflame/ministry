@@ -13,7 +13,7 @@
 
 int data_parse_json_element( DTYPE *dt, json_object *el )
 {
-	json_object *po, *vo, *ve;
+	json_object *po, *vo, *ve, *va;
 	const char *path, *sval;
 	enum json_type jt;
 	int plen, is_gg;
@@ -23,18 +23,23 @@ int data_parse_json_element( DTYPE *dt, json_object *el )
 	char op;
 
 	// look for the path
-	if( !( po = json_object_object_get( el, "path" ) )
-	 || !json_object_is_type( po, json_type_string ) )
+	if( ( !( po = json_object_object_get( el, "path" ) )
+	   && !( po = json_object_object_get( el, "target" ) ) )
+	   || !json_object_is_type( po, json_type_string ) )
 		return -1;
 
 	// then values or points
 	if( ( !( vo = json_object_object_get( el, "values" ) )
-	   && !( vo = json_object_object_get( el, "points" ) ) ) 
+	   && !( vo = json_object_object_get( el, "datapoints" ) ) )
 	   || !json_object_is_type( vo, json_type_array ) )
 		return 1;
 
 	path = json_object_get_string( po );
 	plen = json_object_get_string_len( po );
+
+	// reject paths with parentheses - they have functions in
+	if( memchr( path, '(', plen ) )
+		return 1;
 
 	if( !( d = data_get_dhash( (char *) path, plen, dt->stc ) ) )
 		return 1;
@@ -75,6 +80,19 @@ int data_parse_json_element( DTYPE *dt, json_object *el )
 				val = json_object_get_double( ve );
 				break;
 
+			case json_type_array:
+				// graphite format
+				if( json_object_array_length( ve ) != 2 )
+					continue;
+
+				// format is value, timestamp
+				// also, null happens
+				if( !( va = json_object_array_get_idx( ve, 0 ) ) )
+					continue;
+
+				val = json_object_get_double( va );
+				break;
+
 			default:
 				//info( "No type." );
 				continue;
@@ -82,6 +100,10 @@ int data_parse_json_element( DTYPE *dt, json_object *el )
 
 		//info( "[%s] Update %s with value %f, op %c.",
 		//	dt->name, d->path, val, op );
+
+		// check val is valid
+		if( !isnormal( val ) )
+			continue;
 
 		// call the update function
 		(*(dt->uf))( d, val, op );
