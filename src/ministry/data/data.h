@@ -12,6 +12,10 @@
 #ifndef MINISTRY_DATA_H
 #define MINISTRY_DATA_H
 
+// this is used in stats
+#define TAGS_SEPARATOR			';'
+
+
 // rounds the structure to 16k with a spare space
 #define PTLIST_SIZE				2046
 
@@ -99,7 +103,9 @@ struct data_hash_vals	// size 40
 struct data_hash_entry	// size 104
 {
 	DHASH			*	next;
-	char			*	path;
+	char			*	path;	// full path
+	char			*	base;	// copy with the base part
+	char			*	tags;	// does not hold memory - points into path
 
 	// in.points is pre-allocated by the stats pass
 	// we cannot assume in.points non-null means we
@@ -112,11 +118,14 @@ struct data_hash_entry	// size 104
 
 	dhash_lock_t	*	lock;
 
-	uint16_t			len;
-	uint16_t			sz;
-	uint32_t			id;
+	uint16_t			sz;		// alloc'd size
+	uint16_t			len;	// whole len
+	uint16_t			blen;	// base len
+	uint16_t			tlen;	// tags len
 
 	uint64_t			sum;
+
+	uint32_t			id;
 
 	uint8_t				valid;
 	uint8_t				do_pass;

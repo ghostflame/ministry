@@ -120,6 +120,10 @@ STAT_CTL *stats_config_defaults( void )
 	s->metrics->pct_time  = pmet_new( PMET_TYPE_GAUGE, "ministry_stats_thread_proc_time",
 	                                  "Percentage of available processing time used by a stats thread" );
 
+	// tags - new in graphite
+	s->tags_char     = TAGS_SEPARATOR;
+	s->tags_enabled  = 0;
+
 	return s;
 }
 
@@ -248,6 +252,24 @@ int stats_config_line( AVP *av )
 		sc = s->histo;
 	else if( attIsN( "self.", 5 ) )
 		sc = s->self;
+	else if( attIsN( "tags.", 5 ) )
+	{
+		av->alen -= 5;
+		av->aptr += 5;
+
+		if( attIs( "enable" ) )
+		{
+			s->tags_enabled = config_bool( av );
+		}
+		else if( attIs( "separator" ) )
+		{
+			s->tags_char = av->vptr[0];
+		}
+		else
+			return -1;
+
+		return 0;
+	}
 	else if( attIsN( "moments.", 8 ) )
 	{
 		av->alen -= 8;

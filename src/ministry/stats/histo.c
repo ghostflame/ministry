@@ -22,17 +22,17 @@ void stats_histo_one( ST_THR *t, DHASH *d )
 	// but leaving off the +Inf bound
 	for( i = 0; i < c->brange; ++i )
 	{
-		bprintf( t, "%s.%d.bound %f", d->path, i, c->bounds[i] );
-		bprintf( t, "%s.%d.count %lld", d->path, i, h->counts[i] );
+		bprintf( t, "%s.%d.bound%s %f",   d->base, d->tags, i, c->bounds[i] );
+		bprintf( t, "%s.%d.count%s %lld", d->base, d->tags, i, h->counts[i] );
 	}
 	// upper bound is +Inf, but we can't easily send that to carbon-cache
 	// without it spitting that back as 'Infinity' which is invalid JSON
 	// so we send it separately
 	// so we can't just set it as the last of the bounds
-	bprintf( t, "%s.inf.count %lld", d->path, h->counts[c->brange] );
+	bprintf( t, "%s.inf.count%s %lld", d->base, d->tags, h->counts[c->brange] );
 
 	// number of points
-	bprintf( t, "%s.total %lld", d->path, d->proc.count );
+	bprintf( t, "%s.total%s %lld", d->base, d->tags, d->proc.count );
 
 	t->points += d->proc.count;
 

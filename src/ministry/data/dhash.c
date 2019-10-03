@@ -154,6 +154,27 @@ DHASH *data_locate( char *path, int len, int type )
 }
 
 
+
+__attribute__((hot)) static inline void data_get_tags( DHASH *d )
+{
+	char *p;
+
+	if( !ctl->stats->tags_enabled )
+		return;
+
+	// if we have a tags separator, make some new space
+	if( ( p = memchr( d->path, ctl->stats->tags_char, d->len ) ) )
+	{
+		d->blen = p - d->path;
+		d->tlen = d->len - d->blen;
+
+		// these are capped so are usable in strings
+		d->base = str_copy( d->path, d->blen );
+		d->tags = str_copy( p, d->tlen );
+	}
+}
+
+
 __attribute__((hot)) static inline void data_get_dhash_extras( DHASH *d )
 {
 	ST_HIST *h = NULL;
@@ -173,6 +194,7 @@ __attribute__((hot)) static inline void data_get_dhash_extras( DHASH *d )
 				//debug( "Path %s will get mode processing.", d->path );
 				d->checks |= DHASH_CHECK_MODE;
 			}
+			data_get_tags( d );
 			break;
 
 		case DATA_TYPE_ADDER:
@@ -213,6 +235,7 @@ __attribute__((hot)) static inline void data_get_dhash_extras( DHASH *d )
 			d->in.hist.conf     = h;
 			d->proc.hist.conf   = h;
 
+			data_get_tags( d );
 			break;
 	}
 }

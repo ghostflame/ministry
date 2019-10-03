@@ -81,6 +81,14 @@ DHASH *mem_new_dhash( char *str, int len )
 	d->path[len] = '\0';
 	d->len = len;
 
+	// for now, base points to path
+	d->base = d->path;
+	d->blen = d->len;
+
+	// we need this but it starts empty
+	d->tags = "";
+	d->tlen = 0;
+
 	return d;
 }
 
@@ -97,11 +105,22 @@ void mem_free_dhash( DHASH **d )
 	sd->id       = 0;
 	*(sd->path)  = '\0';
 	sd->len      = 0;
+	sd->blen     = 0;
 	sd->in.total = 0;
 	sd->in.count = 0;
 	sd->type     = 0;
 	sd->valid    = 0;
 	sd->empty    = 0;
+
+	if( sd->tlen )
+	{
+		free( sd->tags );
+		free( sd->base );
+	}
+
+	sd->tlen = 0;
+	sd->base = NULL;
+	sd->tags = NULL;
 
 	if( sd->in.points )
 	{
@@ -133,12 +152,23 @@ void mem_free_dhash_list( DHASH *list )
 
 		*(d->path)  = '\0';
 		d->len      = 0;
+		d->blen     = 0;
 		d->in.total = 0;
 		d->in.count = 0;
 		d->type     = 0;
 		d->valid    = 0;
 		d->do_pass  = 0;
 		d->empty    = 0;
+
+		if( d->tlen )
+		{
+			free( d->tags );
+			free( d->base );
+		}
+
+		d->tlen = 0;
+		d->base = NULL;
+		d->tags = NULL;
 
 		if( d->in.points )
 		{
