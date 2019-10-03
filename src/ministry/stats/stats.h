@@ -173,6 +173,9 @@ struct stats_control
 	// for new sorting
 	int32_t				qsort_thresh;
 	int32_t				histcf_count;
+
+	char				tags_char;
+	int					tags_enabled;
 };
 
 // target timestamp functions

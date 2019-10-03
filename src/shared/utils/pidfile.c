@@ -95,7 +95,7 @@ int pidfile_mkdir( char *filepath )
 		return -1;
 	}
 
-	if( ( l = s - filepath ) > 2047 )
+	if( ( l = ( s - filepath ) ) > 2047 )
 	{
 		warn( "Pidfile path is too long, max length 2047." );
 		return -2;
@@ -116,7 +116,7 @@ void pidfile_write( void )
 	FILE *fh;
 
 	// make our piddir
-	if( recursive_mkdir( _proc->pidfile ) != 0 )
+	if( pidfile_mkdir( _proc->pidfile ) != 0 )
 	{
 		warn( "Unable to create pidfile directory." );
 		return;
