@@ -14,9 +14,9 @@ json_object *parse_json_file( FILE *fh, char *path )
 {
 	enum json_tokener_error jerr;
 	struct json_object *jo;
+	int d, cfh = 0;
 	char *m;
 	off_t s;
-	int d;
 
 	if( !fh )
 	{
@@ -32,6 +32,8 @@ json_object *parse_json_file( FILE *fh, char *path )
 				path, Err );
 			return NULL;
 		}
+
+		cfh = 1;
 	}
 
 	rewind( fh );
@@ -66,6 +68,9 @@ json_object *parse_json_file( FILE *fh, char *path )
 
 		return NULL;
 	}
+
+	if( cfh )
+		fclose( fh );
 
 	return jo;
 }
