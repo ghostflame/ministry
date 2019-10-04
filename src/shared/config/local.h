@@ -57,5 +57,6 @@ void config_choose_section( CCTXT *c, char *section );
 
 void config_set_main_file( char *path );
 void config_set_env_prefix( char *prefix );
+void config_set_suffix( char *suffix );
 
 #endif

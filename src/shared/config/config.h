@@ -24,6 +24,7 @@
 #define CONF_FLAG_SEC_VALIDATE		0x00001000
 #define CONF_FLAG_SEC_VALIDATE_F	0x00002000
 #define CONF_FLAG_KEY_PASSWORD		0x00004000
+#define CONF_FLAG_SUFFIX			0x00010000
 #define CONF_FLAG_TEST_ONLY			0x10000000
 #define CONF_FLAG_FILE_OPT			0x20000000
 
@@ -59,6 +60,7 @@ struct process_control
 	char					app_upper[CONF_LINE_MAX];
 	char				*	version;
 	char				*	tmpdir;
+	char				*	conf_sfx;
 	char					env_prfx[128];
 	char					cfg_file[CONF_LINE_MAX];
 	char					pidfile[CONF_LINE_MAX];
@@ -71,6 +73,7 @@ struct process_control
 	pthread_mutexattr_t		mtxa;
 
 	int						env_prfx_len;
+	int						cfg_sffx_len;
 	int						strict;
 	int						sect_count;
 	int						max_json_sz;

@@ -128,6 +128,9 @@ PROC_CTL *config_defaults( char *app_name, char *conf_dir )
 	buf[1023] = '\0';
 	_proc->hostname = str_dup( buf, 0 );
 
+	// prefer .conf files in includes
+	config_set_suffix( ".conf" );
+
 	snprintf( _proc->app_upper, CONF_LINE_MAX, "%s", app_name );
 	_proc->app_upper[0] = toupper( _proc->app_upper[0] );
 
@@ -161,6 +164,7 @@ PROC_CTL *config_defaults( char *app_name, char *conf_dir )
 	XsetcfFlag( _proc, READ_URL );
 	XsetcfFlag( _proc, READ_INCLUDE );
 	XsetcfFlag( _proc, URL_INC_URL );
+	XsetcfFlag( _proc, SUFFIX );
 	// but not: sec include non-sec, read non-sec, validate
 
 	// make sure our fixed config sections array is clean

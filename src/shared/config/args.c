@@ -32,6 +32,8 @@ Options:\n", _proc->app_name, _proc->app_name );
   -R --no-include             Disable all including of other config\n\
   -U --no-uri                 Disable all reading of URI's\n\
   -u --no-uri-include         Disable URI config including other URI's\n\
+  -X --no-suffix              Disable matching config file suffix in include-dir\n\
+  -x --suffix      <suffix>   Set config file suffix for include-dir\n\
   -i --insecure-uri           Allow insecure URI's\n\
   -I --insecure-include       Allow secure URI's to include insecure URI's\n\
   -K --interactive-pass       Interactively ask for an SSL key password\n\
@@ -44,7 +46,7 @@ Options:\n", _proc->app_name, _proc->app_name );
 }
 
 
-const char *config_args_opt_string = "HhDVvtsUuiIEKTWFdP:c:";
+const char *config_args_opt_string = "HhDVvtsUuiIEKTWFdXx:P:c:";
 char config_args_opt_merged[CONF_LINE_MAX];
 
 struct option long_options[] = {
@@ -58,11 +60,13 @@ struct option long_options[] = {
 	{ "env-prefix",         required_argument,    NULL, 'P' },
 	{ "pidfile",            required_argument,    NULL, 'p' },
 	{ "strict",             no_argument,          NULL, 's' },
+	{ "suffix",             required_argument,    NULL, 'x' },
 	// switches
 	{ "no-environment",     no_argument,          NULL, 'E' },
 	{ "no-config",          no_argument,          NULL, 'F' },
 	{ "no-uri",             no_argument,          NULL, 'U' },
 	{ "no-uri-include",     no_argument,          NULL, 'u' },
+	{ "no-suffix",          no_argument,          NULL, 'X' },
 	// security
 	{ "no-include",         no_argument,          NULL, 'R' },
 	{ "insecure-uri",       no_argument,          NULL, 'i' },
@@ -117,6 +121,34 @@ void config_set_env_prefix( char *prefix )
 	_proc->env_prfx_len = i;
 }
 
+void config_set_suffix( char *suffix )
+{
+	char tmp[256];
+	int len;
+
+	if( !suffix )
+		suffix = "";
+
+	if( *suffix == '.' )
+		++suffix;
+
+	if( *suffix )
+		len = snprintf( tmp, 256, ".%s", suffix );
+	else
+		len = 0;
+
+	if( _proc->conf_sfx )
+	{
+		free( _proc->conf_sfx );
+		_proc->conf_sfx = NULL;
+	}
+
+	if( len )
+		_proc->conf_sfx = str_copy( tmp, len );
+
+	_proc->cfg_sffx_len = len;
+}
+
 
 void config_args( int ac, char **av, char *optstr, help_fn *hfp )
 {
@@ -146,6 +178,12 @@ void config_args( int ac, char **av, char *optstr, help_fn *hfp )
 			case 'V':
 				runf_add( RUN_TGT_STDOUT );
 				log_set_force_stdout( 1 );
+				break;
+			case 'x':
+				config_set_suffix( optarg );
+				break;
+			case 'X':
+				cutcfFlag( SUFFIX );
 				break;
 			case 'v':
 				printf( "%s version: %s\n", _proc->app_upper, _proc->version );
