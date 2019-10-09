@@ -23,6 +23,7 @@ typedef struct net_control          NET_CTL;
 
 typedef struct config_section       CSECT;
 typedef struct config_context       CCTXT;
+typedef struct config_file          CFILE;
 
 typedef struct log_file             LOGFL;
 typedef struct log_setdebug         LOGSD;

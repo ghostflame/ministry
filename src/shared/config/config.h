@@ -81,6 +81,11 @@ struct process_control
 	int64_t					limits[RLIMIT_NLIMITS];
 	int8_t					setlim[RLIMIT_NLIMITS];
 
+	// config files
+	CFILE				*	cfiles;
+	int64_t					cf_chk_time;
+	int						cf_chk_ct;
+
 	// string stores
 	SSTR				*	stores;
 
@@ -100,6 +105,9 @@ struct process_control
 
 
 conf_line_fn config_line;
+
+loop_call_fn config_check_times;
+throw_fn config_monitor;
 
 void config_help( void );
 

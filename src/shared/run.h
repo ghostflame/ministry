@@ -22,6 +22,9 @@
 #define RUN_SHUTDOWN				0x00000020
 #define RUN_LOOP_CTL_MASK			0x00000030
 
+// turns off some behaviours
+#define RUN_BY_HAND					0x00000080
+
 
 // this one disables daemon
 #define RUN_TGT_STDOUT				0x00000100

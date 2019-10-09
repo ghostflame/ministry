@@ -219,6 +219,10 @@ void app_ready( void )
 
 	// now we can throw loops
 
+	// are we monitoring config?
+	if( _proc->cf_chk_time > 0 && !runf_has( RUN_BY_HAND ) )
+		thread_throw_named( &config_monitor, NULL, 0, "conf_monitor" );
+
 	// run mem check / prealloc
 	mem_startup( );
 

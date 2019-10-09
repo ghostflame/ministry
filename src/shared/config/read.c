@@ -431,6 +431,9 @@ int __config_read_file( FILE *fh )
 int config_read_file( char *path, int fail_ok )
 {
 	FILE *fh = NULL;
+	struct stat sb;
+	CFILE *cf;
+	char *p;
 
 	// die on not reading main config file, warn on others
 	if( !( fh = fopen( path, "r" ) ) )
@@ -444,6 +447,30 @@ int config_read_file( char *path, int fail_ok )
 		{
 			err( "Could not open config file '%s' -- %s", path, Err );
 			return -1;
+		}
+	}
+
+	// do we need a new cfile structure?
+	for( cf = _proc->cfiles; cf; cf = cf->next )
+		if( !strcmp( path, cf->fpath ) )
+			break;
+
+	if( !cf )
+	{
+		if( fstat( fileno( fh ), &sb ) )
+			warn( "Cannot stat config file %s -- %s", path, Err );
+		else if( !( p = realpath( path, NULL ) ) )
+			warn( "Cannot determine real path of config file %s -- %s",
+				path, Err );
+		else
+		{
+			cf        = (CFILE *) allocz( sizeof( CFILE ) );
+			cf->fpath = p;
+			cf->mtime = tsll( sb.st_mtim );
+
+			cf->next = _proc->cfiles;
+			_proc->cfiles = cf;
+			++(_proc->cf_chk_ct);
 		}
 	}
 
