@@ -61,9 +61,6 @@ void main_loop( void )
 	while( RUNNING( ) )
 		sleep( 1 );
 
-	// and http server
-	http_stop( );
-
 	// shut down stats
 	stats_stop( );
 
@@ -149,6 +146,9 @@ int main( int ac, char **av, char **env )
 
 	// and any synethics
 	synth_init( );
+
+	// add rmpaths
+	data_http_init( );
 
 	// lights up networking and starts listening
 	// also connects to graphite

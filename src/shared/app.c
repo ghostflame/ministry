@@ -266,6 +266,8 @@ __attribute__((noreturn)) void app_finish( int exval )
 
 	ha_shutdown( );
 
+	http_stop( );
+
 	io_stop( );
 
 	string_store_cleanup( _proc->stores );
