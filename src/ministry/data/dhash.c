@@ -241,6 +241,16 @@ __attribute__((hot)) static inline void data_get_dhash_extras( DHASH *d )
 }
 
 
+DHASH *data_find_dhash( const char *path, int len, ST_CFG *c )
+{
+	uint64_t hval, idx;
+
+	hval = data_path_hash( (char *) path, len );
+	idx  = hval % c->hsize;
+
+	return data_find_path( c->data[idx], hval, (char *) path, len );
+}
+
 
 __attribute__((hot)) DHASH *data_get_dhash( char *path, int len, ST_CFG *c )
 {

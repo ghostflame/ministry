@@ -1,6 +1,6 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-FILES  = const dhash json point update data
+FILES  = const dhash json point update http data
 HEADS  = local data
 
 RKV    = data_shared.a

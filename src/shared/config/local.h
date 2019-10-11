@@ -24,6 +24,16 @@ struct config_section
 	int						section;
 };
 
+
+struct config_file
+{
+	CFILE				*	next;
+	char				*	fpath;
+	int64_t					mtime;
+	int						fcount;
+};
+
+
 struct config_context
 {
 	CCTXT				*	next;

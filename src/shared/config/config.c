@@ -12,6 +12,55 @@
 #include "local.h"
 
 
+void config_check_times( int64_t tval, void *arg )
+{
+	struct stat sb;
+	int64_t mt;
+	CFILE *cf;
+
+	for( cf = _proc->cfiles; cf; cf = cf->next )
+	{
+		if( stat( cf->fpath, &sb ) )
+		{
+			if( ++(cf->fcount) >= 3 )
+			{
+				err( "Failed (3 times) to stat config file %s -- %s", cf->fpath, Err );
+				RUN_STOP( );
+			}
+			else
+				warn( "Failed to stat config file %s -- %s", cf->fpath, Err );
+		}
+		else
+		{
+			cf->fcount = 0;
+			mt = tsll( sb.st_mtim );
+
+			if( mt > cf->mtime )
+			{
+				mt -= cf->mtime;
+				mt /= BILLION;
+
+				notice( "Config file %s mtime has changed (+%lld sec).",
+					cf->fpath, mt );
+
+				RUN_STOP( );
+			}
+			else
+				debug( "Config file %s has not changed.", cf->fpath );
+		}
+	}
+}
+
+
+void config_monitor( THRD *t )
+{
+	_proc->cf_chk_time *= MILLION;
+
+	notice( "Monitoring %d config file%s for changes.",
+			_proc->cf_chk_ct, ( _proc->cf_chk_ct == 1 ) ? "" : "s" );
+
+	loop_control( "conf_monitor", &config_check_times, NULL, _proc->cf_chk_time, LOOP_TRIM, 0 );
+}
 
 
 
@@ -26,12 +75,13 @@ int config_bool( AVP *av )
 
 
 #define config_set_limit( _p, _r, _v )	\
-(_p)->limits[_r] = (int64_t) _v;\
+(_p)->limits[_r] = _v;\
 (_p)->setlim[_r] = 0x01
 
 
 int config_line( AVP *av )
 {
+	int64_t v;
 	char *d;
 	int res;
 
@@ -48,7 +98,13 @@ int config_line( AVP *av )
 			else
 				return -1;
 
-			config_set_limit( _proc, res, strtoll( av->vptr, NULL, 10 ) );
+			if( av_int( v ) == NUM_INVALID )
+			{
+				warn( "Invalid limits value: %s", av->vptr );
+				return -1;
+			}
+
+			config_set_limit( _proc, res, v );
 		}
 		else
 			return -1;
@@ -85,6 +141,12 @@ int config_line( AVP *av )
 	{
 		snprintf( _proc->basedir, CONF_LINE_MAX, "%s", av->vptr );
 	}
+	else if( attIs( "configMonitorSec" ) )
+	{
+		av_int( _proc->cf_chk_time );
+		debug( "Set config check time to %lld sec.", _proc->cf_chk_time );
+	}
+
 	return 0;
 }
 

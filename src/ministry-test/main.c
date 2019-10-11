@@ -13,7 +13,8 @@
 void usage( void )
 {
 	config_help( );
-	printf( "%s", "\n\
+	printf( "%s", "\
+  -a --no-byhand              Re-enable certain automation features normally off\n\n\
 Ministry_test is a load-generator for ministry.  It takes config specifying\n\
 metric synthesis profiles, and profile generators with a prefix for metrics.\n\
 It can be configured to point at either ministry or compat format targets.\n\n" );
@@ -55,12 +56,15 @@ void main_loop( void )
 int main( int ac, char **av, char **env )
 {
 	char *optstr;
-	//int oc;
+	int oc;
 
 	// this first
 	app_init( "ministry-test", "ministry" );
 
-	if( !( optstr = config_arg_string( "" ) ) )
+	// say we are a by-hand app
+	runf_add( RUN_BY_HAND );
+
+	if( !( optstr = config_arg_string( "a" ) ) )
 		return 1;
 
 	// make a control structure
@@ -69,12 +73,13 @@ int main( int ac, char **av, char **env )
 	// let config have the args
 	config_args( ac, av, optstr, &usage );
 
-	/* no local args
 	while( ( oc = getopt( ac, av, optstr ) ) != -1 )
 		switch( oc )
 		{
+			case 'a':
+				runf_rmv( RUN_BY_HAND );
+				break;
 		}
-	*/
 
 	// read our environment
 	// has to happen after parsing args

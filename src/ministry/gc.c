@@ -54,6 +54,21 @@ __attribute__((hot)) int gc_hash_list( DHASH **list, DHASH **flist, PRED **plist
 				if( pts )
 					mem_free_point_list( pts );
 			}
+			else if( h->type == DATA_TYPE_HISTO )
+			{
+				lock_histo( h );
+
+				if( h->in.hist.counts )
+				{
+					free( h->in.hist.counts );
+					free( h->proc.hist.counts );
+
+					h->in.hist.counts   = NULL;
+					h->proc.hist.counts = NULL;
+				}
+
+				unlock_histo( h );
+			}
 
 			// clear any predictor block
 			if( h->predict )
@@ -62,8 +77,15 @@ __attribute__((hot)) int gc_hash_list( DHASH **list, DHASH **flist, PRED **plist
 				*plist = h->predict;
 				h->predict = NULL;
 			}
+
+			// go no further - we need to set
+			// prev
+			continue;
 		}
-		else if( h->empty > thresh )
+
+		prev = h;
+
+		if( h->empty > thresh )
 		{
 			// unset the valid flag in the first pass
 			// then tidy up in the second pass

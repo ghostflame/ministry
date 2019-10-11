@@ -397,10 +397,6 @@ MEMT_CTL *memt_config_defaults( void )
 	m->histy  = mem_type_declare( "histy",  sizeof( HIST ),   MEM_ALLOCSZ_HISTY,  480, 1 ); // guess on points
 	m->metry  = mem_type_declare( "metry",  sizeof( METRY ),  MEM_ALLOCSZ_METRY,  64, 1 );
 
-	m->gc_enabled   = 1;
-	m->gc_thresh    = DEFAULT_GC_THRESH;
-	m->gc_gg_thresh = DEFAULT_GC_GG_THRESH;
-
 	return m;
 }
 

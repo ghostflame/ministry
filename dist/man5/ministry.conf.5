@@ -112,6 +112,10 @@ can also be overriden with the -p <file> CLI option.
 \fBlimits.TYPE\fP
 Make a call to setrlimit for the specified type.  Supported types are \fBprocs\fP and \fBfiles\fP.
 Both default to the system hard limit of the type.
+.TP
+\fBconfigMonitorSec\fP
+Value in seconds for how often to stat all config files (note: not URLs) to detect mtime changes.
+The default is 0, disabling the check.
 
 .SS [Logging]
 .PP

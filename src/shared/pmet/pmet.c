@@ -114,7 +114,7 @@ void pmet_run( THRD *t )
 
 	_pmet->period *= 1000; // convert to usec
 
-	loop_control( "pmet_gen", pmet_pass, NULL, _pmet->period, LOOP_TRIM|LOOP_SYNC, _pmet->period / 4 );;
+	loop_control( "pmet_gen", pmet_pass, NULL, _pmet->period, LOOP_TRIM|LOOP_SYNC, _pmet->period / 4 );
 }
 
 

@@ -23,6 +23,7 @@ typedef struct net_control          NET_CTL;
 
 typedef struct config_section       CSECT;
 typedef struct config_context       CCTXT;
+typedef struct config_file          CFILE;
 
 typedef struct log_file             LOGFL;
 typedef struct log_setdebug         LOGSD;
@@ -78,6 +79,8 @@ typedef struct http_post_state      HTTP_POST;
 typedef struct http_callbacks       HTTP_CB;
 typedef struct http_tls             TLS_CONF;
 typedef struct http_tls_file        TLS_FILE;
+
+typedef struct json_object          JSON;
 
 typedef struct curlw_container      CURLWC;
 typedef struct curlw_times          CURLWT;

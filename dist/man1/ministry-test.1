@@ -59,6 +59,12 @@ Validate the certificates of any secure URI's
 \fB\-W\fR
 Permit invalid certificates from fetch targets even if we are validating config certificates.
 .TP
+\fB\-x\fR \fI<suffix>\fR
+Set config file suffix filter for include-dir
+.TP
+\fB\-X\fR
+Disable matching config file suffix for include-dir (match all files)
+.TP
 \fB\-d\fR
 run in daemon mode (background)
 .TP
@@ -70,6 +76,9 @@ run in verbose mode, with more output to stdout
 .TP
 \fB\-s\fR
 be strict about parsing config
+.TP
+\fB\-a\fR
+re-enable automation features (exit on config file change) that are normally off
 .PP
 The config file format is in sections, denoted as \fB[Section]\fR and is of a general format of:
 .TP

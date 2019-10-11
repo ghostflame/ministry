@@ -67,6 +67,7 @@ struct option long_options[] = {
 	{ "no-uri",             no_argument,          NULL, 'U' },
 	{ "no-uri-include",     no_argument,          NULL, 'u' },
 	{ "no-suffix",          no_argument,          NULL, 'X' },
+	{ "no-byhand",          no_argument,          NULL, 'a' },
 	// security
 	{ "no-include",         no_argument,          NULL, 'R' },
 	{ "insecure-uri",       no_argument,          NULL, 'i' },

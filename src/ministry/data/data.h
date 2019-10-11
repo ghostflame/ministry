@@ -138,6 +138,7 @@ struct data_hash_entry	// size 104
 uint64_t data_path_hash_wrap( char *path, int len );
 
 DHASH *data_locate( char *path, int len, int type );
+DHASH *data_find_dhash( const char *path, int len, ST_CFG *c );
 DHASH *data_get_dhash( char *path, int len, ST_CFG *c );
 
 
@@ -159,11 +160,14 @@ line_fn data_line_com_prefix;
 curlw_cb  data_fetch_cb;
 curlw_jcb data_fetch_jcb;
 
+http_callback data_http_rmpaths;
+
 buf_fn data_parse_buf;
 
 // handle json data
 int data_parse_json( json_object *jo, DTYPE *dt );
 
 void data_start( NET_TYPE *nt );
+int data_http_init( void );
 
 #endif
