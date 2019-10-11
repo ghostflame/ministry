@@ -17,10 +17,6 @@
 #define MEM_ALLOCSZ_HISTY			128
 #define MEM_ALLOCSZ_METRY			128
 
-#define DEFAULT_GC_THRESH			8640		// 1 day @ 10s
-#define DEFAULT_GC_GG_THRESH		25920		// 3 days @ 10s
-
-
 struct memt_control
 {
 	MTYPE			*	points;
@@ -28,10 +24,6 @@ struct memt_control
 	MTYPE			*	preds;
 	MTYPE			*	histy;
 	MTYPE			*	metry;
-
-	int64_t				gc_enabled;
-	int64_t				gc_thresh;
-	int64_t				gc_gg_thresh;
 };
 
 
