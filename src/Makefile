@@ -1,5 +1,5 @@
 ODIRS  = shared
-ADIRS  = ministry ministry-test carbon-copy
+ADIRS  = ministry ministry-test carbon-copy metric-filter
 TARGET = unknown
 VERS  ?= 0.0.1
 

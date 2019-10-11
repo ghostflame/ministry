@@ -17,3 +17,28 @@ Clustering
 	Make sure existing connections are not closed until shutdown
 	This involves separting shutting down from RUNNING
 
+Filtering app?
+	Respond to a drop-in dir of configs
+	Json objects:
+	{
+		enabled: <bool>,
+		ips: [
+			<ip> | <range>,
+			...
+		],
+		type: <all|allow|drop>, ( allow all, allow matching, drop matching )
+		matches: [
+			/regex,
+			...
+		]
+	}
+	anything not matching is dropped
+	forward to a single target
+	ongoing connection per thread, write at once
+
+Consul registration?
+	https://www.consul.io/api/agent/service.html#register-service
+
+
+
+
