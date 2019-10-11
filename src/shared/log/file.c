@@ -13,6 +13,8 @@
 
 int log_file_open( LOGFL *lf )
 {
+	int fd = lf->ok_fd;
+
 	if( lf->use_std )
 		return 0;
 
@@ -29,6 +31,11 @@ int log_file_open( LOGFL *lf )
 
 	// both go to file
 	lf->err_fd = lf->ok_fd;
+
+	// was the old filehandle valid?
+	// close it if it's not stdout
+	if( fd != lf->ok_fd && fd != fileno( stdout ) )
+		close( fd );
 
 	return 0;
 }

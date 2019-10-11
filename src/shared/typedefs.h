@@ -80,6 +80,8 @@ typedef struct http_callbacks       HTTP_CB;
 typedef struct http_tls             TLS_CONF;
 typedef struct http_tls_file        TLS_FILE;
 
+typedef struct json_object          JSON;
+
 typedef struct curlw_container      CURLWC;
 typedef struct curlw_times          CURLWT;
 typedef struct curlw_handle         CURLWH;
