@@ -72,7 +72,7 @@ int http_send_response( HTREQ *req )
 	}
 
 	// is it a json method?
-	if( req->path && req->path->flags & HTTP_FLAGS_JSON )
+	if( req->path && ( req->path->flags & HTTP_FLAGS_JSON ) && req->text->len )
 		MHD_add_response_header( resp, MHD_HTTP_HEADER_CONTENT_TYPE, "application/json; charset=utf-8" );
 
 	ret = MHD_queue_response( req->conn, req->code, resp );
@@ -98,6 +98,13 @@ void http_request_complete( void *cls, HTTP_CONN *conn,
 	//debug( "Complete with req arg value as %p.", req );
 
 	bytes = ( req->text ) ? req->text->len : 0;
+
+	// does this return anything?
+	if( req->path->flags & HTTP_FLAGS_NO_OUT )
+	{
+		req->text->len = 0;
+		req->code = MHD_HTTP_NO_CONTENT;
+	}
 
 	if( req->sent == 0 )
 		http_send_response( req );

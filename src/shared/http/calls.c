@@ -241,7 +241,10 @@ int http_calls_json_done( HTREQ *req )
 		ret = (req->path->cb)( req );
 	}
 	else
+	{
+		req->code = MHD_HTTP_UNPROCESSABLE_ENTITY;
 		ret = -1;
+	}
 
 	fclose( tfh );
 	req->post->obj = NULL;

@@ -15,6 +15,9 @@
 #define HTTP_FLAGS_CONTROL				0x0001
 #define HTTP_FLAGS_JSON					0x0002
 #define HTTP_FLAGS_AUTH					0x0004
+
+#define HTTP_FLAGS_NO_OUT				0x0010
+
 #define HTTP_FLAGS_NO_REPORT			0x0100
 
 
@@ -52,7 +55,7 @@ struct http_post_state
 	size_t					bytes;	// this post size
 
 	AVP						kv;		// key-value for post-processor
-	json_object			*	jo;		// json object pointer
+	JSON				*	jo;		// json object pointer
 
 	size_t					total;
 

@@ -43,9 +43,9 @@ void http_clean_password( HTTP_CTL *h )
 {
 	if( h->tls->password )
 	{
-		if( h->tls->passlen )
-			memset( (void *) h->tls->password, 0, h->tls->passlen );
-
+		// scrub the data out of that field before freeing it
+		// https://cwe.mitre.org/data/definitions/244.html
+		explicit_bzero( (void *) h->tls->password, MAX_TLS_PASS_SIZE );
 		free( (void *) h->tls->password );
 	}
 
