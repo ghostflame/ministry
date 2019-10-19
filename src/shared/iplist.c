@@ -13,6 +13,42 @@ IPL_CTL *_iplist = NULL;
 
 // TESTING
 
+// gather up all matching ips/networks
+// used by metric filter
+int iplist_test_ip_matches( IPLIST *l, uint32_t ip, MEMHG **matches )
+{
+	MEMHG *m;
+	IPNET *n;
+
+	if( !matches )
+		return IPLIST_NOMATCH;
+
+	*matches = NULL;
+
+	if( !l || !l->enable || !l->count )
+		return IPLIST_NOMATCH;
+
+	// hash first
+	for( n = l->ips[ip % l->hashsz]; n; n = n->next )
+		if( ip == n->net && n->act == IPLIST_POSITIVE )
+		{
+			m = mem_new_hanger( n );
+			m->next = *matches;
+			*matches = m;
+		}
+
+	// then networks
+	for( n = l->nets; n; n = n->next )
+		if( n->act == IPLIST_POSITIVE && ( ip & net_masks[n->bits] ) == n->net )
+		{
+			m = mem_new_hanger( n );
+			m->next = *matches;
+			*matches = m;
+		}
+
+	return ( *matches ) ? IPLIST_POSITIVE : IPLIST_NOMATCH;
+}
+
 int iplist_test_ip( IPLIST *l, uint32_t ip, IPNET **p )
 {
 	IPNET *n;
@@ -245,12 +281,67 @@ IPNET *iplist_parse_spec( char *str, int len )
 }
 
 
-
-int iplist_append_net( IPLIST *l, IPNET *n )
+void iplist_free_net( IPNET *n )
 {
-	IPNET *i = NULL, **list;
+	if( !n )
+		return;
+
+	if( n->name )
+		free( n->name );
+
+	if( n->text )
+		free( n->next );
+
+	free( n );
+}
+
+void iplist_free_list( IPLIST *l )
+{
+	IPNET *n, *list;
+	uint32_t i;
+
+	if( l->ips )
+	{
+		for( i = 0; i < l->hashsz; ++i )
+		{
+			list = l->ips[i];
+			while( list )
+			{
+				n = list;
+				list = n->next;
+				iplist_free_net( n );
+			}
+		}
+		free( l->ips );
+	}
+
+	list = l->nets;
+	while( list )
+	{
+		n = list;
+		list = n->next;
+		iplist_free_net( n );
+	}
+
+	if( l->text )
+		free( l->text );
+
+	if( l->name )
+		free( l->name );
+
+	free( l );
+}
+
+
+
+int iplist_append_net( IPLIST *l, IPNET **p )
+{
+	IPNET *i = NULL, *n, **list;
 	uint32_t hval;
 	int add = 0;
+
+	if( !( n = *p ) )
+		return -1;
 
 	n->list = l;
 
@@ -269,7 +360,10 @@ int iplist_append_net( IPLIST *l, IPNET *n )
 
 		for( i = l->ips[hval]; i; i = i->next )
 			if( i->net == n->net )
+			{
+				*p = i;
 				break;
+			}
 
 		if( !i )
 		{
@@ -281,7 +375,10 @@ int iplist_append_net( IPLIST *l, IPNET *n )
 	{
 		for( i = l->nets; i; i = i->next )
 			if( i->net == n->net && i->bits == n->bits )
+			{
+				*p = i;
 				break;
+			}
 
 		if( !i )
 		{
@@ -307,14 +404,22 @@ int iplist_append_net( IPLIST *l, IPNET *n )
 		return 0;
 	}
 
-	err( "Duplicate IP check rule: %s", n->name );
-	return -1;
+	iplist_free_net( n );
+
+	if( l->err_dup )
+	{
+		err( "Duplicate IP check rule: %s", (*p)->name );
+		return -1;
+	}
+
+	return 1;
 }
 
 
 int iplist_add_entry( IPLIST *l, int act, char *str, int len )
 {
 	IPNET *ip;
+	int ret;
 
 	// try to parse it
 	if( !( ip = iplist_parse_spec( str, len ) ) )
@@ -323,7 +428,9 @@ int iplist_add_entry( IPLIST *l, int act, char *str, int len )
 	ip->act = act;
 
 	// and add it in
-	return iplist_append_net( l, ip );
+	ret = iplist_append_net( l, &ip );
+
+	return ( ret < 0 ) ? -1 : 0;
 }
 
 
@@ -451,6 +558,7 @@ int iplist_config_line( AVP *av )
 	if( !_iplist_cfg_set )
 	{
 		memset( l, 0, sizeof( IPLIST ) );
+		l->err_dup = 1;
 	}
 
 	if( attIs( "enable" ) )
