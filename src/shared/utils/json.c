@@ -10,7 +10,7 @@
 #include "shared.h"
 
 
-json_object *parse_json_file( FILE *fh, char *path )
+JSON *parse_json_file( FILE *fh, char *path )
 {
 	enum json_tokener_error jerr;
 	struct json_object *jo;
