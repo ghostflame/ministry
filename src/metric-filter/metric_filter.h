@@ -24,7 +24,7 @@ struct metric_filter_control
 {
 	PROC_CTL			*	proc;
 	MEMT_CTL			*	mem;
-	FILT_CTL			*	filt;
+	FLT_CTL				*	filt;
 };
 
 

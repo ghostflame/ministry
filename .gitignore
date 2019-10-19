@@ -44,5 +44,5 @@ tmp/*
 src/carbon-copy/carbon-copy
 src/ministry/ministry
 src/ministry-test/ministry-test
-
+src/metric-filter/metric-filter
 

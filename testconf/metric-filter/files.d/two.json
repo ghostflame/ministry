@@ -1,0 +1,10 @@
+{
+	"type": "drop",
+	"comment": "Remove timestamp spam",
+	"matches": [
+		"[0-9]{9,}"
+	],
+	"ips": [
+		"0.0.0.0/0"
+	]
+}

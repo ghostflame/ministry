@@ -1,7 +1,7 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-FILES  = mem main
-HEADS  = mem metric_filter typedefs
+FILES  = mem filter main
+HEADS  = mem filter metric_filter typedefs
 
 SUBS   =
 

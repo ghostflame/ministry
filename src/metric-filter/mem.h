@@ -12,6 +12,7 @@
 #define METRIC_FILTER_MEM_H
 
 #define MEM_ALLOCSZ_HFILT			128
+#define MEM_ALLOCSZ_FFILE			128
 
 // 1GB
 #define DEFAULT_MF_MAX_KB			( 1 * 1024 * 1024 )
@@ -19,17 +20,18 @@
 
 struct memt_control
 {
-	MTYPE			*	hbufs;
-	MTYPE			*	rdata;
+	MTYPE			*	hfilt;
+	MTYPE			*	ffile;
 };
 
 
-HBUFS *mem_new_hbufs( void );
-void mem_free_hbufs( HBUFS **h );
-void mem_free_hbufs_list( HBUFS *list );
+HFILT *mem_new_hfilt( void );
+void mem_free_hfilt( HFILT **h );
 
-RDATA *mem_new_rdata( void );
-void mem_free_rdata( RDATA **r );
+FFILE *mem_new_ffile( void );
+void mem_free_ffile( FFILE **f );
+void mem_free_ffile_list( FFILE *list );
+
 
 MEMT_CTL *memt_config_defaults( void );
 

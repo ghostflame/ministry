@@ -31,7 +31,7 @@ void main_loop( void )
 	net_begin( );
 
 	// begin sending our own stats
-	self_stats_init( );
+	//self_stats_init( );
 
 	while( RUNNING( ) )
 		sleep( 1 );
@@ -44,7 +44,7 @@ void main_loop( void )
 
 void main_create_conf( void )
 {
-	ctl				= (RCTL *) allocz( sizeof( RCTL ) );
+	ctl				= (MCTL *) allocz( sizeof( MCTL ) );
 	ctl->proc		= app_control( );
 	ctl->mem		= memt_config_defaults( );
 	ctl->filt       = filter_config_defaults( );
