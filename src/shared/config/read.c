@@ -383,7 +383,7 @@ int __config_read_file( FILE *fh )
 				lrv = __config_handle_line( &av );
 
 				ret += lrv;
-				if( lrv )
+				if( lrv < 0 )
 				{
 					err( "Bad config in file '%s', line %d (repeat arg %s)",
 						context->source, context->lineno, arg );
@@ -404,7 +404,7 @@ int __config_read_file( FILE *fh )
 			lrv = __config_handle_line( &av );
 			ret += lrv;
 
-			if( lrv )
+			if( lrv < 0 )
 			{
 				err( "Bad config in file '%s', line %d", context->source, context->lineno );
 				info( "Bad line: %s = %s", av.aptr, av.vptr );
