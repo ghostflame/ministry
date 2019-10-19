@@ -78,8 +78,8 @@ void target_loop( THRD *th )
 	if( t->max == 0 )
 		t->max = IO_MAX_WAITING;
 
-	// init the lock
-	io_lock_init( t->lock );
+	// make the queue - with a lock
+	t->queue = mem_list_create( 1 );
 
 	// and add some watcher metrics
 	target_add_metrics( t );
@@ -101,7 +101,6 @@ void target_loop( THRD *th )
 
 	// disconnect
 	io_disconnect( t->sock );
-	io_lock_destroy( t->lock );
 }
 
 

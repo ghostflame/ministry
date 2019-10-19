@@ -20,14 +20,18 @@
 
 // and some types
 #define MEM_ALLOCSZ_IOBUF			128
-#define MEM_ALLOCSZ_IOBP			512
 #define MEM_ALLOCSZ_HTREQ			128
 #define MEM_ALLOCSZ_HOSTS			128
 #define MEM_ALLOCSZ_TOKENS			128
+#define MEM_ALLOCSZ_HANGER			1024
 
 
 #define mem_lock( mt )			pthread_mutex_lock(   &(mt->lock) )
 #define mem_unlock( mt )		pthread_mutex_unlock( &(mt->lock) )
+
+
+#define mhl_lock( _m )			if( _m->use_lock ) pthread_mutex_lock(   &(_m->lock) )
+#define mhl_unlock( _m )		if( _m->use_lock ) pthread_mutex_unlock( &(_m->lock) )
 
 
 
@@ -85,6 +89,9 @@ throw_fn mem_prealloc_loop;
 
 loop_call_fn mem_check;
 throw_fn mem_check_loop;
+
+
+uint64_t mem_get_id( void );
 
 
 extern MEM_CTL *_mem;

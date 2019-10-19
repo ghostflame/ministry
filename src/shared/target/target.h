@@ -29,8 +29,6 @@ typedef pthread_spinlock_t io_lock_t;
 #define io_lock_init( l )		pthread_spin_init(    &(l), PTHREAD_PROCESS_PRIVATE )
 #define io_lock_destroy( l )	pthread_spin_destroy( &(l) )
 
-#define lock_target( t )		pthread_spin_lock(   &(t->lock) )
-#define unlock_target( t )		pthread_spin_unlock( &(t->lock) )
 #define target_set_id( t )		pthread_spin_lock( &(_proc->io->idlock) ); t->id = ++(_proc->io->tgt_id); pthread_spin_unlock( &(_proc->io->idlock) );
 
 // this is measured against the buffer size; the bitshift should mask off at least buffer size
@@ -44,8 +42,6 @@ typedef pthread_mutex_t io_lock_t;
 #define io_lock_init( l )		pthread_mutex_init(    &(l), NULL )
 #define io_lock_destroy( l )	pthread_mutex_destroy( &(l) )
 
-#define lock_target( t )		pthread_mutex_lock(   &(t->lock) )
-#define unlock_target( t )		pthread_mutex_unlock( &(t->lock) )
 #define target_set_id( t )		pthread_mutex_lock( &(_proc->io->idlock) ); t->id = ++(_proc->io->tgt_id); pthread_mutex_unlock( &(_proc->io->idlock) );
 
 // this is measured against the buffer size; the bitshift should mask off at least buffer size
@@ -71,10 +67,8 @@ struct target
 	io_fn				*	iofp;
 
 	// io queue
-	IOBP				*	head;
-	IOBP				*	tail;
-	int32_t					curr;
-	int32_t					max;
+	MEMHL				*	queue;
+	int64_t					max;
 
 	// current buffer
 	int32_t					curr_off;
@@ -85,7 +79,6 @@ struct target
 	int32_t					rc_limit;
 
 	// misc
-	io_lock_t				lock;
 	int64_t					bytes;
 	int						to_stdout;
 	int						enabled;

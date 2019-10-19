@@ -109,25 +109,6 @@ void mem_free_iobuf_list( IOBUF *list )
 }
 
 
-IOBP *mem_new_iobp( void )
-{
-	return (IOBP *) mtype_new( _mem->iobps );
-}
-
-void mem_free_iobp( IOBP **b )
-{
-	IOBP *p;
-
-	p  = *b;
-	*b = NULL;
-
-	p->buf  = NULL;
-	p->prev = NULL;
-
-	mtype_free( _mem->iobps, p );
-}
-
-
 HTREQ *mem_new_request( void )
 {
 	HTREQ *r = mtype_new( _mem->htreq );
@@ -277,3 +258,40 @@ void mem_free_token_list( TOKEN *list )
 
 	mtype_free_list( _mem->token, j, freed, end );
 }
+
+
+MEMHG *mem_new_hanger( void *ptr )
+{
+	MEMHG *h = mtype_new( _mem->hanger );
+	h->ptr = ptr;
+	return h;
+}
+
+#define mem_clean_hanger( _h )		_h->prev = NULL; _h->ptr = NULL; _h->list = NULL
+
+void mem_free_hanger( MEMHG **m )
+{
+	MEMHG *mp;
+
+	mp = *m;
+	*m = NULL;
+
+	mem_clean_hanger( mp );
+	mtype_free( _mem->hanger, mp );
+}
+
+void mem_free_hanger_list( MEMHG *list )
+{
+	MEMHG *m;
+	int j = 0;
+
+	for( m = list; m->next; m = m->next, ++j )
+	{
+		mem_clean_hanger( m );
+	}
+
+	mem_clean_hanger( m );
+
+	mtype_free_list( _mem->hanger, j, list, m );
+}
+

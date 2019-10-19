@@ -40,15 +40,6 @@ struct io_buffer
 };
 
 
-struct io_buf_ptr
-{
-	IOBP			*	next;
-	IOBP			*	prev;
-	IOBUF			*	buf;
-	int64_t				_unused;
-};
-
-
 struct io_socket
 {
 	IOBUF				*	out;
