@@ -53,7 +53,7 @@ int log_file_start( LOGFL *lf );
 int log_file_set_level( LOGFL *lf, int8_t level, int8_t both );
 
 // conf.c
-extern char *log_level_strings[LOG_LEVEL_MAX];
+extern const char *log_level_strings[LOG_LEVEL_MAX];
 extern int log_syslog_levels[LOG_LEVEL_MAX];
 extern struct log_facility log_facilities[];
 

@@ -11,7 +11,7 @@
 
 LOG_CTL *_logger = NULL;
 
-char *log_level_strings[LOG_LEVEL_MAX] =
+const char *log_level_strings[LOG_LEVEL_MAX] =
 {
 	"FATAL",
 	"ERROR",
@@ -76,6 +76,14 @@ int8_t log_get_level( char *str )
 
 	warn( "Unrecognised log level string '%s'", str );
 	return LOG_LEVEL_DEBUG;
+}
+
+const char *log_get_level_name( int8_t level )
+{
+	if( level >= LOG_LEVEL_FATAL && level < LOG_LEVEL_MAX )
+		return log_level_strings[level];
+
+	return "unknown";
 }
 
 
@@ -149,6 +157,7 @@ LOG_CTL *log_config_defaults( void )
 
 	// unification - unified by default
 	_logger->unified        = 1;
+
 
 	return _logger;
 }
