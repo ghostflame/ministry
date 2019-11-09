@@ -39,6 +39,15 @@ Filtering app?
 Consul registration?
 	https://www.consul.io/api/agent/service.html#register-service
 
+Slack integration?
+	Send warns/errors to slack?
+	Or specific slack messages
+	Slack thread, with messaging memhl
+	How to avoid fail-loop?
+		generate err
+		fail to send
+			generates err
+				fails to send...
 
-
+Prometheus metrics
 

@@ -11,7 +11,6 @@
 #ifndef METRIC_FILTER_FILTER_H
 #define METRIC_FILTER_FILTER_H
 
-
 #define DEFAULT_FILTER_DIR				"/etc/ministry/metric-filters.d"
 
 enum filter_modes
@@ -44,21 +43,12 @@ struct filter_host
 };
 
 
-
-struct filter_file
-{
-	FFILE			*	next;
-	char			*	fname;
-	int64_t				mtime;
-	JSON			*	jo;
-};
-
 struct filter_config
 {
 	FCONF			*	next;	// used if we have to keep old configs
 	IPLIST			*	ipl;
-	FFILE			*	files;
-	int					count;
+	FTREE			*	watch;
+	int					active;
 };
 
 struct filter_control
@@ -68,15 +58,16 @@ struct filter_control
 
 	int					close_conn;
 	int					generation;
-	int					fldlen;
 
 	pthread_mutex_t		genlock;
 };
 
+
+
+ftree_callback filter_on_change;
+
 tcp_fn filter_host_setup;
 tcp_fn filter_host_end;
-
-throw_fn filter_watcher;
 
 int filter_init( void );
 

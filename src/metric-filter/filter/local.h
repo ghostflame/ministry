@@ -2,32 +2,34 @@
 * This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
 *                                                                         *
-* mem.h - defines main memory control structures                          *
+* filter/local.h - filtering structs not exposed                          *
 *                                                                         *
 * Updates:                                                                *
 **************************************************************************/
 
 
-#ifndef METRIC_FILTER_MEM_H
-#define METRIC_FILTER_MEM_H
-
-#define MEM_ALLOCSZ_HFILT			128
-#define MEM_ALLOCSZ_FFILE			128
-
-// 1GB
-#define DEFAULT_MF_MAX_KB			( 1 * 1024 * 1024 )
+#ifndef METRIC_FILTER_FILTER_LOCAL_H
+#define METRIC_FILTER_FILTER_LOCAL_H
 
 
-struct memt_control
-{
-	MTYPE			*	hfilt;
-};
 
 
-HFILT *mem_new_hfilt( void );
-void mem_free_hfilt( HFILT **h );
+#include "metric_filter.h"
 
-MEMT_CTL *memt_config_defaults( void );
+
+#define lock_filters( )				pthread_mutex_lock(   &(ctl->filt->genlock) )
+#define unlock_filters( )			pthread_mutex_unlock( &(ctl->filt->genlock) )
+
+
+
+
+
+extern FLT_CTL *_filt;
+
+
+int filter_load( void );
+void filter_unlock( void );
+
 
 
 #endif

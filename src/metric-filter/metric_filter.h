@@ -17,7 +17,7 @@
 
 // in order
 #include "mem.h"
-#include "filter.h"
+#include "filter/filter.h"
 
 
 struct metric_filter_control

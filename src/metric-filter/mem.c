@@ -9,48 +9,6 @@
 
 #include "metric_filter.h"
 
-FFILE *mem_new_ffile( void )
-{
-	return (FFILE *) mtype_new( ctl->mem->ffile );
-}
-
-void mem_clean_ffile( FFILE *f )
-{
-	FFILE *next;
-
-	next = f->next;
-	if( f->fname )
-		free( f->fname );
-	if( f->jo )
-		json_object_put( f->jo );
-
-	memset( f, 0, sizeof( FFILE ) );
-	f->next = next;
-}
-
-void mem_free_ffile( FFILE **f )
-{
-	FFILE *fp;
-
-	fp = *f;
-	*f = NULL;
-
-	mem_clean_ffile( fp );
-	mtype_free( ctl->mem->ffile, fp );
-}
-
-void mem_free_ffile_list( FFILE *list )
-{
-	int j = 0;
-	FFILE *f;
-
-	for( f = list; f->next; f = f->next, ++j )
-		mem_clean_ffile( f );
-
-	mem_clean_ffile( f );
-
-	mtype_free_list( ctl->mem->ffile, j, list, f );
-}
 
 
 HFILT *mem_new_hfilt( void )
