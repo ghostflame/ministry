@@ -22,8 +22,8 @@ void stats_histo_one( ST_THR *t, DHASH *d )
 	// but leaving off the +Inf bound
 	for( i = 0; i < c->brange; ++i )
 	{
-		bprintf( t, "%s.%d.bound%s %f",   d->base, d->tags, i, c->bounds[i] );
-		bprintf( t, "%s.%d.count%s %lld", d->base, d->tags, i, h->counts[i] );
+		bprintf( t, "%s.%d.bound%s %f",   d->base, i, d->tags, c->bounds[i] );
+		bprintf( t, "%s.%d.count%s %lld", d->base, i, d->tags, h->counts[i] );
 	}
 	// upper bound is +Inf, but we can't easily send that to carbon-cache
 	// without it spitting that back as 'Infinity' which is invalid JSON

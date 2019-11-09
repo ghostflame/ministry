@@ -69,7 +69,7 @@ void stats_start_one( ST_CFG *cf )
 
 	// throw each of the threads
 	for( i = 0; i < cf->threads; ++i )
-		thread_throw_named_f( &stats_loop, &(cf->ctls[i]), i, "%s_%d", cf->name, i );
+		thread_throw_named_f( &stats_loop, &(cf->ctls[i]), i, "gen_%s_%d", cf->name, i );
 
 	info( "Started %s data processing loops.", cf->name );
 }
