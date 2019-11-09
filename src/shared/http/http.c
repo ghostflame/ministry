@@ -69,6 +69,10 @@ int http_send_response( HTREQ *req )
 	else
 	{
 		resp = MHD_create_response_from_buffer( 0, "", MHD_RESPMEM_MUST_COPY );
+
+		// change 200's to 204's when we have no output
+		if( req->code == 200 )
+			req->code = 204;
 	}
 
 	// is it a json method?
