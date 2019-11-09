@@ -78,8 +78,10 @@ void target_loop( THRD *th )
 	if( t->max == 0 )
 		t->max = IO_MAX_WAITING;
 
-	// make the queue - with a lock
-	t->queue = mem_list_create( 1 );
+	// make the queue - with a lock, but no free
+	// callback - we add and remove things
+	// explicitly
+	t->queue = mem_list_create( 1, NULL );
 
 	// and add some watcher metrics
 	target_add_metrics( t );
