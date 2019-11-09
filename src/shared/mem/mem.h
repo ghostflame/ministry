@@ -38,10 +38,13 @@ struct mem_hanger_list
 	MEMHL			*	next;
 	MEMHG			*	head;
 	MEMHG			*	tail;
+	mem_free_cb		*	memcb;
 	int64_t				count;
-	pthread_mutex_t		lock;
-	int					use_lock;
 	uint64_t			id;
+
+	pthread_mutex_t		lock;
+	int8_t				use_lock;
+	int8_t				act_lock;
 };
 
 
@@ -145,16 +148,30 @@ MEMHG *mem_new_hanger( void *ptr );
 void mem_free_hanger( MEMHG **m );
 void mem_free_hanger_list( MEMHG *list );
 
+
+
 // hanger list
-// add/fetch void ptrs to your objects
+
+MEMHL *mem_list_filter_new( MEMHL *mhl, void *arg, mhl_callback *cb );
+int mem_list_filter_self( MEMHL *mhl, void *arg, mhl_callback *cb );
+int mem_list_iterator( MEMHL *mhl, void *arg, mhl_callback *cb );
+MEMHG *mem_list_search( MEMHL *mhl, void *arg, mhl_callback *cb );
 MEMHG *mem_list_find( MEMHL *mhl, void *ptr );
+
+// add/fetch void ptrs to your objects
 int mem_list_remove( MEMHL *mhl, MEMHG *hg );
 int mem_list_excise( MEMHL *mhl, void *ptr );
 void mem_list_add_tail( MEMHL *mhl, void *ptr );
 void mem_list_add_head( MEMHL *mhl, void *ptr );
 void *mem_list_get_head( MEMHL *mhl );
 void *mem_list_get_tail( MEMHL *mhl );
+
+// external locking - disables internal locking!
+int mem_list_lock( MEMHL *mhl );
+int mem_list_unlock( MEMHL *mhl );
+
+// setup/teardown
 void mem_list_free( MEMHL *mhl );
-MEMHL *mem_list_create( int use_lock );
+MEMHL *mem_list_create( int use_lock, mem_free_cb *cb );
 
 #endif

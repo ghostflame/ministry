@@ -30,8 +30,8 @@
 #define mem_unlock( mt )		pthread_mutex_unlock( &(mt->lock) )
 
 
-#define mhl_lock( _m )			if( _m->use_lock ) pthread_mutex_lock(   &(_m->lock) )
-#define mhl_unlock( _m )		if( _m->use_lock ) pthread_mutex_unlock( &(_m->lock) )
+#define mhl_lock( _m )			if( _m->use_lock && _m->act_lock ) pthread_mutex_lock(   &(_m->lock) )
+#define mhl_unlock( _m )		if( _m->use_lock && _m->act_lock ) pthread_mutex_unlock( &(_m->lock) )
 
 
 
