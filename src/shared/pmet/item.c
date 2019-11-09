@@ -83,7 +83,7 @@ PMET *pmet_item_create( PMETM *metric, PMETS *source, int gentype, void *genptr,
 
 
 // useful for making a set of items with different labels
-PMET *pmet_item_clone( PMET *item, PMETS *source, void *genptr, pmet_gen_fn *fp, void *genarg )
+PMET *pmet_item_clone( PMET *item, PMETS *source, void *genptr, pmet_gen_fn *fp, void *genarg, PMET_LBL *lbl )
 {
 	void *ga;
 	PMET *i;
@@ -105,7 +105,8 @@ PMET *pmet_item_clone( PMET *item, PMETS *source, void *genptr, pmet_gen_fn *fp,
 	// recreate the labels, because they are a list
 	// and we may add a new label to each of them
 	// cloned items
-	i->labels = pmet_label_clone( item->labels, -1 );
+	// the last arg is a way of varying the labels by one
+	i->labels = pmet_label_clone( item->labels, -1, lbl );
 
 	// and clone histogram/summary setup
 	switch( item->type )
@@ -124,5 +125,6 @@ PMET *pmet_item_clone( PMET *item, PMETS *source, void *genptr, pmet_gen_fn *fp,
 
 	return i;
 }
+
 
 

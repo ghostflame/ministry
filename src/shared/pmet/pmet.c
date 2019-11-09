@@ -121,6 +121,7 @@ void pmet_run( THRD *t )
 int pmet_init( void )
 {
 	PMET_CTL *p = _pmet;
+	int8_t i;
 
 	if( !p->enabled )
 	{
@@ -141,6 +142,18 @@ int pmet_init( void )
 
 	p->shared->memmet = pmet_new( PMET_TYPE_GAUGE, "process_memory_usage_bytes", "How many bytes used in memory" );
 	p->shared->mem    = pmet_create_gen( p->shared->memmet, p->shared->source, PMET_GEN_FN, NULL, &pmet_get_memory, NULL );
+
+	p->shared->cfgmet = pmet_new( PMET_TYPE_GAUGE, "ministry_config_changed", "Has the config on disk been changed" );
+	p->shared->cfgChg = pmet_create_gen( p->shared->cfgmet, p->shared->source, PMET_GEN_IVAL, &(_proc->cfgChanged), NULL, NULL );
+
+	p->shared->logmet = pmet_new( PMET_TYPE_COUNTER, "ministry_log_level_count", "Count of logs at each level" );
+	for( i = 0; i < LOG_LEVEL_MAX; ++i )
+	{
+		p->shared->logs[i] = pmet_create_gen( p->shared->logmet, p->shared->source, PMET_GEN_IVAL,
+		                                      &(_proc->log->counts[i]), NULL, NULL);
+		pmet_label_apply_item( pmet_label_create( "level", (char *) log_get_level_name( i ) ), p->shared->logs[i] );
+	}
+
 
 	p->sources = mem_reverse_list( p->sources );
 

@@ -51,6 +51,12 @@ struct pmet_shared
 
 	PMETM			*	memmet;
 	PMET			*	mem;
+
+	PMETM			*	cfgmet;
+	PMET			*	cfgChg;
+
+	PMETM			*	logmet;
+	PMET			*	logs[LOG_LEVEL_MAX];
 };
 
 
@@ -96,7 +102,7 @@ int pmet_label_common( char *name, char *valptr );
 
 // clone a list of labels
 // max -1 means all, no matter the length
-PMET_LBL *pmet_label_clone( PMET_LBL *in, int max );
+PMET_LBL *pmet_label_clone( PMET_LBL *in, int max, PMET_LBL *except );
 
 
 // wrapper fns
@@ -110,6 +116,7 @@ PMET *pmet_create_gen( PMETM *metric, PMETS *source, int gentype, void *genptr, 
 PMET *pmet_create( PMETM *metric, PMETS *source );
 PMET *pmet_clone_gen( PMET *item, PMETS *source, void *genptr, pmet_gen_fn *fp, void *genarg );
 PMET *pmet_clone( PMET *item );
+PMET *pmet_clone_vary( PMET *item, PMET_LBL *lbl ); // clones but for this label
 
 // new metric
 PMETM *pmet_new( int type, char *path, char *help );

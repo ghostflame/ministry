@@ -101,14 +101,18 @@ PMET *pmet_create( PMETM *metric, PMETS *source )
 
 PMET *pmet_clone_gen( PMET *item, PMETS *source, void *genptr, pmet_gen_fn *fp, void *genarg )
 {
-	return pmet_item_clone( item, source, genptr, fp, genarg );
+	return pmet_item_clone( item, source, genptr, fp, genarg, NULL );
 }
 
 PMET *pmet_clone( PMET *item )
 {
-	return pmet_item_clone( item, NULL, NULL, NULL, NULL );
+	return pmet_item_clone( item, NULL, NULL, NULL, NULL, NULL );
 }
 
+PMET *pmet_clone_vary( PMET *item, PMET_LBL *lbl )
+{
+	return pmet_item_clone( item, NULL, NULL, NULL, NULL, lbl );
+}
 
 
 PMETM *pmet_new( int type, char *path, char *help )
