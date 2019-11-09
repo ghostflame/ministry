@@ -107,8 +107,12 @@ SSTR *string_store_create( int64_t sz, char *size, int *default_value )
 	}
 
 	// and link it into _proc
+	config_lock( );
+
 	s->_proc_next = _proc->stores;
 	_proc->stores = s;
+
+	config_unlock( );
 
 	return s;
 }

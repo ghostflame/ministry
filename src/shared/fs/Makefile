@@ -1,9 +1,9 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-FILES  = json time utils var_val
-HEADS  = utils
+FILES  = pidfile tree
+HEADS  = fs
 
-RKV    = utils_shared.a
+RKV    = fs_shared.a
 EARGS ?=
 
 OBJS   = $(FILES:%=%.o)

@@ -12,54 +12,32 @@
 #include "local.h"
 
 
-void config_check_times( int64_t tval, void *arg )
-{
-	struct stat sb;
-	int64_t mt;
-	CFILE *cf;
 
-	for( cf = _proc->cfiles; cf; cf = cf->next )
+int config_on_change( FTREE *ft, uint32_t mask, char *path, char *desc, void *arg )
+{
+	// notify that we have changed - no locking needed, only one thread watches config
+	++(_proc->cfgChanged);
+
+	if( XchkcfFlag( _proc, CHG_EXIT ) )
 	{
-		if( stat( cf->fpath, &sb ) )
+		warn( "Config path %s has registered a change 0x%08x (%s), exiting.", path, mask, desc );
+
+		if( RUNNING( ) )
 		{
-			if( ++(cf->fcount) >= 3 )
-			{
-				err( "Failed (3 times) to stat config file %s -- %s", cf->fpath, Err );
-				RUN_STOP( );
-			}
-			else
-				warn( "Failed to stat config file %s -- %s", cf->fpath, Err );
+			RUN_STOP( );
 		}
 		else
 		{
-			cf->fcount = 0;
-			mt = tsll( sb.st_mtim );
-
-			if( mt > cf->mtime )
-			{
-				mt -= cf->mtime;
-				mt /= BILLION;
-
-				notice( "Config file %s mtime has changed (+%lld sec).",
-					cf->fpath, mt );
-
-				RUN_STOP( );
-			}
-			else
-				debug( "Config file %s has not changed.", cf->fpath );
+			// we are out
+			app_finish( 0 );
 		}
 	}
-}
+	else
+	{
+		warn( "Config path %s has registered a change 0x%08x (%s).", path, mask, desc );
+	}
 
-
-void config_monitor( THRD *t )
-{
-	_proc->cf_chk_time *= MILLION;
-
-	notice( "Monitoring %d config file%s for changes.",
-			_proc->cf_chk_ct, ( _proc->cf_chk_ct == 1 ) ? "" : "s" );
-
-	loop_control( "conf_monitor", &config_check_times, NULL, _proc->cf_chk_time, LOOP_TRIM, 0 );
+	return 0;
 }
 
 
@@ -141,10 +119,12 @@ int config_line( AVP *av )
 	{
 		snprintf( _proc->basedir, CONF_LINE_MAX, "%s", av->vptr );
 	}
-	else if( attIs( "configMonitorSec" ) )
+	else if( attIs( "exitOnChange" ) )
 	{
-		av_int( _proc->cf_chk_time );
-		debug( "Set config check time to %lld sec.", _proc->cf_chk_time );
+		if( config_bool( av ) )
+			XsetcfFlag( _proc, CHG_EXIT );
+		else
+			XcutcfFlag( _proc, CHG_EXIT );
 	}
 
 	return 0;
@@ -156,6 +136,12 @@ int config_line( AVP *av )
 void config_set_pid_file( char *path )
 {
 	snprintf( _proc->pidfile, CONF_LINE_MAX, "%s", path );
+}
+
+void config_late_setup( void )
+{
+	// and watch our config files
+	_proc->cfiles = fs_treemon_create( NULL, NULL, &config_on_change, NULL );
 }
 
 
@@ -231,6 +217,9 @@ PROC_CTL *config_defaults( char *app_name, char *conf_dir )
 
 	// make sure our fixed config sections array is clean
 	memset( config_sections, 0, CONF_SECT_MAX * sizeof( CSECT ) );
+
+	// init the lock
+	pthread_mutex_init( &(_proc->cfg_lock), NULL );
 
 	return _proc;
 }

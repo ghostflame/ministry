@@ -23,10 +23,12 @@ typedef struct net_control          NET_CTL;
 
 typedef struct config_section       CSECT;
 typedef struct config_context       CCTXT;
-typedef struct config_file          CFILE;
 
 typedef struct log_file             LOGFL;
 typedef struct log_setdebug         LOGSD;
+
+typedef struct file_watch           FWTCH;
+typedef struct file_tree            FTREE;
 
 typedef struct mem_call_counters    MCCTR;
 typedef struct mem_type_counters    MTCTR;
@@ -102,16 +104,20 @@ typedef void loop_call_fn ( int64_t, void * );
 typedef void throw_fn ( THRD * );
 typedef int conf_line_fn ( AVP * );
 typedef int http_callback ( HTREQ * );
-typedef int json_callback ( json_object * );
-typedef int http_reporter ( HTPATH *, void *arg, int64_t, int64_t );
+typedef int json_callback ( JSON * );
+typedef int ftree_callback ( FTREE *, uint32_t, char *, char *, void * );
+typedef int http_reporter ( HTPATH *, void *, int64_t, int64_t );
 typedef void help_fn ( void );
 typedef int64_t io_fn( TGT * );
 typedef int target_cfg_fn( TGT *, char *, int );
-typedef void curlw_cb( void *, IOBUF *b );
-typedef void curlw_jcb( void *, json_object *jso );
+typedef void curlw_cb( void *, IOBUF * );
+typedef void curlw_jcb( void *, JSON * );
 typedef int sort_fn( const void *, const void * );
 typedef double pmet_gen_fn( int64_t, void *, double * );
 typedef void iplist_data_fn( void *, IPNET * );
+typedef void mem_free_cb( void * );
+// return 0 for filter 'true'
+typedef int mhl_callback( MEMHL *, void *, MEMHG *, void * );
 
 // found in the apps
 typedef int  buf_fn ( HOST *, IOBUF * );

@@ -99,6 +99,7 @@ int app_init( char *name, char *cfgdir )
 	config_register_section( "ha",       &ha_config_line );
 	config_register_section( "network",  &net_config_line );
 
+	config_late_setup( );
 
 	if( set_signals( ) )
 	{
@@ -151,7 +152,7 @@ int app_start( int writePid )
 
 	notice( "%s v%s starting up.", _proc->app_upper, _proc->version );
 
-	if( recursive_mkdir( _proc->basedir ) )
+	if( fs_mkdir_recursive( _proc->basedir ) )
 		fatal( "Could not create/find base dir %s -- %s", _proc->basedir, Err );
 
 	if( chdir( _proc->basedir ) )
@@ -173,7 +174,7 @@ int app_start( int writePid )
 
 	if( writePid )
 	{
-		pidfile_write( );
+		fs_pidfile_write( );
 		runf_add( RUN_PIDFILE );
 	}
 
@@ -218,10 +219,11 @@ void app_ready( void )
 	runf_add( RUN_LOOP );
 
 	// now we can throw loops
+	fs_treemon_start_all( );
 
 	// are we monitoring config?
-	if( _proc->cf_chk_time > 0 && !runf_has( RUN_BY_HAND ) )
-		thread_throw_named( &config_monitor, NULL, 0, "conf_monitor" );
+	//if( _proc->cf_chk_time > 0 && !runf_has( RUN_BY_HAND ) )
+	//	thread_throw_named( &config_monitor, NULL, 0, "conf_monitor" );
 
 	// run mem check / prealloc
 	mem_startup( );
@@ -278,7 +280,7 @@ __attribute__((noreturn)) void app_finish( int exval )
 	curl_global_cleanup( );
 
 	if( runf_has( RUN_PIDFILE ) )
-		pidfile_remove( );
+		fs_pidfile_remove( );
 
 	notice( "App %s v%s exiting.", _proc->app_name, _proc->version );
 	log_close( );

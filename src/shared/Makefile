@@ -1,6 +1,6 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-SUBS   = config log mem pmet http ha utils strings io target net
+SUBS   = config log mem fs pmet http ha utils strings io target net
 
 FILES  = iter regexp curlw iplist thread loop app
 HEADS  = iter regexp curlw iplist thread loop app run json

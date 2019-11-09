@@ -49,6 +49,7 @@
 #include <netinet/in.h>
 #include <json-c/json.h>
 #include <openssl/sha.h>
+#include <sys/inotify.h>
 #include <sys/resource.h>
 
 #define MHD_PLATFORM_H
@@ -71,6 +72,7 @@
 #include "curlw.h"
 #include "regexp.h"
 #include "iplist.h"
+#include "fs/fs.h"
 #include "net/net.h"
 #include "net/token.h"
 #include "net/udp.h"
