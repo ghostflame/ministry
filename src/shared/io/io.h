@@ -16,6 +16,8 @@
 #define IO_BUF_SZ				0x40000		// 256k
 #define IO_BUF_HWMK				0x3c000		// 240k
 
+#define IO_BUF_SMALL			0x4000		// 16k
+
 #define IO_MAX_WAITING			1024		// makes for 1024 * 256k = 256M
 #define IO_LIM_WAITING			65536		// makes for 16G
 
