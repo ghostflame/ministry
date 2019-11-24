@@ -90,10 +90,40 @@ void pmet_pass( int64_t tval, void *arg )
 }
 
 
+void pmet_scrape_check( int64_t tval, void *arg )
+{
+	int64_t sd, ad, nt;
+
+	nt = _proc->curr_time.tv_sec;
+	sd = nt - _pmet->last_scrape;
+	ad = nt - _pmet->last_alert;
+
+	debug( "Scrape delta: %ld, alert delta: %ld, alert period: %ld", sd, ad, _pmet->alert_period );
+
+	if( sd > _pmet->alert_period && ad > _pmet->alert_period )
+	{
+		warn( "Scrape expectations not met - not been scraped in %ld seconds.", sd );
+		_pmet->last_alert = nt;
+	}
+}
+
+void pmet_scrape_loop( THRD *t )
+{
+	// set last-scrape to now, so we don't alert at once
+	_pmet->last_scrape = _proc->curr_time.tv_sec;
+
+	info( "Beginning scape expectation check, threshold %ld sec.", _pmet->alert_period );
+
+	loop_control( "pmet_check", pmet_scrape_check, NULL, _pmet->period, LOOP_TRIM|LOOP_SYNC, _pmet->period / 3 );
+}
+
 
 void pmet_report( BUF *into )
 {
 	strbuf_empty( into );
+
+	// last scrape time, to the nearest second
+	_pmet->last_scrape = _proc->curr_time.tv_sec;
 
 	if( !_pmet->enabled )
 		return;
@@ -111,8 +141,6 @@ void pmet_report( BUF *into )
 void pmet_run( THRD *t )
 {
 	notice( "Beginning generation of prometheus metrics." );
-
-	_pmet->period *= 1000; // convert to usec
 
 	loop_control( "pmet_gen", pmet_pass, NULL, _pmet->period, LOOP_TRIM|LOOP_SYNC, _pmet->period / 4 );
 }
@@ -157,7 +185,14 @@ int pmet_init( void )
 
 	p->sources = mem_reverse_list( p->sources );
 
+	_pmet->period *= 1000; // convert to usec
+
 	thread_throw_named( &pmet_run, NULL, 0, "pmet_gen" );
+
+	if( _pmet->alert_period > 0 )
+	{
+		thread_throw_named( &pmet_scrape_loop, NULL, 0, "pmet_scrape_chk" );
+	}
 
 	// and add our paths
 	http_add_control( "pmet", "Control prometheus metrics generation", NULL, &pmet_source_control, NULL, 0 );

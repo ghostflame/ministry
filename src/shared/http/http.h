@@ -175,7 +175,7 @@ int http_tls_enabled( void );
 int http_ask_password( void );
 
 HTTP_CTL *http_config_defaults( void );
-int http_config_line( AVP *av );
+conf_line_fn http_config_line;
 
 #endif
 

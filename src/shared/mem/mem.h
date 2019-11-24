@@ -93,6 +93,7 @@ struct mem_control
 	MTYPE			*	hosts;
 	MTYPE			*	token;
 	MTYPE			*	hanger;
+	MTYPE			*	slkmsg;
 };
 
 
@@ -148,6 +149,8 @@ MEMHG *mem_new_hanger( void *ptr );
 void mem_free_hanger( MEMHG **m );
 void mem_free_hanger_list( MEMHG *list );
 
+SLKMSG *mem_new_slack_msg( size_t sz );
+void mem_free_slack_msg( SLKMSG **m );
 
 
 // hanger list
@@ -169,6 +172,9 @@ void *mem_list_get_tail( MEMHL *mhl );
 // external locking - disables internal locking!
 int mem_list_lock( MEMHL *mhl );
 int mem_list_unlock( MEMHL *mhl );
+
+// info
+int64_t mem_list_size( MEMHL *mhl );
 
 // setup/teardown
 void mem_list_free( MEMHL *mhl );

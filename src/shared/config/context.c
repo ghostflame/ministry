@@ -36,7 +36,6 @@ CCTXT *config_make_context( char *path, WORDS *w )
 		{
 			ctx->argv[i-1] = str_copy( w->wd[i], w->len[i] );
 			ctx->argl[i-1] = w->len[i];
-			printf( "Argv[%d] = %s\n", i - 1, ctx->argv[i-1] );
 		}
 	}
 

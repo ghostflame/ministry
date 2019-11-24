@@ -28,11 +28,10 @@ void metric_report( int64_t tval, METRIC *m )
 
 	for( i = 0; i < g->repeat; ++i )
 	{
-		memcpy( g->buf->buf + g->buf->len, g->wtmp, l );
-		g->buf->len += l;
+		buf_appends( g->buf->bf, g->wtmp, l );
 
 		// check buffer rollover
-		if( g->buf->len > g->buf->hwmk )
+		if( g->buf->bf->len > g->buf->hwmk )
 		{
 			//debug( "Posting group %s buffer %p (size).", g->name, g->buf );
 			g->buf->refs = 1;
@@ -74,9 +73,9 @@ void metric_group_io( int64_t tval, void *arg )
 	if( tval > g->buf->expires )
 	{
 		// got something?  post it and get a new buffer
-		if( g->buf->len > 0 )
+		if( g->buf->bf->len > 0 )
 		{
-			debug( "Posting group %s buffer %p / %d (timer: %ld).", g->name, g->buf, g->buf->len, g->buf->expires );
+			debug( "Posting group %s buffer %p / %d (timer: %ld).", g->name, g->buf, g->buf->bf->len, g->buf->expires );
 			g->buf->refs = 1;
 			io_buf_post_one( g->target, g->buf );
 			g->buf = mem_new_iobuf( IO_BUF_SZ );

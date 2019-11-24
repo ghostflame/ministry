@@ -2,6 +2,7 @@
 
 var net  = require( 'net' );
 var util = require( 'util' );
+var http = require( 'http' );
 
 // listens on 12003-12005 and reports counts
 
@@ -46,6 +47,51 @@ function PortCounter( port, show ) {
 }
 
 
+function PostHandler( port )
+{
+	var server = null;
+
+	var handler = function( req, res ) {
+
+		var obj, text = '';
+
+		if( req.method !== 'POST' ) {
+			res.writeHead( 405 );
+			res.end( );
+			return;
+		}
+
+		req.on( 'data', function(chunk) {
+			text += chunk.toString( );
+		});
+
+		req.on( 'error', function( err ) {
+			console.log( 'Request error: ' + err.toString( ) );
+			res.writeHead( 501 );
+			res.end( );
+			return;
+		});
+
+		req.on( 'end', function( ) {
+			try {
+				obj = JSON.parse( text );
+			} catch( err ) {
+				res.writeHead( 400 );
+				res.end( );
+				return;
+			}
+
+			console.log( JSON.stringify( obj ) );
+		});
+	};
+
+	server = http.createServer( handler );
+	server.listen( port, '0.0.0.0', function( ) {
+		console.log( 'Listening for HTTP connections on port ' + port + '.' );
+	});
+}
+
+
 var ctrs = { };
 var prts = [ 12003, 12004, 12005 ];
 var totl = 0;
@@ -66,6 +112,7 @@ for( var i = 0; i < prts.length; i++ ) {
 	};
 }
 
+var postServer = new PostHandler( 13000 );
 
 var printf = function( ) {
 	console.log( util.format.apply( util, arguments ) );
@@ -106,7 +153,6 @@ var reporter = function( ) {
 	totl = total;
 	console.log( '' );
 };
-
 
 setInterval( reporter, 10000 );
 

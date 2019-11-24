@@ -2,34 +2,25 @@
 * This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
 *                                                                         *
-* filter/local.h - filtering structs not exposed                          *
+* network.h - defines network functions and defaults                      *
 *                                                                         *
 * Updates:                                                                *
 **************************************************************************/
 
 
-#ifndef METRIC_FILTER_FILTER_LOCAL_H
-#define METRIC_FILTER_FILTER_LOCAL_H
+#ifndef METRIC_FILTER_NETWORK_H
+#define METRIC_FILTER_NETWORK_H
+
+#define DEFAULT_METFILT_PORT		2030
 
 
+struct network_control
+{
+	NET_TYPE			*	port;
+};
 
 
-#include "metric_filter.h"
-
-
-#define lock_filters( )				pthread_mutex_lock(   &(ctl->filt->genlock) )
-#define unlock_filters( )			pthread_mutex_unlock( &(ctl->filt->genlock) )
-
-
-
-
-extern const char *filter_mode_name[];
-extern FLT_CTL *_filt;
-
-
-int filter_load( void );
-void filter_unlock( void );
-
+NETW_CTL *network_config_defaults( void );
 
 
 #endif

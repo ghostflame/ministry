@@ -72,6 +72,8 @@ struct process_control
 	char					pidfile[CONF_LINE_MAX];
 	char					basedir[CONF_LINE_MAX];
 
+	//SLKHD				*	apphdl;
+
 	int64_t					tick_usec;
 	int64_t					loop_count;
 
@@ -110,6 +112,7 @@ struct process_control
 	HA_CTL				*	ha;
 	PMET_CTL			*	pmet;
 	NET_CTL				*	net;
+	SLK_CTL				*	slk;
 };
 
 

@@ -369,14 +369,14 @@ void metrics_parse_line( FETCH *f, char *line, int len )
 void metrics_fetch_cb( void *arg, IOBUF *b )
 {
 	FETCH *f = (FETCH *) arg;
-	char *q, *s = b->buf;
+	char *q, *s = b->bf->buf;
 	int len, l;
 
 	// we need attributes and other things from the fetch
 	if( !f )
 		return;
 
-	len = b->len;
+	len = b->bf->len;
 
 	while( len > 0 )
 	{
@@ -405,7 +405,7 @@ void metrics_fetch_cb( void *arg, IOBUF *b )
 	}
 
 	// and update the buffer length
-	io_buf_keep( b, len );
+	strbuf_keep( b->bf, len );
 }
 
 

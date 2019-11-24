@@ -14,8 +14,15 @@ Carbon-Copy
     Crashing with multiple sources (from ministry test)
 
 Clustering
-	Make sure existing connections are not closed until shutdown
-	This involves separting shutting down from RUNNING
+	Maintain a cluster geometry and hash on the first 20 chars
+	to determine which handles a metric?  Or maintain 'fake'
+	DHASHs that just point to another cluster member.  Forwarding
+	needs to be very low latency
+	Do we need a 'pickled' handler that understands the hashing?
+	Cannot guarantee the same hash sizes, so we need to send
+	just the hash value.  A struct?
+	:len:type:hv:dblval:string:   Or port per type?
+
 
 Filtering app?
 	Respond to a drop-in dir of configs
@@ -48,6 +55,87 @@ Slack integration?
 		fail to send
 			generates err
 				fails to send...
+	message
+	{
+		"channel": "#<name>",
+		"username": "<string>",
+		"icon_emoji": ":<name>:"
+		"text": "<main message>"
+	}
+	{
+    "attachments": [
+        {
+            "fallback": "Required plain-text summary of the attachment.",
+            "color": "#36a64f",
+            "pretext": "Optional text that appears above the attachment block",
+            "author_name": "Bobby Tables",
+            "author_link": "http://flickr.com/bobby/",
+            "author_icon": "http://flickr.com/icons/bobby.jpg",
+            "title": "Slack API Documentation",
+            "title_link": "https://api.slack.com/",
+            "text": "Optional text that appears within the attachment",
+            "fields": [
+                {
+                    "title": "Priority",
+                    "value": "High",
+                    "short": false
+                }
+            ],
+            "image_url": "http://my-website.com/path/to/image.jpg",
+            "thumb_url": "http://example.com/path/to/thumb.png",
+            "footer": "Slack API",
+            "footer_icon": "https://platform.slack-edge.com/img/default_application_icon.png",
+            "ts": 123456789
+        }
+    ]
+}
+	buttons
+	{
+    "text": "Would you like to play a game?",
+    "attachments": [
+        {
+            "text": "Choose a game to play",
+            "fallback": "You are unable to choose a game",
+            "callback_id": "wopr_game",
+            "color": "#3AA3E3",
+            "attachment_type": "default",
+            "actions": [
+                {
+                    "name": "game",
+                    "text": "Chess",
+                    "type": "button",
+                    "value": "chess"
+                },
+                {
+                    "name": "game",
+                    "text": "Falken's Maze",
+                    "type": "button",
+                    "value": "maze"
+                },
+                {
+                    "name": "game",
+                    "text": "Thermonuclear War",
+                    "style": "danger",
+                    "type": "button",
+                    "value": "war",
+                    "confirm": {
+                        "title": "Are you sure?",
+                        "text": "Wouldn't you prefer a good game of chess?",
+                        "ok_text": "Yes",
+                        "dismiss_text": "No"
+                    }
+                }
+            ]
+        }
+    ]
+}
+https://api.slack.com/docs/messages/builder
+	expect 200 (or 204?)
+
 
 Prometheus metrics
+	If we get slack working, notify about:
+		Not scraped in 24 hrs?    (needs a config option to shut up)
+			So keep track of scraping
+		Target not working for 24 hrs?
 

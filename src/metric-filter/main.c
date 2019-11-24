@@ -48,6 +48,7 @@ void main_create_conf( void )
 	ctl->proc		= app_control( );
 	ctl->mem		= memt_config_defaults( );
 	ctl->filt       = filter_config_defaults( );
+	ctl->netw       = network_config_defaults( );
 
 	config_register_section( "filter", &filter_config_line );
 
@@ -99,7 +100,7 @@ int main( int ac, char **av, char **env )
 	app_start( 1 );
 
 	// resolve relay targets
-	if( filter_init( ) )
+	if( filter_init( ) != 0 )
 		fatal( "Unable to parse all filter config." );
 
 	// lights up networking and starts listening

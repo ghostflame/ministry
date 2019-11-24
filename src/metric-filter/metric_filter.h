@@ -17,6 +17,7 @@
 
 // in order
 #include "mem.h"
+#include "network.h"
 #include "filter/filter.h"
 
 
@@ -25,8 +26,8 @@ struct metric_filter_control
 	PROC_CTL			*	proc;
 	MEMT_CTL			*	mem;
 	FLT_CTL				*	filt;
+	NETW_CTL			*	netw;
 };
-
 
 
 // global control config

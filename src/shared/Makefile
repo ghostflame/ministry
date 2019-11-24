@@ -2,8 +2,8 @@ CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
 SUBS   = config log mem fs pmet http ha utils strings io target net
 
-FILES  = iter regexp curlw iplist thread loop app
-HEADS  = iter regexp curlw iplist thread loop app run json
+FILES  = regexp curlw iplist slack thread app
+HEADS  = regexp curlw iplist slack thread app run json
 
 VERS  ?= 0.1.0
 RKV    = app_shared.a
@@ -40,7 +40,7 @@ with_old_gcc: $(RKV)
 
 
 subs:
-	for d in $(SUBS); do ( cd $$d && EARGS=$(EARGS) VERS=$(VERS) $(MAKE) $(MFLAGS) $(TARGET) ); done
+	for d in $(SUBS); do ( cd $$d && EARGS=$(EARGS) VERS=$(VERS) $(MAKE) -j4 $(MFLAGS) $(TARGET) ); done
 
 $(RKV): $(OBJS)
 	ar crs $(RKV) $(OBJS) $(SUBO)

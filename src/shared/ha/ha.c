@@ -165,9 +165,9 @@ void ha_watcher_pass( int64_t tval, void *arg )
 {
 	HAPT *p = (HAPT *) arg;
 
-	p->ch->iobuf->len = 0;
+	strbuf_empty( p->ch->iobuf->bf );
 
-	if( curlw_fetch( p->ch ) != 0 )
+	if( curlw_fetch( p->ch, NULL, 0 ) != 0 )
 		warn( "Failed to get response from HA partner %s:%hu", p->host, p->port );
 }
 

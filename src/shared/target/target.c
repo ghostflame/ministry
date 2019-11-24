@@ -10,6 +10,14 @@
 #include "local.h"
 
 
+void target_write_all( IOBUF *buf )
+{
+	TGTL *l;
+
+	for( l = _tgt->lists; l; l = l->next )
+		io_buf_post( l, buf );
+}
+
 
 void target_add_metrics( TGT *t )
 {

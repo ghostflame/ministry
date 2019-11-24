@@ -80,8 +80,7 @@ int ha_start( void );
 void ha_shutdown( void );
 
 HA_CTL *ha_config_defaults( void );
-int ha_config_line( AVP *av );
-
+conf_line_fn ha_config_line;
 
 
 #endif

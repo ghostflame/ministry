@@ -69,7 +69,7 @@ int8_t log_get_level( char *str )
 		return LOG_LEVEL_DEBUG;
 	}
 
-	for( i = LOG_LEVEL_FATAL; i < LOG_LEVEL_MAX; ++i )
+	for( i = LOG_LEVEL_MIN; i < LOG_LEVEL_MAX; ++i )
 		if( !strcasecmp( str, log_level_strings[i] ) )
 		  	return i;
 
@@ -80,7 +80,7 @@ int8_t log_get_level( char *str )
 
 const char *log_get_level_name( int8_t level )
 {
-	if( level >= LOG_LEVEL_FATAL && level < LOG_LEVEL_MAX )
+	if( level >= LOG_LEVEL_MIN && level < LOG_LEVEL_MAX )
 		return log_level_strings[level];
 
 	return "unknown";

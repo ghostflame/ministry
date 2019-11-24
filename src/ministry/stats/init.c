@@ -30,7 +30,7 @@ void stats_thread_pass( int64_t tval, void *arg )
 	for( i = 0; i < ctl->tgt->set_count; ++i )
 		if( t->bp[i] )
 		{
-			if( t->bp[i]->len )
+			if( t->bp[i]->bf->len )
 			{
 				io_buf_post( ctl->tgt->setarr[i]->targets, t->bp[i] );
 				t->bp[i] = NULL;

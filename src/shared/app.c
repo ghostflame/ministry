@@ -86,6 +86,7 @@ int app_init( char *name, char *cfgdir )
 	_proc->tgt  = target_config_defaults( );
 	_proc->ha   = ha_config_defaults( );
 	_proc->net  = net_config_defaults( );
+	_proc->slk  = slack_config_defaults( );
 
 	// set up our shared config
 	config_register_section( "main",     &config_line );
@@ -98,6 +99,7 @@ int app_init( char *name, char *cfgdir )
 	config_register_section( "target",   &target_config_line );
 	config_register_section( "ha",       &ha_config_line );
 	config_register_section( "network",  &net_config_line );
+	config_register_section( "slack",    &slack_config_line );
 
 	config_late_setup( );
 
@@ -111,6 +113,7 @@ int app_init( char *name, char *cfgdir )
 
 	// make curl ready
 	curl_global_init( CURL_GLOBAL_SSL );
+	notice( "Curl has been init'd." );
 
 	// find out about curl
 	cvid = curl_version_info( CURLVERSION_NOW );
@@ -147,7 +150,7 @@ int app_start( int writePid )
 	setenv( "TMPDIR", _proc->tmpdir, 1 );
 
 	http_calls_init( );
-
+	//slack_init( );
 	log_start( );
 
 	notice( "%s v%s starting up.", _proc->app_upper, _proc->version );
@@ -212,6 +215,11 @@ void app_ready( void )
 
 	get_time( );
 	ts_diff( _proc->curr_time, _proc->init_time, &diff );
+
+	// tell slack if configured to
+	//if( _proc->apphdl )
+	//	slack_message_simple( _proc->apphdl, LOG_LEVEL_NOTICE, "%s started up on %s at %ld.",
+	//			_proc->app_upper, _proc->hostname, _proc->curr_time.tv_sec );
 
 	info( "%s started up in %.3fs.", _proc->app_upper, diff );
 

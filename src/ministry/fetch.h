@@ -64,8 +64,8 @@ throw_fn fetch_loop;
 
 int fetch_init( void );
 
-conf_line_fn fetch_config_line;
 FTCH_CTL *fetch_config_defaults( void );
+conf_line_fn fetch_config_line;
 
 
 #endif

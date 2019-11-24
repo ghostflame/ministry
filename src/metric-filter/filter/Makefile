@@ -1,9 +1,9 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-FILES  = conf init filter
-HEADS  = filter
+FILES  = conf init load filter
+HEADS  = filter local
 
-RKV    = metrics_shared.a
+RKV    = filter_shared.a
 EARGS ?=
 
 OBJS   = $(FILES:%=%.o)

@@ -13,6 +13,7 @@
 
 enum log_levels
 {
+	LOG_LEVEL_MIN = 0,
 	LOG_LEVEL_FATAL = 0,
 	LOG_LEVEL_ERROR,
 	LOG_LEVEL_WARN,
@@ -51,6 +52,7 @@ int log_start( void );
 int log_set_level( int8_t level, int8_t both );
 void log_set_force_stdout( int set );
 
+int8_t log_get_level( char *str );
 const char *log_get_level_name( int8_t level );
 
 http_callback log_ctl_setdebug;

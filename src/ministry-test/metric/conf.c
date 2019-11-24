@@ -199,7 +199,7 @@ int metric_config_line( AVP *av )
 	else if( attIs( "group" ) )
 	{
 		ng = (MGRP *) allocz( sizeof( MGRP ) );
-		ng->name = dup_val( );
+		ng->name = av_copyp( av );
 		ng->nlen = av->vlen;
 		ng->prefix = strbuf( METRIC_MAX_PATH );
 		ng->repeat = 1;

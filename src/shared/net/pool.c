@@ -95,7 +95,7 @@ __attribute__((hot)) void tcp_pool_handler( TCPTH *th, struct pollfd *p, HOST *h
 			break;
 
 		// do we have anything
-		if( !n->in->len )
+		if( !n->in->bf->len )
 		{
 			tdebug( "No incoming data from %s", n->name );
 			break;

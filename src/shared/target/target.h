@@ -137,6 +137,8 @@ struct target_control
 };
 
 
+// write to all targets
+void target_write_all( IOBUF *buf );
 
 // run targets (list is optional)
 int target_run_one( TGT *t, int idx );
@@ -164,6 +166,6 @@ throw_fn target_loop;
 void target_set_handle( TGT *t, char *prefix );
 
 TGT_CTL *target_config_defaults( void );
-int target_config_line( AVP *av );
+conf_line_fn target_config_line;
 
 #endif

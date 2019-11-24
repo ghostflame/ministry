@@ -49,7 +49,7 @@ throw_fn self_stats_loop;
 void self_stats_init( void );
 
 SST_CTL *self_stats_config_defaults( void );
-int self_stats_config_line( AVP *av );
+conf_line_fn self_stats_config_line;
 
 #endif
 

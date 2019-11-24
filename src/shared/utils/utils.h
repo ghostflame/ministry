@@ -158,6 +158,10 @@ int is_url( char *str );
 #define av_intk( _v )		av_int( _v ); _v *= 1000
 #define av_intK( _v )		av_int( _v ); _v <<= 10
 
+#define av_copy( _v )		str_copy( _v->vptr, _v->vlen )
+#define av_copyp( _v )		str_dup( _v->vptr, _v->vlen )
+
+
 // flags field laziness
 #define flag_add( _i, _f )	_i |=  _f
 #define flag_rmv( _i, _f )	_i &= ~_f
@@ -175,6 +179,7 @@ int is_url( char *str );
 #define RUN_STOP( )         runf_rmv( RUN_LOOP )
 #define RUNNING( )          runf_has( RUN_LOOP )
 
+#define plural( _d )		( ( _d == 1 ) ? "" : "s" )
 
 
 // hash size lookup

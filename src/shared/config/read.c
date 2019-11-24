@@ -477,7 +477,7 @@ int config_read_url( char *url, int fail_ok )
 	// force to file
 	setCurlFl( ch, TOFILE );
 
-	if( curlw_fetch( &ch ) )
+	if( curlw_fetch( &ch, NULL, 0 ) )
 	{
 		if( fail_ok )
 		{

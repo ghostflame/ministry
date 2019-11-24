@@ -20,6 +20,7 @@ typedef struct target_control       TGT_CTL;
 typedef struct ha_control           HA_CTL;
 typedef struct pmet_control         PMET_CTL;
 typedef struct net_control          NET_CTL;
+typedef struct slack_control		SLK_CTL;
 
 typedef struct config_section       CSECT;
 typedef struct config_context       CCTXT;
@@ -86,7 +87,6 @@ typedef struct http_tls_file        TLS_FILE;
 
 typedef struct json_object          JSON;
 
-typedef struct curlw_container      CURLWC;
 typedef struct curlw_times          CURLWT;
 typedef struct curlw_handle         CURLWH;
 
@@ -97,6 +97,13 @@ typedef struct pmet_metric          PMETM;
 typedef struct pmet_item            PMET;
 typedef struct pmet_label           PMET_LBL;
 typedef struct pmet_shared          PMET_SH;
+
+typedef struct slack_message        SLKMSG;
+typedef struct slack_pathway        SLKPT;
+typedef struct slack_handle         SLKHD;
+typedef struct slack_channel        SLKCH;
+typedef struct slack_space          SLKSP;
+
 
 
 // function types

@@ -1,7 +1,7 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-FILES  = mem main
-HEADS  = mem metric_filter typedefs
+FILES  = mem network main
+HEADS  = mem network metric_filter typedefs
 
 SUBS   = filter
 
@@ -46,7 +46,7 @@ with_old_gcc:  subs
 with_old_gcc:  $(BIN)
 
 subs:
-	@for d in $(SUBS); do ( cd $$d && $(MAKE) $(MFLAGS) $(TARGET) ); done
+	@for d in $(SUBS); do ( cd $$d && $(MAKE) -j4 $(MFLAGS) $(TARGET) ); done
 
 $(BIN): $(HDRS) $(OBJS)
 	$(CC) -o $(BIN) $(LFLAGS) $(OBJS) $(SUBO) $(RKVS)

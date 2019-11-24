@@ -193,7 +193,7 @@ void stats_init( void );
 void stats_stop( void );
 
 STAT_CTL *stats_config_defaults( void );
-int stats_config_line( AVP *av );
+conf_line_fn stats_config_line;
 
 
 #endif

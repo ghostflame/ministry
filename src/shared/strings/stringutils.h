@@ -48,10 +48,13 @@ struct string_store
 	SSTR				*	_proc_next;	// a list to live in _proc
 	SSTE				**	hashtable;
 
+	mem_free_cb			*	freefp;
+
 	int64_t					hsz;
 	int64_t					entries;
 	int32_t					val_default;
 	int32_t					set_default;
+	int						freeable;
 
 	pthread_mutex_t			mtx;
 };
@@ -73,25 +76,27 @@ struct string_buffer
 char *str_perm( int len );
 char *str_dup( char *src, int len );
 
-#define dup_val( )						str_dup( av->vptr, av->vlen )
-
 // this can be freed
 char *str_copy( char *src, int len );
 
 // get a buffer
 BUF *strbuf( uint32_t size );
 BUF *strbuf_create( char *str, int len );
+void strbuf_free( BUF *b );
 
 // modify a buffer
 BUF *strbuf_resize( BUF *b, uint32_t size );
 BUF *strbuf_copy( BUF *b, char *str, int len );
+int strbuf_copymax( BUF *b, char *str, int len );
 BUF *strbuf_add( BUF *b, char *str, int len );
+void strbuf_keep( BUF *b, int len );		// keep the last len bytes, move to the start
 
 // write json to a buffer
 BUF *strbuf_json( BUF *b, json_object *o, int done );
 
 // these work as macros
 #define strbuf_printf( b, ... )			b->len = snprintf( b->buf, b->sz, ##__VA_ARGS__ )
+#define strbuf_vprintf( b, ... )		b->len = vsnprintf( b->buf, b->sz, ##__VA_ARGS__ )
 #define strbuf_aprintf( b, ... )		b->len += snprintf( b->buf + b->len, b->sz - b->len, ##__VA_ARGS__ )
 #define strbuf_avprintf( b, ... )		b->len += vsnprintf( b->buf + b->len, b->sz - b->len, ##__VA_ARGS__ )
 #define strbuf_empty( b )				b->len = 0; b->buf[0] = '\0'
@@ -100,6 +105,15 @@ BUF *strbuf_json( BUF *b, json_object *o, int done );
 #define strbuf_trunc( b, l )			if( l > b->len ) { b->buf[l] = '\0'; b->len = l; }
 #define strbuf_lastchar( b )			( ( b->len ) ? b->buf[b->len - 1] : '\0' )
 #define strbuf_append( b, o )			strbuf_copy( strbuf_resize( b, b->len + o->len ), o->buf, o->len )
+#define strbuf_space( b )				( b->sz - ( b->len + 1 ) )
+
+// unchecked macros, for callers who have done their homework
+#define buf_append( _b, _c )			memcpy( _b->buf + _b->len, _c->buf, _c->len ); _b->len += _c->len
+#define buf_appends( _b, _s, _l )		memcpy( _b->buf + _b->len, _s, _l ); _b->len += _l
+#define buf_addchar( _b, _c )			_b->buf[_b->len++] = _c
+#define buf_terminate( _b )				_b->buf[_b->len] = '\0'
+#define buf_hasspace( _b, _l )			( ( _b->len + _l ) < _b->sz )
+#define buf_space( _b )					strbuf_space( _b )
 
 
 // get string length, up to a maximum
@@ -134,7 +148,7 @@ int strwords_multi( WORDS *w, char *src, int len, char sep, int8_t multi );
 // they cannot be removed, but you can use the val as a removal bit
 
 // pass either an int or a char size.  Default is "medium"
-SSTR *string_store_create( int64_t sz, char *size, int *default_value );
+SSTR *string_store_create( int64_t sz, char *size, int *default_value, int freeable );
 
 // add a string.  Adding stuff onto them is your problem
 SSTE *string_store_add( SSTR *store, char *str, int len );

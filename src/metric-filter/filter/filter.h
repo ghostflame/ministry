@@ -13,6 +13,9 @@
 
 #define DEFAULT_FILTER_DIR				"/etc/ministry/metric-filters.d"
 
+#define LINE_SEPARATOR					'\n'
+#define MAX_PATH_SZ						4096
+
 enum filter_modes
 {
 	FILTER_MODE_ALL = 0,
@@ -24,21 +27,16 @@ enum filter_modes
 
 struct filter_data
 {
-	HFILT			*	next;
+	FILT			*	next;
 	int					mode;
 	RGXL			*	matches;
-};
-
-struct filter_list
-{
-	FILTL			*	next;
-	HFILT			*	filter;
 };
 
 // add on to the host structure
 struct filter_host
 {
-	FILTL			*	filters;
+	FILT			*	filters;
+	BUF				*	path;
 	int					best_mode;
 };
 
@@ -69,10 +67,12 @@ ftree_callback filter_on_change;
 tcp_fn filter_host_setup;
 tcp_fn filter_host_end;
 
+buf_fn filter_parse_buf;
+
 int filter_init( void );
 
-conf_line_fn filter_config_line;
 FLT_CTL *filter_config_defaults( void );
+conf_line_fn filter_config_line;
 
 
 #endif

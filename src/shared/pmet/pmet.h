@@ -80,6 +80,10 @@ struct pmet_control
 
 	int64_t				period;
 	int					enabled;
+
+	int64_t				last_scrape;
+	int64_t				last_alert;
+	int64_t				alert_period;
 };
 
 
@@ -141,6 +145,8 @@ PMETM *pmet_metric_find( char *name );
 
 
 // pmet.c
+loop_call_fn pmet_scrape_check;
+throw_fn pmet_scrape_loop;
 
 http_callback pmet_source_control;
 http_callback pmet_source_list;
@@ -152,7 +158,6 @@ void pmet_report( BUF *into );
 
 int pmet_init( void );
 PMET_CTL *pmet_config_defaults( void );
-int pmet_config_line( AVP *av );
-
+conf_line_fn pmet_config_line;
 
 #endif

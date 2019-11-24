@@ -324,6 +324,18 @@ int mem_list_unlock( MEMHL *mhl )
 	return 0;
 }
 
+int64_t mem_list_size( MEMHL *mhl )
+{
+	int64_t ret = 0;
+
+	mhl_lock( mhl );
+	ret = mhl->count;
+	mhl_unlock( mhl );
+
+	return ret;
+}
+
+
 MEMHL *mem_list_create( int use_lock, mem_free_cb *cb )
 {
 	MEMHL *mhl = (MEMHL *) allocz( sizeof( MEMHL ) );

@@ -22,7 +22,7 @@ void relay_flush_host( RDATA *r )
 	// send all bufs that have data in
 	for( hb = r->hbufs; hb; hb = hb->next )
 		for( i = 0; i < hb->bcount; i++ )
-			if( hb->bufs[i] && hb->bufs[i]->len > 0 )
+			if( hb->bufs[i] && hb->bufs[i]->bf->len > 0 )
 			{
 				io_buf_post( hb->rule->targets[i], hb->bufs[i] );
 				hb->bufs[i] = mem_new_iobuf( IO_BUF_SZ );

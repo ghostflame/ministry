@@ -186,6 +186,6 @@ void net_stop( void );
 // config
 int net_add_type( NET_TYPE *nt );
 NET_CTL *net_config_defaults( void );
-int net_config_line( AVP *av );
+conf_line_fn net_config_line;
 
 #endif

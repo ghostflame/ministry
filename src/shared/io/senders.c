@@ -28,7 +28,7 @@ int64_t io_send_stdout( TGT *t )
 	{
 		if( t->enabled )
 		{
-			b = write( s->fd, s->out->buf + t->curr_off, s->out->len - t->curr_off );
+			b = write( s->fd, s->out->bf->buf + t->curr_off, s->out->bf->len - t->curr_off );
 			t->curr_off += b;
 			t->bytes += b;
 			++f;
