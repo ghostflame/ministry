@@ -9,22 +9,52 @@
 
 #include "local.h"
 
-#define filter_host_flush( _h, _r )			target_write_all( _h->net->out ); if( _r ) _h->net->out = mem_new_iobuf( IO_BUF_SZ )
+
+void filter_host_free( HFILT *hf )
+{
+	FILT *f;
+
+	while( hf->filters )
+	{
+		f = hf->filters;
+		hf->filters = f->next;
+		free( f );
+	}
+	strbuf_free( hf->path );
+	free( hf );
+}
+
+
+
+__attribute__((hot)) void filter_flush_host( HOST *h, int refresh )
+{
+	if( !h->net->out->bf->len )
+		return;
+
+	lock_host( h );
+
+	target_write_all( h->net->out );
+
+	if( refresh )
+	{
+		h->net->out = mem_new_iobuf( IO_BUF_SZ );
+		h->net->out->expires = ctl->proc->curr_tval + ctl->filt->flush_max;
+	}
+
+	unlock_host( h );
+}
 
 
 
 __attribute__((hot)) int filter_host_line( HFILT *hf )
 {
 	FILT *f;
-	int r;
 
 	if( hf->best_mode == FILTER_MODE_ALL )
 		return 0;
 
 	for( f = hf->filters; f; f = f->next )
-	{
-		r = regex_list_test( hf->path->buf, f->matches );
-		if( r == REGEX_MATCH )
+		if( regex_list_test( hf->path->buf, f->matches ) == REGEX_MATCH )
 		{
 			switch( f->mode )
 			{
@@ -36,19 +66,6 @@ __attribute__((hot)) int filter_host_line( HFILT *hf )
 					return 0;
 			}
 		}
-		else
-		{
-			switch( f->mode )
-			{
-				case FILTER_MODE_ALLOW:
-					return -1;
-				case FILTER_MODE_DROP:
-					return 0;
-				default:
-					return -1;
-			}
-		}
-	}
 
 	return -1;
 }
@@ -120,9 +137,7 @@ __attribute__((hot)) int filter_parse_buf( HOST *h, IOBUF *b )
 
 					// and forward that line
 					if( !buf_hasspace( o->bf, l + 1 ) )
-					{
-						filter_host_flush( h, 1 );
-					}
+						filter_flush_host( h, 1 );
 
 					buf_appends( o->bf, s, l );
 					buf_addchar( o->bf, '\n' );
@@ -135,13 +150,52 @@ __attribute__((hot)) int filter_parse_buf( HOST *h, IOBUF *b )
 	}
 
 	if( b->bf->len > 0 )
-	{
-		filter_host_flush( h, 1 );
-	}
+		filter_flush_host( h, 1 );
 
 	strbuf_keep( b->bf, len );
 	return len;
 }
+
+
+
+void filter_host_watcher( THRD *t )
+{
+	int64_t us;
+	HFILT *hf;
+	HOST *h;
+
+	hf = (HFILT *) t->arg;
+	h  = (HOST *) hf->host;
+
+	// half, convert to usec
+	us = ctl->filt->flush_max / 2000;
+
+	while( hf->running && RUNNING( ) )
+	{
+		usleep( us );
+
+		lock_host( h );
+
+		if( hf->running && ctl->proc->curr_tval > h->net->out->expires )
+		{
+			if( h->net->out->bf->len > 0 )
+			{
+				target_write_all( h->net->out );
+				h->net->out = mem_new_iobuf( IO_BUF_SZ );
+				h->net->out->expires = ctl->proc->curr_tval + ctl->filt->flush_max;
+			}
+			else
+				h->net->out->expires = ctl->proc->curr_tval + ctl->filt->flush_max;
+		}
+
+		unlock_host( h );
+	}
+
+	// sanity time
+	usleep( 100000 );
+	filter_host_free( hf );
+}
+
 
 
 // figure out which IPNETs this host matches
@@ -166,6 +220,12 @@ void filter_host_setup( HOST *h )
 
 	flist = (HFILT *) allocz( sizeof( HFILT ) );
 	flist->path = strbuf( MAX_PATH_SZ );
+	flist->best_mode = FILTER_MODE_MAX;
+	flist->running = 1;
+	flist->host = h;
+
+	// we need locking on this one
+	secure_host( h );
 
 	for( hg = matches->head; hg; hg = hg->next )
 	{
@@ -195,29 +255,34 @@ void filter_host_setup( HOST *h )
 
 	mem_list_free( matches );
 	h->data = flist;
+
+	    // name the thread after the type and remote host
+    thread_throw_named_f( &filter_host_watcher, flist, 0, "w_%08x:%04x",
+        ntohl( h->net->peer.sin_addr.s_addr ),
+        ntohs( h->net->peer.sin_port ) );
 }
+
 
 void filter_host_end( HOST *h )
 {
-	FILT *f, *fn;
-	HFILT *hf;
+	HFILT *f;
 
-	hf = (HFILT *) h->data;
-	for( f = hf->filters; f; f = fn )
-	{
-		fn = f->next;
-		free( f );
-	}
-	strbuf_free( hf->path );
-	free( hf );
+	f = (HFILT *) h->data;
+
+	lock_host( h );
+
+	if( f )
+		f->running = 0;
+
+	// note, do not free the hfilt struct -
 	h->data = NULL;
 
 	if( h->net->out->bf->len > 0 )
-	{
-		filter_host_flush( h, 0 );
-	}
+		filter_flush_host( h, 0 );
 	else
 		mem_free_iobuf( &(h->net->out) );
+
+	unlock_host( h );
 }
 
 

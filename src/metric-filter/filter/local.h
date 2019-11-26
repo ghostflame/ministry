@@ -12,6 +12,8 @@
 #define METRIC_FILTER_FILTER_LOCAL_H
 
 
+#define FILTER_DEFAULT_FLUSH		1000		// msec
+
 
 
 #include "metric_filter.h"

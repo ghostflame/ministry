@@ -37,7 +37,9 @@ struct filter_host
 {
 	FILT			*	filters;
 	BUF				*	path;
+	HOST			*	host;
 	int					best_mode;
+	int					running;
 };
 
 
@@ -56,6 +58,7 @@ struct filter_control
 
 	int					close_conn;
 	int					generation;
+	int64_t				flush_max;
 
 	pthread_mutex_t		genlock;
 };
@@ -66,8 +69,9 @@ ftree_callback filter_on_change;
 
 tcp_fn filter_host_setup;
 tcp_fn filter_host_end;
-
 buf_fn filter_parse_buf;
+
+throw_fn filter_host_watcher;
 
 int filter_init( void );
 

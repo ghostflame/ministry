@@ -18,6 +18,7 @@ FLT_CTL *filter_config_defaults( void )
 
 	_filt->filter_dir = str_copy( DEFAULT_FILTER_DIR, 0 );
 	_filt->generation = 1;
+	_filt->flush_max  = FILTER_DEFAULT_FLUSH * MILLION;
 
 	return _filt;
 }
@@ -25,6 +26,7 @@ FLT_CTL *filter_config_defaults( void )
 int filter_config_line( AVP *av )
 {
 	FLT_CTL *f = ctl->filt;
+	int64_t v;
 	char *rp;
 
 	if( attIs( "filters" ) || attIs( "filterDir" ) )
@@ -38,6 +40,16 @@ int filter_config_line( AVP *av )
 		free( f->filter_dir );
 		f->filter_dir = str_copy( rp, 0 );
 		info( "Filter directory: %s", f->filter_dir );
+	}
+	else if( attIs( "flushMax" ) )
+	{
+		if( av_int( v ) == NUM_INVALID )
+		{
+			err( "Invalid flush max time in msec: %s", av->vptr );
+			return -1;
+		}
+
+		f->flush_max = v * MILLION;
 	}
 	else
 		return -1;

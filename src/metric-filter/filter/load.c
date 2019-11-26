@@ -93,7 +93,7 @@ int filter_add_object( FCONF *conf, JSON *jo, char *path )
 			return -1;
 		}
 
-		rl = regex_list_create( REGEX_FAIL );
+		rl = regex_list_create( 0 );
 
 		for( mc = 0, i = 0; i < ct; ++i )
 		{
@@ -263,6 +263,7 @@ int filter_load( void )
 
 	snprintf( nbuf, 64, "filter-list-%ld", ctl->proc->curr_time.tv_sec );
 	conf->ipl = iplist_create( nbuf, IPLIST_NEGATIVE, 0 );
+	conf->ipl->enable = 1;
 
 	// now we need to 'reload', so create the iplist config
 	// for new requests, and tear down the old one.
@@ -270,6 +271,7 @@ int filter_load( void )
 	// we are closing old connections
 
 	filter_scan_dir( ctl->filt->filter_dir, conf );
+	iplist_init_one( conf->ipl );
 
 	// swap them
 	ctl->filt->fconf = conf;
