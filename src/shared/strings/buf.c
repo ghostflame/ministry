@@ -110,6 +110,7 @@ int strbuf_copymax( BUF *b, char *str, int len )
 		len = max;
 
 	memcpy( b->buf, str, len );
+	b->len = len;
 	b->buf[b->len] = '\0';
 
 	return len;
