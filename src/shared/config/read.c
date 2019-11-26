@@ -355,21 +355,26 @@ int __config_read_file( FILE *fh )
 			vcpy = (char *) allocz( vlen + 2 );
 			vtmp = (char *) allocz( vlen + iter_longest( it ) + 2 );
 
-			memcpy( vcpy, av.vptr, av.vlen );
-			vcpy[av.vlen] = '\0';
-
 			// blanks have an autoassigned '1' we want to ignore
 			// if you really want a 1 with arguments, put a 1
 			if( av.blank )
+			{
 				vlen = 0;
+			}
 			else
-			 	vtmp[vlen++] = ' ';
+			{
+				memcpy( vcpy, av.vptr, vlen );
+				vcpy[vlen++] = ' ';
+				vcpy[vlen] = '\0';
+			}
 
 			// run while arguments...
 			while( iter_next( it, &arg, &alen ) == 0 )
 			{
 				// copy the base - might be 0, might be base + space
-				memcpy( vtmp, vcpy, vlen );
+				if( vlen )
+					memcpy( vtmp, vcpy, vlen );
+
 				// add the latest arg
 				memcpy( vtmp + vlen, arg, alen );
 
