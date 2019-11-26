@@ -155,13 +155,17 @@ int app_start( int writePid )
 
 	notice( "%s v%s starting up.", _proc->app_upper, _proc->version );
 
-	if( fs_mkdir_recursive( _proc->basedir ) )
-		fatal( "Could not create/find base dir %s -- %s", _proc->basedir, Err );
+	// only move if we have to
+	if( strcasecmp( _proc->basedir, "." ) )
+	{
+		if( fs_mkdir_recursive( _proc->basedir ) )
+			fatal( "Could not create/find base dir %s -- %s", _proc->basedir, Err );
 
-	if( chdir( _proc->basedir ) )
-		fatal( "Could not chdir to base dir %s -- %s", _proc->basedir, Err );
-	else
-		debug( "Working directory now %s", getcwd( NULL, 0 ) );
+		if( chdir( _proc->basedir ) )
+			fatal( "Could not chdir to base dir %s -- %s", _proc->basedir, Err );
+		else
+			debug( "Working directory now %s", getcwd( NULL, 0 ) );
+	}
 
 	if( runf_has( RUN_DAEMON ) && !runf_has( RUN_TGT_STDOUT ) )
 	{

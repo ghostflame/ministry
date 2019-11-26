@@ -18,6 +18,10 @@ int fs_mkdir_recursive( char *path )
 
 	errno = 0;
 
+	// anything to do?
+	if( !strcmp( path, "." ) )
+		return 0;
+
 	// we have a sensible looking path?
 	if( !( ls = strrchr( path, '/' ) ) )
 	{
