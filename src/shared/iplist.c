@@ -39,6 +39,8 @@ int iplist_test_ip_all( IPLIST *l, uint32_t ip, MEMHL *matches )
 }
 
 
+// test yes/no for matching
+// used in the general network accept/drop case
 int iplist_test_ip( IPLIST *l, uint32_t ip, IPNET **p )
 {
 	IPNET *n;
@@ -91,17 +93,15 @@ int iplist_test_str( IPLIST *l, char *ip, IPNET **p )
 
 IPLIST *iplist_find( char *name )
 {
-	IPLIST *l = NULL;
+	IPLIST *l;
 
 	if( name && *name )
 		for( l = _iplist->lists; l; l = l->next )
 			if( !strcmp( name, l->name ) )
-				break;
+				return l;
 
-	if( !l )
-		err( "Cannot find filter list named '%s'", name );
-
-	return l;
+	err( "Cannot find filter list named '%s'", name );
+	return NULL;
 }
 
 
@@ -445,56 +445,61 @@ void iplist_add( IPLIST *l, int dup )
 }
 
 
-
-
-void iplist_init( void )
+void iplist_init_one( IPLIST *l )
 {
 	uint32_t hval, i;
-	IPLIST *l;
 	IPNET *n;
 
-	for( l = _iplist->lists; l; l = l->next )
+	if( l->init_done )
+		return;
+
+	if( !l->hashsz )
+		l->hashsz = IPLIST_HASHSZ;
+
+	l->ips = (IPNET **) allocz( l->hashsz * sizeof( IPNET * ) );
+
+	// these have been de-dup'd already
+	while( l->singles )
 	{
-		if( l->init_done )
-			continue;
+		n = l->singles;
+		l->singles = n->next;
 
-		if( !l->hashsz )
-			l->hashsz = IPLIST_HASHSZ;
+		hval = n->net % l->hashsz;
 
-		l->ips = (IPNET **) allocz( l->hashsz * sizeof( IPNET * ) );
+		n->next = l->ips[hval];
+		l->ips[hval] = n;
+	}
 
-		// these have been de-dup'd already
-		while( l->singles )
-		{
-			n = l->singles;
-			l->singles = n->next;
+	if( l->text )
+	{
+		for( n = l->nets; n; n = n->next )
+			if( !n->text )
+			{
+				n->text = l->text;
+				n->tlen = l->tlen;
+			}
 
-			hval = n->net % l->hashsz;
-
-			n->next = l->ips[hval];
-			l->ips[hval] = n;
-		}
-
-		if( l->text )
-		{
-			for( n = l->nets; n; n = n->next )
+		for( i = 0; i < l->hashsz; ++i )
+			for( n = l->ips[i]; n; n = n->next )
 				if( !n->text )
 				{
 					n->text = l->text;
 					n->tlen = l->tlen;
 				}
-
-			for( i = 0; i < l->hashsz; ++i )
-				for( n = l->ips[i]; n; n = n->next )
-					if( !n->text )
-					{
-						n->text = l->text;
-						n->tlen = l->tlen;
-					}
-		}
-
-		l->init_done = 1;
 	}
+
+	l->init_done = 1;
+}
+
+
+// called at startup
+// won't catch the IPlists loaded by metric-filter
+void iplist_init( void )
+{
+	IPLIST *l;
+
+	for( l = _iplist->lists; l; l = l->next )
+		iplist_init_one( l );
 }
 
 

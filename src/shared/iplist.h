@@ -83,6 +83,7 @@ int iplist_test_ip( IPLIST *l, uint32_t ip, IPNET **p );
 int iplist_test_str( IPLIST *l, char *ip, IPNET **p );
 
 // startup
+void iplist_init_one( IPLIST *l );
 void iplist_init( );
 
 // setup
