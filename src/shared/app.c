@@ -113,7 +113,6 @@ int app_init( char *name, char *cfgdir )
 
 	// make curl ready
 	curl_global_init( CURL_GLOBAL_SSL );
-	notice( "Curl has been init'd." );
 
 	// find out about curl
 	cvid = curl_version_info( CURLVERSION_NOW );
