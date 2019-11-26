@@ -182,6 +182,11 @@ int is_url( char *str );
 #define plural( _d )		( ( _d == 1 ) ? "" : "s" )
 
 
+// json shortcuts
+#define json_fetch( _obj, _key, _type )         json_object_get_##_type( json_object_object_get( _obj, _key ) )
+#define json_insert( _obj, _key, _type, _item ) json_object_object_add( _obj, _key, json_object_new_##_type( _item ) )
+
+
 // hash size lookup
 uint64_t hash_size( char *str );
 

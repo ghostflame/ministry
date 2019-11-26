@@ -93,9 +93,6 @@ struct slack_control
 };
 
 
-#define json_fetch( _obj, _key, _type )			json_object_get_##_type( json_object_object_get( _obj, _key ) )
-#define json_insert( _obj, _key, _type, _item )	json_object_object_add( _obj, _key, json_object_new_##_type( _item ) )
-
 
 void slack_message_set_icon_emoji( SLKMSG *msg, char *str );					// set the emoji
 int slack_message_add_attachment( SLKMSG *msg, int argc, ... );					// add keys/values in pairs (strings only)

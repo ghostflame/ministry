@@ -271,8 +271,8 @@ int pmet_source_list( HTREQ *req )
 	{
 		js = json_object_new_object( );
 
-		json_object_object_add( js, "name",      json_object_new_string( s->name ) );
-		json_object_object_add( js, "lastCount", json_object_new_int( s->last_ct ) );
+		json_insert( js, "name",      string, s->name );
+		json_insert( js, "lastCount", int,    s->last_ct );
 
 		json_object_array_add( ( pmets_enabled( s ) ) ? je : jd, js );
 	}

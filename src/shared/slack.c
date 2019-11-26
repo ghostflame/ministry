@@ -41,7 +41,7 @@ void slack_message_set_icon_emoji( SLKMSG *msg, char *str )
 	if( json_object_object_get( msg->jo, "icon_emoji" ) )
 		json_object_object_del( msg->jo, "icon_emoji" );
 
-	json_object_object_add( msg->jo, "icon_emoji", json_object_new_string( emobuf ) );
+	json_insert( msg->jo, "icon_emoji", string, emobuf );
 }
 
 

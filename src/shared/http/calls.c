@@ -24,9 +24,9 @@ int http_calls_metrics( HTREQ *req )
 
 
 #define _jmtype( n, mc )		snprintf( tmp, 16, "%s_calls", n ); \
-								json_object_object_add( jt, tmp, json_object_new_int64( mc.ctr ) ); \
+								json_insert( jt, tmp, int64, mc.ctr ); \
 								snprintf( tmp, 16, "%s_total", n ); \
-								json_object_object_add( jt, tmp, json_object_new_int64( mc.sum ) )
+								json_insert( jt, tmp, int64, mc.sum )
 
 
 int http_calls_stats( HTREQ *req )
@@ -41,10 +41,9 @@ int http_calls_stats( HTREQ *req )
 	jo = json_object_new_object( );
 	jm = json_object_new_object( );
 
-	json_object_object_add( jo, "app",    json_object_new_string( _proc->app_name ) );
-	json_object_object_add( jo, "uptime", json_object_new_double( get_uptime( ) ) );
-	json_object_object_add( jo, "mem",    json_object_new_int64( mem_curr_kb( ) ) );
-
+	json_insert( jo, "app",    string, _proc->app_name );
+	json_insert( jo, "uptime", double, get_uptime( ) );
+	json_insert( jo, "mem",    int64,  mem_curr_kb( ) );
 
 	for( j = 0; j < _proc->mem->type_ct; ++j )
 	{
@@ -53,9 +52,9 @@ int http_calls_stats( HTREQ *req )
 
 		jt = json_object_new_object( );
 
-		json_object_object_add( jt, "free",  json_object_new_int( ms.ctrs.fcount ) );
-		json_object_object_add( jt, "alloc", json_object_new_int( ms.ctrs.total ) );
-		json_object_object_add( jt, "kb",    json_object_new_int64( ms.bytes >> 10 ) );
+		json_insert( jt, "free",  int,   ms.ctrs.fcount );
+		json_insert( jt, "alloc", int,   ms.ctrs.total );
+		json_insert( jt, "kb",    int64, ( ms.bytes >> 10 ) );
 
 #ifdef MTYPE_TRACING
 		_jmtype( "alloc",  ms.ctrs.all );
@@ -83,9 +82,9 @@ int http_calls_version( HTREQ *req )
 	json_object *jo;
 
 	jo = json_object_new_object( );
-	json_object_object_add( jo, "app",     json_object_new_string( _proc->app_name ) );
-	json_object_object_add( jo, "uptime",  json_object_new_double( get_uptime( ) ) );
-	json_object_object_add( jo, "version", json_object_new_string( _proc->version ) );
+	json_insert( jo, "app",     string, _proc->app_name );
+	json_insert( jo, "uptime",  double, get_uptime( ) );
+	json_insert( jo, "version", string, _proc->version );
 
 	strbuf_json( req->text, jo, 1 );
 	return 0;
@@ -100,10 +99,10 @@ void __http_calls_count_one( json_object *a, HTPATH *pt )
 
 	o = json_object_new_object( );
 
-	json_object_object_add( o, "path",        json_object_new_string( pt->path ) );
-	json_object_object_add( o, "description", json_object_new_string( pt->desc ) );
-	json_object_object_add( o, "iplist",      json_object_new_string( ( pt->iplist ) ? pt->iplist : "(none)" ) );
-	json_object_object_add( o, "hits",        json_object_new_int64( pt->hits ) );
+	json_insert( o, "path",        string, pt->path );
+	json_insert( o, "description", string, pt->desc );
+	json_insert( o, "iplist",      string, ( ( pt->iplist ) ? pt->iplist : "(none)" ) );
+	json_insert( o, "hits",        int64,  pt->hits );
 
 	json_object_array_add( a, o );
 }

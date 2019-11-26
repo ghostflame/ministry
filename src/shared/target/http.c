@@ -41,10 +41,10 @@ void __target_http_list( json_object *o, int enval )
 
 			jt = json_object_new_object( );
 
-			json_object_object_add( jt, "name",     json_object_new_string( t->name ) );
-			json_object_object_add( jt, "endpoint", json_object_new_string( ebuf ) );
-			json_object_object_add( jt, "type",     json_object_new_string( t->typestr ) );
-			json_object_object_add( jt, "bytes",    json_object_new_int( t->bytes ) );
+			json_insert( jt, "name",     string, t->name );
+			json_insert( jt, "endpoint", string, ebuf );
+			json_insert( jt, "type",     string, t->typestr );
+			json_insert( jt, "bytes",    int,    t->bytes );
 
 			json_object_array_add( jl, jt );
 		}

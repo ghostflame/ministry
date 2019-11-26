@@ -199,14 +199,14 @@ void stats_self_report_http_types( json_object *js, ST_CFG *c )
 	jt = json_object_new_object( );
 	jc = json_object_new_object( );
 
-	json_object_object_add( jt, "curr",      json_object_new_double( c->dcurr ) );
-	json_object_object_add( jt, "hashRatio", json_object_new_double( hr ) );
+	json_insert( jt, "curr",      double, c->dcurr );
+	json_insert( jt, "hashRatio", double, hr );
 
-	json_object_object_add( jc, "curr",      json_object_new_int64( lockless_fetch( &(c->gc_count) ) ) );
-	json_object_object_add( jc, "total",     json_object_new_int64( c->gc_count.count ) );
+	json_insert( jc, "curr",      int64, lockless_fetch( &(c->gc_count) ) );
+	json_insert( jc, "total",     int64, c->gc_count.count );
 
-	json_object_object_add( jt, "gc",        jc );
-	json_object_object_add( js, c->name,     jt );
+	json_object_object_add( jt, "gc",    jc );
+	json_object_object_add( js, c->name, jt );
 }
 
 
