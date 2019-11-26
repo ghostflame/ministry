@@ -112,8 +112,8 @@ struct ha_partner
 	int					is_self;
 };
 
-#define lock_ha( )		pthread_mutex_lock(   &(_proc->ha->lock) )
-#define unlock_ha( )	pthread_mutex_unlock( &(_proc->ha->lock) )
+#define lock_ha( )		pthread_mutex_lock(   &(_ha->lock) )
+#define unlock_ha( )	pthread_mutex_unlock( &(_ha->lock) )
 
 
 HAPT *ha_add_partner( char *spec, int dup_fail );

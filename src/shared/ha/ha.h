@@ -36,8 +36,6 @@ struct ha_partner
 	int					is_self;
 };
 
-#define lock_ha( )		pthread_mutex_lock(   &(_proc->ha->lock) )
-#define unlock_ha( )	pthread_mutex_unlock( &(_proc->ha->lock) )
 */
 
 
@@ -60,7 +58,6 @@ struct ha_control
 	int					is_master;
 	int					enabled;
 };
-
 
 
 curlw_cb ha_watcher_cb;

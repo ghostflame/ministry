@@ -22,7 +22,6 @@
 
 void ha_set_master( HAPT *p )
 {
-	HA_CTL *ha = _proc->ha;
 	HAPT *q;
 
 	//info( "Calling set_master on %s.", p->name );
@@ -34,13 +33,13 @@ void ha_set_master( HAPT *p )
 	lock_ha( );
 
 	// every one except p and self, step down partner
-	for( q = ha->partners; q; q = q->next )
+	for( q = _ha->partners; q; q = q->next )
 		if( q != p && q->is_master )
 		{
-			if( q == ha->self )
+			if( q == _ha->self )
 			{
 				notice( "Stepping down from being primary." );
-				ha->is_master = 0;
+				_ha->is_master = 0;
 			}
 			else
 			{
@@ -50,10 +49,10 @@ void ha_set_master( HAPT *p )
 		}
 
 	// step up p, which might be self
-	if( p == ha->self )
+	if( p == _ha->self )
 	{
 		notice( "Stepping up to be primary." );
-		ha->is_master = 1;
+		_ha->is_master = 1;
 	}
 	else
 	{
@@ -182,12 +181,11 @@ void ha_controller_pass( int64_t tval, void *arg )
 void ha_watcher( THRD *td )
 {
 	HAPT *p = (HAPT *) td->arg;
-	HA_CTL *ha = _proc->ha;
 
 	// guess the curl timeout as half the period
 	// we may adjust this later as we learn about
 	// the target server
-	p->tmout_orig = ha->period / 2;
+	p->tmout_orig = _ha->period / 2;
 	p->tmout      = p->tmout_orig;
 	p->buf        = mem_new_iobuf( IO_BUF_SZ );
 
@@ -204,17 +202,15 @@ void ha_watcher( THRD *td )
 
 	//info( "HA watcher starting for %s.", p->name );
 
-	loop_control( "ha_watcher", ha_watcher_pass, td->arg, 1000 * ha->period, LOOP_TRIM, 0 );
+	loop_control( "ha_watcher", ha_watcher_pass, td->arg, 1000 * _ha->period, LOOP_TRIM, 0 );
 }
 
 void ha_controller( THRD *td )
 {
-	HA_CTL *ha = _proc->ha;
-
 	//info( "HA controller started." );
 
 	// offset by a chunk of the check period
-	loop_control( "ha_controller", ha_controller_pass, NULL, 1000 * ha->update, LOOP_TRIM, 300 * ha->period );
+	loop_control( "ha_controller", ha_controller_pass, NULL, 1000 * _ha->update, LOOP_TRIM, 300 * _ha->period );
 
 	//info( "HA controller exiting." );
 }
@@ -232,23 +228,22 @@ void ha_controller( THRD *td )
 int ha_get_cluster( HTREQ *req )
 {
 	json_object *jo, *ja, *jp;
-	HA_CTL *ha = _proc->ha;
 	HAPT *p;
 
 	jo = json_object_new_object( );
-	json_object_object_add( jo, "uptime",  json_object_new_int( (int64_t) get_uptime_sec( ) ) );
-	json_object_object_add( jo, "elector", json_object_new_string( ha_elector_name( ha->elector ) ) );
-	json_object_object_add( jo, "period",  json_object_new_int( ha->period / 1000 ) );
-	json_object_object_add( jo, "master",  json_object_new_boolean( ha->is_master ) );
+	json_insert( jo, "uptime",  int,     (int64_t) get_uptime_sec( ) );
+	json_insert( jo, "elector", string,  ha_elector_name( _ha->elector ) );
+	json_insert( jo, "period",  int,     _ha->period / 1000 );
+	json_insert( jo, "master",  boolean, _ha->is_master );
 
 	ja = json_object_new_array( );
 
-	for( p = ha->partners; p; p = p->next )
+	for( p = _ha->partners; p; p = p->next )
 	{
 		jp = json_object_new_object( );
-		json_object_object_add( jp, "name",   json_object_new_string( p->name ) );
-		json_object_object_add( jp, "master", json_object_new_boolean( p->is_master ) );
-		json_object_object_add( jp, "self",   json_object_new_boolean( ( p == ha->self ) ) );
+		json_insert( jp, "name",   string,  p->name );
+		json_insert( jp, "master", boolean, p->is_master );
+		json_insert( jp, "self",   boolean, ( p == _ha->self ) );
 		json_object_array_add( ja, jp );
 	}
 
@@ -293,33 +288,32 @@ int ha_cmp_partners( const void *p1, const void *p2 )
 
 int ha_init( void )
 {
-	HA_CTL *ha = _proc->ha;
 	char buf[1024];
 
-	if( !ha->enabled )
+	if( !_ha->enabled )
 		return 0;
 
 	// put ourself into the group
-	if( !ha->hostname )
-		ha->hostname = _proc->hostname;
+	if( !_ha->hostname )
+		_ha->hostname = _proc->hostname;
 
 	snprintf( buf, 1024, "http%s://%s:%hu/",
 		( http_tls_enabled( ) ) ? "s" : "",
-		ha->hostname, _proc->http->server_port );
+		_ha->hostname, _proc->http->server_port );
 
-	if( !( ha->self = ha_add_partner( buf, 0 ) ) )
+	if( !( _ha->self = ha_add_partner( buf, 0 ) ) )
 	{
 		err( "Cannot add ourself as part of a cluster." );
 		return -1;
 	}
-	ha->self->is_master = ha->is_master;
+	_ha->self->is_master = _ha->is_master;
 
 	// sort the partners and make a flat list
 	// this ensures all copies of ministry have identical lists
 	// if they were given the same config
-	mem_sort_list( (void **) &(ha->partners), ha->pcount, ha_cmp_partners );
+	mem_sort_list( (void **) &(_ha->partners), _ha->pcount, ha_cmp_partners );
 
-	pthread_mutex_init( &(ha->lock), NULL );
+	pthread_mutex_init( &(_ha->lock), NULL );
 
 	http_add_json_get( DEFAULT_HA_CHECK_PATH, "Fetch cluster status", &ha_get_cluster );
 	http_add_control( "cluster", "Control cluster status", NULL, &ha_ctl_cluster, NULL, HTTP_FLAGS_NO_REPORT );
@@ -330,11 +324,10 @@ int ha_init( void )
 
 int ha_start( void )
 {
-	HA_CTL *ha = _proc->ha;
 	HAPT *p;
 	int i;
 
-	if( !ha->enabled )
+	if( !_ha->enabled )
 	{
 		//info( "High-availablity is disabled." );
 		return 0;
@@ -347,8 +340,8 @@ int ha_start( void )
 	}
 
 	// run a watcher thread for each one
-	for( i = 0, p = ha->partners; p; p = p->next, ++i )
-		if( p != ha->self )
+	for( i = 0, p = _ha->partners; p; p = p->next, ++i )
+		if( p != _ha->self )
 		{
 			thread_throw_named_f( ha_watcher, p, i, "ha_watcher_%d", i );
 			//notice( "Found HA partner on %s", p->name );
@@ -362,10 +355,10 @@ int ha_start( void )
 
 void ha_shutdown( void )
 {
-	if( !_proc->ha->enabled )
+	if( !_ha->enabled )
 		return;
 
-	pthread_mutex_destroy( &(_proc->ha->lock) );
+	pthread_mutex_destroy( &(_ha->lock) );
 }
 
 
