@@ -47,7 +47,6 @@ METRY *mem_new_metry( char *str, int len );
 void mem_free_metry( METRY **m );
 void mem_free_metry_list( METRY *list );
 
-int memt_config_line( AVP *av );
 MEMT_CTL *memt_config_defaults( void );
 
 

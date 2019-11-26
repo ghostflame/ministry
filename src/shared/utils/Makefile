@@ -1,7 +1,7 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-FILES  = json pidfile time utils var_val
-HEADS  = utils
+FILES  = json loop iter time utils var_val
+HEADS  = loop iter utils
 
 RKV    = utils_shared.a
 EARGS ?=

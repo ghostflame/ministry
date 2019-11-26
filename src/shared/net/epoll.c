@@ -70,7 +70,7 @@ __attribute__((hot)) void tcp_epoll_handler( TCPTH *th, struct epoll_event *e, H
 			break;
 
 		// do we have anything
-		if( !n->in->len )
+		if( !n->in->bf->len )
 		{
 			tdebug( "No incoming data from %s", n->name );
 			break;

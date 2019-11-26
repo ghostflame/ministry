@@ -36,6 +36,9 @@ struct regex_list
 	int						fb;
 };
 
+// tidy up
+void regex_list_destroy( RGXL *rl );
+
 // create a list structure
 RGXL *regex_list_create( int fallback_match );
 

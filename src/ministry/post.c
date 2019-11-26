@@ -42,7 +42,7 @@ int post_handle_finish( HTREQ *req )
 
 	// this happens most times, due to the
 	// hwmk check in post_handle_data
-	if( b->len )
+	if( b->bf->len )
 		data_parse_buf( h, b );
 
 	// then free up the host
@@ -67,17 +67,16 @@ int post_handle_data( HTREQ *req )
 
 	while( l > 0 )
 	{
-		if( ( l + b->len ) > b->sz )
-			len = b->sz - b->len - 1;
-		else
+		if( buf_hasspace( b->bf, l ) )
 			len = l;
+		else
+			len = buf_space( b->bf );
 
 		if( !len )
 			break;
 
-		memcpy( b->buf + b->len, p, len );
-		b->len += len;
-		b->buf[b->len] = '\0';
+		buf_appends( b->bf, p, len );
+		buf_terminate( b->bf );
 
 		p += len;
 		l -= len;

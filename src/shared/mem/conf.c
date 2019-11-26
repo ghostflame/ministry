@@ -25,11 +25,14 @@ MEM_CTL *mem_config_defaults( void )
 	_mem->mcheck      = mc;
 	_mem->prealloc    = DEFAULT_MEM_PRE_INTV;
 
-	_mem->iobufs      = mem_type_declare( "iobufs", sizeof( IOBUF ), MEM_ALLOCSZ_IOBUF, IO_BUF_SZ, 1 );
-	_mem->iobps       = mem_type_declare( "iobps",  sizeof( IOBP ),  MEM_ALLOCSZ_IOBP,  0, 1 );
-	_mem->htreq       = mem_type_declare( "htreqs", sizeof( HTREQ ), MEM_ALLOCSZ_HTREQ, 2048, 0 );
-	_mem->hosts       = mem_type_declare( "hosts",  sizeof( HOST ),  MEM_ALLOCSZ_HOSTS, 0, 1 );
-	_mem->token       = mem_type_declare( "tokens", sizeof( TOKEN ), MEM_ALLOCSZ_TOKENS, 0, 0 );
+	_mem->iobufs      = mem_type_declare( "iobufs", sizeof( IOBUF ),  MEM_ALLOCSZ_IOBUF, IO_BUF_SZ, 1 );
+	_mem->htreq       = mem_type_declare( "htreqs", sizeof( HTREQ ),  MEM_ALLOCSZ_HTREQ, 2048, 0 );
+	_mem->hosts       = mem_type_declare( "hosts",  sizeof( HOST ),   MEM_ALLOCSZ_HOSTS, 0, 1 );
+	_mem->token       = mem_type_declare( "tokens", sizeof( TOKEN ),  MEM_ALLOCSZ_TOKENS, 0, 0 );
+	_mem->hanger      = mem_type_declare( "hanger", sizeof( MEMHG ),  MEM_ALLOCSZ_HANGER, 0, 1 );
+	_mem->slkmsg      = mem_type_declare( "slkmsg", sizeof( SLKMSG ), MEM_ALLOCSZ_SLKMSG, 0x10000, 0 );
+
+	pthread_mutex_init( &(_mem->idlock), NULL );
 
 	return _mem;
 }

@@ -85,7 +85,7 @@ __attribute__((hot)) void tcp_thrd_thread( THRD *t )
 				break;
 
 			// do we have anything
-			if( !n->in->len )
+			if( !n->in->bf->len )
 			{
 				debug( "No incoming data from %s", n->name );
 				break;

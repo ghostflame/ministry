@@ -15,7 +15,7 @@ void metrics_init_data( MDATA *m )
 {
 	// make an entry hash
 //	m->entries = (METRY **) allocz( m->hsz * sizeof( METRY * ) );
-	m->entries = string_store_create( 0, "tiny", NULL );
+	m->entries = string_store_create( 0, "tiny", NULL, 0 );
 
 	// make a words struct
 	m->wds = (WORDS *) allocz( sizeof( WORDS ) );

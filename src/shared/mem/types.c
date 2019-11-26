@@ -10,7 +10,7 @@
 #include "local.h"
 
 
-IOBUF *mem_new_iobuf( int sz )
+IOBUF *mem_new_iobuf( int32_t sz )
 {
 	IOBUF *b;
 
@@ -19,26 +19,12 @@ IOBUF *mem_new_iobuf( int sz )
 	if( sz < 0 )
 		sz = IO_BUF_SZ;
 
-	if( b->sz < sz )
-	{
-		if( b->ptr )
-			free( b->ptr );
+	if( !b->bf )
+		b->bf = strbuf( sz );
+	else if( b->bf->sz < (uint32_t) sz )
+		b->bf = strbuf_resize( b->bf, sz );
 
-		b->ptr = (char *) allocz( sz );
-		b->sz  = sz;
-	}
-
-	if( b->sz == 0 )
-	{
-		b->buf  = NULL;
-		b->hwmk = 0;
-	}
-	else
-	{
-		b->buf  = b->ptr;
-		b->hwmk = ( 5 * b->sz ) / 6;
-	}
-
+	b->hwmk = ( 5 * b->bf->sz ) / 6;
 	b->refs = 0;
 
 	return b;
@@ -56,20 +42,11 @@ void mem_free_iobuf( IOBUF **b )
 	sb = *b;
 	*b = NULL;
 
-	if( sb->sz )
-		sb->ptr[0] = '\0';
-
-	sb->buf  = NULL;
-	sb->len  = 0;
-	sb->refs = 0;
-
-	sb->mtime    = 0;
-	sb->expires  = 0;
-	sb->lifetime = 0;
-
-	sb->flags    = 0;
-
-	mtype_free( _mem->iobufs, sb );
+	// this one is complex, making a single
+	// function not much faster than the list
+	// handler, so we don't replicate the logic
+	sb->next = NULL;
+	mem_free_iobuf_list( sb );
 }
 
 
@@ -86,18 +63,14 @@ void mem_free_iobuf_list( IOBUF *list )
 		b    = list;
 		list = b->next;
 
-		if( b->sz )
-			b->ptr[0] = '\0';
+		strbuf_empty( b->bf );
 
-		b->buf  = NULL;
-		b->len  = 0;
-		b->refs = 0;
-
+		b->refs     = 0;
 		b->mtime    = 0;
 		b->expires  = 0;
 		b->lifetime = 0;
-
-		b->flags = 0;
+		b->flags    = 0;
+		b->hwmk     = 0;
 
 		b->next = freed;
 		freed   = b;
@@ -106,25 +79,6 @@ void mem_free_iobuf_list( IOBUF *list )
 	}
 
 	mtype_free_list( _mem->iobufs, j, freed, end );
-}
-
-
-IOBP *mem_new_iobp( void )
-{
-	return (IOBP *) mtype_new( _mem->iobps );
-}
-
-void mem_free_iobp( IOBP **b )
-{
-	IOBP *p;
-
-	p  = *b;
-	*b = NULL;
-
-	p->buf  = NULL;
-	p->prev = NULL;
-
-	mtype_free( _mem->iobps, p );
 }
 
 
@@ -211,6 +165,7 @@ void mem_free_host( HOST **h )
 
 	sh->net->fd    = -1;
 	sh->net->flags = 0;
+	sh->lock_use   = 0;
 	sh->ipn        = NULL;
 	sh->ip         = 0;
 
@@ -218,10 +173,15 @@ void mem_free_host( HOST **h )
 	sh->peer->sin_port        = 0;
 
 	if( sh->net->in )
-		sh->net->in->len = 0;
+	{
+		strbuf_empty( sh->net->in->bf );
+	}
+
 
 	if( sh->net->out )
-		sh->net->out->len = 0;
+	{
+		strbuf_empty( sh->net->out->bf );
+	}
 
 	if( sh->net->name )
 		sh->net->name[0] = '\0';
@@ -277,3 +237,73 @@ void mem_free_token_list( TOKEN *list )
 
 	mtype_free_list( _mem->token, j, freed, end );
 }
+
+
+MEMHG *mem_new_hanger( void *ptr )
+{
+	MEMHG *h = mtype_new( _mem->hanger );
+	h->ptr = ptr;
+	return h;
+}
+
+#define mem_clean_hanger( _h )		_h->prev = NULL; _h->ptr = NULL; _h->list = NULL
+
+void mem_free_hanger( MEMHG **m )
+{
+	MEMHG *mp;
+
+	mp = *m;
+	*m = NULL;
+
+	mem_clean_hanger( mp );
+	mtype_free( _mem->hanger, mp );
+}
+
+void mem_free_hanger_list( MEMHG *list )
+{
+	MEMHG *m, *end = list;
+	int j = 0;
+
+	for( m = list; m; m = m->next, ++j )
+	{
+		mem_clean_hanger( m );
+		end = m;
+	}
+
+	mtype_free_list( _mem->hanger, j, list, end);
+}
+
+
+SLKMSG *mem_new_slack_msg( size_t sz )
+{
+	SLKMSG *m;
+
+	m = mtype_new( _mem->slkmsg );
+
+	if( !sz )
+		sz = SLACK_MSG_BUF_SZ;
+
+	if( !m->text )
+		m->text = strbuf( sz );
+
+	return m;
+}
+
+void mem_free_slack_msg( SLKMSG **m )
+{
+	SLKMSG *mp;
+
+	mp = *m;
+	*m = NULL;
+
+	strbuf_empty( mp->text );
+
+	if( mp->line )
+	{
+		free( mp->line );
+		mp->line = NULL;
+	}
+
+	mtype_free( _mem->slkmsg, mp );
+}
+

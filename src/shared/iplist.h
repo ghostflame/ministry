@@ -22,6 +22,9 @@
 
 #define IPLIST_LOCALONLY	"localhost-only"
 
+#define lock_iplists( )		pthread_mutex_lock(   &(_iplist->lock) )
+#define unlock_iplists( )	pthread_mutex_unlock( &(_iplist->lock) )
+
 
 struct iplist_net
 {
@@ -33,7 +36,9 @@ struct iplist_net
 	int16_t					tlen;
 	int8_t					bits;
 	int8_t					act;
+	void				*	data;	// hang data off this match
 };
+
 
 
 struct iplist
@@ -42,6 +47,7 @@ struct iplist
 	char				*	name;
 	char				*	text;
 
+	IPNET				*	singles;
 	IPNET				**	ips;
 	IPNET				*	nets;
 
@@ -53,6 +59,7 @@ struct iplist
 	int8_t					def;
 	int8_t					enable;
 	int8_t					init_done;
+	int8_t					err_dup;
 };
 
 
@@ -61,6 +68,7 @@ struct iplist_control
 	IPLIST				*	lists;
 	int						lcount;
 	regex_t				*	netrgx;
+	pthread_mutex_t			lock;
 };
 
 
@@ -70,16 +78,26 @@ void iplist_call_data( IPLIST *l, iplist_data_fn *fp, void *arg );
 void iplist_explain( IPLIST *l, char *pos, char *neg, char *nei, char *pre );
 
 // testing
+int iplist_test_ip_all( IPLIST *l, uint32_t ip, MEMHL *matches );
 int iplist_test_ip( IPLIST *l, uint32_t ip, IPNET **p );
 int iplist_test_str( IPLIST *l, char *ip, IPNET **p );
 
 // startup
+void iplist_init_one( IPLIST *l );
 void iplist_init( );
+
+// setup
+IPNET *iplist_parse_spec( char *str, int len );
+int iplist_append_net( IPLIST *l, IPNET **n );
+void iplist_free_net( IPNET *n );
+void iplist_free_list( IPLIST *l );
+int iplist_add_entry( IPLIST *l, int act, char *str, int len );
+IPLIST *iplist_create( char *name, int default_return, int hashsz );
 
 // config
 int iplist_set_text( IPLIST *l, char *str, int len );
 IPL_CTL *iplist_config_defaults( void );
-int iplist_config_line( AVP *av );
+conf_line_fn iplist_config_line;
 
 
 #endif

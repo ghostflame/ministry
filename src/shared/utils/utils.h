@@ -114,13 +114,6 @@ int8_t percent( void );
 // processing a config line in variable/value
 int var_val( char *line, int len, AVP *av, int flags );
 
-// make a directory
-int recursive_mkdir( char *path );
-
-// handle our pidfile
-void pidfile_write( void );
-void pidfile_remove( void );
-
 // timespec difference as a double
 double ts_diff( struct timespec to, struct timespec from, double *store );
 
@@ -165,6 +158,10 @@ int is_url( char *str );
 #define av_intk( _v )		av_int( _v ); _v *= 1000
 #define av_intK( _v )		av_int( _v ); _v <<= 10
 
+#define av_copy( _v )		str_copy( _v->vptr, _v->vlen )
+#define av_copyp( _v )		str_dup( _v->vptr, _v->vlen )
+
+
 // flags field laziness
 #define flag_add( _i, _f )	_i |=  _f
 #define flag_rmv( _i, _f )	_i &= ~_f
@@ -182,6 +179,12 @@ int is_url( char *str );
 #define RUN_STOP( )         runf_rmv( RUN_LOOP )
 #define RUNNING( )          runf_has( RUN_LOOP )
 
+#define plural( _d )		( ( _d == 1 ) ? "" : "s" )
+
+
+// json shortcuts
+#define json_fetch( _obj, _key, _type )         json_object_get_##_type( json_object_object_get( _obj, _key ) )
+#define json_insert( _obj, _key, _type, _item ) json_object_object_add( _obj, _key, json_object_new_##_type( _item ) )
 
 
 // hash size lookup

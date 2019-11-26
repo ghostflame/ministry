@@ -25,6 +25,7 @@
 #define CONF_FLAG_SEC_VALIDATE_F	0x00002000
 #define CONF_FLAG_KEY_PASSWORD		0x00004000
 #define CONF_FLAG_SUFFIX			0x00010000
+#define CONF_FLAG_CHG_EXIT			0x00020000
 #define CONF_FLAG_TEST_ONLY			0x10000000
 #define CONF_FLAG_FILE_OPT			0x20000000
 
@@ -40,9 +41,14 @@
 #define MAX_JSON_SZ					0x8000		// 32k
 
 // used all over - so all the config line fns have an AVP called 'av'
-#define attIs( s )      !strcasecmp( av->aptr, s )
-#define attIsN( s, n )	!strncasecmp( av->aptr, s, n )
-#define valIs( s )      !strcasecmp( av->vptr, s )
+#define attIs( s )					!strcasecmp( av->aptr, s )
+#define attIsN( s, n )				!strncasecmp( av->aptr, s, n )
+#define valIs( s )					!strcasecmp( av->vptr, s )
+
+
+#define config_lock( )				pthread_mutex_lock(   &(_proc->cfg_lock) )
+#define config_unlock( )			pthread_mutex_unlock( &(_proc->cfg_lock) )
+
 
 
 // main control structure
@@ -66,6 +72,8 @@ struct process_control
 	char					pidfile[CONF_LINE_MAX];
 	char					basedir[CONF_LINE_MAX];
 
+	//SLKHD				*	apphdl;
+
 	int64_t					tick_usec;
 	int64_t					loop_count;
 
@@ -81,10 +89,15 @@ struct process_control
 	int64_t					limits[RLIMIT_NLIMITS];
 	int8_t					setlim[RLIMIT_NLIMITS];
 
-	// config files
-	CFILE				*	cfiles;
-	int64_t					cf_chk_time;
-	int						cf_chk_ct;
+	pthread_mutex_t			cfg_lock;
+
+	// all file watch trees
+	FTREE				*	watches;
+
+	// file watch for config
+	FTREE				*	cfiles;
+	// has our config changed
+	int64_t					cfgChanged;
 
 	// string stores
 	SSTR				*	stores;
@@ -99,6 +112,7 @@ struct process_control
 	HA_CTL				*	ha;
 	PMET_CTL			*	pmet;
 	NET_CTL				*	net;
+	SLK_CTL				*	slk;
 };
 
 
@@ -108,6 +122,8 @@ conf_line_fn config_line;
 
 loop_call_fn config_check_times;
 throw_fn config_monitor;
+
+ftree_callback config_on_change;
 
 void config_help( void );
 
@@ -119,6 +135,9 @@ int config_read( char *path, WORDS *w );
 int config_read_env( char **env );
 
 void config_set_pid_file( char *path );
+
+// things that require the other structures
+void config_late_setup( void );
 
 void config_register_section( char *name, conf_line_fn *fp );
 PROC_CTL *config_defaults( char *app_name, char *conf_dir );

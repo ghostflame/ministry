@@ -10,7 +10,7 @@
 #include "shared.h"
 
 
-json_object *parse_json_file( FILE *fh, char *path )
+JSON *parse_json_file( FILE *fh, char *path )
 {
 	enum json_tokener_error jerr;
 	struct json_object *jo;
@@ -91,10 +91,10 @@ void create_json_result( BUF *buf, int ok, char *fmt, ... )
 		vsnprintf( mbuf, 2048, fmt, args );
 		va_end( args );
 
-		json_object_object_add( o, ( ok ) ? "result" : "error", json_object_new_string( mbuf ) );
+		json_insert( o, ( ( ok ) ? "result" : "error" ), string, mbuf );
 	}
 
-	json_object_object_add( o, "success", json_object_new_boolean( ok ) );
+	json_insert( o, "success", boolean, ok );
 	strbuf_json( buf, o, 1 );
 }
 

@@ -190,7 +190,7 @@ int token_url_handler( HTREQ *req )
 	for( i = 0; i < count; ++i )
 	{
 		t = tlist[i];
-		json_object_object_add( jo, t->name, json_object_new_int64( t->nonce ) );
+		json_insert( jo, t->name, int64, t->nonce );
 	}
 
 	strbuf_json( req->text, jo, 1 );

@@ -200,7 +200,7 @@ int pmet_item_gen( int64_t mval, PMET *item );
 PMET *pmet_item_create( PMETM *metric, PMETS *source, int gentype, void *genptr, pmet_gen_fn *fp, void *genarg );
 // if genptr or genarg are NULL, the one from the source is used
 // all labels are *cloned*
-PMET *pmet_item_clone( PMET *item, PMETS *source, void *genptr, pmet_gen_fn *fp, void *genarg );
+PMET *pmet_item_clone( PMET *item, PMETS *source, void *genptr, pmet_gen_fn *fp, void *genarg, PMET_LBL *lbl );
 
 // metric
 int pmet_metric_render( int64_t mval, BUF *b, PMETM *metric );

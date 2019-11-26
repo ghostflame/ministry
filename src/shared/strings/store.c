@@ -84,7 +84,52 @@ void string_store_cleanup( SSTR *list )
 }
 
 
-SSTR *string_store_create( int64_t sz, char *size, int *default_value )
+// empty a string store, but keep the hash table and size
+int string_store_empty( SSTR *st )
+{
+	int64_t i;
+	SSTE *e;
+
+	if( !st->freeable )
+	{
+		err( "Cannot empty a string store that was not created freeable." );
+		return -1;
+	}
+
+	for( i = 0; i < st->hsz; ++i )
+	{
+		while( st->hashtable[i] )
+		{
+			e = st->hashtable[i];
+			st->hashtable[i] = e->next;
+
+			// do we have a free function?
+			if( e->ptr && st->freefp )
+				(*(st->freefp))( e->ptr );
+
+			// otherwise that mess is the callers problem
+			free( e->str );
+			free( e );
+		}
+	}
+
+	return 0;
+}
+
+
+int string_store_free_cb( SSTR *st, mem_free_cb *fp )
+{
+	if( st )
+	{
+		st->freefp = fp;
+		return 0;
+	}
+
+	return -1;
+}
+
+
+SSTR *string_store_create( int64_t sz, char *size, int *default_value, int freeable )
 {
 	SSTR *s = (SSTR *) allocz( sizeof( SSTR ) );
 
@@ -97,6 +142,7 @@ SSTR *string_store_create( int64_t sz, char *size, int *default_value )
 		s->hsz = hash_size( "medium" );
 
 	s->hashtable = (SSTE **) allocz( s->hsz * sizeof( SSTE * ) );
+	s->freeable  = freeable;
 
 	pthread_mutex_init( &(s->mtx), NULL );
 
@@ -107,8 +153,12 @@ SSTR *string_store_create( int64_t sz, char *size, int *default_value )
 	}
 
 	// and link it into _proc
+	config_lock( );
+
 	s->_proc_next = _proc->stores;
 	_proc->stores = s;
+
+	config_unlock( );
 
 	return s;
 }
@@ -164,6 +214,7 @@ int string_store_locking( SSTR *store, int lk )
 }
 
 
+
 SSTE *string_store_add( SSTR *store, char *str, int len )
 {
 	uint64_t hv, pos;
@@ -208,7 +259,7 @@ SSTE *string_store_add( SSTR *store, char *str, int len )
 	{
 		e  = en;
 		en = NULL;
-		e->str = str_dup( str, len );
+		e->str = ( store->freeable ) ? str_copy( str, len ) : str_dup( str, len );
 		e->len = len;
 		e->hv  = hv;
 

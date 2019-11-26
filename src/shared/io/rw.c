@@ -14,7 +14,7 @@ __attribute__((hot)) int io_read_data( SOCK *s )
 {
 	int i;
 
-	if( !( i = recv( s->fd, s->in->buf + s->in->len, s->in->sz - ( s->in->len + 2 ), MSG_DONTWAIT ) ) )
+	if( !( i = recv( s->fd, s->in->bf->buf + s->in->bf->len, s->in->bf->sz - ( s->in->bf->len + 2 ), MSG_DONTWAIT ) ) )
 	{
 		if( s->flags & IO_CLOSE_EMPTY )
 		{
@@ -38,7 +38,7 @@ __attribute__((hot)) int io_read_data( SOCK *s )
 	}
 
 	// got some data then
-	s->in->len += i;
+	s->in->bf->len += i;
 
 	//debug( "Received %d bytes on socket %d/%s", i, s->fd, s->name );
 
@@ -64,8 +64,8 @@ int io_write_data( SOCK *s, int off )
 	tries    = 3;
 	sent     = 0;
 	b        = s->out;
-	ptr      = b->buf + off;
-	len      = b->len - off;
+	ptr      = b->bf->buf + off;
+	len      = b->bf->len - off;
 
 	while( len > 0 )
 	{

@@ -1,6 +1,6 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-FILES  = conf alloc mtype types mem
+FILES  = conf alloc mtype types memhl mem
 HEADS  = local mem
 
 RKV    = mem_shared.a

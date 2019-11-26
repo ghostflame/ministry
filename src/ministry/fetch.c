@@ -26,7 +26,7 @@ void fetch_single( int64_t tval, void *arg )
 	//info( "Fetching for target %s", f->name );
 
 	// this repeatedly calls it's callback with chunks of data
-	if( curlw_fetch( f->ch ) != 0 )
+	if( curlw_fetch( f->ch, NULL, 0 ) != 0 )
 		err( "Failed to fetch url: %s", f->ch->url );
 }
 
@@ -240,11 +240,11 @@ int fetch_config_line( AVP *av )
 	{
 		if( f->remote )
 		{
-			warn( "Fetch block %s already has a remote host: '%s'", f->name, f->remote );
-			free( f->remote );
+			err( "Fetch block %s already has a remote host: '%s'", f->name, f->remote );
+			return -1;
 		}
 
-		f->remote = str_copy( av->vptr, av->vlen );
+		f->remote = av_copyp( av );
 		__fetch_config_state = 1;
 	}
 	else if( attIs( "port" ) )
@@ -262,17 +262,17 @@ int fetch_config_line( AVP *av )
 	{
 		if( f->path )
 		{
-			warn( "Fetch block %s already had a path.", f->name );
-			free( f->path );
+			err( "Fetch block %s already had a path.", f->name );
+			return -1;
 		}
 
 		if( av->vptr[0] == '/' )
-			f->path = str_copy( av->vptr, av->vlen );
+			f->path = av_copyp( av );
 		else
 		{
-			f->path = (char *) allocz( av->vlen + 2 );
-			memcpy( f->path + 1, av->vptr, av->vlen );
+			f->path = str_perm( av->vlen + 2 );
 			f->path[0] = '/';
+			memcpy( f->path + 1, av->vptr, av->vlen );
 		}
 		__fetch_config_state = 1;
 	}
@@ -311,9 +311,12 @@ int fetch_config_line( AVP *av )
 	else if( attIs( "profile" ) )
 	{
 		if( f->profile )
-			free( f->profile );
+		{
+			err( "Fetch %s already has profile %s.", f->name, f->profile );
+			return -1;
+		}
 
-		f->profile = str_copy( av->vptr, av->vlen );
+		f->profile = av_copyp( av );
 		f->metrics = 1;
 		__fetch_config_state = 1;
 	}

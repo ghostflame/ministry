@@ -58,11 +58,12 @@ PMET_CTL *pmet_config_defaults( void )
 	p->enabled = 0;
 
 	v = 1;
-	p->srclookup = string_store_create( 0, "nano", &v );
-	p->metlookup = string_store_create( 0, "tiny", &v );
+	p->srclookup = string_store_create( 0, "nano", &v, 0 );
+	p->metlookup = string_store_create( 0, "tiny", &v, 0 );
 
 	// give ourselves half a meg
 	p->page = strbuf( DEFAULT_PMET_BUF_SZ );
+	strbuf_copy( p->page, "# Not ready yet.\n", 0 );
 
 	if( ( v = regcomp( &(p->path_check), PMET_PATH_CHK_RGX, REG_EXTENDED|REG_ICASE|REG_NOSUB ) ) )
 	{
@@ -89,7 +90,10 @@ int pmet_config_line( AVP *av )
 {
 	PMET_CTL *p = _pmet;
 	int64_t v;
+	WORDS wd;
+	char *lv;
 	SSTE *e;
+	int i;
 
 	if( attIs( "enable" ) )
 	{
@@ -114,6 +118,35 @@ int pmet_config_line( AVP *av )
 		}
 		info( "Prometheus metrics type %s disabled.", av->vptr );
 		e->val = 0;
+	}
+	else if( attIs( "labels" ) )
+	{
+		// comma separated key:value pairs
+		strwords( &wd, av->vptr, av->vlen, ',' );
+		for( i = 0; i < wd.wc; ++i )
+		{
+			// an extra default label, in the form of var:value
+			if( !( lv = memchr( wd.wd[i], ':', wd.len[i] ) ) || !*(lv+1) )
+			{
+				err( "Invalid default label '%s', format is foo:bar", wd.wd[i] );
+				return -1;
+			}
+			*lv++ = '\0';
+			pmet_label_common( wd.wd[i], lv );
+		}
+	}
+	else if( attIs( "alertPeriod" ) )
+	{
+		// number of seconds without a scrape
+		// when we alert
+		if( av_int( v ) == NUM_INVALID )
+		{
+			err( "Invalid prometheus metric alert frequency '%s'", av->vptr );
+			return -1;
+		}
+
+		// in seconds
+		p->alert_period = v;
 	}
 	else
 		return -1;

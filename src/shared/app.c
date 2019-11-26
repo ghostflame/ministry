@@ -86,6 +86,7 @@ int app_init( char *name, char *cfgdir )
 	_proc->tgt  = target_config_defaults( );
 	_proc->ha   = ha_config_defaults( );
 	_proc->net  = net_config_defaults( );
+	_proc->slk  = slack_config_defaults( );
 
 	// set up our shared config
 	config_register_section( "main",     &config_line );
@@ -98,7 +99,9 @@ int app_init( char *name, char *cfgdir )
 	config_register_section( "target",   &target_config_line );
 	config_register_section( "ha",       &ha_config_line );
 	config_register_section( "network",  &net_config_line );
+	config_register_section( "slack",    &slack_config_line );
 
+	config_late_setup( );
 
 	if( set_signals( ) )
 	{
@@ -110,6 +113,7 @@ int app_init( char *name, char *cfgdir )
 
 	// make curl ready
 	curl_global_init( CURL_GLOBAL_SSL );
+	notice( "Curl has been init'd." );
 
 	// find out about curl
 	cvid = curl_version_info( CURLVERSION_NOW );
@@ -146,18 +150,22 @@ int app_start( int writePid )
 	setenv( "TMPDIR", _proc->tmpdir, 1 );
 
 	http_calls_init( );
-
+	//slack_init( );
 	log_start( );
 
 	notice( "%s v%s starting up.", _proc->app_upper, _proc->version );
 
-	if( recursive_mkdir( _proc->basedir ) )
-		fatal( "Could not create/find base dir %s -- %s", _proc->basedir, Err );
+	// only move if we have to
+	if( strcasecmp( _proc->basedir, "." ) )
+	{
+		if( fs_mkdir_recursive( _proc->basedir ) )
+			fatal( "Could not create/find base dir %s -- %s", _proc->basedir, Err );
 
-	if( chdir( _proc->basedir ) )
-		fatal( "Could not chdir to base dir %s -- %s", _proc->basedir, Err );
-	else
-		debug( "Working directory now %s", getcwd( NULL, 0 ) );
+		if( chdir( _proc->basedir ) )
+			fatal( "Could not chdir to base dir %s -- %s", _proc->basedir, Err );
+		else
+			debug( "Working directory now %s", getcwd( NULL, 0 ) );
+	}
 
 	if( runf_has( RUN_DAEMON ) && !runf_has( RUN_TGT_STDOUT ) )
 	{
@@ -173,7 +181,7 @@ int app_start( int writePid )
 
 	if( writePid )
 	{
-		pidfile_write( );
+		fs_pidfile_write( );
 		runf_add( RUN_PIDFILE );
 	}
 
@@ -212,16 +220,22 @@ void app_ready( void )
 	get_time( );
 	ts_diff( _proc->curr_time, _proc->init_time, &diff );
 
+	// tell slack if configured to
+	//if( _proc->apphdl )
+	//	slack_message_simple( _proc->apphdl, LOG_LEVEL_NOTICE, "%s started up on %s at %ld.",
+	//			_proc->app_upper, _proc->hostname, _proc->curr_time.tv_sec );
+
 	info( "%s started up in %.3fs.", _proc->app_upper, diff );
 
 	runf_add( RUN_APP_READY );
 	runf_add( RUN_LOOP );
 
 	// now we can throw loops
+	fs_treemon_start_all( );
 
 	// are we monitoring config?
-	if( _proc->cf_chk_time > 0 && !runf_has( RUN_BY_HAND ) )
-		thread_throw_named( &config_monitor, NULL, 0, "conf_monitor" );
+	//if( _proc->cf_chk_time > 0 && !runf_has( RUN_BY_HAND ) )
+	//	thread_throw_named( &config_monitor, NULL, 0, "conf_monitor" );
 
 	// run mem check / prealloc
 	mem_startup( );
@@ -278,7 +292,7 @@ __attribute__((noreturn)) void app_finish( int exval )
 	curl_global_cleanup( );
 
 	if( runf_has( RUN_PIDFILE ) )
-		pidfile_remove( );
+		fs_pidfile_remove( );
 
 	notice( "App %s v%s exiting.", _proc->app_name, _proc->version );
 	log_close( );

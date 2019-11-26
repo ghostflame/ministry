@@ -13,6 +13,7 @@
 
 enum log_levels
 {
+	LOG_LEVEL_MIN = 0,
 	LOG_LEVEL_FATAL = 0,
 	LOG_LEVEL_ERROR,
 	LOG_LEVEL_WARN,
@@ -31,6 +32,8 @@ struct log_control
 	LOGFL			**	fps;
 
 	char			*	identifier;
+	int64_t				counts[LOG_LEVEL_MAX];
+
 	int					facility;
 
 	int8_t				write_level;
@@ -48,6 +51,9 @@ void log_reopen( int sig );
 int log_start( void );
 int log_set_level( int8_t level, int8_t both );
 void log_set_force_stdout( int set );
+
+int8_t log_get_level( char *str );
+const char *log_get_level_name( int8_t level );
 
 http_callback log_ctl_setdebug;
 

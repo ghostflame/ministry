@@ -17,7 +17,7 @@ __attribute__((hot)) static inline void relay_write( HBUFS *hb, int idx, RLINE *
 	IOBUF *b = hb->bufs[idx];
 
 	// see if we need to write
-	if( ( b->len + l->len ) > IO_BUF_HWMK )
+	if( !buf_hasspace( b->bf, l->len ) )
 	{
 		io_buf_post( hb->rule->targets[idx], b );
 		hb->bufs[idx] = b = mem_new_iobuf( IO_BUF_SZ );
@@ -27,10 +27,9 @@ __attribute__((hot)) static inline void relay_write( HBUFS *hb, int idx, RLINE *
 	l->line[l->plen] = l->sep;
 
 	// add it to the buffer
-	io_buf_append( b, l->line, l->len );
-
+	buf_appends( b->bf, l->line, l->len );
 	// and the newline
-	b->buf[b->len++] = '\n';
+	buf_addchar( b->bf, '\n' );
 }
 
 
@@ -181,7 +180,7 @@ __attribute__((hot)) void relay_prefix( HOST *h, char *line, int len )
 // and return the length, if any
 __attribute__((hot)) int relay_parse_buf( HOST *h, IOBUF *b )
 {
-	register char *s = b->buf;
+	register char *s = b->bf->buf;
 	register char *q;
 	int len, l;
 	char *r;
@@ -191,7 +190,7 @@ __attribute__((hot)) int relay_parse_buf( HOST *h, IOBUF *b )
 	if( !h )
 		return 0;
 
-	len = b->len;
+	len = b->bf->len;
 
 	while( len > 0 )
 	{
@@ -237,7 +236,7 @@ __attribute__((hot)) int relay_parse_buf( HOST *h, IOBUF *b )
 		s = q;
 	}
 
-	io_buf_keep( b, len );
+	strbuf_keep( b->bf, len );
 	return len;
 }
 

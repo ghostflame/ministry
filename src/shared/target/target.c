@@ -10,6 +10,14 @@
 #include "local.h"
 
 
+void target_write_all( IOBUF *buf )
+{
+	TGTL *l;
+
+	for( l = _tgt->lists; l; l = l->next )
+		io_buf_post( l, buf );
+}
+
 
 void target_add_metrics( TGT *t )
 {
@@ -78,8 +86,10 @@ void target_loop( THRD *th )
 	if( t->max == 0 )
 		t->max = IO_MAX_WAITING;
 
-	// init the lock
-	io_lock_init( t->lock );
+	// make the queue - with a lock, but no free
+	// callback - we add and remove things
+	// explicitly
+	t->queue = mem_list_create( 1, NULL );
 
 	// and add some watcher metrics
 	target_add_metrics( t );
@@ -101,7 +111,6 @@ void target_loop( THRD *th )
 
 	// disconnect
 	io_disconnect( t->sock );
-	io_lock_destroy( t->lock );
 }
 
 

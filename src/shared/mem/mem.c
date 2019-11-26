@@ -148,6 +148,8 @@ void mem_shutdown( void )
 
 		pthread_mutex_destroy( &(mt->lock) );
 	}
+
+	pthread_mutex_destroy( &(_mem->idlock) );
 }
 
 // do we do checks?
@@ -187,4 +189,13 @@ void mem_set_max_kb( int64_t kb )
 		_mem->mcheck->max_kb = kb;
 }
 
+uint64_t mem_get_id( void )
+{
+	uint64_t id;
 
+	pthread_mutex_lock(   &(_mem->idlock) );
+	id = ++(_mem->id);
+	pthread_mutex_unlock( &(_mem->idlock) );
+
+	return id;
+}

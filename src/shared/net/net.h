@@ -100,6 +100,11 @@ struct net_type
 };
 
 
+#define lock_host( _h )		if( _h->lock_use ) pthread_mutex_lock(   &(_h->lock) )
+#define unlock_host( _h )	if( _h->lock_use ) pthread_mutex_unlock( &(_h->lock) )
+#define secure_host( _h )	if( !_h->lock_init ) { pthread_mutex_init( &(_h->lock), NULL ); _h->lock_init = 1; } _h->lock_use = 1
+
+
 struct host_data
 {
 	HOST				*	next;
@@ -129,6 +134,9 @@ struct host_data
 
 	struct epoll_event		ep_evt;		// used in epoll
 
+	// locking
+	pthread_mutex_t			lock;
+
 	// filtering and rules
 	IPNET				*	ipn;		// may well be null
 	char				*	workbuf;	// gets set to fixed size
@@ -136,6 +144,10 @@ struct host_data
 	int						plen;
 	int						lmax;
 	int						quiet;
+
+	// lock flagging
+	int8_t					lock_use;	// if we are using it this time
+	int8_t					lock_init;	// if we have init'd the lock
 
 	uint32_t				ip;			// easier than always hitting the peer
 };
@@ -186,6 +198,6 @@ void net_stop( void );
 // config
 int net_add_type( NET_TYPE *nt );
 NET_CTL *net_config_defaults( void );
-int net_config_line( AVP *av );
+conf_line_fn net_config_line;
 
 #endif

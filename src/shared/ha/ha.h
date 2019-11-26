@@ -36,8 +36,6 @@ struct ha_partner
 	int					is_self;
 };
 
-#define lock_ha( )		pthread_mutex_lock(   &(_proc->ha->lock) )
-#define unlock_ha( )	pthread_mutex_unlock( &(_proc->ha->lock) )
 */
 
 
@@ -62,7 +60,6 @@ struct ha_control
 };
 
 
-
 curlw_cb ha_watcher_cb;
 curlw_jcb ha_watcher_jcb;
 
@@ -80,8 +77,7 @@ int ha_start( void );
 void ha_shutdown( void );
 
 HA_CTL *ha_config_defaults( void );
-int ha_config_line( AVP *av );
-
+conf_line_fn ha_config_line;
 
 
 #endif

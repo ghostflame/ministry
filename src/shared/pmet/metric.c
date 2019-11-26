@@ -18,8 +18,8 @@ int pmet_metric_render( int64_t mval, BUF *b, PMETM *metric )
 		return -1;
 
 	if( metric->help )
-		strbuf_aprintf( b, "HELP %s %s\n", metric->path, metric->help );
-	strbuf_aprintf( b, "TYPE %s %s\n", metric->path, metric->type->name );
+		strbuf_aprintf( b, "# HELP %s %s\n", metric->path, metric->help );
+	strbuf_aprintf( b, "# TYPE %s %s\n", metric->path, metric->type->name );
 
 	for( i = metric->items; i; i = i->next )
 		if( pmets_enabled( i->source ) )

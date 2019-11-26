@@ -30,7 +30,7 @@ void stats_thread_pass( int64_t tval, void *arg )
 	for( i = 0; i < ctl->tgt->set_count; ++i )
 		if( t->bp[i] )
 		{
-			if( t->bp[i]->len )
+			if( t->bp[i]->bf->len )
 			{
 				io_buf_post( ctl->tgt->setarr[i]->targets, t->bp[i] );
 				t->bp[i] = NULL;
@@ -69,7 +69,7 @@ void stats_start_one( ST_CFG *cf )
 
 	// throw each of the threads
 	for( i = 0; i < cf->threads; ++i )
-		thread_throw_named_f( &stats_loop, &(cf->ctls[i]), i, "%s_%d", cf->name, i );
+		thread_throw_named_f( &stats_loop, &(cf->ctls[i]), i, "gen_%s_%d", cf->name, i );
 
 	info( "Started %s data processing loops.", cf->name );
 }

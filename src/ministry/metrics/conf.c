@@ -31,7 +31,7 @@ int metrics_add_path( METPR *p, char *str, int len )
 	if( !p->paths )
 	{
 		dv = 1;
-		p->paths = string_store_create( 0, "small", &dv );
+		p->paths = string_store_create( 0, "small", &dv, 0 );
 	}
 
 	// store the path name only

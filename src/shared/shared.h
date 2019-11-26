@@ -49,6 +49,7 @@
 #include <netinet/in.h>
 #include <json-c/json.h>
 #include <openssl/sha.h>
+#include <sys/inotify.h>
 #include <sys/resource.h>
 
 #define MHD_PLATFORM_H
@@ -64,13 +65,14 @@
 
 #include "run.h"
 #include "log/log.h"
-#include "loop.h"
+#include "utils/loop.h"
 #include "strings/stringutils.h"
 #include "utils/utils.h"
-#include "iter.h"
+#include "utils/iter.h"
 #include "curlw.h"
 #include "regexp.h"
 #include "iplist.h"
+#include "fs/fs.h"
 #include "net/net.h"
 #include "net/token.h"
 #include "net/udp.h"
@@ -80,6 +82,7 @@
 #include "thread.h"
 #include "http/http.h"
 #include "pmet/pmet.h"
+#include "slack.h"
 #include "ha/ha.h"
 #include "config/config.h"
 #include "app.h"

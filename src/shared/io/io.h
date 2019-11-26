@@ -16,6 +16,8 @@
 #define IO_BUF_SZ				0x40000		// 256k
 #define IO_BUF_HWMK				0x3c000		// 240k
 
+#define IO_BUF_SMALL			0x4000		// 16k
+
 #define IO_MAX_WAITING			1024		// makes for 1024 * 256k = 256M
 #define IO_LIM_WAITING			65536		// makes for 16G
 
@@ -27,25 +29,13 @@
 struct io_buffer
 {
 	IOBUF			*	next;
-	char			*	ptr;		// holds memory even if not requested
-	char			*	buf;
+	BUF				*	bf;
 	int16_t				refs;		// how many outstanding to send?
 	int16_t				flags;
-	int32_t				hwmk;
-	int32_t				len;
-	int32_t				sz;
+	uint32_t			hwmk;
 	int64_t				mtime;
 	int64_t				expires;
 	int64_t				lifetime;
-};
-
-
-struct io_buf_ptr
-{
-	IOBP			*	next;
-	IOBP			*	prev;
-	IOBUF			*	buf;
-	int64_t				_unused;
 };
 
 
@@ -91,12 +81,11 @@ void io_disconnect( SOCK *s );
 // buffers
 void io_buf_post_one( TGT *t, IOBUF *buf );
 void io_buf_post( TGTL *l, IOBUF *buf );
-void io_buf_keep( IOBUF *buf, int len );
 
 // this does no length checking, that's the caller's problem
-#define io_buf_append( _b, _s, _l )			memcpy( _b->buf + _b->len, _s, _l ); _b->len += _l
-#define io_buf_zero( _b )					_b->buf = _b->ptr; _b->len = 0; _b->buf[0] = '\0'
-#define io_buf_space( _b )					( _b->sz - _b->len - 1 )
+#define io_buf_append( _b, _s, _l )			memcpy( _b->b.buf + _b->b.len, _s, _l ); _b->b.len += _l
+#define io_buf_zero( _b )					_b->b.buf = _b->b.space; _b->b.len = 0; _b->b.buf[0] = '\0'
+#define io_buf_space( _b )					( _b->b.sz - _b->b.len - 1 )
 
 // io fns
 io_fn io_send_net_tcp;
@@ -113,7 +102,7 @@ int io_init( void );
 void io_stop( void );
 
 IO_CTL *io_config_defaults( void );
-int io_config_line( AVP *av );
+conf_line_fn io_config_line;
 
 
 #endif

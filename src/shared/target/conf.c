@@ -54,7 +54,7 @@ int __target_set_maxw( TGT *t, char *max )
 		return -2;
 	}
 
-	t->max = (int32_t) i;
+	t->max = i;
 	return 0;
 }
 

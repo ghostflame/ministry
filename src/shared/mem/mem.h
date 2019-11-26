@@ -25,6 +25,28 @@
 #define MEM_TYPES_MAX				128
 
 
+struct mem_hanger
+{
+	MEMHG			*	next;
+	MEMHG			*	prev;
+	void			*	ptr;
+	MEMHL			*	list;
+};
+
+struct mem_hanger_list
+{
+	MEMHL			*	next;
+	MEMHG			*	head;
+	MEMHG			*	tail;
+	mem_free_cb		*	memcb;
+	int64_t				count;
+	uint64_t			id;
+
+	pthread_mutex_t		lock;
+	int8_t				use_lock;
+	int8_t				act_lock;
+};
+
 
 struct mem_call_counters
 {
@@ -62,13 +84,16 @@ struct mem_control
 
 	int64_t				prealloc;	// msec
 	int16_t				type_ct;
+	pthread_mutex_t		idlock;
+	uint64_t			id;
 
 	// known types
 	MTYPE			*	iobufs;
-	MTYPE			*	iobps;
 	MTYPE			*	htreq;
 	MTYPE			*	hosts;
 	MTYPE			*	token;
+	MTYPE			*	hanger;
+	MTYPE			*	slkmsg;
 };
 
 
@@ -110,9 +135,6 @@ IOBUF *mem_new_iobuf( int sz );
 void mem_free_iobuf( IOBUF **b );
 void mem_free_iobuf_list( IOBUF *list );
 
-IOBP *mem_new_iobp( void );
-void mem_free_iobp( IOBP **b );
-
 HTREQ *mem_new_request( void );
 void mem_free_request( HTREQ **h );
 
@@ -123,5 +145,39 @@ TOKEN *mem_new_token( void );
 void mem_free_token( TOKEN **t );
 void mem_free_token_list( TOKEN *list );
 
+MEMHG *mem_new_hanger( void *ptr );
+void mem_free_hanger( MEMHG **m );
+void mem_free_hanger_list( MEMHG *list );
+
+SLKMSG *mem_new_slack_msg( size_t sz );
+void mem_free_slack_msg( SLKMSG **m );
+
+
+// hanger list
+
+MEMHL *mem_list_filter_new( MEMHL *mhl, void *arg, mhl_callback *cb );
+int mem_list_filter_self( MEMHL *mhl, void *arg, mhl_callback *cb );
+int mem_list_iterator( MEMHL *mhl, void *arg, mhl_callback *cb );
+MEMHG *mem_list_search( MEMHL *mhl, void *arg, mhl_callback *cb );
+MEMHG *mem_list_find( MEMHL *mhl, void *ptr );
+
+// add/fetch void ptrs to your objects
+int mem_list_remove( MEMHL *mhl, MEMHG *hg );
+int mem_list_excise( MEMHL *mhl, void *ptr );
+void mem_list_add_tail( MEMHL *mhl, void *ptr );
+void mem_list_add_head( MEMHL *mhl, void *ptr );
+void *mem_list_get_head( MEMHL *mhl );
+void *mem_list_get_tail( MEMHL *mhl );
+
+// external locking - disables internal locking!
+int mem_list_lock( MEMHL *mhl );
+int mem_list_unlock( MEMHL *mhl );
+
+// info
+int64_t mem_list_size( MEMHL *mhl );
+
+// setup/teardown
+void mem_list_free( MEMHL *mhl );
+MEMHL *mem_list_create( int use_lock, mem_free_cb *cb );
 
 #endif

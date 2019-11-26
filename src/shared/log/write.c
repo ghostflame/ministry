@@ -54,6 +54,9 @@ int log_line( int fi, int8_t level, const char *file, const int line, const char
 	if( d < 0 )
 		return -1;
 
+	// keep score
+	++(_logger->counts[level]);
+
 	// capture the timestamp length, we won't write it to syslog
 	l += log_write_ts( buf, LOG_LINE_MAX );
 	tslen = l;

@@ -27,6 +27,26 @@ RGXL *regex_list_create( int fallback_match )
 	return rl;
 }
 
+void regex_list_destroy( RGXL *rl )
+{
+	RGX *r;
+
+	if( !rl )
+		return;
+
+	while( rl->list )
+	{
+		r = rl->list;
+		rl->list = r->next;
+
+		free( r->src );
+		regfree( r->r );
+		free( r->r );
+		free( r );
+	}
+
+	free( rl );
+}
 
 
 int regex_list_add( char *str, int negate, RGXL *rl )

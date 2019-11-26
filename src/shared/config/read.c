@@ -193,6 +193,8 @@ int __config_handle_dir( char *path, WORDS *w )
 		return 0;
 	}
 
+	// add it to the watch tree
+	fs_treemon_add( _proc->cfiles, path, 1 );
 
 	debug( "Handling included directory '%s'", path );
 
@@ -353,21 +355,26 @@ int __config_read_file( FILE *fh )
 			vcpy = (char *) allocz( vlen + 2 );
 			vtmp = (char *) allocz( vlen + iter_longest( it ) + 2 );
 
-			memcpy( vcpy, av.vptr, av.vlen );
-			vcpy[av.vlen] = '\0';
-
 			// blanks have an autoassigned '1' we want to ignore
 			// if you really want a 1 with arguments, put a 1
 			if( av.blank )
+			{
 				vlen = 0;
+			}
 			else
-			 	vtmp[vlen++] = ' ';
+			{
+				memcpy( vcpy, av.vptr, vlen );
+				vcpy[vlen++] = ' ';
+				vcpy[vlen] = '\0';
+			}
 
 			// run while arguments...
 			while( iter_next( it, &arg, &alen ) == 0 )
 			{
 				// copy the base - might be 0, might be base + space
-				memcpy( vtmp, vcpy, vlen );
+				if( vlen )
+					memcpy( vtmp, vcpy, vlen );
+
 				// add the latest arg
 				memcpy( vtmp + vlen, arg, alen );
 
@@ -383,7 +390,7 @@ int __config_read_file( FILE *fh )
 				lrv = __config_handle_line( &av );
 
 				ret += lrv;
-				if( lrv )
+				if( lrv < 0 )
 				{
 					err( "Bad config in file '%s', line %d (repeat arg %s)",
 						context->source, context->lineno, arg );
@@ -404,7 +411,7 @@ int __config_read_file( FILE *fh )
 			lrv = __config_handle_line( &av );
 			ret += lrv;
 
-			if( lrv )
+			if( lrv < 0 )
 			{
 				err( "Bad config in file '%s', line %d", context->source, context->lineno );
 				info( "Bad line: %s = %s", av.aptr, av.vptr );
@@ -431,9 +438,9 @@ int __config_read_file( FILE *fh )
 int config_read_file( char *path, int fail_ok )
 {
 	FILE *fh = NULL;
-	struct stat sb;
-	CFILE *cf;
-	char *p;
+
+	// add this to the watch tree
+	fs_treemon_add( _proc->cfiles, path, 0 );
 
 	// die on not reading main config file, warn on others
 	if( !( fh = fopen( path, "r" ) ) )
@@ -447,30 +454,6 @@ int config_read_file( char *path, int fail_ok )
 		{
 			err( "Could not open config file '%s' -- %s", path, Err );
 			return -1;
-		}
-	}
-
-	// do we need a new cfile structure?
-	for( cf = _proc->cfiles; cf; cf = cf->next )
-		if( !strcmp( path, cf->fpath ) )
-			break;
-
-	if( !cf )
-	{
-		if( fstat( fileno( fh ), &sb ) )
-			warn( "Cannot stat config file %s -- %s", path, Err );
-		else if( !( p = realpath( path, NULL ) ) )
-			warn( "Cannot determine real path of config file %s -- %s",
-				path, Err );
-		else
-		{
-			cf        = (CFILE *) allocz( sizeof( CFILE ) );
-			cf->fpath = p;
-			cf->mtime = tsll( sb.st_mtim );
-
-			cf->next = _proc->cfiles;
-			_proc->cfiles = cf;
-			++(_proc->cf_chk_ct);
 		}
 	}
 
@@ -499,7 +482,7 @@ int config_read_url( char *url, int fail_ok )
 	// force to file
 	setCurlFl( ch, TOFILE );
 
-	if( curlw_fetch( &ch ) )
+	if( curlw_fetch( &ch, NULL, 0 ) )
 	{
 		if( fail_ok )
 		{

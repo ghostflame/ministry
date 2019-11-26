@@ -209,7 +209,7 @@ __attribute__((hot)) void data_line_ministry( HOST *h, char *line, int len )
 // and return the length, if any
 __attribute__((hot)) int data_parse_buf( HOST *h, IOBUF *b )
 {
-	register char *s = b->buf;
+	register char *s = b->bf->buf;
 	register char *q;
 	register int l;
 	int len;
@@ -220,7 +220,7 @@ __attribute__((hot)) int data_parse_buf( HOST *h, IOBUF *b )
 	if( !h )
 		return 0;
 
-	len = b->len;
+	len = b->bf->len;
 
 	while( len > 0 )
 	{
@@ -245,7 +245,7 @@ __attribute__((hot)) int data_parse_buf( HOST *h, IOBUF *b )
 		if( *s == '\r' )
 		{
 			++s;
-			l--;
+			--l;
 		}
 
 		// get the length
@@ -253,7 +253,7 @@ __attribute__((hot)) int data_parse_buf( HOST *h, IOBUF *b )
 		if( l > 0 && *r == '\r' )
 		{
 			*r = '\0';
-			l--;
+			--l;
 		}
 
 		// still got anything?
@@ -267,7 +267,7 @@ __attribute__((hot)) int data_parse_buf( HOST *h, IOBUF *b )
 		s = q;
 	}
 
-	io_buf_keep( b, len );
+	strbuf_keep( b->bf, len );
 	return len;
 }
 

@@ -103,7 +103,7 @@ buf_fn relay_parse_buf;
 int relay_init( void );
 
 RLY_CTL *relay_config_defaults( void );
-int relay_config_line( AVP *av );
+conf_line_fn relay_config_line;
 
 
 #endif

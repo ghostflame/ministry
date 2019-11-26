@@ -17,20 +17,32 @@ BUF *strbuf( uint32_t size )
 	BUF *b = (BUF *) allocz( sizeof( BUF ) );
 	size_t sz;
 
-	if( size )
-	{
-		// make a little room
-		if( size < 128 )
-			size += 24;
+	if( !size )
+		size = 128;
 
-		sz       = mem_alloc_size( size );
-		b->space = (char *) allocz( sz );
-		b->sz    = (uint32_t) sz;
-	}
+	// make a little room
+	if( size < 128 )
+		size += 24;
+
+	sz       = mem_alloc_size( size );
+	b->space = (char *) allocz( sz );
+	b->sz    = (uint32_t) sz;
 
 	b->buf = b->space;
 	return b;
 }
+
+void strbuf_free( BUF *b )
+{
+	if( !b )
+		return;
+
+	if( b->space )
+		free( b->space );
+
+	free( b );
+}
+
 
 BUF *strbuf_resize( BUF *b, uint32_t size )
 {
@@ -86,6 +98,25 @@ BUF *strbuf_copy( BUF *b, char *str, int len )
 	return b;
 }
 
+int strbuf_copymax( BUF *b, char *str, int len )
+{
+	int max;
+
+	if( !len )
+		len = strlen( str );
+
+	max = (int) ( b->sz - 1 );
+	if( len > max )
+		len = max;
+
+	memcpy( b->buf, str, len );
+	b->len = len;
+	b->buf[b->len] = '\0';
+
+	return len;
+}
+
+
 BUF *strbuf_add( BUF *b, char *str, int len )
 {
 	if( !len )
@@ -118,7 +149,7 @@ BUF *strbuf_json( BUF *b, json_object *o, int done )
 		strbuf_resize( b, l + 2 );
 
 	memcpy( b->buf, str, (int) l );
-	b->buf[l++] = '\n';
+	//b->buf[l++] = '\n';
 	b->buf[l] = '\0';
 
 	b->len = (uint32_t) l;
@@ -144,5 +175,35 @@ BUF *strbuf_create( char *str, int len )
 	strbuf_add( b, str, len );
 
 	return b;
+}
+
+
+// keep the data from the end of the buffer
+// put it at the start of the buffer
+void strbuf_keep( BUF *b, int len )
+{
+    register uint32_t l = len;
+    register char *p, *q;
+
+    if( l > b->len )
+        return;
+
+    if( l > 0 )
+    {
+        p = b->buf + ( b->len - l );
+
+        if( p > ( b->buf + l ) )
+            memcpy( b->buf, p, l );
+        else
+        {
+            q = b->buf;
+            while( l-- ) {
+                *q++ = *p++;
+            }
+        }
+    }
+
+    b->buf[len] = '\0';
+    b->len = (uint32_t) len;
 }
 

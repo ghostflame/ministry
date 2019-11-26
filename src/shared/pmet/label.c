@@ -151,7 +151,7 @@ int pmet_label_common( char *name, char *val )
 	return 0;
 }
 
-PMET_LBL *pmet_label_clone( PMET_LBL *in, int max )
+PMET_LBL *pmet_label_clone( PMET_LBL *in, int max, PMET_LBL *except )
 {
 	PMET_LBL *out = NULL, *l;
 	int i = 0;
@@ -164,7 +164,13 @@ PMET_LBL *pmet_label_clone( PMET_LBL *in, int max )
 
 	while( in && i++ < max )
 	{
-		l = pmet_label_create( in->name, in->val );
+		if( except && !strcmp( in->name, except->name ) )
+		{
+			l = except;
+			except = NULL;
+		}
+		else
+			l = pmet_label_create( in->name, in->val );
 
 		l->next = out;
 		out = l;

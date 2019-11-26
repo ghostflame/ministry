@@ -85,7 +85,7 @@ throw_fn synth_loop;
 void synth_init( void );
 
 SYN_CTL *synth_config_defaults( void );
-int synth_config_line( AVP *av );
+conf_line_fn synth_config_line;
 
 
 #endif

@@ -46,7 +46,7 @@ with_old_gcc:  subs
 with_old_gcc:  $(BIN)
 
 subs:
-	@for d in $(SUBS); do ( cd $$d && $(MAKE) $(MFLAGS) $(TARGET) ); done
+	@for d in $(SUBS); do ( cd $$d && $(MAKE) -j4 $(MFLAGS) $(TARGET) ); done
 
 $(BIN): $(HDRS) $(OBJS)
 	$(CC) -o $(BIN) $(LFLAGS) $(OBJS) $(SUBO) $(RKVS)

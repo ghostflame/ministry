@@ -10,13 +10,17 @@
 #include "shared.h"
 
 
-int recursive_mkdir( char *path )
+int fs_mkdir_recursive( char *path )
 {
 	char dbuf[2048], *ls;
 	struct stat sb;
 	int l, ret;
 
 	errno = 0;
+
+	// anything to do?
+	if( !strcmp( path, "." ) )
+		return 0;
 
 	// we have a sensible looking path?
 	if( !( ls = strrchr( path, '/' ) ) )
@@ -49,7 +53,7 @@ int recursive_mkdir( char *path )
 		dbuf[--l] = '\0';
 
 	// recurse up towards /
-	if( ( ret = recursive_mkdir( dbuf ) ) != 0 )
+	if( ( ret = fs_mkdir_recursive( dbuf ) ) != 0 )
 		return ret;
 
 	if( stat( path, &sb ) )
@@ -84,14 +88,18 @@ int recursive_mkdir( char *path )
 }
 
 
-int pidfile_mkdir( char *filepath )
+int fs_pidfile_mkdir( char *filepath )
 {
 	char dbuf[2028], *s;
 	int l;
 
+	// are we right there?
+	if( !strcmp( filepath, "." ) )
+		return 0;
+
 	if( !( s = strrchr( filepath, '/' ) ) )
 	{
-		warn( "Invalid pidfile spec: %s", filepath );
+		warn( "Invalid directory spec: %s", filepath );
 		return -1;
 	}
 
@@ -106,17 +114,17 @@ int pidfile_mkdir( char *filepath )
 
 	notice( "Trying to create dir '%s' for pidfile '%s'", dbuf, filepath );
 
-	return recursive_mkdir( dbuf );
+	return fs_mkdir_recursive( dbuf );
 }
 
 
 
-void pidfile_write( void )
+void fs_pidfile_write( void )
 {
 	FILE *fh;
 
 	// make our piddir
-	if( pidfile_mkdir( _proc->pidfile ) != 0 )
+	if( fs_pidfile_mkdir( _proc->pidfile ) != 0 )
 	{
 		warn( "Unable to create pidfile directory." );
 		return;
@@ -133,7 +141,7 @@ void pidfile_write( void )
 	fclose( fh );
 }
 
-void pidfile_remove( void )
+void fs_pidfile_remove( void )
 {
 	if( unlink( _proc->pidfile ) && errno != ENOENT )
 		warn( "Unable to remove pidfile %s -- %s",
