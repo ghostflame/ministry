@@ -165,6 +165,7 @@ void mem_free_host( HOST **h )
 
 	sh->net->fd    = -1;
 	sh->net->flags = 0;
+	sh->lock_use   = 0;
 	sh->ipn        = NULL;
 	sh->ip         = 0;
 
@@ -175,6 +176,7 @@ void mem_free_host( HOST **h )
 	{
 		strbuf_empty( sh->net->in->bf );
 	}
+
 
 	if( sh->net->out )
 	{
