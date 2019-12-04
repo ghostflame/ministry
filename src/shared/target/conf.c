@@ -25,7 +25,7 @@ void target_set_handle( TGT *t, char *prefix )
 	if( !prefix )
 		prefix = t->name;
 
-	if( t->to_stdout )
+	if( flagf_has( t, TGT_FLAG_ENABLED ) )
 		l = snprintf( buf, 1024, "%s - stdout", prefix );
 	else
 		l = snprintf( buf, 1024, "%s - %s:%hu", prefix, t->host, t->port );
@@ -77,8 +77,8 @@ int __target_set_host( TGT *t, char *host )
 			err( "Can only have one target writing to stdout." );
 			return -1;
 		}
+		flagf_add( t, TGT_FLAG_STDOUT );
 
-		t->to_stdout = 1;
 		++(io->stdout_count);
 		debug( "Target writing to stdout." );
 	}
@@ -125,7 +125,7 @@ void target_list_check_enabled( TGTL *l )
 		return;
 
 	for( t = l->targets; t; t = t->next )
-		if( t->enabled )
+		if( flagf_has( t, TGT_FLAG_ENABLED ) )
 			++e;
 
 	if( !e && l->enabled )
@@ -156,9 +156,9 @@ TGT *target_create( char *list, char *name, char *proto, char *host, uint16_t po
 	t = (TGT *) allocz( sizeof( TGT ) );
 	t->port = port;
 	t->name = str_copy( name, l );
-	t->nlen = l;
+	t->nlen = (int16_t) l;
 	t->list = __target_list_find_create( list );
-	t->enabled = enabled;
+	flagf_set( t, TGT_FLAG_ENABLED, enabled );
 
 	t->typestr = str_copy( type, 0 );
 
@@ -241,7 +241,7 @@ int target_config_line( AVP *av )
 	{
 		memset( t, 0, sizeof( TGT ) );
 		t->max = IO_MAX_WAITING;
-		t->enabled = 1;
+		flagf_add( t, TGT_FLAG_ENABLED );
 	}
 
 	if( attIs( "target" ) )
@@ -260,10 +260,13 @@ int target_config_line( AVP *av )
 	else if( attIs( "name" ) )
 	{
 		if( t->name )
-			free( t->name );
+		{
+			err( "Target %s already has a name.", t->name );
+			return -1;
+		}
 
-		t->name = str_copy( av->vptr, av->vlen );
-		t->nlen = av->vlen;
+		t->name = av_copyp( av );
+		t->nlen = (int16_t) av->vlen;
 		__tgt_cfg_state = 1;
 	}
 	else if( attIs( "host" ) )
@@ -285,13 +288,23 @@ int target_config_line( AVP *av )
 	}
 	else if( attIs( "enable" ) || attIs( "enabled" ) )
 	{
-		t->enabled = config_bool( av );
+		flagf_set( t, TGT_FLAG_ENABLED, config_bool( av ) );
 		__tgt_cfg_state = 1;
 	}
 	else if( attIs( "protocol" ) )
 	{
 		if( __target_set_protocol( t, av->vptr ) )
 			return -1;
+		__tgt_cfg_state = 1;
+	}
+	else if( attIs( "tls" ) )
+	{
+		flagf_set( t, TGT_FLAG_TLS, config_bool( av ) );
+		__tgt_cfg_state = 1;
+	}
+	else if( attIs( "verify" ) )
+	{
+		flagf_set( t, TGT_FLAG_TLS_VERIFY, config_bool( av ) );
 		__tgt_cfg_state = 1;
 	}
 	else if( attIs( "type" ) )

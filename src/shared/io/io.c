@@ -27,7 +27,7 @@ void io_sock_set_peer( SOCK *s, struct sockaddr_in *peer )
 
 
 
-SOCK *io_make_sock( int32_t insz, int32_t outsz, struct sockaddr_in *peer )
+SOCK *io_make_sock( int32_t insz, int32_t outsz, struct sockaddr_in *peer, uint32_t flags, char *peername )
 {
 	SOCK *s;
 
@@ -45,6 +45,12 @@ SOCK *io_make_sock( int32_t insz, int32_t outsz, struct sockaddr_in *peer )
 
 	// no socket yet
 	s->fd = -1;
+
+	if( flag_has( flags, IO_TLS ) )
+	{
+		s->tls = io_tls_make_session( flags, peername );
+		flagf_add( s, ( flags & IO_TLS_MASK ) );
+	}
 
 	return s;
 }
@@ -72,6 +78,17 @@ int io_init( void )
 
 	io_lock_init( i->idlock );
 
+	if( !i->tls_init )
+	{
+		if( gnutls_global_init( ) != 0 )
+		{
+			fatal( "Could not perform global init of GNUTLS." );
+			return -1;
+		}
+
+		i->tls_init = 1;	
+	}
+
 	return 0;
 }
 
@@ -84,6 +101,12 @@ void io_stop( void )
 	for( k = 0; k < i->lock_size; ++k )
 	{
 		io_lock_destroy( i->locks[k] );
+	}
+
+	if( i->tls_init )
+	{
+		gnutls_global_deinit( );
+		i->tls_init = 0;
 	}
 }
 

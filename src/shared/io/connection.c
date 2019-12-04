@@ -28,20 +28,14 @@ int io_connected( SOCK *s )
 	if( getsockopt( s->fd, SOL_SOCKET, SO_ERROR, &err, &len ) < 0 )
 	{
 		warn( "Could not assess target socket state: %s", Err );
-		close( s->fd );
-		s->fd = -1;
-		s->connected = 0;
-
+		io_disconnect( s, 0 );
 		return -1;
 	}
 
 	if( err != 0 )
 	{
 		warn( "I/O socket errored: %s", strerror( err ) );
-		close( s->fd );
-		s->fd = -1;
-		s->connected = 0;
-
+		io_disconnect( s, 0 );
 		return -1;
 	}
 
@@ -57,10 +51,7 @@ int io_connect( SOCK *s )
 	if( s->fd != -1 )
 	{
 		warn( "Net connect called on connected socket - disconnecting." );
-		shutdown( s->fd, SHUT_RDWR );
-		close( s->fd );
-		s->fd = -1;
-		s->connected = 0;
+		io_disconnect( s, 1 );
 	}
 
 	if( ( s->fd = socket( AF_INET, SOCK_STREAM, 0 ) ) < 0 )
@@ -73,8 +64,7 @@ int io_connect( SOCK *s )
 	{
 		err( "Unable to set keepalive on socket for %s -- %s",
 			s->name, Err );
-		close( s->fd );
-		s->fd = -1;
+		io_disconnect( s, 0 );
 		return -1;
 	}
 
@@ -83,8 +73,7 @@ int io_connect( SOCK *s )
 		err( "Unable to connect to %s:%hu -- %s",
 			inet_ntoa( s->peer.sin_addr ), ntohs( s->peer.sin_port ),
 			Err );
-		close( s->fd );
-		s->fd = -1;
+		io_disconnect( s, 0 );
 		return -1;
 	}
 
@@ -100,12 +89,15 @@ int io_connect( SOCK *s )
 
 
 
-void io_disconnect( SOCK *s )
+void io_disconnect( SOCK *s, int sd )
 {
 	if( s->fd < 0 )
 		return;
 
-	if( shutdown( s->fd, SHUT_RDWR ) )
+	if( s->tls )
+		io_tls_disconnect( s );
+
+	if( sd && shutdown( s->fd, SHUT_RDWR ) )
 		err( "Shutdown error on connection with %s -- %s",
 			s->name, Err );
 

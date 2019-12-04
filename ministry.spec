@@ -8,8 +8,8 @@ License:	ASL 2.0
 URL:		https://github.com/ghostflame/ministry
 Source:		https://github.com/ghostflame/ministry/archive/%{version}.tar.gz
 
-BuildRequires: gcc libcurl-devel libmicrohttpd-devel openssl-devel json-c-devel
-Requires(pre): shadow-utils systemd libcurl libmicrohttpd openssl json-c
+BuildRequires: gcc libcurl-devel libmicrohttpd-devel openssl-devel json-c-devel gnutls-devel
+Requires(pre): shadow-utils systemd libcurl libmicrohttpd openssl json-c gnutls
 
 %description
 A drop-in replacement for Etsy's statsd, written in threaded C.  Designed to

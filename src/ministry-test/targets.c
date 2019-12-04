@@ -62,7 +62,7 @@ void targets_resolve( void )
 				for( t = l->targets; t; t = t->next )
 				{
 					debug( "Found %s target %s (%s:%hu) [%d]", td->name,
-						t->name, t->host, t->port, t->enabled );
+						t->name, t->host, t->port, flagf_val( t, TGT_FLAG_ENABLED ) );
 
 					if( !t->port )
 						t->port = td->port;

@@ -26,7 +26,7 @@ int64_t io_send_stdout( TGT *t )
 	// keep writing while there's something to send
 	while( s->out )
 	{
-		if( t->enabled )
+		if( flagf_has( t, TGT_FLAG_ENABLED ) )
 		{
 			b = write( s->fd, s->out->bf->buf + t->curr_off, s->out->bf->len - t->curr_off );
 			t->curr_off += b;
@@ -50,6 +50,64 @@ int64_t io_send_stdout( TGT *t )
 }
 
 
+int64_t io_send_net_tls( TGT *t )
+{
+	int64_t b = 0, f = 0;
+	SOCK *s = t->sock;
+
+	if( t->rc_count > 0 )
+	{
+		--(t->rc_count);
+		return 0;
+	}
+
+	if( !( flagf_has( t, TGT_FLAG_ENABLED ) )
+	 || ( io_connected( s ) < 0
+	   && io_tls_connect( s ) < 0 ) )
+	{
+		t->rc_count = t->rc_limit;
+		return 0;
+	}
+
+	if( !s->out )
+		io_buf_next( t );
+
+	while( s->out )
+	{
+		b = io_tls_write_data( s, t->curr_off );
+		t->curr_off += b;
+		t->bytes += b;
+		++f;
+
+		// any problems?
+		if( flagf_has( s, IO_CLOSE ) )
+		{
+			tgdebug( "Disconnecting from %s.", "target" );	// needs at least one arg :/
+			io_disconnect( s, 1 );
+			flagf_rmv( s, IO_CLOSE );
+			// try again later
+			break;
+		}
+
+		// did we send it all?
+		if( t->curr_off >= t->curr_len )
+		{
+			// get a new one
+			io_buf_decr( s->out );
+			io_buf_next( t );
+		}
+		else
+		{
+			// try again later
+			break;
+		}
+	}
+
+	return f;
+}
+
+
+
 // to a network - needs to check connection
 int64_t io_send_net_tcp( TGT *t )
 {
@@ -59,12 +117,12 @@ int64_t io_send_net_tcp( TGT *t )
 	// are we waiting to reconnect?
 	if( t->rc_count > 0 )
 	{
-		t->rc_count--;
+		--(t->rc_count);
 		return 0;
 	}
 
 	// are we connected? or enabled?
-	if( !t->enabled
+	if( !( flagf_has( t, TGT_FLAG_ENABLED ) )
 	 || ( io_connected( s ) < 0
 	   && io_connect( s ) < 0 ) )
 	{
@@ -86,7 +144,7 @@ int64_t io_send_net_tcp( TGT *t )
 		if( flagf_has( s, IO_CLOSE ) )
 		{
 			tgdebug( "Disconnecting from %s.", "target" );	// needs at least one arg :/
-			io_disconnect( s );
+			io_disconnect( s, 1 );
 			flagf_rmv( s, IO_CLOSE );
 			// try again later
 			break;

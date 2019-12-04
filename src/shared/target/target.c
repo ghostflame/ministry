@@ -52,7 +52,7 @@ void target_loop( THRD *th )
 
 	t = (TGT *) th->arg;
 
-	if( t->to_stdout )
+	if( flagf_has( t, TGT_FLAG_STDOUT ) )
 	{
 		t->iofp = io_send_stdout;
 	}
@@ -66,6 +66,8 @@ void target_loop( THRD *th )
 
 		if( t->proto == TARGET_PROTO_UDP )
 			t->iofp = io_send_net_udp;
+		else if( flagf_has( t, TGT_FLAG_TLS ) )
+			t->iofp = io_send_net_tls;
 		else
 			t->iofp = io_send_net_tcp;
 	}
@@ -74,7 +76,7 @@ void target_loop( THRD *th )
 	sa.sin_port = htons( t->port );
 
 	// make a socket with no buffers of its own
-	t->sock = io_make_sock( 0, 0, &sa );
+	t->sock = io_make_sock( 0, 0, &sa, t->flags, t->host );
 
 	// calculate how many sleeps for reconnect
 	r = 1000 * io->rc_msec;
@@ -110,7 +112,7 @@ void target_loop( THRD *th )
 	loop_mark_done( "io", 0, fires );
 
 	// disconnect
-	io_disconnect( t->sock );
+	io_disconnect( t->sock, 1 );
 }
 
 

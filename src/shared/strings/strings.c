@@ -15,7 +15,7 @@ char *perm_space_ptr  = NULL;
 char *perm_space_curr = NULL;
 int   perm_space_left = 0;
 
-
+// TODO - this isn't thread safe
 char *str_perm( int len )
 {
 	char *p;
