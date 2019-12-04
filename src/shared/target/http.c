@@ -24,7 +24,7 @@ void __target_http_list( json_object *o, int enval )
 	{
 		// see if we have anything in this list that matches
 		for( t = l->targets; t; t = t->next )
-			if( t->enabled == enval )
+			if( flagf_val( t, TGT_FLAG_ENABLED ) == enval )
 				break;
 
 		if( !t )
@@ -34,7 +34,7 @@ void __target_http_list( json_object *o, int enval )
 
 		for( t = l->targets; t; t = t->next )
 		{
-			if( t->enabled != enval )
+			if( flagf_val( t, TGT_FLAG_ENABLED ) != enval )
 				continue;
 
 			snprintf( ebuf, 512, "%s:%hu", t->host, t->port );
@@ -101,9 +101,9 @@ int target_http_toggle( HTREQ *req )
 		return 0;
 	}
 
-	if( t->enabled != e )
+	if( flagf_val( t, TGT_FLAG_ENABLED ) != e )
 	{
-		t->enabled = e;
+		flagf_set( t, TGT_FLAG_ENABLED, e );
 
 		create_json_result( req->text, 1, "Target %s/%s %sabled.",
 			l->name, t->name, ( e ) ? "en" : "dis" );

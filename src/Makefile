@@ -6,7 +6,7 @@ VERS  ?= 0.0.1
 #EARGS  = -DMTYPE_TRACING
 EARGS  = 
 
-LARGS  = -lm -lcurl -lmicrohttpd -ljson-c
+LARGS  = -lm -lcurl -lmicrohttpd -ljson-c -lgnutls
 
 all: TARGET = all
 all: subdirs

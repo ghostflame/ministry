@@ -1,8 +1,10 @@
 #!/usr/bin/node
 
+var fs   = require( 'fs' );
 var net  = require( 'net' );
 var util = require( 'util' );
 var http = require( 'http' );
+var tls  = require( 'tls' );
 
 // listens on 12003-12005 and reports counts
 
@@ -17,7 +19,7 @@ function PortCounter( port, show ) {
 
 		var remote = sk.remoteAddress + ':' + sk.remotePort;
 
-		console.log( 'New connection from ' + remote );
+		console.log( 'New connection on port ' + port + ' from ' + remote );
 		sk.setEncoding( 'utf8' );
 		sk.on( 'data', function( d ) {
 
@@ -40,7 +42,16 @@ function PortCounter( port, show ) {
 		return ctr;
 	};
 
-	svr = net.createServer( connHandler );
+	if( port > 13000 ) {
+		var opts = {
+			key:	fs.readFileSync( '../dist/tls/key.pem', 'utf8' ),
+			cert:	fs.readFileSync( '../dist/tls/cert.pem', 'utf8' ),
+			passphrase: 'ministry',
+		};
+		svr = tls.createServer( opts,connHandler );
+	} else {
+		svr = net.createServer( connHandler );
+	}
 	svr.listen( port, '0.0.0.0', function( ) {
 		console.log( 'Server listening on port ' + port + ( show ? ' (echoing).' : '.' ) );
 	});
@@ -93,12 +104,12 @@ function PostHandler( port )
 
 
 var ctrs = { };
-var prts = [ 12003, 12004, 12005 ];
+var prts = [ 12003, 12004, 12005, 13003 ];
 var totl = 0;
 var show = false;
 
 for( var i = 0; i < prts.length; i++ ) {
-	if( prts[i] === 12003 ) {
+	if( prts[i] === 13003 ) {
 		show = true;
 	} else {
 		show = false;
@@ -128,7 +139,7 @@ var reporter = function( ) {
 	var c, total = 0;
 	var fmt = "    %s      %d     %s%%   (%s/s)";
 
-	console.log( 'Received:' );
+	console.log( '[' + (~~ (Date.now()/1000)) + '] Received:' );
 
 	for( var p in ctrs ) {
 		c = ctrs[p];

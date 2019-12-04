@@ -175,7 +175,7 @@ void metric_start_all( void )
 		notice( "Target dump : List : %2d / %s", l->count, l->name );
 		for( t = l->targets; t; t = t->next )
 			notice( "Target dump :      : %d / %s / %hu / %s",
-				t->enabled, t->host, t->port, t->name );
+				flagf_val( t, TGT_FLAG_ENABLED ), t->host, t->port, t->name );
 	}
 
 

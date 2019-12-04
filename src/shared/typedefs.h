@@ -45,11 +45,11 @@ typedef struct iterator             ITER;
 typedef struct io_buffer            IOBUF;
 typedef struct io_socket            SOCK;
 typedef struct io_buf_ptr           IOBP;
+typedef struct io_tls               IOTLS;
 
 typedef struct target               TGT;
 typedef struct target_metrics       TGTMT;
 typedef struct target_list          TGTL;
-typedef struct target_alter         TGTALT;
 
 typedef struct iplist_net           IPNET;
 typedef struct iplist               IPLIST;

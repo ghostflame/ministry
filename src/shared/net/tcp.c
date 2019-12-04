@@ -70,7 +70,7 @@ const struct tcp_style_data tcp_styles[TCP_STYLE_MAX] =
 
 void tcp_close_host( HOST *h )
 {
-	io_disconnect( h->net );
+	io_disconnect( h->net, 1 );
 	debug( "Closed connection from host %s.", h->net->name );
 
 	if( _net->host_finish )

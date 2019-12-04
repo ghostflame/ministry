@@ -88,6 +88,12 @@ source is paused until the included file is read (possibly recursively).  This i
 duplication of config values, as the last one read will win.  If include is found within a section,
 that section context is preserved into the new file, until it is changed by a new section heading.
 .TP
+\fBinclude-dir\fP
+The name of a directory to scan for files to read in as config sources.  By default, ministry scans
+for files with the suffix ".conf".  This interacts with the command-line option \fI-x <suffix>\fP
+and \fI-X\fP, setting a non-default config suffix, or turning off suffix checks.  Each file that
+passes the filtering, or lack of, is read in as if called by \fBinclude\fP.
+.TP
 \fBforeach\fP
 Cycle over possible values, passing each to the next line of config.
 
@@ -327,10 +333,10 @@ Number of msec to wait before attempting to reconnect a dead socket (default 200
 .SS [Target]
 .PP
 \fBMinistry\fP shares a lot of code with \fBcarbon-copy\fP and so duplicates its behaviour for describing
-network metric targets.  While \fBministry\fP sends to all enabled targets, \fBcarbon-copy\fP has rules for
-which metrics to send to which targets.  So the organisation of targets makes a little more sense in the
-context of \fBcarbon-copy\fP than \fBministry\fP, but for simplicity (and re-useability of target config
-files) the conventions and format at the same.
+network metric targets.  While \fBministry\fP sends to all enabled targets, \fBcarbon-copy\fP has rules
+for which metrics to send to which targets.  So the organisation of targets makes a little more sense in
+the context of \fBcarbon-copy\fP than \fBministry\fP, but for simplicity (and re-useability of target
+config files) the conventions and format at the same.
 .PP
 The basic principle is that targets are organised into lists of equivalent targets, which will always be
 given the same metrics.  This makes handling resilient multi-server targets easier.  There is no reason
@@ -341,6 +347,10 @@ Targets have names, and lists have names.  If no list is given for a target, a n
 target is created, so any reference to lists is fully optional within \fBministry\fP.  All targets must
 have a type and a \fBdone\fP statement.  There is no limit to the number of targets, though each target
 has a compute cost associated with it.
+.PP
+\fBMinistry\fP can use a GNUTLS wrapper around the socket connecting to a TLS-enabled target.  GNUTLS
+can be used to verify the target's certificates using system CAs.  \fBMinistry\fB will only use TLSv1.2
+and SECURE-256 ciphers.  Verification of certificates can be disabled.
 .TP
 \fBname\fP
 The name of the target, and the list if no list name is given.
@@ -366,6 +376,12 @@ yet support 0-second TTL DNS from the likes of consul which need looking up each
 \fBmaxWaiting\fP
 The maximum number of outstanding network buffers waiting to be sent to this target before new buffers
 are dropped (default 1024).
+.TP
+\fBtls\fP
+Whether this target use TLS around the connection, boolean, defaults to false.
+.TP
+\fBverify\fP
+Whether to attempt certificate verification, boolean, defaults to false.
 .TP
 \fBdone\fP
 Signals the end of one target block.

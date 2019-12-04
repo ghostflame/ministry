@@ -168,8 +168,11 @@ int is_url( char *str );
 #define flag_has( _i, _f )	( _i & _f )
 
 #define flagf_add( _o, _f )	flag_add( (_o->flags), _f )
-#define flagf_rmv( _o, _f )	flag_add( (_o->flags), _f )
+#define flagf_rmv( _o, _f )	flag_rmv( (_o->flags), _f )
 #define flagf_has( _o, _f )	flag_has( (_o->flags), _f )
+#define flagf_val( _o, _f )	( ( flagf_has( _o, _f ) ) ? 1 : 0 )
+
+#define flagf_set( _o, _f, _b )	if( _b ) flagf_add( _o, _f ); else flagf_rmv( _o, _f )
 
 #define runf_add( _f )		flag_add( _proc->run_flags, _f )
 #define runf_rmv( _f )		flag_rmv( _proc->run_flags, _f )
