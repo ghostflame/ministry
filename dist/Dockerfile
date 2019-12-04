@@ -1,6 +1,6 @@
 FROM registry.fedoraproject.org/fedora-minimal:30 AS builder
 
-RUN mkdir /app && microdnf install -y gcc make libmicrohttpd-devel libcurl-devel openssl-devel json-c-devel
+RUN mkdir /app && microdnf install -y gcc make libmicrohttpd-devel libcurl-devel openssl-devel json-c-devel gnutls-devel
 COPY Makefile ministry.spec getversion.sh /app/
 COPY src/ /app/src
 RUN cd /app && mkdir bin && make all
@@ -13,7 +13,7 @@ RUN groupadd -r ministry && \
     mkdir /var/run/ministry /etc/ministry && \
     chown ministry:ministry /var/run/ministry
 
-RUN microdnf install -y libmicrohttpd libcurl openssl json-c man-pages man-db mlocate && \
+RUN microdnf install -y libmicrohttpd libcurl openssl json-c gnutls man-pages man-db mlocate && \
     microdnf clean all && \
 	rm -rf /usr/share/X11 /usr/sbin /var/lib/rpm /var/lib/dnf /usr/share/man/man[02346789]*
 
