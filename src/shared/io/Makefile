@@ -1,6 +1,6 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-FILES  = buffers conf connection io rw senders
+FILES  = buffers conf connection io rw senders tls
 HEADS  = local io
 
 RKV    = io_shared.a

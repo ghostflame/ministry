@@ -52,6 +52,11 @@ typedef pthread_mutex_t io_lock_t;
 
 
 
+#define TGT_FLAG_ENABLED		0x00000001
+#define TGT_FLAG_STDOUT			0x00000002
+#define TGT_FLAG_TLS			IO_TLS
+#define TGT_FLAG_TLS_VERIFY		IO_TLS_VERIFY
+
 
 struct target
 {
@@ -65,6 +70,11 @@ struct target
 	// io data
 	SOCK				*	sock;
 	io_fn				*	iofp;
+
+	// metrics data
+	PMET				*	pm_bytes;
+	PMET				*	pm_conn;
+	PMET_LBL			*	pm_lbls;
 
 	// io queue
 	MEMHL				*	queue;
@@ -80,16 +90,11 @@ struct target
 
 	// misc
 	int64_t					bytes;
-	int						to_stdout;
-	int						enabled;
-	int						proto;
-	int						nlen;
-	int32_t					id;
+	uint32_t				flags;
 	uint16_t				port;
-
-	PMET				*	pm_bytes;
-	PMET				*	pm_conn;
-	PMET_LBL			*	pm_lbls;
+	int16_t					nlen;
+	int32_t					id;
+	int8_t					proto;
 
 	// for callers to fill in
 	void				*	ptr;
@@ -104,15 +109,6 @@ struct target_list
 	TGT					*	targets;
 	int						count;
 	int						enabled;
-};
-
-
-struct target_alter
-{
-	TGTL				*	list;
-	TGT					*	tgt;
-	int						state_set;
-	int						state;
 };
 
 

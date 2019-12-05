@@ -111,6 +111,7 @@ void pmet_scrape_loop( THRD *t )
 {
 	// set last-scrape to now, so we don't alert at once
 	_pmet->last_scrape = _proc->curr_time.tv_sec;
+	// alert delta left to be big, so that we alert at once
 
 	info( "Beginning scape expectation check, threshold %ld sec.", _pmet->alert_period );
 

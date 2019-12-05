@@ -129,7 +129,7 @@ HOST *mem_new_host( struct sockaddr_in *peer, uint32_t bufsz )
 	// is this one set up?
 	if( ! h->net )
 	{
-		h->net  = io_make_sock( bufsz, 0, peer );
+		h->net  = io_make_sock( bufsz, 0, peer, 0, NULL );
 		h->peer = &(h->net->peer);
 	}
 

@@ -10,8 +10,11 @@
 #ifndef SHARED_IO_H
 #define SHARED_IO_H
 
-#define IO_CLOSE				0x01
-#define IO_CLOSE_EMPTY			0x02
+#define IO_CLOSE				0x0001
+#define IO_CLOSE_EMPTY			0x0002
+#define IO_TLS					0x1000
+#define IO_TLS_VERIFY			0x2000
+#define IO_TLS_MASK				0xf000
 
 #define IO_BUF_SZ				0x40000		// 256k
 #define IO_BUF_HWMK				0x3c000		// 240k
@@ -23,6 +26,18 @@
 
 
 
+
+struct io_tls
+{
+	gnutls_datum_t						dt;
+	gnutls_session_t					sess;
+	gnutls_certificate_credentials_t	cred;
+	char							*	peer;
+	uint32_t							flags;
+	int16_t								plen;
+	int8_t								init;
+	int8_t								conn;
+};
 
 
 // size: (8x8) 64
@@ -39,10 +54,13 @@ struct io_buffer
 };
 
 
+
 struct io_socket
 {
 	IOBUF				*	out;
 	IOBUF				*	in;
+
+	IOTLS				*	tls;
 
 	int						fd;
 	int						flags;
@@ -70,31 +88,28 @@ struct io_control
 	io_lock_t				idlock;
 
 	int						stdout_count;
+	int						tls_init;
 };
 
 
 
 // r/w
 int io_read_data( SOCK *s );
-void io_disconnect( SOCK *s );
+void io_disconnect( SOCK *s, int sd );
 
 // buffers
 void io_buf_post_one( TGT *t, IOBUF *buf );
 void io_buf_post( TGTL *l, IOBUF *buf );
 
-// this does no length checking, that's the caller's problem
-#define io_buf_append( _b, _s, _l )			memcpy( _b->b.buf + _b->b.len, _s, _l ); _b->b.len += _l
-#define io_buf_zero( _b )					_b->b.buf = _b->b.space; _b->b.len = 0; _b->b.buf[0] = '\0'
-#define io_buf_space( _b )					( _b->b.sz - _b->b.len - 1 )
-
 // io fns
 io_fn io_send_net_tcp;
 io_fn io_send_net_udp;
+io_fn io_send_net_tls;
 io_fn io_send_stdout;
 io_fn io_send_file;
 
 // sockets
-SOCK *io_make_sock( int32_t insz, int32_t outsz, struct sockaddr_in *peer );
+SOCK *io_make_sock( int32_t insz, int32_t outsz, struct sockaddr_in *peer, uint32_t flags, char *peername );
 void io_sock_set_peer( SOCK *s, struct sockaddr_in *peer );
 
 // startup/shutdown

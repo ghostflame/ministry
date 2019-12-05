@@ -47,10 +47,12 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <gnutls/x509.h>
 #include <json-c/json.h>
 #include <openssl/sha.h>
 #include <sys/inotify.h>
 #include <sys/resource.h>
+#include <gnutls/gnutls.h>
 
 #define MHD_PLATFORM_H
 #include <microhttpd.h>
