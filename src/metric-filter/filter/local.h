@@ -13,6 +13,7 @@
 
 
 #define FILTER_DEFAULT_FLUSH		1000		// msec
+#define FILTER_DEFAULT_DELAY		10000		// msec
 
 
 

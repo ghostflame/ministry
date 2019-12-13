@@ -92,6 +92,13 @@ void fetch_loop( THRD *t )
 	FETCH *f = (FETCH *) t->arg;
 	struct sockaddr_in sin;
 
+	// default the period to the adder period
+	if( !f->period )
+	{
+		info( "Fetch %s defaulting to 10s." );
+		f->period = 10000;
+	}
+
 	// clip the offset to the size of the period
 	if( f->offset >= f->period )
 	{
@@ -276,7 +283,7 @@ int fetch_config_line( AVP *av )
 		}
 		__fetch_config_state = 1;
 	}
-	else if( attIs( "ssl" ) )
+	else if( attIs( "ssl" ) || attIs( "tls" ) )
 	{
 		if( config_bool( av ) )
 			setCurlF( f->ch, SSL );

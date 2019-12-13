@@ -7,16 +7,14 @@
 * Updates:                                                                *
 **************************************************************************/
 
-#include "shared.h"
+#include "local.h"
 
 
 
-char *perm_space_ptr  = NULL;
-char *perm_space_curr = NULL;
-int   perm_space_left = 0;
 
-// TODO - this isn't thread safe
-char *str_perm( int len )
+// we abuse the BUF struct somewhat
+// it just has all the right parts
+char *str_perm( uint32_t len )
 {
 	char *p;
 
@@ -25,21 +23,25 @@ char *str_perm( int len )
 		len += 4 - ( len % 4 );
 
 	// just malloc big blocks
-	if( len >= ( PERM_SPACE_BLOCK >> 8 ) )
+	if( len >= ( _str->perm->sz >> 8 ) )
 	{
 		return (char *) allocz( len );
 	}
 
-	if( len > perm_space_left )
+	pthread_mutex_lock( &(_str->perm_lock) );
+
+	if( len > _str->perm->len )
 	{
-		perm_space_ptr  = (char *) allocz( PERM_SPACE_BLOCK );
-		perm_space_curr = perm_space_ptr;
-		perm_space_left = PERM_SPACE_BLOCK;
+		_str->perm->space = (char *) allocz( _str->perm->sz );
+		_str->perm->buf   = _str->perm->space;
+		_str->perm->len   = _str->perm->sz;
 	}
 
-	p = perm_space_curr;
-	perm_space_curr += len;
-	perm_space_left -= len;
+	p = _str->perm->buf;
+	_str->perm->buf += len;
+	_str->perm->len -= len;
+
+	pthread_mutex_unlock( &(_str->perm_lock) );
 
 	return p;
 }
@@ -52,7 +54,7 @@ char *str_dup( char *src, int len )
 	if( !len )
 		len = strlen( src );
 
-	p = str_perm( len + 1 );
+	p = str_perm( (uint32_t) ( len + 1 ) );
 	memcpy( p, src, len );
 	p[len] = '\0';
 

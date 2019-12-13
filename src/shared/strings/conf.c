@@ -2,27 +2,37 @@
 * This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
 *                                                                         *
-* network.h - defines network functions and defaults                      *
+* strings/conf.c - config for string handling                             *
 *                                                                         *
 * Updates:                                                                *
 **************************************************************************/
 
+#include "local.h"
 
-#ifndef METRIC_FILTER_NETWORK_H
-#define METRIC_FILTER_NETWORK_H
+STR_CTL *_str = NULL;
 
-#define DEFAULT_METFILT_PORT		2030
 
-#define MF_DEFAULT_HTTP_PORT		9082
-#define MF_DEFAULT_HTTPS_PORT		9445
-
-struct network_control
+void string_deinit( void )
 {
-	NET_TYPE			*	port;
-};
+	pthread_mutex_destroy( &(_str->perm_lock) );
 
+	string_store_cleanup( _str->stores );
+}
 
-NETW_CTL *network_config_defaults( void );
+STR_CTL *string_config_defaults( void )
+{
+	_str = (STR_CTL *) allocz( sizeof( STR_CTL ) );
 
+	_str->perm = (BUF *) allocz( sizeof( BUF ) );
+	_str->perm->sz = PERM_SPACE_BLOCK;
 
-#endif
+	pthread_mutex_init( &(_str->perm_lock), NULL );
+
+	return _str;
+}
+
+int string_config_line( AVP *av )
+{
+	return -1;
+}
+

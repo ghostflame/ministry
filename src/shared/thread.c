@@ -29,6 +29,10 @@ void *__thread_wrapper( void *arg )
 	if( t->name )
 		debug( "Thread has ended: %s", t->name );
 
+	// minor risk of use-after-free - the caller
+	// returns t->id.  Wrap in a sleep loop until
+	// the caller sets a value inside t?  This is
+	// after the payload, after all.
 	free( t );
 
 	pthread_exit( NULL );

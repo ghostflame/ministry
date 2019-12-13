@@ -647,6 +647,125 @@ The number of source metrics with a non-zero value.
 \fBactive\fP
 Returns 0 or 1 depending on whether any data points were present.
 
+.SS [Fetch]
+.PP
+\fBMinistry\fP can fetch data from sources using \fIlibcurl\fP, and does so on a regular cycle.
+Sources can be either text (line format or Prometheus text format) or in JSON.  \fBMinistry\fP
+will auto-detect JSON by looking at the \fIContent-Type\fP header, but will \fBnot\fP attempt to
+look at the data and guess.
+.PP
+Converting Prometheus metrics into graphite-style metrics is quite a complex process, as metrics
+intended for Prometheus have simple, snake-case paths and then labels with values.  Conversion is
+done according to a profile, which is a set of matches against paths, and then a set of labels to
+take as fields.  These are defined in the \fB[Metrics]\fP section below.
+.PP
+\fBMinistry supports TLS-enabled sources, and can validate certificates or not, as commanded in
+the config for each individual source.  If given a DNS name rather than an IP address, it will
+re-evaluate the DNS periodically to confirm the host exists, but will pass \fIlibcurl\fP the name
+provided in config.
+.PP
+As with other timed operations, \fBMinistry\fP's fetch timing is extremely precise, and it will
+not drift from the requested period and offset, even if the server is slow to respond.  There is
+no specified limit to the number of fetches that can be configured, but each one runs in its own
+thread.
+.PP
+A fetch is specified as a config block ending in a \fIdone\fP statement.  The options within it
+are as follows:
+.TP
+\fBname\fP
+The name of the fetch used in logging.
+.TP
+\fBenable\fP
+Whether this fetch is enabled (booleans, defaults to true).
+.TP
+\fBhost\fP
+The remote host to connect to.  This is passed directly to \fIlibcurl\fP.
+.TP
+\fBtls\fP
+Whether the connection should be over TLS or not (boolean, defaults to false).
+.TP
+\fBport\fP
+The remote port (defaults to 80 or 443, depending on \fBtls\fP settings).
+.TP
+\fBvalidate\fP
+Whether to attempt to validate certificates (boolean, defaults to true).
+.TP
+\fBperiod\fP
+Milliseconds between fetches (default 10000).
+.TP
+\fBoffset\fP
+Milliseconds delay from the top of the period (default 0).
+.TP
+\fBrevalidate\fP
+Milliseconds between revalidation of the DNS (default 0).
+.TP
+\fBprometheus\fP
+Whether this fetch will retrieve Prometheus metrics (boolean, defaults to false).
+.TP
+\fBtype\fP
+Which data type this is (\fIadder\fP, \fIstats\fP, etc), if not Prometheus data.
+.TP
+\fBprofile\fP
+Which named metrics profile to parse the data with.
+
+.SS [Metrics]
+.PP
+\fBMinistry\fP can consume Prometheus-style metrics (in it's text format) from fetch targets.
+However, conversion to graphite-style paths is complex, and may well require a lot of config.
+Individual Prometheus metrics look like:
+.EX
+	<path_name>{<label1>="<value1">,<label2>="<value2>",...} <value>[ <timestamp>]
+	eg http_request_duration{env="prod",host="prodweb05",type="homepage"} 1.502 1234567890500
+.EE
+.PP
+Labels are optional and the {} are absent if no labels are present.  A full specification of
+Prometheus metrics format is available on their website, \fIhttps://prometheus.io/docs/instrumenting/exposition_formats/.\fP
+.PP
+To cope with this complexity, \fBMinistry\fP has the concept of profiles, whereby a set of paths
+and labels are combined to make graphite-style data.  A profile consists of a set of maps, each
+being a regular expression list and set of labels with their ordering.  The lists are defined
+separately and referenced in the maps.
+.PP
+A list is defined as a config block with a \fIdone\fP statement terminating it.
+.TP
+\fBlist\fP
+The name of the list being defined.
+.TP
+\fBattribute\fP
+A couplet of label name and its order, separated by a comma (eg host:2).  This can repeat.
+.PP
+Profiles are also config blocks ending with a \fIdone\fP statement, but they contain maps, each
+also a block, but which are terminated either by the start of the next map, or the end of the
+profile block.
+.TP
+\fBprofile\fP
+The name of the profile being created.
+.TP
+\fBdefault\fP
+Is this the default profile when fetches do not specify one (boolean, defaults to false).
+.TP
+\fBdefaultList\fP
+The name of the attribute list this profile defaults to.
+.TP
+\fBpath\fP
+Direct mapping of a Prometheus path to a named list (eg http_request_duration:some-named-list).
+.TP
+\fBmap.begin\fP
+Statement beginning a map (does not require a value).
+.TP
+\fBmap.enable\fP
+Is this map enabled? (boolean, defaults to true).
+.TP
+\fBmap.list\fP
+Named attribute list that a match on this map applies.
+.TP
+\fBmap.last\fP
+When set to true, this means that a match on this list ends map processing.
+.TP
+\fBmap.regex.[match|fail]\fB
+Repeating element - a regular expression to match or fail map matching.  These are run in the order
+presented in config.
+
 .SH SEE ALSO
 .BR ministry (1)
 .SH AUTHOR

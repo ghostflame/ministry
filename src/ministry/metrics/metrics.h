@@ -68,7 +68,7 @@ struct metrics_control
 };
 
 
-
+store_callback metrics_fix_pointer;
 curlw_cb metrics_fetch_cb;
 
 void metrics_init_data( MDATA *m );

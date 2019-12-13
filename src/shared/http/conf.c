@@ -14,6 +14,15 @@
 HTTP_CTL *_http = NULL;
 
 
+void http_set_default_ports( uint16_t hport, uint16_t tport )
+{
+	if( hport )
+		_http->port = hport;
+
+	if( tport )
+		_http->tls->port = tport;
+}
+
 
 
 HTTP_CTL *http_config_defaults( void )
@@ -43,6 +52,7 @@ HTTP_CTL *http_config_defaults( void )
 	h->enabled         = 0;
 	h->ctl_enabled     = 0;
 	h->tls->enabled    = 0;
+	h->tls->port       = DEFAULT_HTTPS_PORT;
 	h->ctl_iplist      = str_copy( "localhost-only", 0 );
 
 	// only allow 1.3, 1.2 by default

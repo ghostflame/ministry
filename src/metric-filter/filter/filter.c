@@ -124,8 +124,12 @@ __attribute__((hot)) int filter_parse_buf( HOST *h, IOBUF *b )
 		// still got anything?
 		if( l > 0 )
 		{
+			// look for the space, or a colon, for statsd format
+		  	if( !( p = memchr( s, ' ', l ) ) )
+				p = memchr( s, ':', l );
+
 			// stomp on the first space
-			if( ( p = memchr( s, ' ', l ) ) )
+			if( p )
 			{
 				strbuf_copymax( hf->path, s, p - s );
 				++(h->lines);		
@@ -189,6 +193,10 @@ void filter_host_watcher( THRD *t )
 		}
 
 		unlock_host( h );
+
+		// shut this host if the generation of filters changes
+		if( hf->gen && hf->gen < ctl->filt->generation )
+			flagf_add( h->net, IO_CLOSE );
 	}
 
 	// sanity time
@@ -223,6 +231,9 @@ void filter_host_setup( HOST *h )
 	flist->best_mode = FILTER_MODE_MAX;
 	flist->running = 1;
 	flist->host = h;
+
+	if( _filt->close_conn )
+		flist->gen = ctl->filt->generation;
 
 	// we need locking on this one
 	secure_host( h );

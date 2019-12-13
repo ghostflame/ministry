@@ -11,14 +11,8 @@
 #ifndef SHARED_STRINGUTILS_H
 #define SHARED_STRINGUTILS_H
 
-
-// for fast string allocation, free not possible
-#define PERM_SPACE_BLOCK	0x1000000   // 1M
-
-
 // for breaking up strings on a delimiter
 #define STRWORDS_MAX		339			// makes for a 4k struct
-
 
 struct words_data
 {
@@ -42,24 +36,6 @@ struct string_store_entry
 };
 
 
-struct string_store
-{
-	SSTR				*	next;		// in case the caller wants a list
-	SSTR				*	_proc_next;	// a list to live in _proc
-	SSTE				**	hashtable;
-
-	mem_free_cb			*	freefp;
-
-	int64_t					hsz;
-	int64_t					entries;
-	int32_t					val_default;
-	int32_t					set_default;
-	int						freeable;
-
-	pthread_mutex_t			mtx;
-};
-
-
 struct string_buffer
 {
 	char				*	space;
@@ -69,11 +45,27 @@ struct string_buffer
 };
 
 
+
+struct string_control
+{
+	SSTR				*	stores;
+
+	// permanent string space
+	BUF					*	perm;
+
+	// permanent string locking
+	pthread_mutex_t			perm_lock;
+	// string store locking
+	pthread_mutex_t			store_lock;
+};
+
+
+
 // FUNCTIONS
 
 
 // allocation of strings that can't be freed
-char *str_perm( int len );
+char *str_perm( uint32_t len );
 char *str_dup( char *src, int len );
 
 // this can be freed
@@ -160,11 +152,17 @@ SSTE *string_store_look( SSTR *store, char *str, int len, int val_set );
 // lock or unlock
 int string_store_locking( SSTR *store, int lk );
 
+// call a callback on every entry
+int string_store_iterator( SSTR *store, void *arg, store_callback *fp );
+
 // clean up those mutexes
 void string_store_cleanup( SSTR *list );
 
 // how many?
 int64_t string_store_entries( SSTR *store );
 
+void string_deinit( void );
+STR_CTL *string_config_defaults( void );
+//conf_line_fn string_config_line;
 
 #endif

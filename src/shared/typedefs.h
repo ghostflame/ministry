@@ -21,6 +21,7 @@ typedef struct ha_control           HA_CTL;
 typedef struct pmet_control         PMET_CTL;
 typedef struct net_control          NET_CTL;
 typedef struct slack_control		SLK_CTL;
+typedef struct string_control       STR_CTL;
 
 typedef struct config_section       CSECT;
 typedef struct config_context       CCTXT;
@@ -114,6 +115,7 @@ typedef int http_callback ( HTREQ * );
 typedef int json_callback ( JSON * );
 typedef int ftree_callback ( FTREE *, uint32_t, char *, char *, void * );
 typedef int http_reporter ( HTPATH *, void *, int64_t, int64_t );
+typedef int store_callback( SSTE *e, void *arg );
 typedef void help_fn ( void );
 typedef int64_t io_fn( TGT * );
 typedef int target_cfg_fn( TGT *, char *, int );

@@ -22,6 +22,11 @@ int filter_init( void )
 
 	pthread_mutex_init( &(ctl->filt->genlock), NULL );
 
+	// convert msec to nsec
+	ctl->filt->chg_delay *= MILLION;
+	ctl->filt->chg_sleep.tv_sec  = ctl->filt->chg_delay / BILLION;
+	ctl->filt->chg_sleep.tv_nsec = ctl->filt->chg_delay % BILLION;
+
 	lock_filters( );
 	ret = filter_load( );
 	unlock_filters( );

@@ -174,6 +174,8 @@ void http_stop( void );
 int http_tls_enabled( void );
 int http_ask_password( void );
 
+void http_set_default_ports( uint16_t hport, uint16_t tport );
+
 HTTP_CTL *http_config_defaults( void );
 conf_line_fn http_config_line;
 

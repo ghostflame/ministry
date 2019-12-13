@@ -287,24 +287,45 @@ int filter_load( void )
 
 
 
-int filter_on_change( FTREE *ft, uint32_t mask, char *path, char *desc, void *arg )
+void filter_order_reload( THRD *th )
 {
-	FCONF *fc = (FCONF *) arg;
-	int ret = 0;
+	FCONF *fc = (FCONF *) th->arg;
+	int ret;
+
+	// sleep for a delay - merges deltas together
+	nanosleep( &(ctl->filt->chg_sleep), NULL );
 
 	if( fc->active )
 	{
 		notice( "Filter change detected - reloading." );
 
 		lock_filters( );
+		ctl->filt->chg_signal = 0;
 		ret = filter_load( );
 		unlock_filters( );
 
 		if( ret < 0 )
 			warn( "Failed to reload filters!" );
 	}
-
-	return ret;
 }
 
+
+
+int filter_on_change( FTREE *ft, uint32_t mask, char *path, char *desc, void *arg )
+{
+	int throw = 0;
+
+	lock_filters( );
+	if( ctl->filt->chg_signal == 0 )
+	{
+		ctl->filt->chg_signal = 1;
+		throw = 1;
+	}
+	unlock_filters( );
+
+	if( throw )
+		thread_throw_named( &filter_order_reload, arg, 0, "filter_reload" );
+
+	return 0;
+}
 

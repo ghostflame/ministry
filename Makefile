@@ -28,7 +28,7 @@ debug: TARGET = debug
 debug: all
 
 subdirs:
-	@mkdir -p logs bin
+	@mkdir -p bin
 
 code:
 	@cd src && VERS=$(VERS) $(MAKE) $(MFLAGS) $(TARGET)

@@ -65,6 +65,9 @@ int main( int ac, char **av, char **env )
 	// start us up
 	app_init( "metric-filter", "ministry" );
 
+	// set our default HTTP ports
+	http_set_default_ports( MF_DEFAULT_HTTP_PORT, MF_DEFAULT_HTTPS_PORT );
+
 	if( !( optstr = config_arg_string( "p:" ) ) )
 		return 1;
 

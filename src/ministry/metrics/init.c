@@ -45,17 +45,30 @@ METAL *metrics_get_alist( char *name )
 }
 
 
+
+int metrics_fix_pointer( SSTE *e, void *arg )
+{
+	METAL *a;
+
+	if( !( a = metrics_get_alist( e->ptr ) ) )
+		return -1;
+
+	// ptr is initially set as the list name
+	free( e->ptr );
+	e->ptr = a;
+
+	return 0;
+}
+
+
 /*
  * Go through each metrics attr lists and sort them
  * Go through the profiles and resolve their attr lists
  */
 int metrics_init( void )
 {
-	METAL *a;
 	METPR *p;
 	METMP *m;
-	SSTE *e;
-	int i;
 
 	// resolve the attr list names in our profiles
 	for( p = _met->profiles; p; p = p->next )
@@ -68,25 +81,13 @@ int metrics_init( void )
 			if( !( m->list = metrics_get_alist( m->lname ) ) )
 				return -2;
 
-		if( !p->paths || !p->paths->entries )
+		if( !p->paths || string_store_entries( p->paths ) )
 			continue;
 
 		// run through the paths entries, which was path:list
 		// make sure we can resolve each one of those
-		string_store_locking( p->paths, 1 );
-		for( i = 0; i < p->paths->hsz; ++i )
-		{
-			for( e = p->paths->hashtable[i]; e; e = e->next )
-			{
-				if( !( a = metrics_get_alist( e->ptr ) ) )
-					return -3;
-
-				// ptr is initially set as the list name
-				free( e->ptr );
-				e->ptr = a;
-			}
-		}
-		string_store_locking( p->paths, 0 );
+		if( string_store_iterator( p->paths, NULL, &metrics_fix_pointer ) != 0 )
+			return -3;
 	}
 
 	return 0;

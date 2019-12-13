@@ -45,6 +45,12 @@ disable reading any URI config (even if given with -c)
 \fB\-u\fR
 disable URI config including other URI configs
 .TP
+\fB\-X\fR
+disable matching of config file suffix in include-dir
+.TP
+\fB\-x\fR \fI<suffix>\fR
+Set config file suffix for include-dir
+.TP
 \fB\-i\fR
 allow insecure URI's
 .TP
@@ -148,6 +154,13 @@ The line is ignored but resets the last-metric timer.  It consists entirely of:
 .TP
 \fBkeepalive\fR\\n
 .PP
+.SS Graphite Tags
+.PP
+\fBMinistry\fP supports the new tags format in graphite 1.1 and higher, meaning in the new format
+given above, \fBpath\fP can be \fBdot-delimited-path;var=val;var=val...\fP \fIvalue\fR(double)\\n
+.PP
+This is supported even with stats metrics, where the tags must be transplanted onto the end of the
+path suffixes of \fI.count\fP, \fI.upper\fP, \fI.lower\fP, etc.
 .SS JSON Format
 .PP
 \fBMinistry\fR accepts JSON in both fetched data and posted data.  The expected JSON format is:
