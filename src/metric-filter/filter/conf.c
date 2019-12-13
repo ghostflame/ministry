@@ -18,14 +18,16 @@ FLT_CTL *filter_config_defaults( void )
 
 	_filt->filter_dir = str_copy( DEFAULT_FILTER_DIR, 0 );
 	_filt->generation = 1;
+	_filt->close_conn = 1;
 	_filt->flush_max  = FILTER_DEFAULT_FLUSH * MILLION;
+	_filt->chg_delay  = FILTER_DEFAULT_DELAY;
 
 	return _filt;
 }
 
 int filter_config_line( AVP *av )
 {
-	FLT_CTL *f = ctl->filt;
+	FLT_CTL *f = _filt;
 	int64_t v;
 	char *rp;
 
@@ -50,6 +52,20 @@ int filter_config_line( AVP *av )
 		}
 
 		f->flush_max = v * MILLION;
+	}
+	else if( attIs( "changeDelay" ) )
+	{
+		if( av_int( v ) == NUM_INVALID )
+		{
+			err( "Invalid change delay time in msec: %s", av->vptr );
+			return -1;
+		}
+
+		f->chg_delay = v;
+	}
+	else if( attIs( "disconnect" ) )
+	{
+		f->close_conn = config_bool( av );
 	}
 	else
 		return -1;

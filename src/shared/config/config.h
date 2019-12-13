@@ -99,9 +99,6 @@ struct process_control
 	// has our config changed
 	int64_t					cfgChanged;
 
-	// string stores
-	SSTR				*	stores;
-
 	// the other pieces
 	LOG_CTL				*	log;
 	MEM_CTL				*	mem;
@@ -113,6 +110,7 @@ struct process_control
 	PMET_CTL			*	pmet;
 	NET_CTL				*	net;
 	SLK_CTL				*	slk;
+	STR_CTL				*	str;
 };
 
 

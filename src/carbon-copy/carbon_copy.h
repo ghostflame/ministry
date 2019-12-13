@@ -23,6 +23,10 @@
 #include "selfstats.h"
 
 
+#define CC_DEFAULT_HTTP_PORT			9081
+#define CC_DEFAULT_HTTPS_PORT			9444
+
+
 struct carbon_copy_control
 {
 	PROC_CTL			*	proc;

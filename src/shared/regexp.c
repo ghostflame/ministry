@@ -62,6 +62,13 @@ int regex_list_add( char *str, int negate, RGXL *rl )
 	rg    = (RGX *) allocz( sizeof( RGX ) );
 	rg->r = (regex_t *) allocz( sizeof( regex_t ) );
 
+	// reverse the sense with a leading !
+	if( *str == '!' )
+	{
+		negate = !negate;
+		++str;
+	}
+
 	if( regcomp( rg->r, str, REG_EXTENDED|REG_NOSUB ) )
 	{
 		err( "Could not compile regex string: %s", str );

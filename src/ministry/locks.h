@@ -59,7 +59,6 @@ struct lock_control
 {
 	pthread_mutex_t			hashstats;					// used for counters
 	pthread_mutex_t			synth;						// synthetics control
-	pthread_mutex_t			bufref;						// controlled buffer refcount
 
 	pthread_mutex_t			table[HASHT_MUTEX_COUNT];	// hash table locks
 

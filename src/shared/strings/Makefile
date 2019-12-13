@@ -1,6 +1,6 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-FILES  = buf store strings words
+FILES  = buf conf store strings words
 HEADS  = local strings
 
 RKV    = strings_shared.a

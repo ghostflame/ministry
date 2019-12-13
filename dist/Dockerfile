@@ -27,6 +27,6 @@ COPY --from=builder /app/bin/* /
 RUN updatedb
 
 # make the ports available
-EXPOSE 8125 8125/udp 9125 9125/udp 9225 9225/udp 9325 9325/udp 9425 9425/udp 9080 9443 2003
+EXPOSE 8125 8125/udp 9125 9125/udp 9225 9225/udp 9325 9325/udp 9425 9425/udp 9080 9081 9082 9443 9444 9445 2003 2030
 
 CMD [ "/run.sh" ]

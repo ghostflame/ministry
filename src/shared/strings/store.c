@@ -7,7 +7,7 @@
 * Updates:                                                                *
 **************************************************************************/
 
-#include "shared.h"
+#include "local.h"
 
 
 
@@ -152,13 +152,11 @@ SSTR *string_store_create( int64_t sz, char *size, int *default_value, int freea
 		s->set_default = 1;
 	}
 
-	// and link it into _proc
-	config_lock( );
-
-	s->_proc_next = _proc->stores;
-	_proc->stores = s;
-
-	config_unlock( );
+	// and link it into _str
+	stores_lock( );
+	s->_str_next = _str->stores;
+	_str->stores = s;
+	stores_unlock( );
 
 	return s;
 }
@@ -206,9 +204,9 @@ int string_store_locking( SSTR *store, int lk )
 		return -1;
 
 	if( lk )
-		pthread_mutex_lock( &(store->mtx) );
+		store_lock( store );
 	else
-		pthread_mutex_unlock( &(store->mtx) );
+		store_unlock( store );
 
 	return 0;
 }
@@ -248,7 +246,7 @@ SSTE *string_store_add( SSTR *store, char *str, int len )
 	en = (SSTE *) allocz( sizeof( SSTE ) );
 
 	// now check again under lock
-	pthread_mutex_lock( &(store->mtx) );
+	store_lock( store );
 
 	for( e = store->hashtable[pos]; e; e = e->next )
 		if( len == e->len && !memcmp( str, e->str, len ) )
@@ -273,7 +271,7 @@ SSTE *string_store_add( SSTR *store, char *str, int len )
 	if( store->set_default )
 		e->val = store->val_default;
 
-	pthread_mutex_unlock( &(store->mtx) );
+	store_unlock( store );
 
 	// did we actually create a new one and not use it?
 	if( en )
@@ -281,6 +279,35 @@ SSTE *string_store_add( SSTR *store, char *str, int len )
 
 	return e;
 }
+
+
+// call a function on every member
+int string_store_iterator( SSTR *store, void *arg, store_callback *fp )
+{
+	int i, ret = 0;
+	SSTE *e, *en;
+
+	if( !store )
+		return -1;
+
+	store_lock( store );
+
+	for( i = 0; i < store->hsz; ++i )
+		for( e = store->hashtable[i]; e; e = en )
+		{
+			// just in case derp happens to e
+			en = e->next;
+
+			// count the non-zero e's
+			if( (*fp)( e, arg ) != 0 )
+				ret++;
+		}
+
+	store_unlock( store );
+
+	return ret;
+}
+
 
 int64_t string_store_entries( SSTR *store )
 {

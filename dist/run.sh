@@ -8,7 +8,7 @@ else
 fi
 
 case $prog in
-    ministry|ministry-test|carbon-copy)
+    ministry|ministry-test|carbon-copy|metric-filter)
             ;;
     *)
             exit 1

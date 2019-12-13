@@ -303,7 +303,7 @@ int metrics_config_line( AVP *av )
 				return -1;
 			}
 
-			if( !p->maps || !p->paths || !p->paths->entries )
+			if( !p->maps || !p->paths || !string_store_entries( p->paths ) )
 			{
 				err( "Metrics profile '%s' will not match anything.  Aborting." );
 				return -1;

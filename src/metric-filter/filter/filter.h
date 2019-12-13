@@ -11,7 +11,7 @@
 #ifndef METRIC_FILTER_FILTER_H
 #define METRIC_FILTER_FILTER_H
 
-#define DEFAULT_FILTER_DIR				"/etc/ministry/metric-filters.d"
+#define DEFAULT_FILTER_DIR				"/etc/ministry/filters"
 
 #define LINE_SEPARATOR					'\n'
 #define MAX_PATH_SZ						4096
@@ -40,6 +40,7 @@ struct filter_host
 	HOST			*	host;
 	int					best_mode;
 	int					running;
+	int					gen;
 };
 
 
@@ -60,6 +61,10 @@ struct filter_control
 	int					generation;
 	int64_t				flush_max;
 
+	struct timespec		chg_sleep;
+	int					chg_delay;
+	int					chg_signal;
+
 	pthread_mutex_t		genlock;
 };
 
@@ -72,6 +77,7 @@ tcp_fn filter_host_end;
 buf_fn filter_parse_buf;
 
 throw_fn filter_host_watcher;
+throw_fn filter_order_reload;
 
 int filter_init( void );
 

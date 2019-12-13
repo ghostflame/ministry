@@ -73,6 +73,10 @@ int set_limits( void )
 int app_init( char *name, char *cfgdir )
 {
 	curl_version_info_data *cvid;
+	STR_CTL *sc;
+
+	// we need this first, to give us safe str_dup
+	sc = string_config_defaults( );
 
 	// create some stuff
 	config_defaults( name, cfgdir );
@@ -87,6 +91,7 @@ int app_init( char *name, char *cfgdir )
 	_proc->ha   = ha_config_defaults( );
 	_proc->net  = net_config_defaults( );
 	_proc->slk  = slack_config_defaults( );
+	_proc->str  = sc;
 
 	// set up our shared config
 	config_register_section( "main",     &config_line );
@@ -283,8 +288,6 @@ __attribute__((noreturn)) void app_finish( int exval )
 
 	io_stop( );
 
-	string_store_cleanup( _proc->stores );
-
 	pthread_mutex_destroy( &(_proc->loop_lock) );
 	mem_shutdown( );
 
@@ -295,6 +298,9 @@ __attribute__((noreturn)) void app_finish( int exval )
 
 	notice( "App %s v%s exiting.", _proc->app_name, _proc->version );
 	log_close( );
+
+	string_deinit( );
+
 	exit( exval );
 }
 

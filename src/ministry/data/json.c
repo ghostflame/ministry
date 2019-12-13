@@ -23,16 +23,19 @@ int data_parse_json_element( DTYPE *dt, json_object *el )
 	char op;
 
 	// look for the path
-	if( ( !( po = json_object_object_get( el, "path" ) )
-	   && !( po = json_object_object_get( el, "target" ) ) )
-	   || !json_object_is_type( po, json_type_string ) )
-		return -1;
+	po = json_object_object_get( el, "path" );
+	vo = json_object_object_get( el, "values" );
 
-	// then values or points
-	if( ( !( vo = json_object_object_get( el, "values" ) )
-	   && !( vo = json_object_object_get( el, "datapoints" ) ) )
-	   || !json_object_is_type( vo, json_type_array ) )
-		return 1;
+	if( !po && !vo )
+	{
+		po = json_object_object_get( el, "target" );
+	    vo = json_object_object_get( el, "datapoints" );
+	}
+
+	if( !( po && vo )
+	 || !json_object_is_type( po, json_type_string )
+	 || !json_object_is_type( vo, json_type_array ) )
+		return -1;
 
 	path = json_object_get_string( po );
 	plen = json_object_get_string_len( po );
