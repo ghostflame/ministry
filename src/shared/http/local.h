@@ -129,6 +129,7 @@ HTPATH *http_find_callback( const char *url, int rlen, HTHDLS *hd );
 http_callback http_calls_metrics;
 http_callback http_calls_stats;
 http_callback http_calls_count;
+http_callback http_calls_time;
 http_callback http_calls_usage;
 http_callback http_calls_version;
 
