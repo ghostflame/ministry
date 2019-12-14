@@ -15,7 +15,15 @@ RUN groupadd -r ministry && \
 
 RUN microdnf install -y libmicrohttpd libcurl openssl json-c gnutls man-pages man-db mlocate && \
     microdnf clean all && \
-	rm -rf /usr/share/X11 /usr/sbin /var/lib/rpm /var/lib/dnf /usr/share/man/man[02346789]*
+	rm -rf \
+	  /usr/share/X11 \
+	  /etc/X11 \
+	  /usr/sbin \
+	  /var/lib/rpm \
+	  /var/lib/dnf \
+	  /usr/share/man/man[02346789n]* \
+	  /usr/share/man/man[15][npx] \
+	  /usr/lib/systemd
 
 COPY dist/run.sh /run.sh
 COPY dist/config/* /etc/ministry/

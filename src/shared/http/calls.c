@@ -151,6 +151,16 @@ void __http_calls_usage_type( HTHDLS *hd, BUF *b )
 	}
 }
 
+int http_calls_time( HTREQ *req )
+{
+	double d;
+
+	d = timedbl( get_time64( ) );
+	strbuf_printf( req->text, "%f\n", d );
+
+	return 0;
+}
+
 
 int http_calls_usage( HTREQ *req )
 {
@@ -257,6 +267,7 @@ int http_calls_json_done( HTREQ *req )
 void http_calls_init( void )
 {
 	http_add_simple_get( "/", "Usage information", &http_calls_usage );
+	http_add_simple_get( "/time", "Get the current time", &http_calls_time );
 
 	http_add_json_get( "/stats", "Internal stats", &http_calls_stats );
 	http_add_json_get( "/counts", "HTTP request counts", &http_calls_count );
