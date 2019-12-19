@@ -108,12 +108,10 @@ var prts = [ 12003, 12004, 12005, 13003 ];
 var totl = 0;
 var show = false;
 
+var echoport = parseInt( process.argv[2] || '13003', 10 );
+
 for( var i = 0; i < prts.length; i++ ) {
-	if( prts[i] === 13003 ) {
-		show = true;
-	} else {
-		show = false;
-	}
+	show = ( prts[i] === echoport );
 	ctrs[prts[i]] = {
 		ctr:	new PortCounter( prts[i], show ),
 		sum:	0,
