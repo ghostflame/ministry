@@ -1,4 +1,4 @@
-FROM registry.fedoraproject.org/fedora-minimal:30 AS builder
+FROM registry.fedoraproject.org/fedora-minimal:31 AS builder
 
 RUN mkdir /app && microdnf install -y gcc make libmicrohttpd-devel libcurl-devel openssl-devel json-c-devel gnutls-devel
 COPY Makefile ministry.spec getversion.sh /app/
@@ -6,7 +6,7 @@ COPY src/ /app/src
 RUN cd /app && mkdir bin && make all
 
 
-FROM registry.fedoraproject.org/fedora-minimal:30
+FROM registry.fedoraproject.org/fedora-minimal:31
 
 RUN groupadd -r ministry && \
     useradd -r -g ministry -M -s /bin/sh -d /etc/ministry -c 'Minister for Statistics' ministry && \
