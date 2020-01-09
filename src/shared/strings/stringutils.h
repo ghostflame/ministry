@@ -23,6 +23,7 @@ struct words_data
 	int32_t					in_len;
 	int16_t					wc;
 	int8_t					end_on_sep;
+	char					sep;
 };
 
 struct string_store_entry
@@ -125,6 +126,12 @@ int strqwords( WORDS *w, char *src, int len, char sep );
 
 // break up a string by delimiter*
 int strwords_multi( WORDS *w, char *src, int len, char sep, int8_t multi );
+
+// recreate a string
+int strwords_join( WORDS *w, char *filler, char **dst, int *sz );
+
+// put the keys of a json object into a words structure
+int strwords_json_keys( WORDS *w, JSON *jo );
 
 // with and without multi separate behaviour
 #define strwords( _w, _s, _l, _c )		strwords_multi( _w, _s, _l, _c, 0 )
