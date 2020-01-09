@@ -32,7 +32,7 @@ Options:\n", _proc->app_name, _proc->app_name );
   -R --no-include             Disable all including of other config\n\
   -U --no-uri                 Disable all reading of URI's\n\
   -u --no-uri-include         Disable URI config including other URI's\n\
-  -X --no-suffix              Disable matching config file suffix in include-dir\n\
+  -X --no-suffix              Disable matching file suffix in include-dir\n\
   -x --suffix      <suffix>   Set config file suffix for include-dir\n\
   -i --insecure-uri           Allow insecure URI's\n\
   -I --insecure-include       Allow secure URI's to include insecure URI's\n\
