@@ -48,6 +48,7 @@ void target_loop( THRD *th )
 	IO_CTL *io = _proc->io;
 	struct sockaddr_in sa;
 	int64_t fires = 0, r;
+	struct timespec ts;
 	TGT *t;
 
 	t = (TGT *) th->arg;
@@ -98,12 +99,14 @@ void target_loop( THRD *th )
 
 	tgdebug( "Started target, max waiting %d", t->max );
 
+	llts( ( 1000 * io->send_usec ), ts );
+
 	loop_mark_start( "io" );
 
 	// now loop around sending
 	while( RUNNING( ) )
 	{
-		microsleep( io->send_usec );
+		nanosleep( &ts, NULL );
 
 		// call the io_fn
 		fires += (*(t->iofp))( t );

@@ -18,7 +18,8 @@
 
 #define tginfo( fmt, ... )		info(   "[%d:%s] " fmt, t->id, t->name, ##__VA_ARGS__ )
 #define tgnotice( fmt, ... )	notice( "[%d:%s] " fmt, t->id, t->name, ##__VA_ARGS__ )
-
+#define tgwarn( fmt, ... )		warn(   "[%d:%s] " fmt, t->id, t->name, ##__VA_ARGS__ )
+#define tgerr( fmt, ... )		err(    "[%d:%s] " fmt, t->id, t->name, ##__VA_ARGS__ )
 
 
 
@@ -64,11 +65,13 @@ struct target
 	TGTL				*	list;
 	char				*	name;
 	char				*	host;
+	char				*	path;
 	char				*	typestr;
 	char				*	handle;
 
 	// io data
 	SOCK				*	sock;
+	FILE				*	fh;
 	io_fn				*	iofp;
 
 	// metrics data

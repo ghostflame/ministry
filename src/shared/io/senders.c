@@ -176,10 +176,41 @@ int64_t io_send_net_udp( TGT *t )
 
 
 
-// not yet
 int64_t io_send_file( TGT *t )
 {
-	return -1;
+	SOCK *s = t->sock;
+	int64_t f = 0;
+	BUF *b;
+
+	if( !t->fh )
+	{
+		if( !( t->fh = fopen( t->path, "a" ) ) )
+		{
+			tgerr( "Cannot open target file path %s -- %s", t->path, Err );
+			return 0;
+		}
+	}
+
+	if( !s->out )
+		io_buf_next( t );
+
+	while( s->out )
+	{
+		b = s->out->bf;
+
+		if( fwrite( b->buf, b->len, 1, t->fh ) )
+			f++;
+		else
+		{
+			tgerr( "Could not write to file %s -- %s", t->path, Err );
+			break;
+		}
+
+		io_buf_decr( s->out );
+		io_buf_next( t );
+	}
+
+	return f;
 }
 
 
