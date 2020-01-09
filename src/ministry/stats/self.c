@@ -47,10 +47,12 @@ void stats_self_report_types( ST_THR *t, ST_CFG *c )
 {
 	float hr = (float) c->dcurr / (float) c->hsize;
 
-	bprintf( t, "paths.%s.curr %d",         c->name, c->dcurr );
-	bprintf( t, "paths.%s.gc %lu",          c->name, lockless_fetch( &(c->gc_count) ) );
-	bprintf( t, "paths.%s.gc_total %lu",    c->name, c->gc_count.count );
-	bprintf( t, "paths.%s.hash_ratio %.6f", c->name, hr );
+	bprintf( t, "paths.%s.curr %d",           c->name, c->dcurr );
+	bprintf( t, "paths.%s.gc %lu",            c->name, lockless_fetch( &(c->gc_count) ) );
+	bprintf( t, "paths.%s.gc_total %lu",      c->name, c->gc_count.count );
+	bprintf( t, "paths.%s.creates %lu",       c->name, lockless_fetch( &(c->creates) ) );
+	bprintf( t, "paths.%s.creates_total %lu", c->name, c->creates.count );
+	bprintf( t, "paths.%s.hash_ratio %.6f",   c->name, hr );
 }
 
 

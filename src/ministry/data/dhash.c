@@ -91,6 +91,8 @@ uint32_t data_get_id( ST_CFG *st )
 
 	// and keep stats - gc reduces this
 	++(st->dcurr);
+	// but this is monotonic
+	++(st->creates.count);
 
 	pthread_mutex_unlock( &(ctl->locks->hashstats) );
 

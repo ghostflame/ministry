@@ -2,7 +2,7 @@
 * This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
 *                                                                         *
-* history.c - functions to control point histories                        *
+* maths/history.c - functions to control point histories                  *
 *                                                                         *
 * Updates:                                                                *
 **************************************************************************/
@@ -57,3 +57,4 @@ HIST *history_create( uint16_t size )
 {
 	return mem_new_history( size );
 }
+

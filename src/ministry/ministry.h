@@ -34,9 +34,7 @@
 #include "gc.h"
 #include "mem.h"
 #include "synth.h"
-#include "sort.h"
-#include "history.h"
-#include "maths.h"
+#include "maths/maths.h"
 #include "stats/stats.h"
 
 

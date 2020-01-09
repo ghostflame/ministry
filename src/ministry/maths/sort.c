@@ -2,17 +2,18 @@
 * This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
 *                                                                         *
-* sort.c - sorting functions                                              *
+* maths/sort.c - sorting functions                                        *
 *                                                                         *
 * Updates:                                                                *
 **************************************************************************/
 
 #include "ministry.h"
 
+
 /*
  *  In the old days, ministry just did qsort.  This is all well and good, but
  *  then some uses took to providing 100k+ values on a single metric in a 10s
- *  interval, and qsorts limits were starting to show.
+ *  interval, and qsort's limits were starting to show.
  *
  *  A bit of investigation turned up a radix sort implementation, and also
  *  source code for glibc qsort (which mixed comparisons and insertion sort).
