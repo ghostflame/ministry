@@ -1,9 +1,9 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-SUBS   = config log mem fs pmet http ha utils strings io target net
+SUBS   = config log mem fs pmet http iplist slack ha utils strings io target net
 
-FILES  = regexp curlw iplist slack thread app
-HEADS  = regexp curlw iplist slack thread app run json
+FILES  = regexp curlw thread app
+HEADS  = regexp curlw thread app run json
 
 VERS  ?= 0.1.0
 RKV    = app_shared.a
