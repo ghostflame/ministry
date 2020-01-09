@@ -14,7 +14,7 @@ void usage( void )
 {
 	config_help( );
 	printf( "%s", "\
-  -a --no-byhand              Re-enable certain automation features normally off\n\n\
+  -a --no-byhand              Re-enable automation features normally disabled\n\n\
 Ministry_test is a load-generator for ministry.  It takes config specifying\n\
 metric synthesis profiles, and profile generators with a prefix for metrics.\n\
 It can be configured to point at either ministry or compat format targets.\n\n" );
