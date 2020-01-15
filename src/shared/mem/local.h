@@ -19,12 +19,13 @@
 
 
 // and some types
-#define MEM_ALLOCSZ_IOBUF			128
+#define MEM_ALLOCSZ_IOBUF			170		// 8k
 #define MEM_ALLOCSZ_HTREQ			128
 #define MEM_ALLOCSZ_HOSTS			128
 #define MEM_ALLOCSZ_TOKENS			128
 #define MEM_ALLOCSZ_HANGER			1024
 #define MEM_ALLOCSZ_SLKMSG			16
+#define MEM_ALLOCSZ_STORE			819		// 32k
 
 
 #define mem_lock( mt )			pthread_mutex_lock(   &(mt->lock) )

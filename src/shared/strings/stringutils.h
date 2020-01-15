@@ -26,12 +26,15 @@ struct words_data
 	char					sep;
 };
 
+#define STRSTORE_FLAG_FREEABLE			0x0001
+
 struct string_store_entry
 {
 	SSTE				*	next;
 	char				*	str;
 	uint64_t				hv;
-	int32_t					len;
+	uint16_t				len;
+	uint16_t				flags;
 	int32_t					val;	// if you want to store something here
 	void				*	ptr;	// if you want to store something here
 };

@@ -94,6 +94,7 @@ struct mem_control
 	MTYPE			*	token;
 	MTYPE			*	hanger;
 	MTYPE			*	slkmsg;
+	MTYPE			*	store;
 };
 
 
@@ -152,6 +153,9 @@ void mem_free_hanger_list( MEMHG *list );
 SLKMSG *mem_new_slack_msg( size_t sz );
 void mem_free_slack_msg( SLKMSG **m );
 
+SSTE *mem_new_store( void );
+void mem_free_store( SSTE **s );
+void mem_free_store_list( SSTE *list );
 
 // hanger list
 

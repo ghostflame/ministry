@@ -98,19 +98,21 @@ int string_store_empty( SSTR *st )
 
 	for( i = 0; i < st->hsz; ++i )
 	{
-		while( st->hashtable[i] )
+		if( !st->hashtable[i] )
+			continue;
+
+		if( st->freefp )
 		{
-			e = st->hashtable[i];
-			st->hashtable[i] = e->next;
-
-			// do we have a free function?
-			if( e->ptr && st->freefp )
-				(*(st->freefp))( e->ptr );
-
-			// otherwise that mess is the callers problem
-			free( e->str );
-			free( e );
+			// then call the free function where there is data
+			for( e = st->hashtable[i]; e; e = e->next )
+				if( e->ptr )
+					(*(st->freefp))( e->ptr );
 		}
+
+		// otherwise that mess is the caller's problem
+
+		mem_free_store_list( st->hashtable[i] );
+		st->hashtable[i] = NULL;
 	}
 
 	return 0;
@@ -190,7 +192,7 @@ SSTE *string_store_look( SSTR *store, char *str, int len, int val_set )
 	// e->val to zero would also be atomic
 	for( e = store->hashtable[hv % store->hsz]; e; e = e->next )
 		if( hv == e->hv
-		 && len == e->len
+		 && len == e->len		// int <-> uint16_t comparison
 		 && !memcmp( str, e->str, len )
 		 && ( val_set == 0 || e->val ) )
 			return e;
@@ -230,6 +232,12 @@ SSTE *string_store_add( SSTR *store, char *str, int len )
 		return NULL;
 	}
 
+	if( len > 0xffff )
+	{
+		err( "String is too long for string store - max %hu", 0xffff );
+		return NULL;
+	}
+
 	// do we already have that?  Silently return the existing one
 	// we'll give it the standard value again
 	if( ( e = string_store_look( store, str, len, 0 ) ) )
@@ -243,7 +251,7 @@ SSTE *string_store_add( SSTR *store, char *str, int len )
 	pos = hv % store->hsz;
 
 	// don't allocz under lock, as we might brk()
-	en = (SSTE *) allocz( sizeof( SSTE ) );
+	en = mem_new_store( );
 
 	// now check again under lock
 	store_lock( store );
@@ -258,8 +266,11 @@ SSTE *string_store_add( SSTR *store, char *str, int len )
 		e  = en;
 		en = NULL;
 		e->str = ( store->freeable ) ? str_copy( str, len ) : str_dup( str, len );
-		e->len = len;
+		e->len = (uint16_t) len;
 		e->hv  = hv;
+
+		if( store->freeable )
+			flagf_add( e, STRSTORE_FLAG_FREEABLE );
 
 		e->next = store->hashtable[pos];
 		store->hashtable[pos] = e;
@@ -275,7 +286,7 @@ SSTE *string_store_add( SSTR *store, char *str, int len )
 
 	// did we actually create a new one and not use it?
 	if( en )
-		free( en );
+		mem_free_store( &en );
 
 	return e;
 }

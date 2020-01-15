@@ -307,3 +307,52 @@ void mem_free_slack_msg( SLKMSG **m )
 	mtype_free( _mem->slkmsg, mp );
 }
 
+SSTE *mem_new_store( void )
+{
+	return (SSTE *) mtype_new( _mem->store );
+}
+
+void mem_free_store( SSTE **s )
+{
+	SSTE *sp;
+
+	sp = *s;
+	*s = NULL;
+
+	if( !flagf_has( sp, STRSTORE_FLAG_FREEABLE ) )
+	{
+		err( "Cannot free string store entry not marked freeable." );
+		return;
+	}
+
+	if( sp->len && sp->str )
+		free( sp->str );
+
+	memset( sp, 0, sizeof( SSTE ) );
+
+	mtype_free( _mem->store, sp );
+}
+
+void mem_free_store_list( SSTE *list )
+{
+	SSTE *s, *end = NULL;
+	int j = 0;
+
+	for( s = list; s; s = s->next, ++j )
+	{
+		if( !flagf_has( s, STRSTORE_FLAG_FREEABLE ) )
+		{
+			err( "Cannot free string store entry without free flag." );
+			// not safe to continue with the list
+			return;
+		}
+
+		if( s->len && s->str )
+			free( s->str );
+
+		memset( s, 0, sizeof( SSTE ) );
+		end = s;
+	}
+
+	mtype_free_list( _mem->store, j, list, end );
+}

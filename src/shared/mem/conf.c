@@ -31,6 +31,7 @@ MEM_CTL *mem_config_defaults( void )
 	_mem->token       = mem_type_declare( "tokens", sizeof( TOKEN ),  MEM_ALLOCSZ_TOKENS, 0, 0 );
 	_mem->hanger      = mem_type_declare( "hanger", sizeof( MEMHG ),  MEM_ALLOCSZ_HANGER, 0, 1 );
 	_mem->slkmsg      = mem_type_declare( "slkmsg", sizeof( SLKMSG ), MEM_ALLOCSZ_SLKMSG, 0x10000, 0 );
+	_mem->store       = mem_type_declare( "store",  sizeof( SSTE ),   MEM_ALLOCSZ_STORE, 0, 1 );
 
 	pthread_mutex_init( &(_mem->idlock), NULL );
 
