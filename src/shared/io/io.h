@@ -40,7 +40,7 @@ struct io_tls
 };
 
 
-// size: (8x8) 64
+// size: (6x8) 48
 struct io_buffer
 {
 	IOBUF			*	next;
