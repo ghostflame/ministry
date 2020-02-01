@@ -213,9 +213,7 @@ int string_store_locking( SSTR *store, int lk )
 	return 0;
 }
 
-
-
-SSTE *string_store_add( SSTR *store, char *str, int len )
+SSTE *string_store_add_with_vals( SSTR *store, char *str, int len, int32_t *val, void *ptr )
 {
 	uint64_t hv, pos;
 	SSTE *e, *en;
@@ -272,6 +270,12 @@ SSTE *string_store_add( SSTR *store, char *str, int len )
 		if( store->freeable )
 			flagf_add( e, STRSTORE_FLAG_FREEABLE );
 
+		if( val )
+			e->val = *val;
+
+		if( ptr )
+			e->ptr = ptr;
+
 		e->next = store->hashtable[pos];
 		store->hashtable[pos] = e;
 
@@ -279,7 +283,7 @@ SSTE *string_store_add( SSTR *store, char *str, int len )
 	}
 
 	// OK, renew the value
-	if( store->set_default )
+	if( !val && store->set_default )
 		e->val = store->val_default;
 
 	store_unlock( store );

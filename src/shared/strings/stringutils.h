@@ -152,8 +152,11 @@ int strwords_json_keys( WORDS *w, JSON *jo );
 // pass either an int or a char size.  Default is "medium"
 SSTR *string_store_create( int64_t sz, char *size, int *default_value, int freeable );
 
+// add an entry, with appropriate values and such
+SSTE *string_store_add_with_vals( SSTR *store, char *str, int len, int32_t *val, void *ptr );
+
 // add a string.  Adding stuff onto them is your problem
-SSTE *string_store_add( SSTR *store, char *str, int len );
+#define string_store_add( _st, _s, _l )		string_store_add_with_vals( _st, _s, _l, NULL, NULL )
 
 // search for a string - setting val_set means a 0 value in the
 // val position is considered INVALID, and skipped over
