@@ -12,13 +12,6 @@
 
 #include "../shared/shared.h"
 
-#ifndef Err
-#define Err strerror( errno )
-#endif
-
-// include epoll
-#include <sys/epoll.h>
-
 
 // crazy control
 #include "typedefs.h"
