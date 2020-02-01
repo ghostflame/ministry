@@ -150,6 +150,36 @@ void mem_free_qrypt_list( QP *list )
 	mtype_free_list( ctl->mem->qrypt, j, list, p );
 }
 
+PTS *mem_new_ptlst( void )
+{
+	return mtype_new( ctl->mem->ptlst );
+}
+
+void mem_free_ptlst( PTS **p )
+{
+	PTS *pp;
+
+	pp = *p;
+	*p = NULL;
+
+	pp->count = 0;
+
+	mtype_free( ctl->mem->ptlst, pp );
+}
+
+void mem_free_ptlst_list( PTS *list )
+{
+	PTS *p;
+	int j;
+
+	for( j = 0, p = list; p->next; p = p->next, ++j )
+		p->count = 0;
+
+	p->count = 0;
+	++j;
+
+	mtype_free_list( ctl->mem->ptlst, j, list, p );
+}
 
 
 MEMT_CTL *memt_config_defaults( void )
@@ -160,6 +190,7 @@ MEMT_CTL *memt_config_defaults( void )
 	m->treel = mem_type_declare( "treel", sizeof( TEL ),   MEM_ALLOCSZ_TREEL, 0, 1 );
 	m->tleaf = mem_type_declare( "tleaf", sizeof( LEAF ),  MEM_ALLOCSZ_TLEAF, 0, 1 );
 	m->qrypt = mem_type_declare( "qrypt", sizeof( QP ),    MEM_ALLOCSZ_QRYPT, 0, 1 );
+	m->ptlst = mem_type_declare( "ptlst", sizeof( PTS ),   MEM_ALLOCSZ_PTLST, 0, 1 );
 
 	return m;
 }

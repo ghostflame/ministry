@@ -24,6 +24,9 @@ typedef struct tree_element         TEL;
 typedef struct query_path           QP;
 typedef struct query_data           QRY;
 
+typedef struct data_point           PNT;
+typedef struct data_points          PTS;
+
 
 // function types
 

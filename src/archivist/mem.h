@@ -14,9 +14,10 @@
 #define MEM_ALLOCSZ_TREEL			128		// 64b, so 8k
 #define MEM_ALLOCSZ_TLEAF			128		// ?
 #define MEM_ALLOCSZ_QRYPT			256		// 16b, so 4k
+#define MEM_ALLOCSZ_PTLST			128		// 2k x 128, so 256k
 
 // 4GB
-#define DEFAULT_RK_MAX_KB			( 4 * 1024 * 1024 )
+#define DEFAULT_RK_MAX_KB			( 6 * 1024 * 1024 )
 
 
 struct memt_control
@@ -24,6 +25,7 @@ struct memt_control
 	MTYPE			*	treel;
 	MTYPE			*	tleaf;
 	MTYPE			*	qrypt;
+	MTYPE			*	ptlst;
 };
 
 
@@ -37,6 +39,10 @@ void mem_free_tleaf( LEAF **l );
 QP *mem_new_qrypt( void );
 void mem_free_qrypt( QP **q );
 void mem_free_qrypt_LIST( QP *list );
+
+PTS *mem_new_ptlst( void );
+void mem_free_ptlst( PTS **p );
+void mem_free_ptlst_list( PTS *list );
 
 MEMT_CTL *memt_config_defaults( void );
 

@@ -23,16 +23,21 @@ uint32_t tree_get_tid( void )
 }
 
 
-int tree_process_line( char *str, int len )
+LEAF *tree_process_line( char *str, int len )
 {
 	TEL *t, *r, *prt;
+	int i, last;
 	char *copy;
 	WORDS w;
-	int i;
+	SSTE *e;
+
+	if( ( e = string_store_look( _tree->hash, str, len, 0 ) ) )
+		return ((TEL *) (e->ptr))->leaf;
 
 	prt = _tree->root;
 	copy = str_copy( str, len );
 	strwords( &w, str, len, '.' );
+	last = w.wc - 1;
 
 	for( i = 0; i < w.wc; i++ )
 	{
@@ -45,11 +50,12 @@ int tree_process_line( char *str, int len )
 			t = mem_new_treel( w.wd[i], w.len[i] );
 			t->parent = prt;
 
-			if( i == ( w.wc - 1 ) )
+			if( i == last )
 			{
 				t->leaf = mem_new_tleaf( );
 				t->path = copy;
 				t->plen = len;
+				t->leaf->tel = t;
 			}
 
 			// look again under lock, to avoid race conditions
@@ -75,8 +81,8 @@ int tree_process_line( char *str, int len )
 				mem_free_treel( &t );
 
 				// did we find something that isn't a leaf on our last word?
-				if( r->leaf && i == ( w.wc - 1 ) )
-					return -1;
+				if( r->leaf && i == last )
+					return NULL;
 			}
 			else
 			{
@@ -86,29 +92,37 @@ int tree_process_line( char *str, int len )
 
 				// give it an id
 				t->id = tree_get_tid( );
+
+				if( !( t->id & 0xffff ) )
+					info( "Latest tree element ID is %u", t->id );
 			}
 
 			// however it may want this leaf, but we have not finished making it
 		}
 		else if( t->leaf )
 		{
+			// don't need this
 			free( copy );
 
+			// is this the last of the path?  if so, all good
+		  	if( i == last )
+				break;
+
+			// or the path carries on
 			// cannot make an internal node at an existing leaf
-			return -1;
+			return NULL;
 		}
 
 		prt = t;
 	}
 
-	return 0;
+	return t->leaf;
 }
 
 
 int tree_init( void )
 {
 	_tree->hash = string_store_create( _tree->hashsz, NULL, 0, 1 );
-
 	return 0;
 }
 

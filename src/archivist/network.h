@@ -51,6 +51,7 @@ struct network_type_data
 	int8_t					style;
 	int16_t					threads;
 	buf_fn				*	buffp;
+	line_fn				*	lnfp;
 	char				*	cert_path;
 	char				*	key_path;
 	char				*	cert;

@@ -16,7 +16,11 @@ struct tree_leaf
 	char			*	filepath;	// ?
 	int					fd;
 
-	int64_t				last_update;
+	int64_t				last_updated;
+
+	TEL				*	tel;
+
+	PTS				*	points;
 };
 
 
@@ -67,8 +71,9 @@ struct tree_control
 };
 
 
-int tree_process_line( char *str, int len );
+LEAF *tree_process_line( char *str, int len );
 
+int tree_init( void );
 TREE_CTL *tree_config_defaults( void );
 conf_line_fn tree_config_line;
 

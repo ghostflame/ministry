@@ -38,6 +38,7 @@ struct archivist_control
 	MEMT_CTL			*	mem;
 	TREE_CTL			*	tree;
 	QRY_CTL				*	query;
+	NETW_CTL			*	netw;
 };
 
 

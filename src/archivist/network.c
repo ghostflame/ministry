@@ -34,7 +34,8 @@ NWTYPE network_type_defns[NETW_TYPE_MAX] =
 		.port		= DEFAULT_LINE_PORT,
 		.tls		= 0,
 		.style		= TCP_STYLE_THRD,
-		.buffp		= data_parse_line,
+		.buffp		= &data_parse_line,
+		.lnfp		= &data_handle_line,
 		.cert_path	= NULL,
 		.key_path	= NULL,
 		.cert		= NULL,
@@ -48,7 +49,8 @@ NWTYPE network_type_defns[NETW_TYPE_MAX] =
 		.port		= DEFAULT_BIN_PORT,
 		.tls		= 0,
 		.style		= TCP_STYLE_EPOLL,
-		.buffp		= data_parse_bin,
+		.buffp		= &data_parse_bin,
+		.lnfp		= &data_handle_record,
 		.cert_path	= NULL,
 		.key_path	= NULL,
 		.cert		= NULL,
@@ -62,7 +64,8 @@ NWTYPE network_type_defns[NETW_TYPE_MAX] =
 		.port		= DEFAULT_LINE_TLS_PORT,
 		.tls		= 1,
 		.style		= TCP_STYLE_THRD,
-		.buffp		= data_parse_line,
+		.buffp		= &data_parse_line,
+		.lnfp		= &data_handle_line,
 		.cert_path	= NULL,
 		.key_path	= NULL,
 		.cert		= NULL,
@@ -76,7 +79,8 @@ NWTYPE network_type_defns[NETW_TYPE_MAX] =
 		.port		= DEFAULT_BIN_TLS_PORT,
 		.tls		= 1,
 		.style		= TCP_STYLE_THRD,
-		.buffp		= data_parse_bin,
+		.buffp		= &data_parse_bin,
+		.lnfp		= &data_handle_record,
 		.cert_path	= NULL,
 		.key_path	= NULL,
 		.cert		= NULL,
@@ -91,6 +95,7 @@ NWTYPE network_type_defns[NETW_TYPE_MAX] =
 NET_TYPE *network_type_defaults( int8_t type )
 {
 	NWTYPE *n = network_type_defns + type;
+	char lbuf[32];
 	NET_TYPE *nt;
 
 	nt              = (NET_TYPE *) allocz( sizeof( NET_TYPE ) );
@@ -100,11 +105,17 @@ NET_TYPE *network_type_defaults( int8_t type )
 	nt->tcp->port   = n->port;
 	nt->tcp->type   = nt;
 	nt->buf_parser  = n->buffp;
+	nt->flat_parser = n->lnfp;
+	nt->prfx_parser = n->lnfp;
 	nt->udp_bind    = INADDR_ANY;
 	nt->pollmax     = TCP_MAX_POLLS;
 	nt->tcp_style   = n->style;
 	nt->name        = strdup( network_type_id_names[type] );
 	nt->flags       = NTYPE_ENABLED|NTYPE_TCP_ENABLED|NTYPE_UDP_ENABLED;
+
+	snprintf( lbuf, 32, "%s %s port", ( n->tls ) ? "TLS" : "plain",
+		network_data_type_id_names[n->dtype] );
+	nt->label       = strdup( lbuf );
 
 	// and hook up the dtype
 	n->nt = nt;

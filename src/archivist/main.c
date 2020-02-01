@@ -26,6 +26,8 @@ period.  It is expected to be both CPU, memory and IO heavy.\n\n" );
 
 void main_loop( void )
 {
+	tree_init( );
+
 	// get network threads going
 	net_begin( );
 
@@ -43,6 +45,7 @@ void main_create_conf( void )
 	ctl->mem        = memt_config_defaults( );
 	ctl->tree       = tree_config_defaults( );
 	ctl->query      = query_config_defaults( );
+	ctl->netw       = network_config_defaults( );
 
 	config_register_section( "tree",    &tree_config_line );
 	config_register_section( "query",   &query_config_line );
@@ -75,6 +78,8 @@ int main( int ac, char **av, char **env )
 				pidfile = strdup( optarg );
 				break;
 		}
+
+	mem_set_max_kb( DEFAULT_RK_MAX_KB );
 
 	// read our environment
 	// has to happen after parsing args
