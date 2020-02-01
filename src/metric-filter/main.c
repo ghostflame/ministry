@@ -85,6 +85,8 @@ int main( int ac, char **av, char **env )
 				break;
 		}
 
+	mem_set_max_kb( DEFAULT_MF_MAX_KB );
+
 	// read our env; has to happen before parsing config
 	// because we might get handed a config file in env
 	config_read_env( env );
@@ -99,7 +101,6 @@ int main( int ac, char **av, char **env )
 	if( pidfile )
 		snprintf( ctl->proc->pidfile, CONF_LINE_MAX, "%s", pidfile );
 
-	mem_set_max_kb( DEFAULT_MF_MAX_KB );
 	app_start( 1 );
 
 	// resolve relay targets
