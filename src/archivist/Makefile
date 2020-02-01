@@ -1,7 +1,7 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-FILES  = network data tree query main
-HEADS  = network data tree query archivist
+FILES  = mem network data tree query main
+HEADS  = mem network data tree query archivist
 
 SUBS   = 
 

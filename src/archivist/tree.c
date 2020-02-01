@@ -9,19 +9,138 @@
 
 #include "archivist.h"
 
+TREE_CTL *_tree = NULL;
+
+uint32_t tree_get_tid( void )
+{
+	uint32_t i;
+
+	tree_tid_lock( );
+	i = ++(_tree->tid);
+	tree_tid_unlock( );
+
+	return i;
+}
+
+
+int tree_process_line( char *str, int len )
+{
+	TEL *t, *r, *prt;
+	char *copy;
+	WORDS w;
+	int i;
+
+	prt = _tree->root;
+	copy = str_copy( str, len );
+	strwords( &w, str, len, '.' );
+
+	for( i = 0; i < w.wc; i++ )
+	{
+		for( t = prt->child; t; t = t->next )
+			if( t->len == w.len[i] && !memcmp( t->name, w.wd[i], t->len ) )
+				break;
+
+		if( !t )
+		{
+			t = mem_new_treel( w.wd[i], w.len[i] );
+			t->parent = prt;
+
+			if( i == ( w.wc - 1 ) )
+			{
+				t->leaf = mem_new_tleaf( );
+				t->path = copy;
+				t->plen = len;
+			}
+
+			// look again under lock, to avoid race conditions
+			tree_lock( prt );
+
+			for( r = prt->child; r; r = r->next )
+				if( r->len == w.len[i] && !memcmp( r->name, w.wd[i], r->len ) )
+					break;
+
+			if( !r )
+			{
+				t->next = prt->child;
+				prt->child = t;
+			}
+
+			// we are done - this entry exists, so code that found it
+			// will not continue
+			tree_unlock( prt );
+
+			if( r )
+			{
+				// this free's copy
+				mem_free_treel( &t );
+
+				// did we find something that isn't a leaf on our last word?
+				if( r->leaf && i == ( w.wc - 1 ) )
+					return -1;
+			}
+			else
+			{
+				// add it into the hash now that it's ready
+				if( t->leaf )
+					t->he = string_store_add_with_vals( _tree->hash, copy, len, NULL, t );
+
+				// give it an id
+				t->id = tree_get_tid( );
+			}
+
+			// however it may want this leaf, but we have not finished making it
+		}
+		else if( t->leaf )
+		{
+			free( copy );
+
+			// cannot make an internal node at an existing leaf
+			return -1;
+		}
+
+		prt = t;
+	}
+
+	return 0;
+}
+
+
+int tree_init( void )
+{
+	_tree->hash = string_store_create( _tree->hashsz, NULL, 0, 1 );
+
+	return 0;
+}
 
 
 TREE_CTL *tree_config_defaults( void )
 {
 	TREE_CTL *t = (TREE_CTL *) allocz( sizeof( TREE_CTL ) );
 
+	t->root = mem_new_treel( "root", 4 );
+	t->hashsz = (int64_t) hash_size( "large" );
 
+	_tree = t;
 
 	return t;
 }
 
+
+
 int tree_config_line( AVP *av )
 {
-	return -1;
+	int64_t v;
+
+	if( attIs( "hashSize" ) || attIs( "size" ) )
+	{
+		if( !( v = (int64_t) hash_size( av->vptr ) ) )
+			return -1;
+
+		_tree->hashsz = v;
+	}
+	else
+		return -1;
+
+	return 0;
 }
 

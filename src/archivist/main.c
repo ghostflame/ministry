@@ -40,6 +40,12 @@ void main_create_conf( void )
 {
 	ctl             = (RKV_CTL *) allocz( sizeof( RKV_CTL ) );
 	ctl->proc       = app_control( );
+	ctl->mem        = memt_config_defaults( );
+	ctl->tree       = tree_config_defaults( );
+	ctl->query      = query_config_defaults( );
+
+	config_register_section( "tree",    &tree_config_line );
+	config_register_section( "query",   &query_config_line );
 }
 
 

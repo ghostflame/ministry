@@ -12,8 +12,9 @@
 
 typedef struct archivist_control    RKV_CTL;
 typedef struct network_control		NETW_CTL;
+typedef struct memt_control         MEMT_CTL;
 typedef struct tree_control         TREE_CTL;
-typedef struct query_control        QRT_CTL;
+typedef struct query_control        QRY_CTL;
 
 typedef struct network_type_data	NWTYPE;
 

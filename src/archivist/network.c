@@ -13,10 +13,10 @@
 
 const char *network_type_id_names[NETW_TYPE_MAX] =
 {
-	"line-clear",
-	"binary-clear",
-	"line-TLS",
-	"binary-TLS"
+	"line",
+	"binary",
+	"lineTLS",
+	"binaryTLS"
 };
 
 const char *network_data_type_id_names[NETW_DATA_TYPE_MAX] =

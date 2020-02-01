@@ -16,14 +16,14 @@
 #define Err strerror( errno )
 #endif
 
-// include epoll
-#include <sys/epoll.h>
-
+// fnmatch for globbing
+#include <fnmatch.h>
 
 // crazy control
 #include "typedefs.h"
 
 // in order
+#include "mem.h"
 #include "network.h"
 #include "data.h"
 #include "tree.h"
@@ -35,6 +35,9 @@ struct archivist_control
 {
 	HTTP_CTL			*	http;
 	PROC_CTL			*	proc;
+	MEMT_CTL			*	mem;
+	TREE_CTL			*	tree;
+	QRY_CTL				*	query;
 };
 
 
