@@ -57,6 +57,7 @@ struct process_control
 	struct timespec			init_time;
 	struct timespec			curr_time;
 	int64_t					curr_tval;
+	int64_t					curr_usec;
 
 	unsigned int			conf_flags;
 	unsigned int			run_flags;

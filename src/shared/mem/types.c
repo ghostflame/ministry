@@ -106,6 +106,9 @@ void mem_free_request( HTREQ **h )
 	b = r->text;
 	p = r->post;
 
+	if( r->params )
+		mem_free_htprm_list( r->params );
+
 	memset( r, 0, sizeof( HTREQ ) );
 
 	if( p )
@@ -117,6 +120,44 @@ void mem_free_request( HTREQ **h )
 	r->post = p;
 
 	mtype_free( _mem->htreq, r );
+}
+
+HTPRM *mem_new_htprm( void )
+{
+	return (HTPRM *) mtype_new( _mem->htprm );
+}
+
+#define mem_clean_htprm( _h )		_h->key[0] = '\0'; _h->val[0] = '\0'; _h->klen = 0; _h->vlen = 0; _h->has_val = 0
+
+
+void mem_free_htprm( HTPRM **p )
+{
+	HTPRM *pp;
+
+	pp = *p;
+	*p = NULL;
+
+	mem_clean_htprm( pp );
+
+	mtype_free( _mem->htprm, pp );
+}
+
+void mem_free_htprm_list( HTPRM *list )
+{
+	HTPRM *p, *pn;
+	int j;
+
+	for( j = 0, p = list; p->next; p = p->next, ++j )
+	{
+		pn = p->next;
+		mem_clean_htprm( p );
+		p->next = pn;
+	}
+
+	// and do the last one
+	mem_clean_htprm( p );
+
+	mtype_free_list( _mem->htprm, j, list, p );
 }
 
 

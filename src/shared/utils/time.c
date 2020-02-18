@@ -17,6 +17,7 @@ void get_time( void )
 	{
 		clock_gettime( CLOCK_REALTIME, &(_proc->curr_time) );
 		_proc->curr_tval = tsll( _proc->curr_time );
+		_proc->curr_usec = _proc->curr_tval / 1000;
 	}
 }
 

@@ -132,7 +132,7 @@ TREE_CTL *tree_config_defaults( void )
 	TREE_CTL *t = (TREE_CTL *) allocz( sizeof( TREE_CTL ) );
 
 	t->root = mem_new_treel( "root", 4 );
-	t->hashsz = (int64_t) hash_size( "large" );
+	t->hashsz = (int64_t) hash_size( "xlarge" );
 
 	_tree = t;
 

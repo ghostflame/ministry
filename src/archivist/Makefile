@@ -1,9 +1,9 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-FILES  = mem network data tree query main
-HEADS  = mem network data tree query archivist
+FILES  = mem network data tree main
+HEADS  = mem network data tree archivist
 
-SUBS   = 
+SUBS   = file query
 
 OBJS   = $(FILES:%=%.o)
 HDRS   = $(HEADS:%=%.h)

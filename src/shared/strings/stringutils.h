@@ -27,6 +27,8 @@ struct words_data
 };
 
 #define STRSTORE_FLAG_FREEABLE			0x0001
+#define STRSTORE_FLAG_VALID				0x0002
+
 
 struct string_store_entry
 {
@@ -166,7 +168,8 @@ SSTE *string_store_look( SSTR *store, char *str, int len, int val_set );
 int string_store_locking( SSTR *store, int lk );
 
 // call a callback on every entry
-int string_store_iterator( SSTR *store, void *arg, store_callback *fp );
+int string_store_iterator( SSTR *store, void *arg, store_callback *fp, int idx, int mod );
+int string_store_iterator_nolock( SSTR *store, void *arg, store_callback *fp, int idx, int mod );
 
 // clean up those mutexes
 void string_store_cleanup( SSTR *list );

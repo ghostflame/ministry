@@ -13,8 +13,8 @@
 void data_handle_line( HOST *h, char *str, int len )
 {
 	char *sp, *path;
+	int64_t ts, now;
 	double val;
-	int64_t ts;
 	LEAF *l;
 	PTS *p;
 	int pl;
@@ -58,6 +58,7 @@ void data_handle_line( HOST *h, char *str, int len )
 
 	val = strtod( str, NULL );
 	ts  = strtoll( sp, NULL, 10 );
+	now = _proc->curr_usec;
 
 	tree_lock( l->tel );
 
@@ -73,9 +74,12 @@ void data_handle_line( HOST *h, char *str, int len )
 	p->vals[p->count].ts  = ts;
 	++(p->count);
 
+	if( !l->oldest )
+		l->oldest = now;
+
 	tree_unlock( l->tel );
 
-	l->last_updated = _proc->curr_tval / 1000;
+	l->last_updated = now;
 	++(h->handled);
 }
 

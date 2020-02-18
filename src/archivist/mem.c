@@ -132,22 +132,42 @@ void mem_free_qrypt( QP **q )
 	*q = NULL;
 
 	qp->tel = NULL;
+	if( qp->fq )
+		mem_free_rkqry( &(qp->fq) );
 
 	mtype_free( ctl->mem->qrypt, qp );
 }
 
 void mem_free_qrypt_list( QP *list )
 {
+	RKQR *fq = NULL;
 	QP *p;
 	int j;
 
 	for( j = 0, p = list; p->next; p = p->next, ++j )
+	{
+		if( p->fq )
+		{
+			p->fq->next = fq;
+			fq = p->fq;
+			p->fq = NULL;
+		}
 		p->tel = NULL;
+	}
 
+	if( p->fq )
+	{
+		p->fq->next = fq;
+		fq = p->fq;
+		p->fq = NULL;
+	}
 	p->tel = NULL;
 	++j;
 
 	mtype_free_list( ctl->mem->qrypt, j, list, p );
+
+	if( fq )
+		mem_free_rkqry_list( fq );
 }
 
 PTS *mem_new_ptlst( void )
@@ -182,6 +202,44 @@ void mem_free_ptlst_list( PTS *list )
 }
 
 
+RKQR *mem_new_rkqry( void )
+{
+	return (RKQR *) mtype_new( ctl->mem->rkqry );
+}
+
+
+#define mem_clean_rkqry( _q )			if( _q->points ) { free( _q->points ); } memset( _q, 0, sizeof( RKQR ) )	
+
+void mem_free_rkqry( RKQR **q )
+{
+	RKQR *qp;
+
+	qp = *q;
+	*q = NULL;
+
+	mem_clean_rkqry( qp );
+
+	mtype_free( ctl->mem->rkqry, qp );
+}
+
+
+void mem_free_rkqry_list( RKQR *list )
+{
+	RKQR *q;
+	int j;
+
+	for( j = 0, q = list; q->next; q = q->next, ++j )
+	{
+		mem_clean_rkqry( q );
+	}
+
+	mem_clean_rkqry( q );
+	++j;
+
+	mtype_free_list( ctl->mem->rkqry, j, list, q );
+}
+
+
 MEMT_CTL *memt_config_defaults( void )
 {
 	MEMT_CTL *m;
@@ -191,6 +249,7 @@ MEMT_CTL *memt_config_defaults( void )
 	m->tleaf = mem_type_declare( "tleaf", sizeof( LEAF ),  MEM_ALLOCSZ_TLEAF, 0, 1 );
 	m->qrypt = mem_type_declare( "qrypt", sizeof( QP ),    MEM_ALLOCSZ_QRYPT, 0, 1 );
 	m->ptlst = mem_type_declare( "ptlst", sizeof( PTS ),   MEM_ALLOCSZ_PTLST, 0, 1 );
+	m->rkqry = mem_type_declare( "rkqry", sizeof( RKQR ),  MEM_ALLOCSZ_RKQRY, 0, 1 );
 
 	return m;
 }

@@ -2,14 +2,12 @@
 * This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
 *                                                                         *
-* query.c - query functions                                               *
+* query/query.c - query main functions                                    *
 *                                                                         *
 * Updates:                                                                *
 **************************************************************************/
 
-#include "archivist.h"
-
-QRY_CTL *_qry = NULL;
+#include "local.h"
 
 
 
@@ -84,6 +82,7 @@ int query_search( QRY *q )
 
 	copy = str_copy( q->search, q->slen );
 	strwords( &(q->w), copy, q->slen, '.' );
+
 	// last index
 	q->plast = q->w.wc - 1;
 
@@ -100,33 +99,20 @@ QRY *query_create( char *search_string )
 {
 	QRY *q = (QRY *) allocz( sizeof( QRY ) );
 
-	q->search = str_copy( search_string, 0 );
-	q->slen   = strlen( q->search );
+	q->slen   = strlen( search_string );
+	q->search = str_copy( search_string, q->slen );
 
 	return q;
 }
 
 void query_free( QRY *q )
 {
-	return;
-}
+	free( q->search );
 
+	if( q->paths )
+		mem_free_qrypt_list( q->paths );
 
-
-QRY_CTL *query_config_defaults( void )
-{
-	_qry = (QRY_CTL *) allocz( sizeof( QRY_CTL ) );
-
-	_qry->default_timespan = DEFAULT_QUERY_TIMESPAN;
-	_qry->max_paths = DEFAULT_QUERY_MAX_PATHS;
-
-	return _qry;
-}
-
-
-int query_config_line( AVP *av )
-{
-	return -1;
+	free( q );
 }
 
 

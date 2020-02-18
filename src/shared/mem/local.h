@@ -21,6 +21,7 @@
 // and some types
 #define MEM_ALLOCSZ_IOBUF			170		// 8k
 #define MEM_ALLOCSZ_HTREQ			128
+#define MEM_ALLOCSZ_HTPRM			128
 #define MEM_ALLOCSZ_HOSTS			128
 #define MEM_ALLOCSZ_TOKENS			128
 #define MEM_ALLOCSZ_HANGER			1024

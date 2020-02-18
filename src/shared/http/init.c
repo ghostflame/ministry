@@ -194,6 +194,13 @@ void http_stop( void )
 }
 
 
+// turn on the http server by default
+void http_enable( void )
+{
+	_http->enabled = 1;
+}
+
+
 
 int http_ask_password( void )
 {

@@ -90,6 +90,7 @@ struct mem_control
 	// known types
 	MTYPE			*	iobufs;
 	MTYPE			*	htreq;
+	MTYPE			*	htprm;
 	MTYPE			*	hosts;
 	MTYPE			*	token;
 	MTYPE			*	hanger;
@@ -138,6 +139,10 @@ void mem_free_iobuf_list( IOBUF *list );
 
 HTREQ *mem_new_request( void );
 void mem_free_request( HTREQ **h );
+
+HTPRM *mem_new_htprm( void );
+void mem_free_htprm( HTPRM **a );
+void mem_free_htprm_list( HTPRM *list );
 
 HOST *mem_new_host( struct sockaddr_in *peer, uint32_t bufsz );
 void mem_free_host( HOST **h );

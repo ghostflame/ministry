@@ -276,6 +276,8 @@ SSTE *string_store_add_with_vals( SSTR *store, char *str, int len, int32_t *val,
 		if( ptr )
 			e->ptr = ptr;
 
+		flagf_add( e, STRSTORE_FLAG_VALID );
+
 		e->next = store->hashtable[pos];
 		store->hashtable[pos] = e;
 
@@ -296,18 +298,54 @@ SSTE *string_store_add_with_vals( SSTR *store, char *str, int len, int32_t *val,
 }
 
 
-// call a function on every member
-int string_store_iterator( SSTR *store, void *arg, store_callback *fp )
+// divide the store's hash table into section
+void __string_store_select_section( SSTR *store, int idx, int mod, int *start, int *end )
 {
-	int i, ret = 0;
+	int s, e, p;
+
+	if( mod == 0 )
+	{
+		*start = 0;
+		*end   = store->hsz;
+		return;
+	}
+
+	p = store->hsz / mod;
+
+	s =   idx       * p;
+	e = ( idx + 1 ) * p;
+
+	// make sure integer maths
+	// doesn't mess with us
+	// has uneven behaviour on very
+	// small hash tables, but that's
+	// unlikely to matter much
+	if( idx == ( mod - 1 ) )
+		e = store->hsz;
+
+	*start = s;
+	*end   = e;
+
+	//info( "Selecting store section %d to %d (%d).", s, e, e - s );
+}
+
+
+
+// call a function on every member
+int string_store_iterator( SSTR *store, void *arg, store_callback *fp, int idx, int mod )
+{
+	int i, ret = 0, stt, end;
 	SSTE *e, *en;
 
 	if( !store )
 		return -1;
 
+	// divvy up the workload between threads?
+	__string_store_select_section( store, idx, mod, &stt, &end );
+
 	store_lock( store );
 
-	for( i = 0; i < store->hsz; ++i )
+	for( i = stt; i < end; ++i )
 		for( e = store->hashtable[i]; e; e = en )
 		{
 			// just in case derp happens to e
@@ -319,6 +357,43 @@ int string_store_iterator( SSTR *store, void *arg, store_callback *fp )
 		}
 
 	store_unlock( store );
+
+	return ret;
+}
+
+
+
+int string_store_iterator_nolock( SSTR *store, void *arg, store_callback *fp, int idx, int mod )
+{
+	int i, ret = 0, stt, end;
+	SSTE *e, *en;
+
+	if( !store )
+	{
+		warn( "NULL store passed to (nolock) iterator." );
+		return -1;
+	}
+
+	__string_store_select_section( store, idx, mod, &stt, &end );
+
+	// DOES NOT LOCK THE STORE!  We use a valid-flag test
+	// whatever frees them must remove that flag before doing so
+
+	for( i = stt; i < end; ++i )
+		for( e = store->hashtable[i]; e; e = en )
+		{
+			en = e->next;
+
+			// if that e is no longer valid, abort this list
+			// we cannot continue, as next is no longer safe
+			if( !flagf_has( e, STRSTORE_FLAG_VALID ) )
+				break;
+
+			// and call back on this one
+			// checking it is valid is your problem
+			if( (*fp)( e, arg ) != 0 )
+				ret++;
+		}
 
 	return ret;
 }

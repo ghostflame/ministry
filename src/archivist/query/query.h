@@ -2,7 +2,7 @@
 * This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
 *                                                                         *
-* query.h - query object structures
+* query/query.h - query object structures                                 *
 *                                                                         *
 * Updates:                                                                *
 **************************************************************************/
@@ -11,13 +11,26 @@
 #define ARCHIVIST_QUERY_H
 
 
-#define DEFAULT_QUERY_TIMESPAN			3600000000		// 1hr
-#define DEFAULT_QUERY_MAX_PATHS			2500
+#define QUERY_PARAM_PATH		"path"
+#define QUERY_PARAM_FROM		"from"
+#define QUERY_PARAM_SPAN		"span"
+#define QUERY_PARAM_TO			"to"
 
+
+
+struct query_fn
+{
+	QRFN				*	next;
+	char				*	fname;
+	query_data_fn		*	fp;
+	int						argc;
+	char				**	argv;
+};
 
 struct query_path
 {
 	QP					*	next;
+	RKQR				*	fq;
 	TEL					*	tel;
 };
 
@@ -26,6 +39,7 @@ struct query_data
 {
 	QRY					*	next;
 	char				*	search;
+	QRFN				*	fns;		// innermost first
 	QP					*	paths;
 
 	int32_t					pcount;
@@ -48,10 +62,16 @@ struct query_control
 	int						max_paths;
 };
 
-int query_search( QRY *q );
+extern QRY_CTL *_qry;
 
+
+int query_search( QRY *q );
 void query_free( QRY *q );
 QRY *query_create( char *search_str );
+
+http_callback query_get_callback;
+
+void query_init( void );
 
 QRY_CTL *query_config_defaults( void );
 conf_line_fn query_config_line;

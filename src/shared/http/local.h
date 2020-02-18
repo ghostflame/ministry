@@ -97,6 +97,8 @@ ssize_t http_unused_reader( void *cls, uint64_t pos, char *buf, size_t max );
 void http_unused_reader_free( void *cls );
 
 // request handling
+int http_get_url_param( void *cls, HTTP_VAL kind, const char *key, const char *value );
+int http_parse_url( HTREQ *req, char *url );
 int http_access_policy( void *cls, const struct sockaddr *addr, socklen_t addrlen );
 int http_send_response( HTREQ *req );
 void http_request_complete( void *cls, HTTP_CONN *conn, void **arg, HTTP_CODE toe );

@@ -50,6 +50,7 @@ void loop_set_time( int64_t tval, void *arg )
 {
 	llts( tval, _proc->curr_time );
 	_proc->curr_tval = tval;
+	_proc->curr_usec = tval / 1000;
 }
 
 

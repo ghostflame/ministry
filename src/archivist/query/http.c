@@ -1,0 +1,137 @@
+/**************************************************************************
+* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
+* Copyright 2015 John Denholm                                             *
+*                                                                         *
+* query/http.c - query http callbacks                                     *
+*                                                                         *
+* Updates:                                                                *
+**************************************************************************/
+
+#include "local.h"
+
+void query_path_get_data( QP *p, QRY *q )
+{
+	LEAF *l;
+	TEL *t;
+
+	t = p->tel;
+	l = t->leaf;
+
+	if( !l->fh )
+	{
+		tree_lock( t );
+		l->fh = file_create_handle( t->path );
+		tree_unlock( t );
+
+		// TODO - handle persistent failures
+		if( l->fh )
+			return;
+	}
+
+	p->fq = mem_new_rkqry( );
+	p->fq->from = q->start;
+	p->fq->to   = q->end;
+
+	file_read( l->fh, p->fq );
+}
+
+
+
+void query_write( HTREQ *req, QRY *q )
+{
+	JSON *res, *jpth, *jpts, *jva, *jt, *jv;
+	//int64_t ts;
+	PNT *pt;
+	QP *p;
+	int j;
+
+	res = json_object_new_array( );
+
+	for( p = q->paths; p; p = p->next )
+	{
+		jpth = json_object_new_object( );
+		jpts = json_object_new_array( );
+
+		for( j = 0; j < p->fq->count; ++j )
+		{
+			pt = p->fq->points + j;
+
+			// TODO - add null points
+			if( pt->ts )
+			{
+				jva = json_object_new_array( );
+				jt = json_object_new_int64( pt->ts );
+				jv = json_object_new_double( pt->val );
+				json_object_array_add( jva, jt );
+				json_object_array_add( jva, jv );
+				json_object_array_add( jpts, jva );
+			}
+		}
+
+		json_insert( jpth, "target", string, p->tel->path );
+		json_object_object_add( jpth, "datapoints", jpts );
+
+		json_object_array_add( res, jpth );
+	}
+
+	// this takes care of freeing things
+	strbuf_json( req->text, res, 1 );
+
+	query_free( q );
+}
+
+
+
+int query_get_callback( HTREQ *req )
+{
+	char *str;
+	QRY *q;
+	QP *p;
+
+	if( !http_request_get_param( req, QUERY_PARAM_PATH, &str ) || !str || !*str )
+	{
+		req->code = MHD_HTTP_BAD_REQUEST;
+		return 0;
+	}
+
+	q = query_create( str );
+	query_search( q );
+
+	if( q->pcount == 0 )
+	{
+		 query_write( req, q );
+		 return 0;
+	}
+
+	if( http_request_get_param( req, QUERY_PARAM_TO, &str ) && str && *str )
+	{
+		// expect it in msec
+		q->end = 1000 * strtoll( str, NULL, 10 );
+	}
+	else
+		q->end = _proc->curr_usec;
+
+	if( http_request_get_param( req, QUERY_PARAM_SPAN, &str ) && str && *str )
+	{
+		// expect it in msec
+		q->start = q->end - ( 1000 * strtoll( str, NULL, 10 ) );
+	}
+	else
+	{
+		if( http_request_get_param( req, QUERY_PARAM_FROM, &str ) && str && *str )
+		{
+			// expect it in msec
+			q->start = 1000 * strtoll( str, NULL, 10 );
+		}
+		else
+			q->start = q->end - _qry->default_timespan;
+	}
+
+	for( p = q->paths; p; p = p->next )
+		query_path_get_data( p, q );
+
+	query_write( req, q );
+	return 0;
+}
+
+

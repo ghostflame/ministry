@@ -27,7 +27,8 @@
 #include "network.h"
 #include "data.h"
 #include "tree.h"
-#include "query.h"
+#include "query/query.h"
+#include "file/file.h"
 
 
 // main control structure
@@ -39,6 +40,7 @@ struct archivist_control
 	TREE_CTL			*	tree;
 	QRY_CTL				*	query;
 	NETW_CTL			*	netw;
+	FILE_CTL			*	file;
 };
 
 

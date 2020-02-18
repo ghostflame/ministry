@@ -1,9 +1,9 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-FILES  = mkdir pidfile tree
-HEADS  = fs
+FILES  = config http query
+HEADS  = local query
 
-RKV    = fs_shared.a
+RKV    = query_shared.a
 EARGS ?=
 
 OBJS   = $(FILES:%=%.o)
@@ -14,6 +14,8 @@ IFLAGS = -I. -I..
 DFLAGS = -g -pg -ggdb3 -DDEBUG
 TFLAGS = -pthread
 CFLAGS = -c $(TFLAGS) $(IFLAGS) $(EARGS)
+#CFLAGS = -c $(TFLAGS) $(IFLAGS) -DMIN_MHD_PASS=0
+#LFLAGS = -lm -lcurl -lmicrohttpd
 
 all: WFLAGS += -Wpedantic -Wextra -Wno-unused-parameter
 all: CFLAGS += -O2

@@ -10,17 +10,17 @@
 #ifndef ARCHIVIST_TREE_H
 #define ARCHIVIST_TREE_H
 
-
+// 48b
 struct tree_leaf
 {
-	char			*	filepath;	// ?
-	int					fd;
+	TEL				*	tel;
+	PTS				*	points;
+	RKFL			*	fh;
 
+	int64_t				oldest;
 	int64_t				last_updated;
 
-	TEL				*	tel;
-
-	PTS				*	points;
+	int64_t				last_flushed; // exclusively used by file/update
 };
 
 
@@ -49,11 +49,11 @@ struct tree_element
 	char			*	path;
 	LEAF			*	leaf;
 
-	tree_lock_t			lock;
-
 	uint16_t			len;
 	uint16_t			plen;
 	uint32_t			id;
+
+	tree_lock_t			lock;
 };
 
 

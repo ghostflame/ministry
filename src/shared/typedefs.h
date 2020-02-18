@@ -81,6 +81,7 @@ typedef struct http_path            HTPATH;
 typedef struct http_handlers        HTHDLS;
 typedef struct http_req_data        HTREQ;
 typedef struct http_post_state      HTTP_POST;
+typedef struct http_param           HTPRM;
 
 typedef struct http_callbacks       HTTP_CB;
 typedef struct http_tls             TLS_CONF;
