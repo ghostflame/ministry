@@ -64,9 +64,29 @@ int file_set_bucket( int64_t period, int64_t count, int which )
 }
 
 
+void file_set_base_path( char *path, int len )
+{
+	if( !len )
+		len = strlen( path );
+
+	if( _file->base_path )
+		free( _file->base_path );
+
+	_file->base_path = (char *) allocz( len + 2 );
+	memcpy( _file->base_path, path, len );
+
+	if( path[len-1] != '/' )
+		_file->base_path[len++] = '/';
+
+	_file->bplen = len;
+}
+
 
 int file_init( void )
 {
+	BUF *fbuf, *pbuf;
+	int64_t tsa, fc;
+	double diff;
 	RKBKT *b;
 	int8_t i;
 
@@ -92,6 +112,19 @@ int file_init( void )
 	// make sure we don't make crazy paths allowed
 	_file->maxpath = 2047 - FILE_EXTENSION_LEN - _file->bplen;
 
+	// scan existing files
+	fbuf = strbuf( _file->maxpath );
+	pbuf = strbuf( _file->maxpath );
+	strbuf_copy( fbuf, _file->base_path, _file->bplen );
+
+	// scan our files, work out how long it took
+	tsa = get_time64( );
+	fc = file_scan_dir( fbuf, pbuf, ctl->tree->root, 0 );
+	diff = (double) ( get_time64( ) - tsa );
+	diff /= MILLIONF;
+
+	info( "Scanned %ld files in %.6f sec.", fc, diff );
+
 	// and start our writers
 	for( i = 0; i < _file->wr_threads; ++i )
 		thread_throw_named_f( &file_writer, NULL, i, "file_writer_%d", i );
@@ -105,8 +138,8 @@ FILE_CTL *file_config_defaults( void )
 {
 	_file = (FILE_CTL *) allocz( sizeof( FILE_CTL ) );
 
-	_file->base_path    = strdup( DEFAULT_BASE_PATH );
-	_file->bplen        = strlen( _file->base_path );
+	file_set_base_path( DEFAULT_BASE_PATH, 0 );
+
 	_file->wr_threads   = FILE_DEFAULT_THREADS;
 	_file->ms_sync      = MS_ASYNC;	// asynchronous msync on close
 	_file->max_open_sec = FILE_MAX_OPEN_SEC;
@@ -122,14 +155,7 @@ int file_config_line( AVP *av )
 
 	if( attIs( "basePath" ) || attIs( "filePath" ) )
 	{
-		free( _file->base_path );
-		_file->bplen     = av->vlen;
-		_file->base_path = (char *) allocz( av->vlen + 2 );
-		memcpy( _file->base_path, av->vptr, av->vlen );
-
-		// ensure we finish in a /
-		if( av->vptr[av->vlen-1] != '/' )
-			_file->base_path[_file->bplen++] = '/';
+		file_set_base_path( av->vptr, av->vlen );
 	}
 	else if( attIs( "bucket" ) )
 	{

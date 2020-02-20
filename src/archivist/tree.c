@@ -23,6 +23,68 @@ uint32_t tree_get_tid( void )
 }
 
 
+// used by file_scan - done without locking
+// only inserts directory nodes
+TEL *tree_insert_node( TEL *prt, char *name )
+{
+	int len;
+	TEL *t;
+
+	len = strlen( name );
+
+	for( t = prt->child; t; t = t->next )
+		if( len == t->len && !memcmp( t->name, name, len ) )
+			return t;
+
+	t = mem_new_treel( name, len );
+	t->parent = prt;
+
+	t->next = prt->child;
+	prt->child = t;
+
+	return t;
+}
+
+// used by file_scan - done without locking
+// only inserts leaf nodes
+// name shows up with the file extension on!
+int tree_insert_leaf( TEL *prt, char *name, char *path )
+{
+	int len;
+	TEL *t;
+
+	len = strlen( name ) - FILE_EXTENSION_LEN;
+
+	for( t = prt->child; t; t = t->next )
+		if( len == t->len && !memcmp( t->name, name, len ) )
+		{
+			errno = EEXIST;
+			return -1;
+		}
+
+	t = mem_new_treel( name, len );
+	t->parent = prt;
+
+	t->leaf = mem_new_tleaf( );
+	t->plen = strlen( path );
+	t->path = str_copy( path, t->plen );
+	t->leaf->tel = t;
+
+	t->he = string_store_add_with_vals( _tree->hash, path, t->plen, NULL, t );
+
+	// give it an id
+	t->id = tree_get_tid( );
+
+	if( !( t->id & 0xffff ) )
+		info( "Latest tree element ID is %u", t->id );
+
+	t->next = prt->child;
+	prt->child = t;
+
+	return 0;
+}
+
+
 LEAF *tree_process_line( char *str, int len )
 {
 	TEL *t, *r, *prt;

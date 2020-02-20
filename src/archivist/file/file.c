@@ -69,12 +69,24 @@ int file_create( RKFL *r )
 		return -2;
 	}
 
-	if( fallocate( fd, 0, 0, hdr.start.filesz ) )
+	do
 	{
-		err( "Failed to allocate disk space for file %s -- %s", r->fpath, Err );
-		close( fd );
-		return -3;
-	}
+		if( fallocate( fd, 0, 0, hdr.start.filesz ) == 0 )
+			break;
+	
+		if( errno == EINTR )
+		{
+			info( "Interrupted while allocating space (%ul for file %s -- retrying.",
+				hdr.start.filesz, r->fpath );
+		}
+		else
+		{
+			err( "Failed to allocate disk space (%ul) for file %s -- %s",
+				hdr.start.filesz, r->fpath, Err );
+			close( fd );
+			return -3;
+		}
+	} while( 1 );
 
 	len = sizeof( RKHDR );
 

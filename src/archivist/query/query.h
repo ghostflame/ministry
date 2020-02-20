@@ -42,6 +42,8 @@ struct query_data
 	QRFN				*	fns;		// innermost first
 	QP					*	paths;
 
+	int64_t					q_when;		// when it was asked for
+
 	int32_t					pcount;
 	int16_t					slen;
 	uint16_t				flags;

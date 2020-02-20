@@ -9,6 +9,8 @@
 
 #include "local.h"
 
+#define tinfo( fmt, ... )
+
 
 void file_update( RKFL *r, PNT *points, int count )
 {
@@ -149,19 +151,20 @@ int file_finish_one( SSTE *e, void *arg )
 
 void file_writer_pass( int64_t tval, void *arg )
 {
-	//double diff;
-	//int64_t a;
+	double diff;
+	int64_t a;
 	THRD *t;
 
 	t = (THRD *) arg;
 
-	//a = get_time64( );
+	a = get_time64( );
 	string_store_iterator_nolock( ctl->tree->hash, NULL, &file_write_one, t->num, _file->wr_threads );
 
-	//diff = (double) ( get_time64( ) - a );
-	//diff /= BILLIONF;
+	diff = (double) ( get_time64( ) - a );
+	diff /= BILLIONF;
 
-	//info( "Pass took %.6f sec.", diff );
+	if( diff > 1.0 )
+		warn( "Pass took %.6f sec.", diff );
 }
 
 

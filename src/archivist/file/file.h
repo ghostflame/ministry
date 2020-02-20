@@ -126,6 +126,8 @@ void file_shutdown( RKFL *r );
 
 RKFL *file_create_handle( char *path );
 
+int file_scan_dir( BUF *fbuf, BUF *pbuf, TEL *prt, int depth );
+
 int file_init( void );
 FILE_CTL *file_config_defaults( void );
 conf_line_fn file_config_line;

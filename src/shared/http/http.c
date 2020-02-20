@@ -84,14 +84,6 @@ int http_send_response( HTREQ *req )
 
 	req->sent = 1;
 
-	{
-		HTPRM *p;
-		for( p = req->params; p; p = p->next )
-			hnotice( "  Parameter: %s => %s", p->key,
-				( p->has_val ) ? p->val : "(null)" );
-	}
-
-
 	return ret;
 }
 

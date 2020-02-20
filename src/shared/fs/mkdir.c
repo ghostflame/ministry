@@ -90,7 +90,7 @@ int __fs_mkdir_recursive( char *path, int len )
 			return ret;
 		}
 		else
-			info( "Created dir %s", path );
+			debug( "Created dir %s", path );
 	}
 	else
 	{

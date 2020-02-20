@@ -24,8 +24,11 @@ void query_path_get_data( QP *p, QRY *q )
 		tree_unlock( t );
 
 		// TODO - handle persistent failures
-		if( l->fh )
+		if( !l->fh )
+		{
+			warn( "Could not get a file handle for metric %s", t->path );
 			return;
+		}
 	}
 
 	p->fq = mem_new_rkqry( );
@@ -99,8 +102,9 @@ int query_get_callback( HTREQ *req )
 
 	if( q->pcount == 0 )
 	{
-		 query_write( req, q );
-		 return 0;
+		//info( "Found no paths." );
+		query_write( req, q );
+		return 0;
 	}
 
 	if( http_request_get_param( req, QUERY_PARAM_TO, &str ) && str && *str )

@@ -101,12 +101,21 @@ QRY *query_create( char *search_string )
 
 	q->slen   = strlen( search_string );
 	q->search = str_copy( search_string, q->slen );
+	q->q_when = get_time64( );
 
 	return q;
 }
 
 void query_free( QRY *q )
 {
+	double diff;
+
+	diff = (double) ( get_time64( ) - q->q_when );
+	diff /= BILLIONF;
+
+	info( "Query fetched %d path%s in %.6fs", q->pcount,
+			( q->pcount == 1 ) ? "" : "s", diff );
+
 	free( q->search );
 
 	if( q->paths )

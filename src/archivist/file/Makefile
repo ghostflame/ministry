@@ -1,6 +1,6 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-FILES  = config read update file
+FILES  = config read scan update file
 HEADS  = local file
 
 RKV    = file_shared.a
