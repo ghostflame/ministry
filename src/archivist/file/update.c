@@ -94,7 +94,7 @@ int file_write_one( SSTE *e, void *arg )
 		tree_lock( tel );
 
 		// TODO: handle persistent failures
-		l->fh = file_create_handle( tel->path );
+		l->fh = file_create_handle( tel );
 
 		tree_unlock( tel );
 
@@ -112,7 +112,7 @@ int file_write_one( SSTE *e, void *arg )
 			return -2;
 	}
 
-	info( "Visiting %s.", l->fh->fpath );
+	//info( "Visiting %s.", l->fh->fpath );
 
 	tree_lock( tel );
 

@@ -22,6 +22,7 @@ struct config_section
 	char				*	name;
 	conf_line_fn		*	fp;
 	int						section;
+	int						disabled;
 };
 
 

@@ -20,7 +20,7 @@ void query_path_get_data( QP *p, QRY *q )
 	if( !l->fh )
 	{
 		tree_lock( t );
-		l->fh = file_create_handle( t->path );
+		l->fh = file_create_handle( t );
 		tree_unlock( t );
 
 		// TODO - handle persistent failures
@@ -32,8 +32,9 @@ void query_path_get_data( QP *p, QRY *q )
 	}
 
 	p->fq = mem_new_rkqry( );
-	p->fq->from = q->start;
-	p->fq->to   = q->end;
+	p->fq->from   = q->start;
+	p->fq->to     = q->end;
+	p->fq->metric = q->metric;
 
 	file_read( l->fh, p->fq );
 }
@@ -87,6 +88,7 @@ void query_write( HTREQ *req, QRY *q )
 
 int query_get_callback( HTREQ *req )
 {
+	int64_t usec;
 	char *str;
 	QRY *q;
 	QP *p;
@@ -94,7 +96,7 @@ int query_get_callback( HTREQ *req )
 	if( !http_request_get_param( req, QUERY_PARAM_PATH, &str ) || !str || !*str )
 	{
 		req->code = MHD_HTTP_BAD_REQUEST;
-		return 0;
+		return 1;
 	}
 
 	q = query_create( str );
@@ -107,18 +109,24 @@ int query_get_callback( HTREQ *req )
 		return 0;
 	}
 
+	q->end = _proc->curr_usec;
+
 	if( http_request_get_param( req, QUERY_PARAM_TO, &str ) && str && *str )
 	{
 		// expect it in msec
 		q->end = 1000 * strtoll( str, NULL, 10 );
 	}
-	else
-		q->end = _proc->curr_usec;
 
 	if( http_request_get_param( req, QUERY_PARAM_SPAN, &str ) && str && *str )
 	{
-		// expect it in msec
-		q->start = q->end - ( 1000 * strtoll( str, NULL, 10 ) );
+		if( time_span_usec( str, &usec ) )
+		{
+			strbuf_copy( req->text, "Invalid time span.", 0 );
+			req->code = MHD_HTTP_BAD_REQUEST;
+			return 1;
+		}
+
+		q->start = q->end - usec;
 	}
 	else
 	{
@@ -130,6 +138,20 @@ int query_get_callback( HTREQ *req )
 		else
 			q->start = q->end - _qry->default_timespan;
 	}
+
+	if( http_request_get_param( req, QUERY_PARAM_METRIC, &str ) )
+	{
+		q->metric = file_choose_metric( str );
+		if( q->metric < 0 )
+		{
+			// don't echo the param back out to the user - that's a
+			// bad idea
+			strbuf_copy( req->text, "Metric not recognised.", 0 );
+			req->code = MHD_HTTP_BAD_REQUEST;
+			return 1;
+		}
+	}
+
 
 	for( p = q->paths; p; p = p->next )
 		query_path_get_data( p, q );

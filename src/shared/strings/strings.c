@@ -227,3 +227,18 @@ __attribute__((hot)) int trim( char **str, int *len )
 }
 
 
+// compare two strings as potential for one prefix of the other
+int strprefix( char *a, char *b )
+{
+	while( *a && *b && *a == *b )
+	{
+		++a;
+		++b;
+	}
+
+	// if one string ran out, it's zero
+	// otherwise, non-zero
+	return ((int) *a) * ((int) *b);
+}
+
+

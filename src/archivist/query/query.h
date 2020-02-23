@@ -15,6 +15,7 @@
 #define QUERY_PARAM_FROM		"from"
 #define QUERY_PARAM_SPAN		"span"
 #define QUERY_PARAM_TO			"to"
+#define QUERY_PARAM_METRIC		"metric"
 
 
 
@@ -53,6 +54,7 @@ struct query_data
 
 	WORDS					w;
 	int						plast;
+	int						metric;
 
 	char					partbuf[512];
 };

@@ -138,6 +138,7 @@ void config_set_pid_file( char *path );
 // things that require the other structures
 void config_late_setup( void );
 
+void config_deregister_section( char *name );
 void config_register_section( char *name, conf_line_fn *fp );
 PROC_CTL *config_defaults( char *app_name, char *conf_dir );
 

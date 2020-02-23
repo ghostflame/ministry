@@ -108,6 +108,9 @@ int64_t get_rand( int64_t n );
 // wraps nanosleep
 void microsleep( int64_t usec );
 
+// parse a timespan, eg 10s, 40w, 2mo
+int time_span_usec( char *str, int64_t *usec );
+
 // get a percentage - 1-100
 int8_t percent( void );
 

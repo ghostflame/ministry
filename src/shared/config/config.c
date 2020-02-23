@@ -156,6 +156,25 @@ void config_register_section( char *name, conf_line_fn *fp )
 	++(_proc->sect_count);
 }
 
+void config_deregister_section( char *name )
+{
+	CSECT *s;
+	int i;
+
+	for( i = 0; i < _proc->sect_count; ++i )
+	{
+		s = config_sections + i;
+		if( !strcasecmp( name, s->name ) )
+		{
+			debug( "Disabling registration of config section %s.", name );
+			s->disabled = 1;
+			return;
+		}
+	}
+
+	warn( "Could not find config section %s, so nothing removed.", name );
+}
+
 
 
 PROC_CTL *config_defaults( char *app_name, char *conf_dir )

@@ -92,8 +92,10 @@ int file_scan_dir( BUF *fbuf, BUF *pbuf, TEL *prt, int depth )
 
 		strbuf_trunc( fbuf, fblen );
 		strbuf_trunc( pbuf, pblen );
+		free( d );
 	}
 
+	free( entries );
 	return fc;
 }
 

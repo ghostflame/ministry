@@ -621,6 +621,12 @@ void config_choose_section( CCTXT *c, char *section )
 
 		if( !strcasecmp( config_sections[i].name, section ) )
 		{
+			if( config_sections[i].disabled )
+			{
+				fatal( "Config section '%s' is disabled and cannot be used.",
+					config_sections[i].name );
+				return;
+			}
 			c->section = &(config_sections[i]);
 			return;
 		}

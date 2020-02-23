@@ -39,6 +39,7 @@ int file_create( RKFL *r )
 	char dirbuf[2048];
 	int len, fd;
 	RKHDR hdr;
+	RKBMT *m;
 
 	// make sure the directory is there
 	memcpy( dirbuf, r->fpath, r->dlen );
@@ -50,14 +51,23 @@ int file_create( RKFL *r )
 		return -1;
 	}
 
+	// find a retention match
+	for( m = _file->retentions; m; m = m->next )
+		if( m->rgx && regex_list_test( r->el->path, m->rgx ) == REGEX_MATCH )
+			break;
+
+	// fall back to the default
+	if( !m )
+		m = _file->ret_default;
+
 	// copy the buckets
-	memcpy( hdr.buckets, _file->default_buckets, _file->bktct * sizeof( RKBKT ) );
+	memcpy( hdr.buckets, m->buckets, m->bct * sizeof( RKBKT ) );
 
 	// fill in the starter
 	memcpy( hdr.start.magic, RKV_MAGIC_STR, 4 );
 	hdr.start.version  = 1;
 	hdr.start.hdr_sz = sizeof( RKHDR );
-	hdr.start.buckets  = _file->bktct;
+	hdr.start.buckets  = m->bct;
 	hdr.start.filesz   = file_get_size( &hdr );
 
 	// try to open the file
@@ -218,41 +228,41 @@ void file_shutdown( RKFL *r )
 }
 
 
-RKFL *file_create_handle( char *path )
+RKFL *file_create_handle( TEL *el )
 {
 	char *last, *p, *q;
-	int l, pl;
 	RKFL *r;
+	int l;
 
-	if( !path || !*path )
+	if( !el )
 	{
 		err( "No path provided to file_create_handle." );
 		return NULL;
 	}
 
-	pl = strlen( path );
-
-	if( pl > _file->maxpath )
+	if( el->plen > _file->maxpath )
 	{
-		err( "Path too long - max %d: %s", _file->maxpath, path );
+		err( "Path too long - max %d: %s", _file->maxpath, el->path );
 		return NULL;
 	}
 
 	r = (RKFL *) allocz( sizeof( RKFL ) );
 
-	l = FILE_EXTENSION_LEN + pl + _file->bplen;
+	// base path already has it's / on the end
+	l = FILE_EXTENSION_LEN + el->plen + _file->bplen;
 
 	r->fplen  = l;
 	r->fpath = (char *) allocz( l + 1 );
-	memcpy( r->fpath,                     _file->base_path, _file->bplen );
-	memcpy( r->fpath + _file->bplen,      path, pl );
-	memcpy( r->fpath + _file->bplen + pl, FILE_EXTENSION, FILE_EXTENSION_LEN );
+	memcpy( r->fpath,                           _file->base_path, _file->bplen );
+	memcpy( r->fpath + _file->bplen,            el->path, el->plen );
+	memcpy( r->fpath + _file->bplen + el->plen, FILE_EXTENSION, FILE_EXTENSION_LEN );
 
 	// don't stomp on the *last* dot, the file extension
-	last = r->fpath + _file->bplen + pl;
+	last = r->fpath + _file->bplen + el->plen;
 
 	p = r->fpath;
 
+	// and step over a first . in case file root is a relative path
 	if( *p == '.' )
 	{
 		++p;

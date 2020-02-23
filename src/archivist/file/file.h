@@ -31,6 +31,7 @@ enum file_value_metrics
 	FILE_VAL_METR_MAX,
 	FILE_VAL_METR_SPREAD,
 	FILE_VAL_METR_MIDDLE,
+	FILE_VAL_METR_RANGE,
 	FILE_VAL_METR_END
 };
 
@@ -77,6 +78,9 @@ struct file_data
 	// actual file path
 	char				*	fpath;
 
+	// pointer back into the tree element
+	TEL					*	el;
+
 	// mmap pointer
 	void				*	map;
 
@@ -99,23 +103,28 @@ struct file_data
 struct file_control
 {
 	char				*	base_path;
-	RKBKT					default_buckets[RKV_FL_MAX_BUCKETS];
+
+	RKBMT				*	retentions;
+	RKBMT				*	ret_default;
 
 	int						bplen;
 	int						maxpath;
-	int8_t					bktct;
-	int8_t					conf_bkt;
 
-	int8_t					wr_threads;
+	int						wr_threads;
 	int						ms_sync;
 
 	int						max_open_sec;
+	int						rblocks;
 };
 
 
 store_callback file_write_one;
 store_callback file_finish_one;
 throw_fn file_writer;
+
+
+int file_choose_metric( char *name );
+char *file_report_metric( int mval );
 
 void file_read( RKFL *r, RKQR *qry );
 void file_update( RKFL *r, PNT *points, int count );
@@ -124,7 +133,7 @@ int file_open( RKFL *r );
 void file_close( RKFL *r );
 void file_shutdown( RKFL *r );
 
-RKFL *file_create_handle( char *path );
+RKFL *file_create_handle( TEL *el );
 
 int file_scan_dir( BUF *fbuf, BUF *pbuf, TEL *prt, int depth );
 

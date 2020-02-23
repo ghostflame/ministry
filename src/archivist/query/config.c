@@ -39,13 +39,13 @@ int query_config_line( AVP *av )
 
 	if( attIs( "defaultSpan" ) )
 	{
-		if( parse_number( av->vptr, &v, NULL ) == NUM_INVALID )
+		if( time_span_usec( av->vptr, &v ) != 0 )
 		{
 			err( "Invalid default query span: %s", av->vptr );
 			return -1;
 		}
 
-		_qry->default_timespan = v * MILLION;
+		_qry->default_timespan = v;
 	}
 	else if( attIs( "maxPaths" ) )
 	{

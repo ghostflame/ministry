@@ -32,6 +32,7 @@ typedef struct data_points          PTS;
 typedef struct file_agg_entry       PNTA;
 typedef struct file_header_start    RKSTT;
 typedef struct file_bucket          RKBKT;
+typedef struct file_bucket_match    RKBMT;
 typedef struct file_header          RKHDR;
 typedef struct file_data            RKFL;
 typedef struct file_query           RKQR;

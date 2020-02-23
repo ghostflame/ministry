@@ -11,57 +11,7 @@
 
 FILE_CTL *_file = NULL;
 
-RKBKT file_base_default_buckets[3] =
-{
-	{
-		.period = 10000000,	// 10s
-		.count  = 25920		// 3d
-	},
-	{
-		.period = 60000000, // 60s
-		.count  = 43200		// 30d
-	},
-	{	// we need this to end the list
-		.period = 0,
-		.count  = 0
-	}
-};
 
-
-
-int file_set_bucket( int64_t period, int64_t count, int which )
-{
-	int i;
-
-	if( which < 0 )
-	{
-		for( i = 0; i < RKV_FL_MAX_BUCKETS; ++i )
-			if( _file->default_buckets[i].period == 0 )
-			{
-				which = i;
-				break;
-			}
-
-		if( i == RKV_FL_MAX_BUCKETS )
-		{
-			err( "Cannot add another bucket - max of %d reached.",
-				RKV_FL_MAX_BUCKETS );
-			return -1;
-		}
-	}
-
-	_file->default_buckets[which].period = period;
-	_file->default_buckets[which].count  = count;
-
-	// count them
-	for( i = 0; i < RKV_FL_MAX_BUCKETS; ++i )
-		if( _file->default_buckets[i].count == 0 )
-			break;
-
-	_file->bktct = i;
-
-	return 0;
-}
 
 
 void file_set_base_path( char *path, int len )
@@ -82,23 +32,101 @@ void file_set_base_path( char *path, int len )
 }
 
 
+
+
+int file_parse_buckets( RKBMT *m, char *str, int len )
+{
+	int64_t period, count;
+	WORDS w, v;
+	char *copy;
+	int i, ret;
+
+	copy = str_copy( str, len );
+	ret  = -1;
+
+	strwords( &w, copy, len, ';' );
+
+	if( w.wc >= RKV_FL_MAX_BUCKETS )
+	{
+		err( "Too many buckets specified (%d), max is %d.", w.wc, RKV_FL_MAX_BUCKETS );
+		goto PARSE_DONE;
+	}
+
+	for( i = 0; i < w.wc; ++i )
+	{
+		if( strwords( &v, w.wd[i], w.len[i], ':' ) != 2 )
+		{
+			err( "Invalid retention bucket spec (set %d): %s", i, str );
+			goto PARSE_DONE;
+		}
+
+		if( time_span_usec( v.wd[0], &period ) != 0 )
+		{
+			err( "Invalid retention bucket spec item: %s", v.wd[0] );
+			goto PARSE_DONE;
+		}
+
+		if( time_span_usec( v.wd[1], &count ) != 0 )
+		{
+			err( "Invalid retention bucket spec item: %s", v.wd[1] );
+			goto PARSE_DONE;
+		}
+
+		// count is divided by period to get slots
+		count /= period;
+
+		m->buckets[m->bct].period = period;
+		m->buckets[m->bct].count  = count;
+
+		debug( "Found bucket %d * %d", period, count );
+		++(m->bct);
+	}
+
+	ret = 0;
+
+PARSE_DONE:
+	free( copy );
+	return ret;
+}
+
+
+
+
 int file_init( void )
 {
 	BUF *fbuf, *pbuf;
 	int64_t tsa, fc;
 	double diff;
-	RKBKT *b;
+	RKBMT *m;
 	int8_t i;
 
-	if( _file->bktct == 0 )
+	// add a default retention
+	if( _file->rblocks == 0 )
 	{
-		for( i = 0; i < RKV_FL_MAX_BUCKETS; ++i )
-		{
-			b = file_base_default_buckets + i;
-			if( !b->count )
-				break;
+		warn( "No retention config: adding default of %s", RKV_DEFAULT_RET );
 
-			file_set_bucket( b->period, b->count, -1 );
+		m = (RKBMT *) allocz( sizeof( RKBMT ) );
+		m->is_default = 1;
+		m->name = str_dup( "Default bucket block", 0 );
+		file_parse_buckets( m, RKV_DEFAULT_RET, strlen( RKV_DEFAULT_RET ) );
+
+		_file->ret_default = m;
+		_file->retentions  = m;
+		_file->rblocks     = 1;
+	}
+	else
+	{
+		// fix the order
+		_file->retentions = (RKBMT *) mem_reverse_list( _file->retentions );
+
+		// check we do have a default
+		if( !_file->ret_default )
+		{
+			// choose the last one
+			for( m = _file->retentions; m->next; m = m->next );
+
+			_file->ret_default = m;
+			notice( "Chose retention block %s as default.", m->name );
 		}
 	}
 
@@ -121,7 +149,7 @@ int file_init( void )
 	tsa = get_time64( );
 	fc = file_scan_dir( fbuf, pbuf, ctl->tree->root, 0 );
 	diff = (double) ( get_time64( ) - tsa );
-	diff /= MILLIONF;
+	diff /= BILLIONF;
 
 	info( "Scanned %ld files in %.6f sec.", fc, diff );
 
@@ -148,82 +176,160 @@ FILE_CTL *file_config_defaults( void )
 }
 
 
+static RKBMT __file_config_bkt_match;
+static int __file_config_bkt_match_state = 0;
+
 int file_config_line( AVP *av )
 {
-	int64_t v, w;
-	char *sp;
+	RKBMT *n, *m = &__file_config_bkt_match;
+	int64_t v;
+	char *d;
 
-	if( attIs( "basePath" ) || attIs( "filePath" ) )
+	if( __file_config_bkt_match_state == 0 )
 	{
-		file_set_base_path( av->vptr, av->vlen );
+		memset( m, 0, sizeof( RKBMT ) );
 	}
-	else if( attIs( "bucket" ) )
+
+
+	if( !( d = memchr( av->aptr, '.', av->alen ) ) )
 	{
-		if( !( sp = memchr( av->vptr, ' ', av->vlen ) ) )
+		if( attIs( "basePath" ) || attIs( "filePath" ) )
 		{
-			warn( "Invalid bucket spec: <period (ms)> <count>" );
-			return -1;
+			file_set_base_path( av->vptr, av->vlen );
 		}
-
-		*sp++ = '\0';
-
-		if( parse_number( av->vptr, &v, NULL ) == NUM_INVALID )
+		else if( attIs( "ioThreads" ) || attIs( "threads" ) )
 		{
-			warn( "Invalid bucket spec: <period (ms)> <count>" );
-			return -1;
+			if( parse_number( av->vptr, &v, NULL ) == NUM_INVALID )
+			{
+				warn( "Invalid writer threads count." );
+				return -1;
+			}
+
+			if( v < 1 || v > 32 )
+			{
+				warn( "Writer threads must be 1 < x 32" );
+				return -1;
+			}
+
+			_file->wr_threads = v;
 		}
-		if( parse_number( sp, &w, NULL ) == NUM_INVALID )
+		else if( attIs( "sync" ) )
 		{
-			warn( "Invalid bucket spec: <period (ms)> <count>" );
-			return -1;
+			if( config_bool( av ) )
+			{
+				_file->ms_sync = MS_SYNC;
+				notice( "Synchronous write on munmap enabled." );
+			}
+			else
+				_file->ms_sync = MS_ASYNC;
 		}
-
-		if( !v || !w )
+		else if( attIs( "maxFileOpenSec" ) )
 		{
-			warn( "Invalid bucket spec: <period (ms)> <count>" );
-			return -1;
-		}
+			if( parse_number( av->vptr, &v, NULL ) == NUM_INVALID )
+			{
+				err( "Invalid max seconds to hold open inactive files: %s", av->vptr );
+				return -1;
+			}
 
-		file_set_bucket( v, w, -1 );
-	}
-	else if( attIs( "ioThreads" ) || attIs( "threads" ) )
-	{
-		if( parse_number( av->vptr, &v, NULL ) == NUM_INVALID )
-		{
-			warn( "Invalid writer threads count." );
-			return -1;
-		}
-
-		if( v < 1 || v > 32 )
-		{
-			warn( "Writer threads must be 1 < x 32" );
-			return -1;
-		}
-
-		_file->wr_threads = (int8_t) v;
-	}
-	else if( attIs( "sync" ) )
-	{
-		if( config_bool( av ) )
-		{
-			_file->ms_sync = MS_SYNC;
-			notice( "Synchronous write on munmap enabled." );
+			_file->max_open_sec = v;
 		}
 		else
-			_file->ms_sync = MS_ASYNC;
-	}
-	else if( attIs( "maxFileOpenSec" ) )
-	{
-		if( parse_number( av->vptr, &v, NULL ) == NUM_INVALID )
-		{
-			err( "Invalid max seconds to hold open inactive files: %s", av->vptr );
 			return -1;
-		}
 
-		_file->max_open_sec = v;
+		return 0;
 	}
-	else
-		return -1;
+
+	*d++ = '\0';
+
+	if( attIs( "retention" ) )
+	{
+		av->alen -= d - av->aptr;
+		av->aptr += d - av->aptr;
+
+		if( attIs( "buckets" ) )
+		{
+			__file_config_bkt_match_state = 1;
+			return file_parse_buckets( m, av->vptr, av->vlen );
+		}
+		else if( attIs( "name" ) )
+		{
+			__file_config_bkt_match_state = 1;
+			if( m->name )
+			{
+				err( "Retention block %s already has a name.", m->name );
+				return -1;
+			}
+
+			m->name = str_dup( av->vptr, av->vlen );
+		}
+		else if( attIs( "match" ) )
+		{
+			__file_config_bkt_match_state = 1;
+
+			if( !m->rgx )
+				m->rgx = regex_list_create( 1 );
+
+			return regex_list_add( av->vptr, 0, m->rgx );
+		}
+		else if( attIs( "fallbackMatch" ) )
+		{
+			__file_config_bkt_match_state = 1;
+
+			if( !m->rgx )
+				m->rgx = regex_list_create( 1 );
+
+			return regex_list_add( av->vptr, 1, m->rgx );
+		}
+		else if( attIs( "default" ) )
+		{
+			__file_config_bkt_match_state = 1;
+			m->is_default = config_bool( av );
+
+			if( m->is_default && _file->ret_default )
+			{
+				err( "Cannot have two default retention blocks - %s is already set as deault.", _file->ret_default->name );
+				return -1;
+			}
+		}
+		else if( attIs( "done" ) )
+		{
+			if( !m->name )
+			{
+				m->name = str_perm( 24 );
+				snprintf( m->name, 24, "retention block %d", _file->rblocks );
+			}
+
+			if( !m->is_default && !m->rgx )
+			{
+				err( "No match patterns assigned to retention block %s", m->name );
+				return -1;
+			}
+
+			if( !m->bct )
+			{
+				err( "No retention buckets assigned to retention block %s", m->name );
+				return -1;
+			}
+
+			n = (RKBMT *) allocz( sizeof( RKBMT ) );
+			memcpy( n, m, sizeof( RKBMT ) );
+			memset( m, 0, sizeof( RKBMT ) );
+
+			// put it into the list
+			n->next = _file->retentions;
+			_file->retentions = n;
+			++(_file->rblocks);
+
+			if( n->is_default )
+				_file->ret_default = n;
+
+			__file_config_bkt_match_state = 0;
+		}
+		else
+			return -1;
+	}
+
+
 
 	return 0;
 }

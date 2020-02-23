@@ -17,6 +17,8 @@
 #define RKV_OPEN_FLAGS				O_RDWR|O_NOATIME
 #define RKV_CREATE_MODE				0644
 
+#define RKV_DEFAULT_RET				"10s:2d;60s:30d"
+
 
 #include "archivist.h"
 
@@ -54,6 +56,19 @@ struct file_agg_entry
 	float					min;
 	float					max;
 };
+
+
+
+struct file_bucket_match
+{
+	RKBMT				*	next;
+	char				*	name;
+	RGXL				*	rgx;
+	RKBKT					buckets[RKV_FL_MAX_BUCKETS];
+	int						bct;
+	int						is_default;
+};
+
 
 
 extern FILE_CTL *_file;

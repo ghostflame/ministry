@@ -186,6 +186,33 @@ void file_read_blocks_middle( RKFL *r, RKBKT *b, RKQR *q )
 	}
 }
 
+// proportion of spread against the mean
+void file_read_blocks_range( RKFL *r, RKBKT *b, RKQR *q )
+{
+	int64_t ts, i, j;
+	PNTA *aarr, *a;
+
+	frb_setupA( );
+
+	frb_loop0( a )
+	{
+		if( a->count && a->sum != 0.0 )
+		{
+			frb_setpt( a, ( ( a->max - a->min ) / ( a->sum / (double) a->count ) ) );
+		}
+	}
+
+	frb_check1A( );
+
+	frb_loop1( a )
+	{
+		if( a->count && a->sum != 0.0 )
+		{
+			frb_setpt( a, ( ( a->max - a->min ) / ( a->sum / (double) a->count ) ) );
+		}
+	}
+}
+
 
 file_rd_fn *file_reader_functions[FILE_VAL_METR_END] =
 {
@@ -195,8 +222,45 @@ file_rd_fn *file_reader_functions[FILE_VAL_METR_END] =
 	&file_read_blocks_min,
 	&file_read_blocks_max,
 	&file_read_blocks_spread,
-	&file_read_blocks_middle
+	&file_read_blocks_middle,
+	&file_read_blocks_range
 };
+
+char *file_metric_names[FILE_VAL_METR_END] =
+{
+	"mean",
+	"count",
+	"sum",
+	"min",
+	"max",
+	"spread",
+	"middle",
+	"range"
+};
+
+
+int file_choose_metric( char *name )
+{
+	int i;
+
+	if( !name || !*name )
+		return FILE_VAL_METR_MEAN;
+
+	for( i = 0; i < FILE_VAL_METR_END; ++i )
+		if( !strcasecmp( name, file_metric_names[i] ) )
+			return i;
+
+	warn( "File metric name '%s' not recognised.", name );
+	return -1;
+}
+
+char *file_report_metric( int mval )
+{
+	if( mval < 0 || mval >= FILE_VAL_METR_END )
+		return "invalid";
+
+	return file_metric_names[mval];
+}
 
 
 

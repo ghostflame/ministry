@@ -100,7 +100,7 @@ BUF *strbuf_json( BUF *b, json_object *o, int done );
 #define strbuf_empty( b )				b->len = 0; b->buf[0] = '\0'
 #define strbuf_chop( b )				if( b->len > 0 ) { b->len--; b->buf[b->len] = '\0'; }
 #define strbuf_chopn( b, n )			if( b->len > n ) { b->len -= n; b->buf[b->len] = '\0'; } else { strbuf_empty( b ); }
-#define strbuf_trunc( b, l )			if( l > b->len ) { b->buf[l] = '\0'; b->len = l; }
+#define strbuf_trunc( b, l )			if( l < b->len ) { b->buf[l] = '\0'; b->len = l; }
 #define strbuf_lastchar( b )			( ( b->len ) ? b->buf[b->len - 1] : '\0' )
 #define strbuf_append( b, o )			strbuf_copy( strbuf_resize( b, b->len + o->len ), o->buf, o->len )
 #define strbuf_space( b )				( b->sz - ( b->len + 1 ) )
@@ -128,6 +128,10 @@ int str_sub( char **ptr, int *len, int argc, char **argv, int *argl );
 
 // break up potentially quoted string by delimiter
 int strqwords( WORDS *w, char *src, int len, char sep );
+
+// see if strings begin the same - useful for short matches
+// eg "mil" matches "milli" matches "millimeters"
+int strprefix( char *a, char *b );
 
 // break up a string by delimiter*
 int strwords_multi( WORDS *w, char *src, int len, char sep, int8_t multi );
