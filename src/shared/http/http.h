@@ -64,7 +64,7 @@ struct http_post_state
 
 
 #define HTTP_PARAM_MAX_KEY	128
-#define HTTP_PARAM_MAX_VAL	1912
+#define HTTP_PARAM_MAX_VAL	1904
 
 // 2KB
 struct http_param
