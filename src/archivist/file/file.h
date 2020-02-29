@@ -41,7 +41,7 @@ struct file_query
 	RKQR				*	next;
 
 	// where we put the points
-	PNT					*	points;
+	PTL					*	data;
 
 	// original requested timestamps
 	int64_t					from;
@@ -56,9 +56,7 @@ struct file_query
 	int64_t					ob[2];
 
 	int						metric;
-	int						count;
 	int						bkt;
-
 };
 
 

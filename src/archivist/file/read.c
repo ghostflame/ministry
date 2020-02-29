@@ -12,7 +12,7 @@
 #define frb_loop0( _p )			for( i = q->oa[0]; i < q->ob[0]; ++i, ++j, ++_p, ts += b->period )
 #define frb_loop1( _p )			for( i = 0; i < q->ob[1]; ++i, ++j, ++_p, ts += b->period )
 
-#define frb_setpt( _p, _d )		if( _p->ts == ts ) { q->points[j].ts = ts; q->points[j].val = _d; }
+#define frb_setpt( _p, _d )		if( _p->ts == ts ) { q->data->points[j].ts = ts; q->data->points[j].val = _d; }
 
 #define frb_setupP( )			j = 0; ts = q->first; parr = (PNT *) r->ptrs[0]; p = parr + q->oa[0]
 #define frb_setupA( )			j = 0; ts = q->first; aarr = (PNTA *) r->ptrs[q->bkt]; a = aarr + q->oa[0]
@@ -290,7 +290,7 @@ int file_choose_bucket( RKFL *r, int64_t from, int64_t to )
 // we assume query struct is correctly curated
 void file_read( RKFL *r, RKQR *qry )
 {
-	int64_t x, y;
+	int64_t x, y, count;
 	RKBKT *b;
 
 	if( !r->map && file_open( r ) != 0 )
@@ -309,13 +309,13 @@ void file_read( RKFL *r, RKQR *qry )
 	// is it in one block or two
 	if( x < y )
 	{
-		qry->count = (int) ( y - x );
+		count = (int) ( y - x );
 		qry->oa[0] = x;
 		qry->ob[0] = y;
 	}
 	else
 	{
-		qry->count = (int) y + (int) ( b->count - x );
+		count = (int) y + (int) ( b->count - x );
 		qry->oa[0] = x;
 		qry->ob[0] = b->count;
 		qry->oa[1] = 0;
@@ -326,9 +326,8 @@ void file_read( RKFL *r, RKQR *qry )
 	//	qry->oa[0], qry->ob[0],
 	//	qry->oa[1], qry->ob[1] );
 
-	// change this to be a linked list at some point?
-	// would that make running functions on them harder?
-	qry->points = (PNT *) allocz( qry->count * sizeof( PNT ) );
+
+	qry->data = mem_new_ptser( count );
 
 	// are we looking at the first bucket?  that's simpler, but
 	// we ignore the metric, because there is only one option

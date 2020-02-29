@@ -208,7 +208,6 @@ RKQR *mem_new_rkqry( void )
 }
 
 
-#define mem_clean_rkqry( _q )			if( _q->points ) { free( _q->points ); } memset( _q, 0, sizeof( RKQR ) )	
 
 void mem_free_rkqry( RKQR **q )
 {
@@ -217,7 +216,8 @@ void mem_free_rkqry( RKQR **q )
 	qp = *q;
 	*q = NULL;
 
-	mem_clean_rkqry( qp );
+	if( qp->data )
+		mem_free_ptser( &(qp->data) );
 
 	mtype_free( ctl->mem->rkqry, qp );
 }
@@ -225,18 +225,85 @@ void mem_free_rkqry( RKQR **q )
 
 void mem_free_rkqry_list( RKQR *list )
 {
+	PTL *ptl = NULL;
 	RKQR *q;
 	int j;
 
 	for( j = 0, q = list; q->next; q = q->next, ++j )
 	{
-		mem_clean_rkqry( q );
+		if( q->data )
+		{
+			q->data->next = ptl;
+			ptl = q->data;
+			q->data = NULL;
+		}
 	}
 
-	mem_clean_rkqry( q );
+	if( q->data )
+	{
+		q->data->next = ptl;
+		ptl = q->data;
+		q->data = NULL;
+	}
 	++j;
 
 	mtype_free_list( ctl->mem->rkqry, j, list, q );
+}
+
+#define MEM_PTSER_MAX_KEEP_POINTS		3601
+
+
+PTL *mem_new_ptser( int count )
+{
+	PTL *p = mtype_new( ctl->mem->ptser );
+
+	if( count > MEM_PTSER_MAX_KEEP_POINTS || count > p->sz )
+	{
+		if( p->sz )
+			free( p->points );
+
+		p->sz = count;
+		p->points = (PNT *) allocz( count * sizeof( PNT ) );
+	}
+
+	return p;
+ }
+
+#define mem_clean_ptser( _p )			\
+	if( _p->sz > MEM_PTSER_MAX_KEEP_POINTS ) \
+	{ \
+		free( _p->points ); \
+		_p->points = NULL; \
+		_p->sz = 0; \
+	} \
+	_p->count = 0
+
+void mem_free_ptser( PTL **p )
+{
+	PTL *pp;
+
+	pp = *p;
+	*p = NULL;
+
+	mem_clean_ptser( pp );
+
+	mtype_free( ctl->mem->ptser, pp );
+}
+
+void mem_free_ptser_list( PTL *list )
+{
+	PTL *p;
+	int j;
+
+	for( p = list, j = 0; p->next; p = p->next, ++j )
+	{
+		mem_clean_ptser( p );
+	}
+
+	mem_clean_ptser( p );
+	++j;
+
+	mtype_free_list( ctl->mem->ptser, j, list, p );
 }
 
 
@@ -250,6 +317,7 @@ MEMT_CTL *memt_config_defaults( void )
 	m->qrypt = mem_type_declare( "qrypt", sizeof( QP ),    MEM_ALLOCSZ_QRYPT, 0, 1 );
 	m->ptlst = mem_type_declare( "ptlst", sizeof( PTS ),   MEM_ALLOCSZ_PTLST, 0, 1 );
 	m->rkqry = mem_type_declare( "rkqry", sizeof( RKQR ),  MEM_ALLOCSZ_RKQRY, 0, 1 );
+	m->ptser = mem_type_declare( "ptser", sizeof( PTL ),   MEM_ALLOCSZ_PTSER, 0, 1 );
 
 	return m;
 }

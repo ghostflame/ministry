@@ -56,9 +56,9 @@ void query_write( HTREQ *req, QRY *q )
 		jpth = json_object_new_object( );
 		jpts = json_object_new_array( );
 
-		for( j = 0; j < p->fq->count; ++j )
+		for( j = 0; j < p->fq->data->count; ++j )
 		{
-			pt = p->fq->points + j;
+			pt = p->fq->data->points + j;
 
 			// TODO - add null points
 			if( pt->ts )
@@ -99,7 +99,12 @@ int query_get_callback( HTREQ *req )
 		return 1;
 	}
 
-	q = query_create( str );
+	if( !( q = query_create( str ) ) )
+	{
+		req->code = MHD_HTTP_BAD_REQUEST;
+		return 1;
+	}
+
 	query_search( q );
 
 	if( q->pcount == 0 )

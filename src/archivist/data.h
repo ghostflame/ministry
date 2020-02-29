@@ -29,6 +29,14 @@ struct data_points
 	PNT					vals[PTS_MAX];
 };
 
+// 24b + points
+struct data_series
+{
+	PTL				*	next;
+	PNT				*	points;
+	int32_t				count;
+	int32_t				sz;
+};
 
 
 

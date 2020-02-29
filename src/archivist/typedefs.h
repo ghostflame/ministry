@@ -28,6 +28,7 @@ typedef struct query_fn             QRFN;
 
 typedef struct data_point           PNT;
 typedef struct data_points          PTS;
+typedef struct data_series          PTL;
 
 typedef struct file_agg_entry       PNTA;
 typedef struct file_header_start    RKSTT;
@@ -40,6 +41,6 @@ typedef struct file_query           RKQR;
 
 // function types
 typedef void file_rd_fn ( RKFL *, RKBKT *, RKQR * );
-typedef int query_data_fn ( RKQR *in, RKQR *out, int argc, char **argv );
+typedef int query_data_fn ( QRY *q, PTL *in, PTL **out, int argc, char **argv );
 
 #endif
