@@ -53,7 +53,7 @@ CCTXT *config_make_context( char *path, WORDS *w );
 int config_source_dupe( char *path );
 
 
-
+int config_handle_dir( char *path, WORDS *w );
 
 void config_choose_section( CCTXT *c, char *section );
 

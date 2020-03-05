@@ -1,6 +1,6 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-FILES  = args context env read config
+FILES  = args context dir env read config
 HEADS  = local config
 
 VERS  ?= 0.1.0
