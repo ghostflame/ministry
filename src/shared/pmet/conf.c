@@ -51,7 +51,7 @@ PMET_CTL *_pmet = NULL;
 
 PMET_CTL *pmet_config_defaults( void )
 {
-	PMET_CTL *p = (PMET_CTL *) allocz( sizeof( PMET_CTL ) );
+	PMET_CTL *p = (PMET_CTL *) mem_perm( sizeof( PMET_CTL ) );
 	int v;
 
 	p->period = DEFAULT_PMET_PERIOD_MSEC;
@@ -79,7 +79,7 @@ PMET_CTL *pmet_config_defaults( void )
 	_pmet = p;
 
 	// add in the basics
-	p->shared = (PMET_SH *) allocz( sizeof( PMET_SH ) );
+	p->shared = (PMET_SH *) mem_perm( sizeof( PMET_SH ) );
 	p->shared->source = pmet_add_source( "shared" );
 
 	return p;

@@ -32,7 +32,7 @@ int targets_start_one( TGT **tp )
 	}
 
 	// make a new target, a clone of the original
-	t = (TGT *) allocz( sizeof( TGT ) );
+	t = (TGT *) mem_perm( sizeof( TGT ) );
 	memcpy( t, orig, sizeof( TGT ) );
 
 	// run an io loop
@@ -102,7 +102,7 @@ int targets_set_type( TGT *t, char *name, int len )
 
 TGTS_CTL *targets_config_defaults( void )
 {
-	TGTS_CTL *t = (TGTS_CTL *) allocz( sizeof( TGTS_CTL ) );
+	TGTS_CTL *t = (TGTS_CTL *) mem_perm( sizeof( TGTS_CTL ) );
 	return t;
 }
 

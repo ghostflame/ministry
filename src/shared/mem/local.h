@@ -17,6 +17,7 @@
 
 #define DEFAULT_MEM_PRE_THRESH		0.33
 
+#define PERM_SPACE_BLOCK			0x100000   // 1M
 
 // and some types
 #define MEM_ALLOCSZ_IOBUF			170		// 8k
@@ -86,6 +87,19 @@ struct mem_check
 	int64_t				max_kb;
 	int					max_set;
 };
+
+
+struct mem_perm
+{
+	void			*	space;
+	void			*	curr;
+	uint32_t			size;
+	uint32_t			left;
+
+	pthread_mutex_t		lock;
+};
+
+
 
 loop_call_fn mem_prealloc;
 throw_fn mem_prealloc_loop;

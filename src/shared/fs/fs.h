@@ -53,17 +53,17 @@ throw_fn fs_treemon_loop;
 
 
 // make a directory
-int fs_mkdir_recursive( char *path );
+int fs_mkdir_recursive( const char *path );
 
 // handle our pidfile
-int fs_pidfile_mkdir( char *path );
+int fs_pidfile_mkdir( const char *path );
 void fs_pidfile_write( void );
 void fs_pidfile_remove( void );
 
 // file-tree monitor
-FTREE *fs_treemon_create( char *file_pattern, char *dir_pattern, ftree_callback *cb, void *arg );
-int fs_treemon_add( FTREE *ft, char *path, int is_dir );
-int fs_treemon_rm( FTREE *ft, char *path );
+FTREE *fs_treemon_create( const char *file_pattern, const char *dir_pattern, ftree_callback *cb, void *arg );
+int fs_treemon_add( FTREE *ft, const char *path, int is_dir );
+int fs_treemon_rm( FTREE *ft, const char *path );
 int fs_treemon_event_string( uint32_t mask, char *buf, int sz );
 void fs_treemon_end( FTREE *ft );
 void fs_treemon_start( FTREE *ft );

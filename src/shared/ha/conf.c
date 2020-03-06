@@ -140,9 +140,9 @@ HAPT *ha_add_partner( char *spec, int dupe_fail )
 
 	curl_url_cleanup( ch );
 
-	len = strlen( p->host ) + 6;
-	p->name = str_perm( len );
-	p->nlen = snprintf( p->name, len + 1, "%s:%hu", p->host, p->port );
+	len = strlen( p->host ) + 7;
+	p->name = mem_perm( len );
+	p->nlen = snprintf( p->name, len, "%s:%hu", p->host, p->port );
 
 	p->next = _ha->partners;
 	_ha->partners = p;
@@ -160,7 +160,7 @@ FailURL:
 
 HA_CTL *ha_config_defaults( void )
 {
-	_ha = (HA_CTL *) allocz( sizeof( HA_CTL ) );
+	_ha = (HA_CTL *) mem_perm( sizeof( HA_CTL ) );
 
 	_ha->enabled = 0;
 	// we default to being master, this enables solo behaviour

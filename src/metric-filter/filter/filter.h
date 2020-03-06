@@ -11,7 +11,7 @@
 #ifndef METRIC_FILTER_FILTER_H
 #define METRIC_FILTER_FILTER_H
 
-#define DEFAULT_FILTER_DIR				"/etc/ministry/filters"
+#define DEFAULT_FILTER_DIR				"/etc/ministry/filters.d"
 
 #define LINE_SEPARATOR					'\n'
 #define MAX_PATH_SZ						4096

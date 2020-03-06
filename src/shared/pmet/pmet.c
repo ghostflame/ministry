@@ -113,7 +113,7 @@ void pmet_scrape_loop( THRD *t )
 	_pmet->last_scrape = _proc->curr_time.tv_sec;
 	// alert delta left to be big, so that we alert at once
 
-	info( "Beginning scape expectation check, threshold %ld sec.", _pmet->alert_period );
+	info( "Beginning scrape expectation check, threshold %ld sec.", _pmet->alert_period );
 
 	loop_control( "pmet_check", pmet_scrape_check, NULL, _pmet->period, LOOP_TRIM|LOOP_SYNC, _pmet->period / 3 );
 }
@@ -227,8 +227,8 @@ PMETS *pmet_add_source( char *name )
 		return NULL;
 	}
 
-	ps = (PMETS *) allocz( sizeof( PMETS ) );
-	ps->name = str_dup( name, l );
+	ps = (PMETS *) mem_perm( sizeof( PMETS ) );
+	ps->name = str_perm( name, l );
 	ps->nlen = l;
 	ps->sse  = sse;
 

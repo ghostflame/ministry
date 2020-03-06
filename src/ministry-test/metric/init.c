@@ -94,7 +94,7 @@ void metric_init_group( MGRP *g )
 	g->buf = mem_new_iobuf( IO_BUF_SZ );
 	g->buf->lifetime = ctl->metric->max_age;
 
-	pthread_mutex_init( &(g->lock), &(ctl->proc->mtxa) );
+	pthread_mutex_init( &(g->lock), &(ctl->proc->mem->mtxa) );
 
 	// do we need to merge parents?
 	if( g->parent )
@@ -127,7 +127,7 @@ void metric_init_group( MGRP *g )
 		metric_set_target_params( m );
 
 	// make our write buffer
-	g->wtmp = (char *) allocz( METRIC_WTMP_SZ );
+	g->wtmp = (char *) mem_perm( METRIC_WTMP_SZ );
 
 	// and start up the target - we get a new one
 	targets_start_one( &(g->target) );

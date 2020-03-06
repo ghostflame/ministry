@@ -301,7 +301,7 @@ int token_init( void )
 
 	if( ts->enable )
 	{
-		ts->hash      = (TOKEN **) allocz( ts->hsize * sizeof( TOKEN * ) );
+		ts->hash      = (TOKEN **) mem_perm( ts->hsize * sizeof( TOKEN * ) );
 		// convert to nsec
 		ts->lifetime *= 1000000;
 	}
@@ -327,7 +327,7 @@ TOKENS *token_setup( void )
 {
 	TOKENS *ts;
 
-	ts           = (TOKENS *) allocz( sizeof( TOKENS ) );
+	ts           = (TOKENS *) mem_perm( sizeof( TOKENS ) );
 	ts->hsize    = hash_size( "tiny" );
 	ts->lifetime = DEFAULT_TOKEN_LIFETIME;
 	// off by default
@@ -336,7 +336,7 @@ TOKENS *token_setup( void )
 	// all types by default
 	ts->mask     = DEFAULT_TOKEN_MASK;
 
-	pthread_mutex_init( &(ts->lock), &(_proc->mtxa) );
+	pthread_mutex_init( &(ts->lock), &(_proc->mem->mtxa) );
 
 	return ts;
 }

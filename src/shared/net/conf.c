@@ -74,7 +74,7 @@ void net_host_callbacks( tcp_fn *setup, tcp_fn *finish )
 
 NET_CTL *net_config_defaults( void )
 {
-	_net              = (NET_CTL *) allocz( sizeof( NET_CTL ) );
+	_net              = (NET_CTL *) mem_perm( sizeof( NET_CTL ) );
 	_net->dead_time   = NET_DEAD_CONN_TIMER;
 	_net->rcv_tmout   = NET_RCV_TMOUT;
 
@@ -111,8 +111,8 @@ int net_add_prefixes( char *name, int len )
 		}
 
 	p = (NET_PFX *) allocz( sizeof( NET_PFX ) );
-	p->name = str_dup( w.wd[0], w.len[0] );
-	p->text = str_dup( w.wd[1], w.len[1] );
+	p->name = str_perm( w.wd[0], w.len[0] );
+	p->text = str_perm( w.wd[1], w.len[1] );
 
 	p->next = _net->prefix;
 	_net->prefix = p;
@@ -363,13 +363,13 @@ int net_config_line( AVP *av )
 			if( w->wc > 0 )
 			{
 				nt->udp_count = w->wc;
-				nt->udp       = (NET_PORT **) allocz( w->wc * sizeof( NET_PORT * ) );
+				nt->udp       = (NET_PORT **) mem_perm( w->wc * sizeof( NET_PORT * ) );
 
 				debug( "Discovered %d udp ports for %s", w->wc, nt->label );
 
 				for( i = 0; i < w->wc; ++i )
 				{
-					nt->udp[i]       = (NET_PORT *) allocz( sizeof( NET_PORT ) );
+					nt->udp[i]       = (NET_PORT *) mem_perm( sizeof( NET_PORT ) );
 					nt->udp[i]->port = (unsigned short) strtoul( w->wd[i], NULL, 10 );
 					nt->udp[i]->type = nt;
 				}

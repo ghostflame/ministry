@@ -44,7 +44,7 @@ void main_loop( void )
 
 void main_create_conf( void )
 {
-	ctl				= (RCTL *) allocz( sizeof( RCTL ) );
+	ctl				= (RCTL *) mem_perm( sizeof( RCTL ) );
 	ctl->proc		= app_control( );
 	ctl->mem		= memt_config_defaults( );
 	ctl->relay		= relay_config_defaults( );
@@ -58,13 +58,13 @@ void main_create_conf( void )
 
 
 
-int main( int ac, char **av, char **env )
+int main( int ac, char **av, const char **env )
 {
 	char *pidfile = NULL, *optstr;
 	int oc;
 
 	// start us up
-	app_init( "carbon-copy", "ministry" );
+	app_init( "carbon-copy", "ministry", 0 );
 
 	// set out default HTTP ports
 	http_set_default_ports( CC_DEFAULT_HTTP_PORT, CC_DEFAULT_HTTPS_PORT );

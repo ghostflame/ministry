@@ -24,11 +24,10 @@ BUF *strbuf( uint32_t size )
 	if( size < 128 )
 		size += 24;
 
-	sz       = mem_alloc_size( size );
-	b->space = (char *) allocz( sz );
-	b->sz    = (uint32_t) sz;
+	sz     = mem_alloc_size( size );
+	b->buf = (char *) allocz( sz );
+	b->sz  = (uint32_t) sz;
 
-	b->buf = b->space;
 	return b;
 }
 
@@ -37,8 +36,8 @@ void strbuf_free( BUF *b )
 	if( !b )
 		return;
 
-	if( b->space )
-		free( b->space );
+	if( b->buf )
+		free( b->buf );
 
 	free( b );
 }
@@ -62,25 +61,20 @@ BUF *strbuf_resize( BUF *b, uint32_t size )
 
 	if( sz > b->sz )
 	{
-		old = b->space;
+		old = b->buf;
 
-		b->space  = (char *) allocz( sz );
-		b->sz     = sz;
-		b->buf    = b->space;
+		b->buf = (char *) allocz( sz );
+		b->sz  = sz;
 
 		if( b->len > 0 )
-			memcpy( b->space, old, b->len );
-
-		free( old );
+			memcpy( b->buf, old, b->len );
 	}
-
-	b->len    = 0;
-	b->buf[0] = '\0';
 
 	return b;
 }
 
-BUF *strbuf_copy( BUF *b, char *str, int len )
+
+BUF *strbuf_copy( BUF *b, const char *str, int len )
 {
 	if( !len )
 		len = strlen( str );
@@ -93,12 +87,13 @@ BUF *strbuf_copy( BUF *b, char *str, int len )
 
 	memcpy( b->buf, str, len );
 	b->len = len;
-	b->buf[b->len] = '\0';
+
+	buf_terminate( b );
 
 	return b;
 }
 
-int strbuf_copymax( BUF *b, char *str, int len )
+int strbuf_copymax( BUF *b, const char *str, int len )
 {
 	int max;
 
@@ -111,13 +106,14 @@ int strbuf_copymax( BUF *b, char *str, int len )
 
 	memcpy( b->buf, str, len );
 	b->len = len;
-	b->buf[b->len] = '\0';
+
+	buf_terminate( b );
 
 	return len;
 }
 
 
-BUF *strbuf_add( BUF *b, char *str, int len )
+BUF *strbuf_add( BUF *b, const char *str, int len )
 {
 	if( !len )
 		len = strlen( str );
@@ -130,7 +126,8 @@ BUF *strbuf_add( BUF *b, char *str, int len )
 
 	memcpy( b->buf + b->len, str, len );
 	b->len += len;
-	b->buf[b->len] = '\0';
+
+	buf_terminate( b );
 
 	return b;
 }
@@ -148,11 +145,10 @@ BUF *strbuf_json( BUF *b, json_object *o, int done )
 	if( (uint32_t) l > b->sz )
 		strbuf_resize( b, l + 2 );
 
-	memcpy( b->buf, str, (int) l );
-	//b->buf[l++] = '\n';
-	b->buf[l] = '\0';
-
 	b->len = (uint32_t) l;
+	memcpy( b->buf, str, b->len );
+
+	buf_terminate( b );
 
 	if( done )
 		json_object_put( o );
@@ -160,7 +156,7 @@ BUF *strbuf_json( BUF *b, json_object *o, int done )
 	return b;
 }
 
-BUF *strbuf_create( char *str, int len )
+BUF *strbuf_create( const char *str, int len )
 {
 	int k, l;
 	BUF *b;
@@ -203,7 +199,7 @@ void strbuf_keep( BUF *b, int len )
         }
     }
 
-    b->buf[len] = '\0';
     b->len = (uint32_t) len;
+    buf_terminate( b );
 }
 

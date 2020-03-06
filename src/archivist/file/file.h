@@ -121,8 +121,8 @@ store_callback file_finish_one;
 throw_fn file_writer;
 
 
-int file_choose_metric( char *name );
-char *file_report_metric( int mval );
+int file_choose_metric( const char *name );
+const char *file_report_metric( int mval );
 
 void file_read( RKFL *r, RKQR *qry );
 void file_update( RKFL *r, PNT *points, int count );

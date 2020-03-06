@@ -74,12 +74,6 @@ struct lockless_counter
 	uint64_t				prev;
 };
 
-struct hash_size_data
-{
-	const char			*	name;
-	uint64_t				size;
-};
-
 
 struct av_pair
 {
@@ -109,7 +103,7 @@ int64_t get_rand( int64_t n );
 void microsleep( int64_t usec );
 
 // parse a timespan, eg 10s, 40w, 2mo
-int time_span_usec( char *str, int64_t *usec );
+int time_span_usec( const char *str, int64_t *usec );
 
 // get a percentage - 1-100
 int8_t percent( void );
@@ -131,17 +125,17 @@ int setlimit( int res, int64_t val );
 uint64_t lockless_fetch( LLCT *l );
 
 // read a file into memory
-int read_file( char *path, char **buf, int *len, int perm, char *desc );
+int read_file( const char *path, char **buf, int *len, int perm, const char *desc );
 
 // handle any number type
 // returns the type it thought it was
-int parse_number( char *str, int64_t *iv, double *dv );
+int parse_number( const char *str, int64_t *iv, double *dv );
 
 // parse a file for json
-json_object *parse_json_file( FILE *fh, char *path );
+json_object *parse_json_file( FILE *fh, const char *path );
 
 // create a json result and put it in a buffer
-void create_json_result( BUF *buf, int ok, char *fmt, ... );
+void create_json_result( BUF *buf, int ok, const char *fmt, ... );
 
 
 // is this an http url
@@ -151,7 +145,7 @@ enum str_url_types
 	STR_URL_YES,
 	STR_URL_SSL
 };
-int is_url( char *str );
+int is_url( const char *str );
 
 
 // easier av reads
@@ -162,7 +156,7 @@ int is_url( char *str );
 #define av_intK( _v )		av_int( _v ); _v <<= 10
 
 #define av_copy( _v )		str_copy( _v->vptr, _v->vlen )
-#define av_copyp( _v )		str_dup( _v->vptr, _v->vlen )
+#define av_copyp( _v )		str_perm( _v->vptr, _v->vlen )
 
 
 // flags field laziness
@@ -194,7 +188,7 @@ int is_url( char *str );
 
 
 // hash size lookup
-uint64_t hash_size( char *str );
+uint64_t hash_size( const char *str );
 
 
 #endif

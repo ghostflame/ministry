@@ -37,7 +37,7 @@ enum data_conn_type
 struct data_type_params
 {
 	uint8_t				type;
-	char			*	name;
+	const char		*	name;
 	line_fn			*	lf;
 	line_fn			*	pf;
 	add_fn			*	af;
@@ -47,7 +47,7 @@ struct data_type_params
 	uint16_t			port;
 	int64_t				thrd;
 	int8_t				styl;
-	char			*	sock;
+	const char		*	sock;
 	NET_TYPE		*	nt;
 	ST_CFG			*	stc;
 };
@@ -135,11 +135,11 @@ struct data_hash_entry	// size 104
 };
 
 
-uint64_t data_path_hash_wrap( char *path, int len );
+uint64_t data_path_hash_wrap( const char *path, int len );
 
-DHASH *data_locate( char *path, int len, int type );
+DHASH *data_locate( const char *path, int len, int type );
 DHASH *data_find_dhash( const char *path, int len, ST_CFG *c );
-DHASH *data_get_dhash( char *path, int len, ST_CFG *c );
+DHASH *data_get_dhash( const char *path, int len, ST_CFG *c );
 
 
 dupd_fn data_update_stats;

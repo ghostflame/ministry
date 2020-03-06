@@ -16,7 +16,7 @@ RDATA *mem_new_rdata( void )
 
 	if( !r->linit )
 	{
-		pthread_mutex_init( &(r->lock), &(ctl->proc->mtxa) );
+		pthread_mutex_init( &(r->lock), &(ctl->proc->mem->mtxa) );
 		r->linit = 1;
 	}
 
@@ -51,7 +51,7 @@ HBUFS *mem_new_hbufs( void )
 
 	// make space for buffers
 	if( !h->bufs )
-		h->bufs = (IOBUF **) allocz( RELAY_MAX_TARGETS * sizeof( IOBUF * ) );
+		h->bufs = (IOBUF **) mem_perm( RELAY_MAX_TARGETS * sizeof( IOBUF * ) );
 
 	return h;
 }
@@ -126,7 +126,7 @@ MEMT_CTL *memt_config_defaults( void )
 {
 	MEMT_CTL *m;
 
-	m = (MEMT_CTL *) allocz( sizeof( MEMT_CTL ) );
+	m = (MEMT_CTL *) mem_perm( sizeof( MEMT_CTL ) );
 	m->hbufs = mem_type_declare( "hbufs", sizeof( HBUFS ), MEM_ALLOCSZ_HBUFS, 0, 1 );
 	m->rdata = mem_type_declare( "rdata", sizeof( RDATA ), MEM_ALLOCSZ_RDATA, 0, 1 );
 

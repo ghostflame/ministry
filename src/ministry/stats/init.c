@@ -112,7 +112,7 @@ void stats_init_control( ST_CFG *c, int alloc_data )
 
 	// create the hash structure
 	if( alloc_data )
-		c->data = (DHASH **) allocz( c->hsize * sizeof( DHASH * ) );
+		c->data = (DHASH **) mem_perm( c->hsize * sizeof( DHASH * ) );
 
 	// convert msec to usec
 	c->period *= 1000;
@@ -121,7 +121,7 @@ void stats_init_control( ST_CFG *c, int alloc_data )
 	c->offset  = c->offset % c->period;
 
 	// make the control structures
-	c->ctls = (ST_THR *) allocz( c->threads * sizeof( ST_THR ) );
+	c->ctls = (ST_THR *) mem_perm( c->threads * sizeof( ST_THR ) );
 
 	w.wc = 4;
 	w.wd[0] = "type";
@@ -140,10 +140,10 @@ void stats_init_control( ST_CFG *c, int alloc_data )
 		// worker path
 		snprintf( idbuf, 12, "%lu", t->id );
 		l = snprintf( wkrstrbuf, 128, "workers.%s.%s", c->name, idbuf );
-		t->wkrstr = str_dup( wkrstrbuf, l );
+		t->wkrstr = str_perm( wkrstrbuf, l );
 
 		// timestamp buffers
-		t->ts = (BUF **) allocz( ctl->tgt->set_count * sizeof( BUF * ) );
+		t->ts = (BUF **) mem_perm( ctl->tgt->set_count * sizeof( BUF * ) );
 		for( j = 0; j < ctl->tgt->set_count; ++j )
 			t->ts[j] = strbuf( TSBUF_SZ );
 
@@ -151,7 +151,7 @@ void stats_init_control( ST_CFG *c, int alloc_data )
 		t->path = strbuf( PATH_SZ );
 
 		// and make space for a buffer for each target set we must write to
-		t->bp = (IOBUF **) allocz( ctl->tgt->set_count * sizeof( IOBUF * ) );
+		t->bp = (IOBUF **) mem_perm( ctl->tgt->set_count * sizeof( IOBUF * ) );
 
 		// make some floats workspace - we realloc this if needed
 		if( c->type == STATS_TYPE_STATS )
@@ -190,7 +190,7 @@ void stats_init_histograms( void )
 	{
 		info( "There are no configured histograms - installing a dummy one." );
 
-		h             = (ST_HIST *) allocz( sizeof( ST_HIST ) );
+		h             = (ST_HIST *) mem_perm( sizeof( ST_HIST ) );
 		h->rgx        = regex_list_create( 1 );
 		h->bounds     = (double *) allocz( sizeof( double ) );
 		h->bounds[0]  = 1.0;

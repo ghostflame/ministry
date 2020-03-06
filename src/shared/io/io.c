@@ -19,7 +19,7 @@ void io_sock_set_peer( SOCK *s, struct sockaddr_in *peer )
 	s->peer = *peer;
 
 	if( !s->name )
-		s->name = str_perm( 32 );
+		s->name = mem_perm( 32 );
 
 	snprintf( s->name, 32, "%s:%hu", inet_ntoa( peer->sin_addr ),
 		ntohs( peer->sin_port ) );
@@ -69,7 +69,7 @@ int io_init( void )
 	i->lock_size = 1 << i->lock_bits;
 	i->lock_mask = i->lock_size - 1;
 
-	i->locks = (io_lock_t *) allocz( i->lock_size * sizeof( io_lock_t ) );
+	i->locks = (io_lock_t *) mem_perm( i->lock_size * sizeof( io_lock_t ) );
 
 	for( k = 0; k < i->lock_size; ++k )
 	{

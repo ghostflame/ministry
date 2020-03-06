@@ -63,10 +63,10 @@ int __http_add_handler( char *path, char *desc, void *arg, int method, http_call
 		return -1;
 	}
 
-	p = (HTPATH *) allocz( sizeof( HTPATH ) );
+	p        = (HTPATH *) mem_perm( sizeof( HTPATH ) );
 	p->plen  = len;
-	p->path  = str_dup( path, len );
-	p->desc  = str_dup( desc, 0 );
+	p->path  = str_perm( path, len );
+	p->desc  = str_perm( desc, 0 );
 	p->arg   = arg;
 	p->flags = flags;
 	p->list  = hd;

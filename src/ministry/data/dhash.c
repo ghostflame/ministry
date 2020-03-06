@@ -24,7 +24,7 @@ static const uint64_t data_path_hash_primes[8] =
  *
  * It replaces an xor based hash that showed too many collisions.
  */
-__attribute__((hot)) static inline uint64_t data_path_hash( char *str, int len )
+__attribute__((hot)) static inline uint64_t data_path_hash( const char *str, int len )
 {
 	register uint64_t sum = 5381;
 	register int ctr, rem;
@@ -65,7 +65,7 @@ __attribute__((hot)) static inline uint64_t data_path_hash( char *str, int len )
 		sum += ( sum << 5 ) + *p++;
 
 	// and capture the rest
-	str = (char *) p;
+	str = (const char *) p;
 	while( rem-- > 0 )
 		sum += *str++ * data_path_hash_primes[rem];
 
@@ -73,7 +73,7 @@ __attribute__((hot)) static inline uint64_t data_path_hash( char *str, int len )
 }
 
 
-uint64_t data_path_hash_wrap( char *str, int len )
+uint64_t data_path_hash_wrap( const char *str, int len )
 {
 	return data_path_hash( str, len );
 }
@@ -101,7 +101,7 @@ uint32_t data_get_id( ST_CFG *st )
 
 
 
-__attribute__((hot)) static inline DHASH *data_find_path( DHASH *list, uint64_t hval, char *path, int len )
+__attribute__((hot)) static inline DHASH *data_find_path( DHASH *list, uint64_t hval, const char *path, int len )
 {
 	register DHASH *h;
 
@@ -117,7 +117,7 @@ __attribute__((hot)) static inline DHASH *data_find_path( DHASH *list, uint64_t 
 
 
 
-DHASH *data_locate( char *path, int len, int type )
+DHASH *data_locate( const char *path, int len, int type )
 {
 	uint64_t hval;
 	ST_CFG *c;
@@ -254,7 +254,7 @@ DHASH *data_find_dhash( const char *path, int len, ST_CFG *c )
 }
 
 
-__attribute__((hot)) DHASH *data_get_dhash( char *path, int len, ST_CFG *c )
+__attribute__((hot)) DHASH *data_get_dhash( const char *path, int len, ST_CFG *c )
 {
 	uint64_t hval, idx;
 	DHASH *d;

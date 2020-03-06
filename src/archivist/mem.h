@@ -33,7 +33,7 @@ struct memt_control
 };
 
 
-TEL *mem_new_treel( char *str, int len );
+TEL *mem_new_treel( const char *str, int len );
 void mem_free_treel( TEL **t );
 void mem_free_treel_branch( TEL *t );
 

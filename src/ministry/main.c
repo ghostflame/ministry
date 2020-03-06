@@ -72,7 +72,7 @@ void main_loop( void )
 
 void main_create_conf( void )
 {
-	ctl             = (MIN_CTL *) allocz( sizeof( MIN_CTL ) );
+	ctl             = (MIN_CTL *) mem_perm( sizeof( MIN_CTL ) );
 	ctl->proc       = app_control( );
 	ctl->mem        = memt_config_defaults( );
 	ctl->gc         = gc_config_defaults( );
@@ -94,13 +94,13 @@ void main_create_conf( void )
 }
 
 
-int main( int ac, char **av, char **env )
+int main( int ac, char **av, const char **env )
 {
 	char *pidfile = NULL, *optstr;
 	int oc;
 
 	// start the app up
-	app_init( "ministry", "ministry" );
+	app_init( "ministry", "ministry", 0 );
 
 	// make our combined arg string
 	if( !( optstr = config_arg_string( "p:" ) ) )

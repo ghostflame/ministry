@@ -165,7 +165,7 @@ void gc_loop( THRD *t )
 
 GC_CTL *gc_config_defaults( void )
 {
-	GC_CTL *g = (GC_CTL *) allocz( sizeof( GC_CTL ) );
+	GC_CTL *g = (GC_CTL *) mem_perm( sizeof( GC_CTL ) );
 
 	g->enabled        = 0;
 	g->thresh         = DEFAULT_GC_THRESH;

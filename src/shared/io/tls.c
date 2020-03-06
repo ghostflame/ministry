@@ -156,7 +156,7 @@ IOTLS *io_tls_make_session( uint32_t flags, char *peername )
 	if( peername )
 	{
 		t->plen = strlen( peername );
-		t->peer = str_dup( peername, t->plen );
+		t->peer = str_perm( peername, t->plen );
 	}
 
 	t->init = 1;
@@ -179,3 +179,4 @@ void io_tls_end_session( SOCK *s )
 		t->init = 0;
 	}
 }
+

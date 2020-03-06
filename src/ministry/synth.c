@@ -305,7 +305,7 @@ void synth_init( void )
 
 SYN_CTL *synth_config_defaults( void )
 {
-	return (SYN_CTL *) allocz( sizeof( SYN_CTL ) );
+	return (SYN_CTL *) mem_perm( sizeof( SYN_CTL ) );
 }
 
 
@@ -454,7 +454,7 @@ int synth_config_line( AVP *av )
 		{
 			// make a new synth and copy the contents
 			// yes we are copying the pointers
-			ns = (SYNTH *) allocz( sizeof( SYNTH ) );
+			ns = (SYNTH *) mem_perm( sizeof( SYNTH ) );
 			*ns = *s;
 
 			// and link it

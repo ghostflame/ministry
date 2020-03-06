@@ -257,13 +257,13 @@ IPNET *iplist_parse_spec( char *str, int len )
 		// make a permanent copy of the config parameter
 		if( sp && len )
 		{
-			n->text = str_dup( sp, len );
+			n->text = str_copy( sp, len );
 			n->tlen = len;
 		}
 
 		ina.s_addr = n->net;
 		snprintf( buf, 32, "%s/%hhd", inet_ntoa( ina ), n->bits );
-		n->name = str_dup( buf, 0 );
+		n->name = str_copy( buf, 0 );
 	}
 
 	return n;

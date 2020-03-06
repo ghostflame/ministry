@@ -25,7 +25,7 @@ typedef pthread_spinlock_t		dhash_lock_t;
 typedef pthread_mutex_t			dhash_lock_t;
 #define lock_dhash( d )			pthread_mutex_lock( d->lock )
 #define unlock_dhash( d )		pthread_mutex_unlock( d->lock )
-#define linit_dhash( d )		pthread_mutex_init( d->lock, &(ctl->proc->mtxa) )
+#define linit_dhash( d )		pthread_mutex_init( d->lock, &(ctl->proc->mem->mtxa) )
 
 #endif
 

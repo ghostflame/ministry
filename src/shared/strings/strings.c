@@ -12,56 +12,21 @@
 
 
 
-// we abuse the BUF struct somewhat
-// it just has all the right parts
-char *str_perm( uint32_t len )
-{
-	char *p;
-
-	// ensure we are 4-byte aligned
-	if( len & 0x3 )
-		len += 4 - ( len % 4 );
-
-	// just malloc big blocks
-	if( len >= ( _str->perm->sz >> 8 ) )
-	{
-		return (char *) allocz( len );
-	}
-
-	pthread_mutex_lock( &(_str->perm_lock) );
-
-	if( len > _str->perm->len )
-	{
-		_str->perm->space = (char *) allocz( _str->perm->sz );
-		_str->perm->buf   = _str->perm->space;
-		_str->perm->len   = _str->perm->sz;
-	}
-
-	p = _str->perm->buf;
-	_str->perm->buf += len;
-	_str->perm->len -= len;
-
-	pthread_mutex_unlock( &(_str->perm_lock) );
-
-	return p;
-}
-
-
-char *str_dup( char *src, int len )
+char *str_perm( const char *src, int len )
 {
 	char *p;
 
 	if( !len )
 		len = strlen( src );
 
-	p = str_perm( (uint32_t) ( len + 1 ) );
+	p = mem_perm( (uint32_t) ( len + 1 ) );
 	memcpy( p, src, len );
 	p[len] = '\0';
 
 	return p;
 }
 
-char *str_copy( char *src, int len )
+char *str_copy( const char *src, int len )
 {
 	char *p;
 
@@ -77,7 +42,7 @@ char *str_copy( char *src, int len )
 
 
 // a capped version of strlen
-int str_nlen( char *src, int max )
+int str_nlen( const char *src, int max )
 {
 	char *p;
 
@@ -86,6 +51,18 @@ int str_nlen( char *src, int max )
 
 	return max;
 }
+
+
+
+int str_search( const char *str, const char **list, int len )
+{
+	while( len-- > 0 )
+		if( !strcasecmp( str, list[len] ) )
+			break;
+
+	return len;
+}
+
 
 
 //
@@ -228,17 +205,16 @@ __attribute__((hot)) int trim( char **str, int *len )
 
 
 // compare two strings as potential for one prefix of the other
-int strprefix( char *a, char *b )
+int strprefix( const char *pr, const char *of )
 {
-	while( *a && *b && *a == *b )
+	while( *pr && *of && *pr == *of )
 	{
-		++a;
-		++b;
+		++pr;
+		++of;
 	}
 
-	// if one string ran out, it's zero
-	// otherwise, non-zero
-	return ((int) *a) * ((int) *b);
+	// did we run out of prefix?
+	return ( *pr ) ? 1 : 0;
 }
 
 

@@ -12,10 +12,6 @@
 #define SHARED_STRINGUTILS_LOCAL_H
 
 
-// for fast string allocation, free not possible
-#define PERM_SPACE_BLOCK	0x1000000   // 1M
-
-
 
 #define perm_lock( )		pthread_mutex_lock(   &(_str->perm_lock) )
 #define perm_unlock( )		pthread_mutex_unlock( &(_str->perm_lock) )
@@ -29,7 +25,6 @@
 
 
 #include "shared.h"
-
 
 
 struct string_store

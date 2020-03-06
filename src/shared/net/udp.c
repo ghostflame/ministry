@@ -96,7 +96,7 @@ void udp_loop_checks( THRD *t )
 	sa.sin_port = htons( n->port );
 
 	// make some space for hosts
-	n->phosts = (HOST **) allocz( NET_IP_HASHSZ * sizeof( HOST * ) );
+	n->phosts = (HOST **) mem_perm( NET_IP_HASHSZ * sizeof( HOST * ) );
 	n->phsz = NET_IP_HASHSZ;
 
 	h  = mem_new_host( &sa, NET_BUF_SZ );

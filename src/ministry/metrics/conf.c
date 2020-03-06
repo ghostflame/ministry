@@ -71,10 +71,10 @@ int metrics_add_attr( METAL *m, char *str, int len )
 		return -1;
 	}
 
-	tmp.name = str_dup( str, len );
+	tmp.name = str_perm( str, len );
 	tmp.len  = len;
 
-	a = (METAT *) allocz( sizeof( METAT ) );
+	a = (METAT *) mem_perm( sizeof( METAT ) );
 	memcpy( a, &tmp, sizeof( METAT ) );
 
 	a->next = m->ats;
@@ -89,12 +89,12 @@ int metrics_add_attr( METAL *m, char *str, int len )
 
 MET_CTL *metrics_config_defaults( void )
 {
-	MET_CTL *m = (MET_CTL *) allocz( sizeof( MET_CTL ) );
+	MET_CTL *m = (MET_CTL *) mem_perm( sizeof( MET_CTL ) );
 	METAL *none;
 
 	// we get a free attributes list called "none"
-	none = (METAL *) allocz( sizeof( METAL ) );
- 	none->name = str_dup( "none", 4 );
+	none = (METAL *) mem_perm( sizeof( METAL ) );
+ 	none->name = str_perm( "none", 4 );
 
  	m->alists = none;
  	m->alist_ct = 1;

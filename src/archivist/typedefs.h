@@ -25,6 +25,7 @@ typedef struct tree_element         TEL;
 typedef struct query_path           QP;
 typedef struct query_data           QRY;
 typedef struct query_fn             QRFN;
+typedef struct query_fn_call		QRFC;
 
 typedef struct data_point           PNT;
 typedef struct data_points          PTS;
@@ -41,6 +42,6 @@ typedef struct file_query           RKQR;
 
 // function types
 typedef void file_rd_fn ( RKFL *, RKBKT *, RKQR * );
-typedef int query_data_fn ( QRY *q, PTL *in, PTL **out, int argc, char **argv );
+typedef int query_data_fn ( QRY *q, PTL *in, PTL **out, int argc, void **argv );
 
 #endif

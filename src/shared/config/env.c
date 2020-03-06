@@ -89,7 +89,7 @@ int config_env_path( char *path, int len )
 
 #define ENV_MAX_LENGTH			65536
 
-int config_read_env( char **env )
+int config_read_env( const char **env )
 {
 	char buf[ENV_MAX_LENGTH];
 	int l;

@@ -10,7 +10,7 @@
 #include "archivist.h"
 
 
-TEL *mem_new_treel( char *str, int len )
+TEL *mem_new_treel( const char *str, int len )
 {
 	TEL *t = mtype_new( ctl->mem->treel );
 

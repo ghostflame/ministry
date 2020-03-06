@@ -43,7 +43,7 @@ void metrics_sort_attrs( METAL *a )
 
 
 
-METPR *metrics_find_profile( char *name )
+METPR *metrics_find_profile( const char *name )
 {
 	METPR *pr;
 
@@ -67,7 +67,7 @@ METPR *metrics_find_profile( char *name )
 
 
 
-METRY *metrics_find_entry( MDATA *m, char *str, int len )
+METRY *metrics_find_entry( MDATA *m, const char *str, int len )
 {
 	SSTE *se;
 

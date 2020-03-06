@@ -10,7 +10,7 @@
 
 #include "shared.h"
 
-void loop_end( char *reason )
+void loop_end( const char *reason )
 {
 	info( "Shutting down polling: %s", reason );
 	runf_add( RUN_SHUTDOWN );

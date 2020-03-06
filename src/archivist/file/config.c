@@ -14,7 +14,7 @@ FILE_CTL *_file = NULL;
 
 
 
-void file_set_base_path( char *path, int len )
+void file_set_base_path( const char *path, int len )
 {
 	if( !len )
 		len = strlen( path );
@@ -34,7 +34,7 @@ void file_set_base_path( char *path, int len )
 
 
 
-int file_parse_buckets( RKBMT *m, char *str, int len )
+int file_parse_buckets( RKBMT *m, const char *str, int len )
 {
 	int64_t period, count;
 	WORDS w, v;
@@ -107,7 +107,7 @@ int file_init( void )
 
 		m = (RKBMT *) allocz( sizeof( RKBMT ) );
 		m->is_default = 1;
-		m->name = str_dup( "Default bucket block", 0 );
+		m->name = str_perm( "Default bucket block", 0 );
 		file_parse_buckets( m, RKV_DEFAULT_RET, strlen( RKV_DEFAULT_RET ) );
 
 		_file->ret_default = m;
@@ -260,7 +260,7 @@ int file_config_line( AVP *av )
 				return -1;
 			}
 
-			m->name = str_dup( av->vptr, av->vlen );
+			m->name = str_perm( av->vptr, av->vlen );
 		}
 		else if( attIs( "match" ) )
 		{
@@ -295,7 +295,7 @@ int file_config_line( AVP *av )
 		{
 			if( !m->name )
 			{
-				m->name = str_perm( 24 );
+				m->name = mem_perm( 24 );
 				snprintf( m->name, 24, "retention block %d", _file->rblocks );
 			}
 

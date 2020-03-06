@@ -10,7 +10,7 @@
 #include "shared.h"
 
 
-int fs_pidfile_mkdir( char *filepath )
+int fs_pidfile_mkdir( const char *filepath )
 {
 	char dbuf[2028], *s;
 	int l;

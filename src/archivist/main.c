@@ -55,22 +55,19 @@ void main_create_conf( void )
 	ctl->netw       = network_config_defaults( );
 	ctl->file       = file_config_defaults( );
 
-	// we don't do targets
-	config_deregister_section( "target" );
-
 	config_register_section( "tree",  &tree_config_line );
 	config_register_section( "query", &query_config_line );
 	config_register_section( "file",  &file_config_line );
 }
 
 
-int main( int ac, char **av, char **env )
+int main( int ac, char **av, const char **env )
 {
 	char *pidfile = NULL, *optstr;
 	int oc;
 
 	// start the app up
-	app_init( "archivist", "ministry" );
+	app_init( "archivist", "ministry", RUN_NO_TARGET );
 
 	// set our http ports
 	http_set_default_ports( RK_DEFAULT_HTTP_PORT, RK_DEFAULT_HTTPS_PORT );

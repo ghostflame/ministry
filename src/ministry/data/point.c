@@ -12,7 +12,7 @@
 
 
 
-__attribute__((hot)) void data_point_histo( char *path, int len, char *dat )
+__attribute__((hot)) void data_point_histo( const char *path, int len, const char *dat )
 {
 	double v;
 	DHASH *d;
@@ -25,8 +25,8 @@ __attribute__((hot)) void data_point_histo( char *path, int len, char *dat )
 
 
 
-// this has no associated update function - json won't send us 
-__attribute__((hot)) void data_point_gauge( char *path, int len, char *dat )
+// this has no associated update function - json won't send us
+__attribute__((hot)) void data_point_gauge( const char *path, int len, const char *dat )
 {
 	double v;
 	DHASH *d;
@@ -51,7 +51,7 @@ __attribute__((hot)) void data_point_gauge( char *path, int len, char *dat )
 
 
 
-__attribute__((hot)) void data_point_adder( char *path, int len, char *dat )
+__attribute__((hot)) void data_point_adder( const char *path, int len, const char *dat )
 {
 	double val;
 	DHASH *d;
@@ -72,7 +72,7 @@ __attribute__((hot)) void data_point_adder( char *path, int len, char *dat )
 }
 
 
-__attribute__((hot)) void data_point_stats( char *path, int len, char *dat )
+__attribute__((hot)) void data_point_stats( const char *path, int len, const char *dat )
 {
 	double v;
 	DHASH *d;

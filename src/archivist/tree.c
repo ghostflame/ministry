@@ -25,7 +25,7 @@ uint32_t tree_get_tid( void )
 
 // used by file_scan - done without locking
 // only inserts directory nodes
-TEL *tree_insert_node( TEL *prt, char *name )
+TEL *tree_insert_node( TEL *prt, const char *name )
 {
 	int len;
 	TEL *t;
@@ -48,7 +48,7 @@ TEL *tree_insert_node( TEL *prt, char *name )
 // used by file_scan - done without locking
 // only inserts leaf nodes
 // name shows up with the file extension on!
-int tree_insert_leaf( TEL *prt, char *name, char *path )
+int tree_insert_leaf( TEL *prt, const char *name, const char *path )
 {
 	int len;
 	TEL *t;

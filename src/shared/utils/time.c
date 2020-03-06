@@ -73,7 +73,7 @@ void microsleep( int64_t usec )
 	nanosleep( &slpr, NULL );
 }
 
-int time_span_usec( char *str, int64_t *usec )
+int time_span_usec( const char *str, int64_t *usec )
 {
 	int64_t v;
 	char *u;

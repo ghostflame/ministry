@@ -75,7 +75,7 @@ struct curlw_times
 
 struct curlw_handle
 {
-	char						*	url;
+	const char					*	url;
 	char						*	proxy;
 	FILE						*	fh;			// may be allocated by curl_to_buffer
 	struct curl_slist			*	hdrs;

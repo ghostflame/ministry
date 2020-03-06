@@ -17,7 +17,7 @@ IO_CTL *_io = NULL;
 
 IO_CTL *io_config_defaults( void )
 {
-	_io = (IO_CTL *) allocz( sizeof( IO_CTL ) );
+	_io = (IO_CTL *) mem_perm( sizeof( IO_CTL ) );
 	_io->lock_bits = IO_BLOCK_BITS;
 	_io->send_usec = IO_SEND_USEC;
 	_io->rc_msec   = IO_RECONN_DELAY;

@@ -115,7 +115,7 @@ int config_ignore_section( FILE *fh )
 
 
 // always returns a new string
-char *config_relative_path( char *inpath )
+char *config_relative_path( const char *inpath )
 {
 	char *ret;
 	int len;
@@ -302,7 +302,7 @@ int __config_read_file( FILE *fh )
 
 
 
-int config_read_file( char *path, int fail_ok )
+int config_read_file( const char *path, int fail_ok )
 {
 	FILE *fh = NULL;
 
@@ -331,7 +331,7 @@ int config_read_file( char *path, int fail_ok )
 
 
 
-int config_read_url( char *url, int fail_ok )
+int config_read_url( const char *url, int fail_ok )
 {
 	CURLWH ch;
 	int ret;
@@ -374,7 +374,7 @@ int config_read_url( char *url, int fail_ok )
 #undef CErr
 
 
-int config_read( char *inpath, WORDS *w )
+int config_read( const char *inpath, WORDS *w )
 {
 	int ret = 0, p_url = 0, p_ssl = 0, s, fail_ok = 0;
 	char *path;
@@ -477,7 +477,7 @@ Read_Done:
 
 
 
-void config_choose_section( CCTXT *c, char *section )
+void config_choose_section( CCTXT *c, const char *section )
 {
 	int i;
 
@@ -488,12 +488,6 @@ void config_choose_section( CCTXT *c, char *section )
 
 		if( !strcasecmp( config_sections[i].name, section ) )
 		{
-			if( config_sections[i].disabled )
-			{
-				fatal( "Config section '%s' is disabled and cannot be used.",
-					config_sections[i].name );
-				return;
-			}
 			c->section = &(config_sections[i]);
 			return;
 		}

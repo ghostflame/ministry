@@ -17,6 +17,109 @@ const char *filter_mode_names[FILTER_MODE_MAX] =
 
 
 
+int filter_get_matches( char *path, JSON *jo, RGXL **rl )
+{
+	int alen, i, ct;
+	JSON *jm, *je;
+	const char *s;
+
+	*rl = NULL;
+
+	if( !( jm = json_object_object_get( jo, "matches" ) )
+	 || json_object_get_type( jm ) != json_type_array )
+	{
+		warn( "No matches element found in filter %s.", path );
+		return -1;
+	}
+
+	alen = json_object_array_length( jm );
+
+	if( alen == 0 )
+	{
+		warn( "No match strings in array in filter %s.", path );
+		return -2;
+	}
+
+	*rl = regex_list_create( 0 );
+
+	for( ct = 0, i = 0; i < alen; ++i )
+	{
+		if( !( je = json_object_array_get_idx( jm, i ) )
+		 || json_object_get_type( je ) != json_type_string
+		 || !( s = json_object_get_string( je ) ) )
+			continue;
+
+		if( regex_list_add( (char *) s, 0, *rl ) == 0 )
+			ct++;
+		else
+			warn( "Filter file %s: invalid regex: %s", path, (char *) s );
+	}
+
+	if( ct == 0 )
+	{
+		warn( "No valid matches in array in filter %s.", path );
+		regex_list_destroy( *rl );
+		*rl = NULL;
+		return -3;
+	}
+
+	return 0;
+}
+
+
+int filter_get_sources( char *path, JSON *jo, IPLIST *l, FILT *fl )
+{
+	int alen, i, ct, len;
+	JSON *ji, *je;
+	const char *s;
+	IPNET *n;
+
+	if( ( !( ji = json_object_object_get( jo, "ips" ) )
+       && !( ji = json_object_object_get( jo, "source" ) ) )
+	 || json_object_get_type( ji ) != json_type_array )
+	{
+		warn( "No source IPs defined in filter %s.", path );
+		return -1;
+
+	}
+
+	alen = json_object_array_length( ji );
+
+	if( alen == 0 )
+	{
+		warn( "Empty source IP array in filter %s.", path );
+		return -2;
+	}
+
+	for( ct = 0, i = 0; i < alen; ++i )
+	{
+		if( !( je = json_object_array_get_idx( ji, i ) )
+		 || json_object_get_type( je ) != json_type_string
+		 || !( s = json_object_get_string( je ) )
+		 || !( len = json_object_get_string_len( je ) ) )
+			continue;
+
+		if( !( n = iplist_parse_spec( (char *) s, len ) ) )
+			continue;
+
+		n->act = IPLIST_POSITIVE;
+
+		if( iplist_append_net( l, &n ) == 0 )
+		{
+			n->data = mem_list_create( 0, NULL ); // doesn't need locking
+			ct++;
+		}
+
+		// add that to this IP net
+		mem_list_add_tail( (MEMHL *) n->data, fl );
+	}
+
+	return ct;
+}
+
+
+
+
 /*
  * Format:
  * {
@@ -35,15 +138,11 @@ const char *filter_mode_names[FILTER_MODE_MAX] =
 
 int filter_add_object( FCONF *conf, JSON *jo, char *path )
 {
-	int i, m, ct, ict, len, mc;
-	JSON *jm, *jt, *ji, *je;
 	const char *str;
 	RGXL *rl = NULL;
-	IPLIST *l;
-	IPNET *n;
+	JSON *jt, *je;
+	int m, mc;
 	FILT *fl;
-
-	l = conf->ipl;
 
 	// is this one disabled?
 	if( ( je = json_object_object_get( jo, "disabled" ) )
@@ -58,96 +157,33 @@ int filter_add_object( FCONF *conf, JSON *jo, char *path )
 	if( ( jt = json_object_object_get( jo, "type" ) )
 	 && ( str = json_object_get_string( jt ) ) )
 	{
-		for( i = FILTER_MODE_ALL; i < FILTER_MODE_MAX; ++i )
-			if( !strcasecmp( str, filter_mode_names[i] ) )
-			{
-				m = i;
-				break;
-			}
-
-		if( i == FILTER_MODE_MAX )
+		m = str_search( str, filter_mode_names, FILTER_MODE_MAX );
+		if( m < 0 )
 		{
 			warn( "Filter file %s has invalid mode: %s", path, str );
 			return -1;
 		}
 	}
 
-	if( ( !( ji = json_object_object_get( jo, "ips" ) )
-       && !( ji = json_object_object_get( jo, "source" ) ) )
-	 || json_object_get_type( ji ) != json_type_array
-	 || ( ict = (int) json_object_array_length( ji ) ) == 0 )
-	{
-		warn( "Filter file %s has no IPs array.", path );
-		return -1;
-	}
-
 	// do this bit first, tidy up is simpler
 	if( m != FILTER_MODE_ALL )
 	{
-		if( !( jm = json_object_object_get( jo, "matches" ) )
-		 || json_object_get_type( jm ) != json_type_array
-		 || ( ct = (int) json_object_array_length( jm ) ) == 0 )
-		{
-			warn( "Filter file %s has no matches array but mode %s.", path,
-				filter_mode_names[m] );
+		if( filter_get_matches( path, jo, &rl ) != 0 )
 			return -1;
-		}
-
-		rl = regex_list_create( 0 );
-
-		for( mc = 0, i = 0; i < ct; ++i )
-		{
-			if( !( je = json_object_array_get_idx( jm, i ) ) )
-				continue;
-
-			str = json_object_get_string( je );
-			if( regex_list_add( (char *) str, 0, rl ) == 0 )
-				mc++;
-			else
-				warn( "Filter file %s: invalid regex: %s", path, (char *) str );
-		}
-
-		if( mc == 0 )
-		{
-			warn( "Filter file %s had no valid regex matches but mode %s.", path,
-				filter_mode_names[m] );
-			free( rl );
-			return -1;
-		}
 	}
 
 	fl = (FILT *) allocz( sizeof( FILT ) );
 	fl->mode = m;
 	fl->matches = rl;
 
-	for( mc = 0, i = 0; i < ict; ++i )
-	{
-		if( !( je = json_object_array_get_idx( ji, i ) ) )
-			continue;
-
-		str = json_object_get_string( je );
-		len = json_object_get_string_len( je );
-
-		if( !( n = iplist_parse_spec( (char *) str, len ) ) )
-			continue;
-
-		n->act = IPLIST_POSITIVE;
-
-		if( iplist_append_net( l, &n ) == 0 )
-		{
-			n->data = mem_list_create( 0, NULL ); // doesn't need locking
-			mc++;
-		}
-
-		// add that to this IP net
-		mem_list_add_tail( (MEMHL *) n->data, fl );
-	}
+	mc = filter_get_sources( path, jo, conf->ipl, fl );
 
 	if( mc == 0 )
 	{
 		warn( "Filter file %s had no valid IP addresses/ranges.", path );
 		regex_list_destroy( rl );
 		free( fl );
+		return -1;
 	}
 
 	return 0;
@@ -180,9 +216,9 @@ int filter_scan_check( const struct dirent *d )
 int filter_scan_dir( char *dir, FCONF *conf )
 {
 	struct dirent **files, *d;
-	char pbuf[2048];
 	struct stat sb;
 	int i, l, ct;
+	char *pbuf;
 	JSON *jo;
 
 	info( "Reading filter dir %s", dir );
@@ -195,6 +231,8 @@ int filter_scan_dir( char *dir, FCONF *conf )
 	}
 
 	fs_treemon_add( conf->watch, dir, 1 );
+
+	pbuf = allocz( 2048 );
 
 	for( i = 0; i < ct; ++i )
 	{
@@ -231,6 +269,12 @@ int filter_scan_dir( char *dir, FCONF *conf )
 		fs_treemon_add( conf->watch, pbuf, 0 );
 	}
 
+	for( i = 0; i < ct; ++i )
+		free( files[i] );
+	
+	free( files );
+	free( pbuf );
+
 	return 0;
 }
 
@@ -259,7 +303,6 @@ int filter_load( void )
 
 	conf = (FCONF *) allocz( sizeof( FCONF ) );
 	conf->watch = fs_treemon_create( "\\.json$", NULL, &filter_on_change, conf );
-	conf->active = 1;
 
 	snprintf( nbuf, 64, "filter-list-%ld", ctl->proc->curr_time.tv_sec );
 	conf->ipl = iplist_create( nbuf, IPLIST_NEGATIVE, 0 );
@@ -274,6 +317,7 @@ int filter_load( void )
 	iplist_init_one( conf->ipl );
 
 	// swap them
+	conf->active = 1;
 	ctl->filt->fconf = conf;
 
 	if( prev )
@@ -311,7 +355,7 @@ void filter_order_reload( THRD *th )
 
 
 
-int filter_on_change( FTREE *ft, uint32_t mask, char *path, char *desc, void *arg )
+int filter_on_change( FTREE *ft, uint32_t mask, const char *path, const char *desc, void *arg )
 {
 	int throw = 0;
 

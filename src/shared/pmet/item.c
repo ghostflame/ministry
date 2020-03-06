@@ -45,7 +45,7 @@ PMET *pmet_item_create( PMETM *metric, PMETS *source, int gentype, void *genptr,
 		}
 	}
 
-	item = (PMET *) allocz( sizeof( PMET ) );
+	item = (PMET *) mem_perm( sizeof( PMET ) );
 	item->metric = metric;
 	item->source = source;
 	item->type = metric->type->type;
@@ -60,11 +60,11 @@ PMET *pmet_item_create( PMETM *metric, PMETS *source, int gentype, void *genptr,
 	switch( item->type )
 	{
 		case PMET_TYPE_SUMMARY:
-			item->value.summ = (PMET_SUMM *) allocz( sizeof( PMET_SUMM ) );
+			item->value.summ = (PMET_SUMM *) mem_perm( sizeof( PMET_SUMM ) );
 			break;
 
 		case PMET_TYPE_HISTOGRAM:
-			item->value.hist = (PMET_HIST *) allocz( sizeof( PMET_HIST ) );
+			item->value.hist = (PMET_HIST *) mem_perm( sizeof( PMET_HIST ) );
 			break;
 	}
 

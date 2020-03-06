@@ -24,7 +24,7 @@ static const uint64_t str_hash_primes[8] =
  *
  * It replaces an xor based hash that showed too many collisions.
  */
-__attribute__((hot)) static inline uint64_t str_hash( char *str, int len )
+__attribute__((hot)) static inline uint64_t str_hash( const char *str, int len )
 {
 	register uint64_t sum = 5381;
 	register int ctr, rem;
@@ -65,7 +65,7 @@ __attribute__((hot)) static inline uint64_t str_hash( char *str, int len )
 		sum += ( sum << 5 ) + *p++;
 
 	// and capture the rest
-	str = (char *) p;
+	str = (const char *) p;
 	while( rem-- > 0 )
 		sum += *str++ * str_hash_primes[rem];
 
@@ -131,9 +131,9 @@ int string_store_free_cb( SSTR *st, mem_free_cb *fp )
 }
 
 
-SSTR *string_store_create( int64_t sz, char *size, int *default_value, int freeable )
+SSTR *string_store_create( int64_t sz, const char *size, int *default_value, int freeable )
 {
-	SSTR *s = (SSTR *) allocz( sizeof( SSTR ) );
+	SSTR *s = (SSTR *) mem_perm( sizeof( SSTR ) );
 
 	if( sz )
 		s->hsz = sz;
@@ -143,7 +143,7 @@ SSTR *string_store_create( int64_t sz, char *size, int *default_value, int freea
 	if( !s->hsz )
 		s->hsz = hash_size( "medium" );
 
-	s->hashtable = (SSTE **) allocz( s->hsz * sizeof( SSTE * ) );
+	s->hashtable = (SSTE **) mem_perm( s->hsz * sizeof( SSTE * ) );
 	s->freeable  = freeable;
 
 	pthread_mutex_init( &(s->mtx), NULL );
@@ -165,7 +165,7 @@ SSTR *string_store_create( int64_t sz, char *size, int *default_value, int freea
 
 
 
-SSTE *string_store_look( SSTR *store, char *str, int len, int val_set )
+SSTE *string_store_look( SSTR *store, const char *str, int len, int val_set )
 {
 	uint64_t hv;
 	SSTE *e;
@@ -213,7 +213,7 @@ int string_store_locking( SSTR *store, int lk )
 	return 0;
 }
 
-SSTE *string_store_add_with_vals( SSTR *store, char *str, int len, int32_t *val, void *ptr )
+SSTE *string_store_add_with_vals( SSTR *store, const char *str, int len, int32_t *val, void *ptr )
 {
 	uint64_t hv, pos;
 	SSTE *e, *en;
@@ -263,7 +263,7 @@ SSTE *string_store_add_with_vals( SSTR *store, char *str, int len, int32_t *val,
 	{
 		e  = en;
 		en = NULL;
-		e->str = ( store->freeable ) ? str_copy( str, len ) : str_dup( str, len );
+		e->str = ( store->freeable ) ? str_copy( str, len ) : str_perm( str, len );
 		e->len = (uint16_t) len;
 		e->hv  = hv;
 

@@ -66,8 +66,8 @@ IPL_CTL *iplist_config_defaults( void )
 	int rv;
 
 	// make our ip network regex
-	_iplist = (IPL_CTL *) allocz( sizeof( IPL_CTL ) );
-	_iplist->netrgx = (regex_t *) allocz( sizeof( regex_t ) );
+	_iplist = (IPL_CTL *) mem_perm( sizeof( IPL_CTL ) );
+	_iplist->netrgx = (regex_t *) mem_perm( sizeof( regex_t ) );
 
 	pthread_mutex_init( &(_iplist->lock), NULL );
 

@@ -12,7 +12,7 @@
 #include "local.h"
 
 
-int config_handle_dir( char *path, WORDS *w )
+int config_handle_dir( const char *path, WORDS *w )
 {
 	int ret = 0, count = 0, must = 1, nl;
 	char fname[CONF_LINE_MAX];

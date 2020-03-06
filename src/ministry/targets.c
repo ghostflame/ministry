@@ -126,7 +126,7 @@ int targets_init( void )
 	// create the target sets
 	for( l = target_list_all( ); l; l = l->next )
 	{
-		s = (TSET *) allocz( sizeof( TSET ) );
+		s = (TSET *) mem_perm( sizeof( TSET ) );
 		s->targets = l;
 		s->type = (TTYPE *) l->targets->ptr;
 
@@ -142,7 +142,7 @@ int targets_init( void )
 	}
 
 	// and make the flat list of set pointers
-	c->setarr = (TSET **) allocz( c->set_count * sizeof( TSET * ) );
+	c->setarr = (TSET **) mem_perm( c->set_count * sizeof( TSET * ) );
 
 
 	// start each target set
@@ -200,7 +200,7 @@ int targets_set_type( TGT *t, char *type, int len )
 
 TGTS_CTL *targets_config_defaults( void )
 {
-	TGTS_CTL *t = (TGTS_CTL *) allocz( sizeof( TGTS_CTL ) );
+	TGTS_CTL *t = (TGTS_CTL *) mem_perm( sizeof( TGTS_CTL ) );
 	return t;
 }
 

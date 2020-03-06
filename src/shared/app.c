@@ -70,42 +70,50 @@ int set_limits( void )
 
 
 
-int app_init( char *name, char *cfgdir )
+int app_init( const char *name, const char *cfgdir, unsigned int flags )
 {
 	curl_version_info_data *cvid;
-	STR_CTL *sc;
+	MEM_CTL *mc;
 
-	// we need this first, to give us safe str_dup
-	sc = string_config_defaults( );
+	// we need this first, to give us safe str_perm
+	mc = mem_config_defaults( );
 
 	// create some stuff
 	config_defaults( name, cfgdir );
 
+	_proc->mem  = mc;
+	_proc->str  = string_config_defaults( );
 	_proc->log  = log_config_defaults( );
-	_proc->mem  = mem_config_defaults( );
-	_proc->pmet = pmet_config_defaults( );
-	_proc->http = http_config_defaults( );
 	_proc->io   = io_config_defaults( );
 	_proc->ipl  = iplist_config_defaults( );
-	_proc->tgt  = target_config_defaults( );
-	_proc->ha   = ha_config_defaults( );
 	_proc->net  = net_config_defaults( );
 	_proc->slk  = slack_config_defaults( );
-	_proc->str  = sc;
 
-	// set up our shared config
-	config_register_section( "main",     &config_line );
-	config_register_section( "logging",  &log_config_line );
-	config_register_section( "memory",   &mem_config_line );
-	config_register_section( "pmet",     &pmet_config_line );
-	config_register_section( "http",     &http_config_line );
-	config_register_section( "iplist",   &iplist_config_line );
-	config_register_section( "io",       &io_config_line );
-	config_register_section( "target",   &target_config_line );
-	config_register_section( "ha",       &ha_config_line );
-	config_register_section( "network",  &net_config_line );
-	config_register_section( "slack",    &slack_config_line );
+	config_register_section( "main",    &config_line );
+	config_register_section( "logging", &log_config_line );
+	config_register_section( "memory",  &mem_config_line );
+	config_register_section( "iplist",  &iplist_config_line );
+	config_register_section( "io",      &io_config_line );
+	config_register_section( "network", &net_config_line );
+	config_register_section( "slack",   &slack_config_line );
 
+	if( !runf_has( RUN_NO_HTTP ) )
+	{
+		_proc->pmet = pmet_config_defaults( );
+		_proc->http = http_config_defaults( );
+		_proc->ha   = ha_config_defaults( );
+		config_register_section( "pmet", &pmet_config_line );
+		config_register_section( "http", &http_config_line );
+		config_register_section( "ha",   &ha_config_line );
+
+	}
+	if( !runf_has( RUN_NO_TARGET ) )
+	{
+		_proc->tgt  = target_config_defaults( );
+		config_register_section( "target", &target_config_line );
+	}
+
+	// things that needed other stuff first
 	config_late_setup( );
 
 	if( set_signals( ) )
@@ -114,7 +122,7 @@ int app_init( char *name, char *cfgdir )
 		app_finish( 2 );
 	}
 
-	pthread_mutex_init( &(_proc->loop_lock), &(_proc->mtxa) );
+	pthread_mutex_init( &(_proc->loop_lock), &(_proc->mem->mtxa) );
 
 	// make curl ready
 	curl_global_init( CURL_GLOBAL_SSL );
@@ -153,7 +161,9 @@ int app_start( int writePid )
 	// move our tmpdir as desired
 	setenv( "TMPDIR", _proc->tmpdir, 1 );
 
-	http_calls_init( );
+	if( !runf_has( RUN_NO_HTTP ) )
+		http_calls_init( );
+
 	//slack_init( );
 	log_start( );
 
@@ -193,16 +203,19 @@ int app_start( int writePid )
 	io_init( );
 
 	// and http
-	if( http_start( ) )
-		fatal( "Failed to start http server." );
+	if( !runf_has( RUN_NO_HTTP ) )
+	{
+		if( http_start( ) )
+			fatal( "Failed to start http server." );
 
-	// set our host name and app name
-	pmet_label_common( "host", _proc->hostname );
-	pmet_label_common( "app", _proc->app_name );
+		// set our host name and app name
+		pmet_label_common( "host", _proc->hostname );
+		pmet_label_common( "app", _proc->app_name );
 
-	// and ha init
-	if( ha_init( ) )
-		fatal( "Failed to init HA." );
+		// and ha init
+		if( ha_init( ) )
+			fatal( "Failed to init HA." );
+	}
 
 	runf_add( RUN_APP_START );
 
@@ -247,13 +260,16 @@ void app_ready( void )
 	// and any iplists
 	iplist_init( );
 
-	// and prometheus metrics
-	if( pmet_init( ) )
-		fatal( "Failed to start prometheus metrics generation." );
+	if( !runf_has( RUN_NO_HTTP ) )
+	{
+		// and prometheus metrics
+		if( pmet_init( ) )
+			fatal( "Failed to start prometheus metrics generation." );
 
-	// and ha
-	if( ha_start( ) )
-		fatal( "Failed to start HA cluster." );
+		// and ha
+		if( ha_start( ) )
+			fatal( "Failed to start HA cluster." );
+	}
 
 	thread_throw_named( &loop_timer, NULL, 0, "timer_loop" );
 }
@@ -282,9 +298,11 @@ __attribute__((noreturn)) void app_finish( int exval )
 	else
 		notice( "Shutting down without thread completion." );
 
-	ha_shutdown( );
-
-	http_stop( );
+	if( !runf_has( RUN_NO_HTTP ) )
+	{
+		ha_shutdown( );
+		http_stop( );
+	}
 
 	io_stop( );
 

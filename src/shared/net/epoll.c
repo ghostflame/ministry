@@ -202,15 +202,15 @@ void tcp_epoll_setup( NET_TYPE *nt )
 	int i;
 
 	// create an epoll fd for each thread
-	nt->tcp->threads = (TCPTH **) allocz( nt->threads * sizeof( TCPTH * ) );
+	nt->tcp->threads = (TCPTH **) mem_perm( nt->threads * sizeof( TCPTH * ) );
 	for( i = 0; i < nt->threads; ++i )
 	{
-		th = (TCPTH *) allocz( sizeof( TCPTH ) );
+		th = (TCPTH *) mem_perm( sizeof( TCPTH ) );
 
 		th->type      = nt;
 		th->ep_fd     = epoll_create1( 0 );
 		// make space for the return events
-		th->ep_events = (struct epoll_event *) allocz( nt->pollmax * sizeof( struct epoll_event ) );
+		th->ep_events = (struct epoll_event *) mem_perm( nt->pollmax * sizeof( struct epoll_event ) );
 
 		pthread_mutex_init( &(th->lock), NULL );
 		nt->tcp->threads[i] = th;

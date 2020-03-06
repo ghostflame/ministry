@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <dirent.h>
 #include <getopt.h>
+#include <malloc.h>
 #include <signal.h>
 #include <stdarg.h>
 #include <stdint.h>

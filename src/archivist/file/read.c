@@ -226,7 +226,7 @@ file_rd_fn *file_reader_functions[FILE_VAL_METR_END] =
 	&file_read_blocks_range
 };
 
-char *file_metric_names[FILE_VAL_METR_END] =
+const char *file_metric_names[FILE_VAL_METR_END] =
 {
 	"mean",
 	"count",
@@ -239,22 +239,25 @@ char *file_metric_names[FILE_VAL_METR_END] =
 };
 
 
-int file_choose_metric( char *name )
+int file_choose_metric( const char *name )
 {
 	int i;
 
 	if( !name || !*name )
 		return FILE_VAL_METR_MEAN;
 
-	for( i = 0; i < FILE_VAL_METR_END; ++i )
-		if( !strcasecmp( name, file_metric_names[i] ) )
-			return i;
+	i = str_search( name, file_metric_names, FILE_VAL_METR_END );
 
-	warn( "File metric name '%s' not recognised.", name );
-	return -1;
+	if( i < 0 )
+	{
+		warn( "File metric name '%s' not recognised.", name );
+		i = FILE_VAL_METR_MEAN;
+	}
+
+	return i;
 }
 
-char *file_report_metric( int mval )
+const char *file_report_metric( int mval )
 {
 	if( mval < 0 || mval >= FILE_VAL_METR_END )
 		return "invalid";

@@ -52,7 +52,7 @@ int log_start( void );
 int log_set_level( int8_t level, int8_t both );
 void log_set_force_stdout( int set );
 
-int8_t log_get_level( char *str );
+int8_t log_get_level( const char *str );
 const char *log_get_level_name( int8_t level );
 
 http_callback log_ctl_setdebug;

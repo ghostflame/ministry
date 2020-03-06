@@ -71,8 +71,8 @@ struct tree_control
 };
 
 
-TEL *tree_insert_node( TEL *prt, char *name );
-int tree_insert_leaf( TEL *prt, char *name, char *path );
+TEL *tree_insert_node( TEL *prt, const char *name );
+int tree_insert_leaf( TEL *prt, const char *name, const char *path );
 
 LEAF *tree_process_line( char *str, int len );
 

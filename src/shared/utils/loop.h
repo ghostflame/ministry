@@ -23,7 +23,7 @@
 void loop_mark_start( const char *tag );
 void loop_mark_done( const char *tag, int64_t skips, int64_t fires );
 
-void loop_end( char *reason );
+void loop_end( const char *reason );
 void loop_kill( int sig );
 
 throw_fn loop_timer;

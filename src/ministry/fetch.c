@@ -68,9 +68,7 @@ void fetch_make_url( FETCH *f )
 		( chkCurlF( f->ch, SSL ) ) ? "s" : "",
 		f->remote, f->port, f->path );
 
-	f->ch->url = str_perm( l + 1 );
-	memcpy( f->ch->url, urlbuf, l );
-	f->ch->url[l] = '\0';
+	f->ch->url = str_perm( urlbuf, l );
 
 	// we might get json
 	setCurlF( f->ch, PARSE_JSON );
@@ -203,7 +201,7 @@ int fetch_init( void )
 
 FTCH_CTL *fetch_config_defaults( void )
 {
-	FTCH_CTL *fc = (FTCH_CTL *) allocz( sizeof( FTCH_CTL ) );
+	FTCH_CTL *fc = (FTCH_CTL *) mem_perm( sizeof( FTCH_CTL ) );
 	return fc;
 }
 
@@ -277,9 +275,8 @@ int fetch_config_line( AVP *av )
 			f->path = av_copyp( av );
 		else
 		{
-			f->path = str_perm( av->vlen + 2 );
-			f->path[0] = '/';
-			memcpy( f->path + 1, av->vptr, av->vlen );
+			f->path = mem_perm( av->vlen + 2 );
+			snprintf( f->path, av->vlen + 2, "/%s", av->vptr );
 		}
 		__fetch_config_state = 1;
 	}

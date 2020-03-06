@@ -231,14 +231,14 @@ void tcp_pool_setup( NET_TYPE *nt )
 	int i, j;
 
 	// start up our handler threads
-	nt->tcp->threads = (TCPTH **) allocz( nt->threads * sizeof( TCPTH * ) );
+	nt->tcp->threads = (TCPTH **) mem_perm( nt->threads * sizeof( TCPTH * ) );
 	for( i = 0; i < nt->threads; ++i )
 	{
-		th = (TCPTH *) allocz( sizeof( TCPTH ) );
+		th = (TCPTH *) mem_perm( sizeof( TCPTH ) );
 
 		th->type  = nt;
-		th->hosts = (HOST **) allocz( nt->pollmax * sizeof( HOST * ) );
-		th->polls = (struct pollfd *) allocz( nt->pollmax * sizeof( struct pollfd ) );
+		th->hosts = (HOST **) mem_perm( nt->pollmax * sizeof( HOST * ) );
+		th->polls = (struct pollfd *) mem_perm( nt->pollmax * sizeof( struct pollfd ) );
 		for( j = 0; j < nt->pollmax; ++j )
 		{
 			th->polls[j].fd     = -1;  // makes poll ignore this one

@@ -54,10 +54,10 @@ void pmet_label_render( BUF *b, int count, ... )
 
 PMET_LBL *pmet_label_create( char *name, char *val )
 {
-	PMET_LBL *l = (PMET_LBL *) allocz( sizeof( PMET_LBL ) );
+	PMET_LBL *l = (PMET_LBL *) mem_perm( sizeof( PMET_LBL ) );
 
-	l->name = str_dup( name, 0 );
-	l->val = str_dup( val, 0 );
+	l->name = str_perm( name, 0 );
+	l->val = str_perm( val, 0 );
 
 	return l;
 }

@@ -28,7 +28,7 @@
 #define HASH_FNV32_PRIME	0x01000193	// 2^24 + 2^8 + 93
 #define HASH_FNV32_SEED		0x811c9dc5
 
-__attribute__((hot)) inline uint32_t hash_fnv1( char *str, int32_t len )
+__attribute__((hot)) inline uint32_t hash_fnv1( const char *str, int32_t len )
 {
 	uint32_t hval = HASH_FNV32_SEED;
 	uint8_t *p = (uint8_t *) str;
@@ -43,7 +43,7 @@ __attribute__((hot)) inline uint32_t hash_fnv1( char *str, int32_t len )
 }
 
 
-__attribute__((hot)) inline uint32_t hash_fnv1a( char *str, int32_t len )
+__attribute__((hot)) inline uint32_t hash_fnv1a( const char *str, int32_t len )
 {
 	register uint32_t hval = HASH_FNV32_SEED;
 	register uint8_t *p = (uint8_t *) str;
@@ -66,7 +66,7 @@ static const uint32_t hash_cksum_primes[8] =
 };
 
 
-__attribute__((hot)) inline uint32_t hash_cksum( char *str, int32_t len )
+__attribute__((hot)) inline uint32_t hash_cksum( const char *str, int32_t len )
 {
 	register uint32_t *p, sum = 0xbeef;
 	int32_t rem;

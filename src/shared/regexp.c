@@ -40,8 +40,7 @@ void regex_list_destroy( RGXL *rl )
 		rl->list = r->next;
 
 		free( r->src );
-		regfree( r->r );
-		free( r->r );
+		regfree( &(r->r) );
 		free( r );
 	}
 
@@ -51,7 +50,7 @@ void regex_list_destroy( RGXL *rl )
 
 int regex_list_add( char *str, int negate, RGXL *rl )
 {
-	RGX *rg, *p;
+	RGX *rg;
 
 	if( !rl || !str || !*str )
 	{
@@ -59,8 +58,7 @@ int regex_list_add( char *str, int negate, RGXL *rl )
 		return -1;
 	}
 
-	rg    = (RGX *) allocz( sizeof( RGX ) );
-	rg->r = (regex_t *) allocz( sizeof( regex_t ) );
+	rg = (RGX *) allocz( sizeof( RGX ) );
 
 	// reverse the sense with a leading !
 	if( *str == '!' )
@@ -69,17 +67,18 @@ int regex_list_add( char *str, int negate, RGXL *rl )
 		++str;
 	}
 
-	if( regcomp( rg->r, str, REG_EXTENDED|REG_NOSUB ) )
+	rg->slen = strlen( str );
+	rg->src  = str_copy( str, rg->slen );
+	rg->ret  = ( negate ) ? REGEX_FAIL : REGEX_MATCH;
+
+	if( regcomp( &(rg->r), str, REG_EXTENDED|REG_NOSUB ) )
 	{
 		err( "Could not compile regex string: %s", str );
-		regfree( rg->r );
+		regfree( &(rg->r) );
+		free( rg->src );
 		free( rg );
 		return -2;
 	}
-
-	rg->slen = strlen( str );
-	rg->src  = str_dup( str, rg->slen );
-	rg->ret  = ( negate ) ? REGEX_FAIL : REGEX_MATCH;
 
 	++(rl->count);
 
@@ -87,13 +86,14 @@ int regex_list_add( char *str, int negate, RGXL *rl )
 	if( !rl->list )
 	{
 		rl->list = rg;
-		return 0;
+		rl->last = rg;
+	}
+	else
+	{
+		rl->last->next = rg;
+		rl->last = rg;
 	}
 
-	// append to list
-	for( p = rl->list; p->next; p = p->next );
-
-	p->next = rg;
 	return 0;
 }
 
@@ -109,7 +109,7 @@ int regex_list_test( char *str, RGXL *rl )
 	{
 		++(r->tests);
 		//debug( "Checking '%s' against regex '%s'", str, r->src );
-		if( regexec( r->r, str, 0, NULL, 0 ) == 0 )
+		if( regexec( &(r->r), str, 0, NULL, 0 ) == 0 )
 		{
 			++(r->matched);
 			return r->ret;

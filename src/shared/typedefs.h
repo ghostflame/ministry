@@ -40,6 +40,7 @@ typedef struct mem_type             MTYPE;
 typedef struct mem_check            MCHK;
 typedef struct mem_hanger           MEMHG;
 typedef struct mem_hanger_list      MEMHL;
+typedef struct mem_perm             PERM;
 
 typedef struct iterator             ITER;
 
@@ -114,7 +115,7 @@ typedef void throw_fn ( THRD * );
 typedef int conf_line_fn ( AVP * );
 typedef int http_callback ( HTREQ * );
 typedef int json_callback ( JSON * );
-typedef int ftree_callback ( FTREE *, uint32_t, char *, char *, void * );
+typedef int ftree_callback ( FTREE *, uint32_t, const char *, const char *, void * );
 typedef int http_reporter ( HTPATH *, void *, int64_t, int64_t );
 typedef int store_callback( SSTE *e, void *arg );
 typedef void help_fn ( void );
@@ -132,7 +133,7 @@ typedef int mhl_callback( MEMHL *, void *, MEMHG *, void * );
 // found in the apps
 typedef int  buf_fn ( HOST *, IOBUF * );
 typedef void line_fn ( HOST *, char *, int );
-typedef void add_fn ( char *, int, char * );
+typedef void add_fn ( const char *, int, const char * );
 typedef void tcp_setup_fn ( NET_TYPE * );
 typedef void tcp_fn ( HOST * );
 

@@ -30,9 +30,9 @@ HTTP_CTL *http_config_defaults( void )
 	struct sockaddr_in *sin;
 	HTTP_CTL *h;
 
-	h                  = (HTTP_CTL *) allocz( sizeof( HTTP_CTL ) );
-	h->tls             = (TLS_CONF *) allocz( sizeof( TLS_CONF ) );
-	h->calls           = (HTTP_CB *) allocz( sizeof( HTTP_CB ) );
+	h                  = (HTTP_CTL *) mem_perm( sizeof( HTTP_CTL ) );
+	h->tls             = (TLS_CONF *) mem_perm( sizeof( TLS_CONF ) );
+	h->calls           = (HTTP_CB *)  mem_perm( sizeof( HTTP_CB ) );
 
 	h->conns_max       = DEFAULT_HTTP_CONN_LIMIT;
 	h->conns_max_ip    = DEFAULT_HTTP_CONN_IP_LIMIT;
@@ -72,15 +72,15 @@ HTTP_CTL *http_config_defaults( void )
 	pthread_mutex_init( &(h->hitlock), NULL );
 
 	// make the address binding structure
-	sin = (struct sockaddr_in *) allocz( sizeof( struct sockaddr_in ) );
+	sin = (struct sockaddr_in *) mem_perm( sizeof( struct sockaddr_in ) );
 	sin->sin_family      = AF_INET;
 	sin->sin_addr.s_addr = INADDR_ANY;
 	h->sin               = sin;
 
 	// and handler structures
-	h->get_h          = (HTHDLS *) allocz( sizeof( HTHDLS ) );
+	h->get_h          = (HTHDLS *) mem_perm( sizeof( HTHDLS ) );
 	h->get_h->method  = "GET";
-	h->post_h         = (HTHDLS *) allocz( sizeof( HTHDLS ) );
+	h->post_h         = (HTHDLS *) mem_perm( sizeof( HTHDLS ) );
 	h->post_h->method = "POST";
 
 	_http = h;

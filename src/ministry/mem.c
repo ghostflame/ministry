@@ -57,7 +57,7 @@ void mem_free_point_list( PTLIST *list )
 
 
 
-DHASH *mem_new_dhash( char *str, int len )
+DHASH *mem_new_dhash( const char *str, int len )
 {
 	DHASH *d = mtype_new( ctl->mem->dhash );
 
@@ -324,7 +324,7 @@ void mem_free_history_list( HIST *list )
 }
 
 
-METRY *mem_new_metry( char *str, int len )
+METRY *mem_new_metry( const char *str, int len )
 {
 	METRY *m = (METRY *) mtype_new( ctl->mem->metry );
 
@@ -389,7 +389,7 @@ MEMT_CTL *memt_config_defaults( void )
 {
 	MEMT_CTL *m;
 
-	m = (MEMT_CTL *) allocz( sizeof( MEMT_CTL ) );
+	m = (MEMT_CTL *) mem_perm( sizeof( MEMT_CTL ) );
 
 	m->points = mem_type_declare( "points", sizeof( PTLIST ), MEM_ALLOCSZ_POINTS, 0, 1 );
 	m->dhash  = mem_type_declare( "dhashs", sizeof( DHASH ),  MEM_ALLOCSZ_DHASH,  128, 1 ); // guess on path length

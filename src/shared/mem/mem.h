@@ -27,75 +27,79 @@
 
 struct mem_hanger
 {
-	MEMHG			*	next;
-	MEMHG			*	prev;
-	void			*	ptr;
-	MEMHL			*	list;
+	MEMHG				*	next;
+	MEMHG				*	prev;
+	void				*	ptr;
+	MEMHL				*	list;
 };
 
 struct mem_hanger_list
 {
-	MEMHL			*	next;
-	MEMHG			*	head;
-	MEMHG			*	tail;
-	mem_free_cb		*	memcb;
-	int64_t				count;
-	uint64_t			id;
+	MEMHL				*	next;
+	MEMHG				*	head;
+	MEMHG				*	tail;
+	mem_free_cb			*	memcb;
+	int64_t					count;
+	uint64_t				id;
 
-	pthread_mutex_t		lock;
-	int8_t				use_lock;
-	int8_t				act_lock;
+	pthread_mutex_t			lock;
+	int8_t					use_lock;
+	int8_t					act_lock;
 };
 
 
 struct mem_call_counters
 {
-	int64_t				ctr;
-	int64_t				sum;
+	int64_t					ctr;
+	int64_t					sum;
 };
 
 struct mem_type_counters
 {
-	uint32_t			fcount;
-	uint32_t			total;
+	uint32_t				fcount;
+	uint32_t				total;
 
 #ifdef MTYPE_TRACING
-	MCCTR				all;
-	MCCTR				fre;
-	MCCTR				pre;
-	MCCTR				ref;
+	MCCTR					all;
+	MCCTR					fre;
+	MCCTR					pre;
+	MCCTR					ref;
 #endif
 };
 
 
 struct mem_type_stats
 {
-	char			*	name;
-	uint64_t			bytes;
+	char				*	name;
+	uint64_t				bytes;
 
-	MTCTR				ctrs;
+	MTCTR					ctrs;
 };
 
 struct mem_control
 {
-	MTYPE			*	types[MEM_TYPES_MAX];
+	MTYPE				*	types[MEM_TYPES_MAX];
 
-	MCHK			*	mcheck;
+	MCHK				*	mcheck;
 
-	int64_t				prealloc;	// msec
-	int16_t				type_ct;
-	pthread_mutex_t		idlock;
-	uint64_t			id;
+	int64_t					prealloc;	// msec
+	int16_t					type_ct;
+	pthread_mutex_t			idlock;
+	uint64_t				id;
+
+	pthread_mutexattr_t		mtxa;
+
+	PERM				*	perm;		// permie string space
 
 	// known types
-	MTYPE			*	iobufs;
-	MTYPE			*	htreq;
-	MTYPE			*	htprm;
-	MTYPE			*	hosts;
-	MTYPE			*	token;
-	MTYPE			*	hanger;
-	MTYPE			*	slkmsg;
-	MTYPE			*	store;
+	MTYPE				*	iobufs;
+	MTYPE				*	htreq;
+	MTYPE				*	htprm;
+	MTYPE				*	hosts;
+	MTYPE				*	token;
+	MTYPE				*	hanger;
+	MTYPE				*	slkmsg;
+	MTYPE				*	store;
 };
 
 
@@ -104,6 +108,7 @@ uint32_t mem_alloc_size( int len );
 
 // zero'd memory
 void *allocz( size_t size );
+void *mem_perm( uint32_t len );
 
 sort_fn mem_cmp_dbl;
 sort_fn mem_cmp_i64;

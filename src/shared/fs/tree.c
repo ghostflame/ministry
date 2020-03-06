@@ -84,12 +84,12 @@ int fs_treemon_filter_out_wd( MEMHL *mhl, void *arg, MEMHG *hgr, void *ptr )
 }
 
 
-int fs_treemon_rm( FTREE *ft, char *path )
+int fs_treemon_rm( FTREE *ft, const char *path )
 {
 	FWTCH fw, *w;
 	MEMHG *hg;
 
-	fw.path = path;
+	fw.path = (char *) path;
 	fw.tree = ft;
 	fw.wd   = -1;
 	fw.next = NULL;
@@ -105,7 +105,7 @@ int fs_treemon_rm( FTREE *ft, char *path )
 	return -1;
 }
 
-int fs_treemon_add( FTREE *ft, char *path, int is_dir )
+int fs_treemon_add( FTREE *ft, const char *path, int is_dir )
 {
 	FWTCH *fw;
 
@@ -281,7 +281,7 @@ void fs_treemon_end( FTREE *ft )
 }
 
 
-FTREE *fs_treemon_create( char *file_pattern, char *dir_pattern, ftree_callback *cb, void *arg )
+FTREE *fs_treemon_create( const char *file_pattern, const char *dir_pattern, ftree_callback *cb, void *arg )
 {
 	char errbuf[1024];
 	FTREE *ft;
