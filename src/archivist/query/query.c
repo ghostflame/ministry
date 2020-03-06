@@ -95,13 +95,20 @@ int query_search( QRY *q )
 
 
 
-QRY *query_create( char *search_string )
+QRY *query_create( const char *search_string )
 {
 	QRY *q = (QRY *) allocz( sizeof( QRY ) );
 
 	q->slen   = strlen( search_string );
 	q->search = str_copy( search_string, q->slen );
 	q->q_when = get_time64( );
+
+	if( query_parse( q ) != 0 )
+	{
+		free( q->search );
+		free( q );
+		return NULL;
+	}
 
 	return q;
 }

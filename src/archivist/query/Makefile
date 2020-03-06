@@ -1,6 +1,6 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-FILES  = config http query
+FILES  = config defs http xform query
 HEADS  = local query
 
 RKV    = query_shared.a

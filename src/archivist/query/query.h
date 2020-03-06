@@ -18,15 +18,34 @@
 #define QUERY_PARAM_METRIC		"metric"
 
 
+enum query_arg_types
+{
+	QARG_TYPE_NONE = 0,  // used to fill the structure
+	QARG_TYPE_DOUBLE,
+	QARG_TYPE_INTEGER,
+	QARG_TYPE_STRING,
+	QARG_TYPE_FUNCTION,
+	QARG_TYPE_MAX
+};
+
 
 struct query_fn
 {
-	QRFN				*	next;
-	char				*	fname;
-	query_data_fn		*	fp;
+	char				*	name;
+	query_data_fn		*	fn;
+	int8_t					argc;	// max args
+	int8_t					argm;	// min args
+	int8_t					types[4];
+};
+
+struct query_fn_call
+{
+	QRFC				*	next;
+	QRFN				*	fn;
 	int						argc;
 	char				**	argv;
 };
+
 
 struct query_path
 {
@@ -71,7 +90,7 @@ extern QRY_CTL *_qry;
 
 int query_search( QRY *q );
 void query_free( QRY *q );
-QRY *query_create( char *search_str );
+QRY *query_create( const char *search_str );
 
 http_callback query_get_callback;
 

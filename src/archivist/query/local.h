@@ -18,7 +18,17 @@
 
 #include "archivist.h"
 
+extern QRFN query_function_defns[];
 
+query_data_fn query_xform_scale;
+query_data_fn query_xform_offset;
+query_data_fn query_xform_abs;
+query_data_fn query_xform_log;
+query_data_fn query_xform_deriv;
+query_data_fn query_xform_nn_deriv;
+query_data_fn query_xform_integral;
+
+int query_parse( QRY *q );
 
 
 #endif
