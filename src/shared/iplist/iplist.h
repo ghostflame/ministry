@@ -17,6 +17,10 @@
 #define IPLIST_NOMATCH		-1
 
 
+#define IPLIST_NET_FREE_TEXT	0x01
+#define IPLIST_NET_FREE_NAME	0x02
+
+
 struct iplist_net
 {
 	IPNET				*	next;
@@ -24,7 +28,8 @@ struct iplist_net
 	char				*	text;
 	char				*	name;
 	uint32_t				net;
-	int16_t					tlen;
+	int8_t					tlen;
+	int8_t					flags;
 	int8_t					bits;
 	int8_t					act;
 	void				*	data;	// hang data off this match
@@ -45,7 +50,7 @@ struct iplist
 	uint32_t				count;
 	uint32_t				hashsz;
 
-	int16_t					tlen;
+	int8_t					tlen;
 	int8_t					verbose;
 	int8_t					def;
 	int8_t					enable;
@@ -83,6 +88,8 @@ int iplist_append_net( IPLIST *l, IPNET **n );
 void iplist_free_net( IPNET *n );
 void iplist_free_list( IPLIST *l );
 int iplist_add_entry( IPLIST *l, int act, char *str, int len );
+
+void iplist_destroy( IPLIST *l );
 IPLIST *iplist_create( char *name, int default_return, int hashsz );
 
 // config

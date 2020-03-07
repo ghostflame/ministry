@@ -258,12 +258,14 @@ IPNET *iplist_parse_spec( char *str, int len )
 		if( sp && len )
 		{
 			n->text = str_copy( sp, len );
-			n->tlen = len;
+			n->tlen = (int8_t) len;
+			flagf_add( n, IPLIST_NET_FREE_TEXT );
 		}
 
 		ina.s_addr = n->net;
 		snprintf( buf, 32, "%s/%hhd", inet_ntoa( ina ), n->bits );
 		n->name = str_copy( buf, 0 );
+		flagf_add( n, IPLIST_NET_FREE_NAME );
 	}
 
 	return n;
@@ -275,10 +277,10 @@ void iplist_free_net( IPNET *n )
 	if( !n )
 		return;
 
-	if( n->name )
+	if( n->name && flagf_has( n, IPLIST_NET_FREE_NAME ) )
 		free( n->name );
 
-	if( n->text )
+	if( n->text && flagf_has( n, IPLIST_NET_FREE_TEXT ) )
 		free( n->next );
 
 	free( n );
@@ -306,6 +308,14 @@ void iplist_free_list( IPLIST *l )
 	}
 
 	list = l->nets;
+	while( list )
+	{
+		n = list;
+		list = n->next;
+		iplist_free_net( n );
+	}
+
+	list = l->singles;
 	while( list )
 	{
 		n = list;
@@ -483,14 +493,50 @@ int iplist_set_text( IPLIST *l, char *str, int len )
 	if( str && !len )
 		len = strlen( str );
 
+	if( len > 255 )
+	{
+		warn( "Truncating iplist text to 255 bytes." );
+		len = 255;
+	}
+
 	if( str )
+	{
 		l->text = str_copy( str, len );
+		l->tlen = (int8_t) len;
+	}
 
 	return 0;
 }
 
 
+void iplist_destroy( IPLIST *l )
+{
+	IPLIST *lp = NULL;
 
+	// unhook it from the list
+	lock_iplists( );
+
+	if( _iplist->lists == l )
+		_iplist->lists = l->next;
+	else
+	{
+		for( lp = _iplist->lists; lp && lp->next != l; lp = lp->next );
+
+		if( !lp )
+		{
+			// the one wasn't in the list
+			notice( "Requested destruction of unlisted IPLIST." );
+		}
+		else
+			lp->next = l->next;
+	}
+
+	--(_iplist->lcount);
+
+	unlock_iplists( );
+
+	iplist_free_list( l );
+}
 
 
 IPLIST *iplist_create( char *name, int default_return, int hashsz )
