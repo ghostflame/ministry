@@ -20,7 +20,7 @@ int filter_init( void )
 {
 	int ret;
 
-	pthread_mutex_init( &(ctl->filt->genlock), NULL );
+	pthread_mutex_init( &(ctl->filt->genlock), &(ctl->proc->mem->mtxa) );
 
 	// convert msec to nsec
 	ctl->filt->chg_delay *= MILLION;

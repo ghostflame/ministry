@@ -50,6 +50,7 @@ struct filter_config
 	IPLIST			*	ipl;
 	FTREE			*	watch;
 	int					active;
+	int					filters;
 };
 
 struct filter_control

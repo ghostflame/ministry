@@ -186,6 +186,7 @@ int filter_add_object( FCONF *conf, JSON *jo, char *path )
 		return -1;
 	}
 
+	++(conf->filters);
 	return 0;
 }
 
@@ -216,7 +217,6 @@ int filter_scan_check( const struct dirent *d )
 int filter_scan_dir( char *dir, FCONF *conf )
 {
 	struct dirent **files, *d;
-	struct stat sb;
 	int i, l, ct;
 	char *pbuf;
 	JSON *jo;
@@ -253,20 +253,14 @@ int filter_scan_dir( char *dir, FCONF *conf )
 			continue;
 		}
 
-		if( stat( pbuf, &sb ) )
-		{
-			warn( "Could not stat directory entry '%s' -- %s", d->d_name, Err );
-			continue;
-		}
-
 		if( !( jo = parse_json_file( NULL, pbuf ) ) )
 		{
 			warn( "File '%s' could not be parsed correctly, ignoring.", pbuf );
 			continue;
 		}
 
-		filter_add_object( conf, jo, pbuf );
-		fs_treemon_add( conf->watch, pbuf, 0 );
+		if( filter_add_object( conf, jo, pbuf ) == 0 )
+			fs_treemon_add( conf->watch, pbuf, 0 );
 	}
 
 	for( i = 0; i < ct; ++i )
@@ -290,6 +284,7 @@ void filter_unload( FCONF *conf )
 	// free up the iplists
 
 	fs_treemon_end( conf->watch );
+	iplist_free_list( conf->ipl );
 	free( conf );
 }
 
@@ -315,6 +310,8 @@ int filter_load( void )
 
 	filter_scan_dir( ctl->filt->filter_dir, conf );
 	iplist_init_one( conf->ipl );
+
+	info( "Loaded %d filters.", conf->filters );
 
 	// swap them
 	conf->active = 1;
