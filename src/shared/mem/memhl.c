@@ -154,7 +154,7 @@ void mem_list_add_tail( MEMHL *mhl, void *ptr )
 {
 	MEMHG *hg;
 
-	hg = mem_new_hanger( ptr );
+	hg = mem_new_hanger( ptr, mhl );
 
 	mhl_lock( mhl );
 
@@ -180,7 +180,7 @@ void mem_list_add_head( MEMHL *mhl, void *ptr )
 {
 	MEMHG *hg;
 
-	hg = mem_new_hanger( ptr );
+	hg = mem_new_hanger( ptr, mhl );
 
 	mhl_lock( mhl );
 
@@ -345,7 +345,7 @@ MEMHL *mem_list_create( int use_lock, mem_free_cb *cb )
 	if( use_lock )
 	{
 		mhl->use_lock = 1;
-		pthread_mutex_init( &(mhl->lock), NULL );
+		pthread_mutex_init( &(mhl->lock), &(_mem->mtxa) );
 	}
 
 	if( cb )

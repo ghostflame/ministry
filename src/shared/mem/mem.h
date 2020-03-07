@@ -43,8 +43,8 @@ struct mem_hanger_list
 	uint64_t				id;
 
 	pthread_mutex_t			lock;
-	int8_t					use_lock;
-	int8_t					act_lock;
+	int8_t					use_lock;	// use locking for updates
+	int8_t					act_lock;	// 1 when lockable, 0 when locked
 };
 
 
@@ -156,7 +156,7 @@ TOKEN *mem_new_token( void );
 void mem_free_token( TOKEN **t );
 void mem_free_token_list( TOKEN *list );
 
-MEMHG *mem_new_hanger( void *ptr );
+MEMHG *mem_new_hanger( void *ptr, MEMHL *list );
 void mem_free_hanger( MEMHG **m );
 void mem_free_hanger_list( MEMHG *list );
 

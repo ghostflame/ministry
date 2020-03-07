@@ -280,10 +280,11 @@ void mem_free_token_list( TOKEN *list )
 }
 
 
-MEMHG *mem_new_hanger( void *ptr )
+MEMHG *mem_new_hanger( void *ptr, MEMHL *list )
 {
 	MEMHG *h = mtype_new( _mem->hanger );
-	h->ptr = ptr;
+	h->ptr  = ptr;
+	h->list = list;
 	return h;
 }
 
