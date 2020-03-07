@@ -25,8 +25,8 @@ NETW_CTL *network_config_defaults( void )
 	nt->tcp_style    = TCP_STYLE_THRD;
 	nt->buf_parser   = &filter_parse_buf;
 	nt->udp_bind     = INADDR_ANY;
-	nt->label        = strdup( "filter" );
-	nt->name         = strdup( "filter" );
+	nt->label        = str_perm( "filter", 6 );
+	nt->name         = str_perm( "filter", 6 );
 	nt->flags        = NTYPE_ENABLED|NTYPE_TCP_ENABLED|NTYPE_UDP_ENABLED;
 
 	net_add_type( nt );
