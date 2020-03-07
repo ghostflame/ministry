@@ -17,7 +17,7 @@ struct file_watch
 	FWTCH				*	next;
 	FTREE				*	tree;
 	char				*	path;
-	int32_t					wd;
+	int						wd;
 	int8_t					is_dir;
 };
 
@@ -38,6 +38,7 @@ struct file_tree
 	regex_t					dmatch;
 
 	int						inFd;
+	int						started;
 };
 
 

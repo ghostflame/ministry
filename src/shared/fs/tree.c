@@ -108,6 +108,7 @@ int fs_treemon_rm( FTREE *ft, const char *path )
 int fs_treemon_add( FTREE *ft, const char *path, int is_dir )
 {
 	FWTCH *fw;
+	int wd;
 
 	if( !ft || !path || !*path )
 	{
@@ -115,14 +116,23 @@ int fs_treemon_add( FTREE *ft, const char *path, int is_dir )
 		return -1;
 	}
 
+	wd = (int32_t) inotify_add_watch( ft->inFd, path, INOT_MASK );
+
+	if( wd < 0 )
+	{
+		warn( "Failed to add watch for %s -- %s", path, Err );
+		return -2;
+	}
+
 	fw = (FWTCH *) allocz( sizeof( FWTCH ) );
-	fw->path = str_copy( path, 0 );
-	fw->tree = ft;
-	fw->wd = (int32_t) inotify_add_watch( ft->inFd, fw->path, INOT_MASK );
+	fw->path   = str_copy( path, 0 );
+	fw->tree   = ft;
 	fw->is_dir = is_dir;
+	fw->wd     = wd;
+
+	mem_list_add_tail( ft->watches, fw );
 
 	debug( "Added watch (%d) for events %08x for %s.", fw->wd, INOT_MASK, fw->path );
-	mem_list_add_tail( ft->watches, fw );
 	return 0;
 }
 
@@ -137,9 +147,12 @@ int fs_treemon_event_string( uint32_t mask, char *buf, int sz )
 	for( j = 0; j < 24; ++j )
 	{
 		if( mask & 0x1 )
-			snprintf( buf + len, sz - len, "%s%s", ( len ) ? "," : "", fs_treemon_event_names[j] );
+			len += snprintf( buf + len, sz - len, "%s%s", ( len ) ? "," : "", fs_treemon_event_names[j] );
 
 		mask >>= 1;
+
+		if( len >= ( sz - 1 ) )
+			break;
 	}
 
 	return len;
@@ -148,7 +161,7 @@ int fs_treemon_event_string( uint32_t mask, char *buf, int sz )
 
 void fs_treemon_hdlr( FTREE *ft, struct inotify_event *ev )
 {
-	char descbuf[256];
+	char descbuf[512];
 	FWTCH tmp, *fw;
 	char *path;
 	MEMHG *hg;
@@ -158,7 +171,7 @@ void fs_treemon_hdlr( FTREE *ft, struct inotify_event *ev )
 	tmp.tree = ft;
 	tmp.next = NULL;
 
-	fs_treemon_event_string( ev->mask, descbuf, 256 );
+	fs_treemon_event_string( ev->mask, descbuf, 512 );
 
 	debug( "Got event for wd=%d, cookie=%d, mask=0x%08x (%s), path=%s",
 		ev->wd, ev->cookie, ev->mask, descbuf, ev->name );
@@ -205,7 +218,7 @@ void fs_treemon_loop( THRD *thrd )
 			break;
 		}
 
-		debug( "Read %d bytes from inotify.", len );
+		info( "Read %d bytes from inotify.", len );
 		end = buf + len;
 
 		for( ptr = buf; ptr < end; )
@@ -224,6 +237,10 @@ void fs_treemon_loop( THRD *thrd )
 
 void fs_treemon_start( FTREE *ft )
 {
+	if( ft->started )
+		return;
+
+	ft->started = 1;
 	thread_throw_named_f( &fs_treemon_loop, ft, 0, "fstree_%d", ft->inFd );
 }
 
