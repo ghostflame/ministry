@@ -113,11 +113,11 @@ int config_line( AVP *av )
 	}
 	else if( attIs( "pidFile" ) )
 	{
-		snprintf( _proc->pidfile, CONF_LINE_MAX, "%s", av->vptr );
+		config_set_pid_file( av->vptr );
 	}
 	else if( attIs( "baseDir" ) )
 	{
-		snprintf( _proc->basedir, CONF_LINE_MAX, "%s", av->vptr );
+		config_set_basedir( av->vptr );
 	}
 	else if( attIs( "exitOnChange" ) )
 	{
@@ -135,8 +135,21 @@ int config_line( AVP *av )
 
 void config_set_pid_file( const char *path )
 {
-	snprintf( _proc->pidfile, CONF_LINE_MAX, "%s", path );
+	if( _proc->pidfile )
+		free( _proc->pidfile );
+
+	_proc->pidfile = str_copy( path, 0 );
 }
+
+void config_set_basedir( const char *dir )
+{
+	if( _proc->basedir )
+		free( _proc->basedir );
+
+	_proc->basedir = str_copy( dir, 0 );
+}
+
+
 
 void config_late_setup( void )
 {
@@ -182,9 +195,14 @@ PROC_CTL *config_defaults( const char *app_name, const char *conf_dir )
 	_proc->app_upper = str_perm( app_name, 0 );
 	_proc->app_upper[0] = toupper( _proc->app_upper[0] );
 
-	snprintf( _proc->basedir,  CONF_LINE_MAX, "/etc/%s", conf_dir );
-	snprintf( _proc->cfg_file, CONF_LINE_MAX, "/etc/%s/%s.conf", conf_dir, app_name );
-	snprintf( _proc->pidfile,  CONF_LINE_MAX, "/var/run/%s/%s.pid", conf_dir, app_name );
+	snprintf( buf, 1024, "/etc/%s/%s.conf", conf_dir, app_name );
+	config_set_main_file( buf );
+
+	snprintf( buf, 1024, "/var/run/%s/%s.pid", conf_dir, app_name );
+	config_set_pid_file( buf );
+
+	snprintf( buf, 1024, "/etc/%s", conf_dir );
+	config_set_basedir( buf );
 
 	_proc->tmpdir = str_copy( TMP_DIR, 0 );
 	_proc->max_json_sz = MAX_JSON_SZ;

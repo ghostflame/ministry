@@ -92,7 +92,10 @@ char *config_arg_string( const char *argstr )
 
 void config_set_main_file( const char *path )
 {
-	snprintf( _proc->cfg_file, CONF_LINE_MAX, "%s", path );
+	if( _proc->cfg_file )
+		free( _proc->cfg_file );
+
+	_proc->cfg_file = str_copy( path, 0 );
 
 	// this wins against env
 	setcfFlag( FILE_OPT );

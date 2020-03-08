@@ -66,12 +66,12 @@ struct process_control
 	char				*	app_name;
 	char				*	app_upper;
 	char				*	version;
+	char				*	pidfile;
+	char				*	basedir;
+	char				*	cfg_file;
 	char				*	tmpdir;
 	char				*	conf_sfx;
 	char					env_prfx[128];
-	char					cfg_file[CONF_LINE_MAX];
-	char					pidfile[CONF_LINE_MAX];
-	char					basedir[CONF_LINE_MAX];
 
 	//SLKHD				*	apphdl;
 
@@ -133,6 +133,7 @@ int config_read( const char *path, WORDS *w );
 int config_read_env( const char **env );
 
 void config_set_pid_file( const char *path );
+void config_set_basedir( const char *dir );
 
 // things that require the other structures
 void config_late_setup( void );

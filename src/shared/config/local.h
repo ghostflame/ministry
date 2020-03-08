@@ -54,6 +54,7 @@ int config_source_dupe( const char *path );
 
 int config_handle_dir( const char *path, WORDS *w );
 
+void config_set_main_file( const char *path );
 void config_choose_section( CCTXT *c, const char *section );
 
 void config_set_main_file( const char *path );
