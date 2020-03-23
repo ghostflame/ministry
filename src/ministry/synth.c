@@ -296,7 +296,7 @@ void synth_init( void )
 				s->max_absent = s->parts + s->def->max_absent;
 		}
 
-		info( "Synthetic '%s' has hash id %u.", s->target_path, s->target->id );
+		info( "Synthetic '%s' created.", s->target_path );
 	}
 }
 
