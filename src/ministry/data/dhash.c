@@ -23,6 +23,9 @@ static const uint64_t data_path_hash_primes[8] =
  * significant speedup from the 32-bit in pointer cast.
  *
  * It replaces an xor based hash that showed too many collisions.
+ *
+ * UPDATE:  xor speed restored with bitshifting.  Collisions now entirely
+ *          comparable with Bernstein
  */
 __attribute__((hot)) static inline uint64_t data_path_hash( const char *str, int len )
 {
@@ -50,6 +53,7 @@ __attribute__((hot)) static inline uint64_t data_path_hash( const char *str, int
 	 * than just 4 then 1, so this is pretty optimized as is.
 	 */
 
+	/*
 	// a little unrolling for good measure
 	while( ctr > 4 )
 	{
@@ -63,6 +67,23 @@ __attribute__((hot)) static inline uint64_t data_path_hash( const char *str, int
 	// and the rest
 	while( ctr-- > 0 )
 		sum += ( sum << 5 ) + *p++;
+	*/
+
+	while( ctr > 4 )
+	{
+		sum ^= *p++;
+		sum ^= *p++;
+		sum ^= *p++;
+		sum ^= *p++;
+		ctr -=  4;
+
+		// keep all bits involved
+		sum <<= 4;
+		sum += sum >> 32;
+	}
+
+	while( --ctr != 0 )
+		sum = ( sum << 1 ) ^ *p++;
 
 	// and capture the rest
 	str = (const char *) p;
@@ -80,23 +101,16 @@ uint64_t data_path_hash_wrap( const char *str, int len )
 
 
 
-uint32_t data_get_id( ST_CFG *st )
+void data_keep_stats( ST_CFG *c )
 {
-	uint32_t id;
-
-	pthread_mutex_lock( &(ctl->locks->hashstats) );
-
-	// grab an id - these never drop
-	id = ++(st->did);
+	lock_stat_cfg( c );
 
 	// and keep stats - gc reduces this
-	++(st->dcurr);
+	++(c->dcurr);
 	// but this is monotonic
-	++(st->creates.count);
+	++(c->creates.count);
 
-	pthread_mutex_unlock( &(ctl->locks->hashstats) );
-
-	return id;
+	unlock_stat_cfg( c );
 }
 
 
@@ -254,44 +268,104 @@ DHASH *data_find_dhash( const char *path, int len, ST_CFG *c )
 }
 
 
+__attribute__((hot)) DHASH *data_create_dhash( const char *path, int len, ST_CFG *c, uint64_t hval, uint64_t idx )
+{
+	DHASH *n, *e;
+
+	n = mem_new_dhash( path, len );
+
+	if( !n )
+	{
+		fatal( "Could not allocate dhash for %s.", c->name );
+		return NULL;
+	}
+
+	n->sum   = hval;
+	n->type  = c->dtype;
+
+	lock_table( idx );
+
+	if( !( e = data_find_path( c->data[idx], hval, path, len ) ) )
+	{
+		n->next = c->data[idx];
+		n->valid = 1;
+		c->data[idx] = n;
+	}
+
+	unlock_table( idx );
+
+	// someone else made it in-between
+	// so free the new one and return that one
+	// we don't want to do the free under lock,
+	// as it has its own locking
+	if( e )
+	{
+		//info( "Another thread created '%s' for us.", path );
+		mem_free_dhash( &n );
+		return e;
+	}
+
+	// finish setup
+	data_get_dhash_extras( n );
+	data_keep_stats( c );
+
+	return n;
+}
+
+
+
 __attribute__((hot)) DHASH *data_get_dhash( const char *path, int len, ST_CFG *c )
 {
 	uint64_t hval, idx;
+	//DHASH *d, *n;
 	DHASH *d;
 
 	hval = data_path_hash( path, len );
 	idx  = hval % c->hsize;
 
-	if( !( d = data_find_path( c->data[idx], hval, path, len ) ) )
+	if( ( d = data_find_path( c->data[idx], hval, path, len ) ) )
+		return d;
+
+	/* try again, under lock this time, assuming we will create it */
+	return data_create_dhash( path, len, c, hval, idx );
+/*
+	n = mem_new_dhash( path, len );
+
+	if( !n )
 	{
-		lock_table( idx );
-
-		if( !( d = data_find_path( c->data[idx], hval, path, len ) ) )
-		{
-			if( !( d = mem_new_dhash( path, len ) ) )
-			{
-				fatal( "Could not allocate dhash for %s.", c->name );
-				return NULL;
-			}
-
-			d->sum  = hval;
-			d->type = c->dtype;
-			d->next = c->data[idx];
-			c->data[idx] = d;
-
-			d->valid = 1;
-		}
-
-		unlock_table( idx );
-
-		if( !d->id )
-		{
-			d->id = data_get_id( c );
-			data_get_dhash_extras( d );
-		}
+		fatal( "Could not allocate dhash for %s.", c->name );
+		return NULL;
 	}
 
-	return d;
-}
+	n->sum   = hval;
+	n->type  = c->dtype;
 
+	lock_table( idx );
+
+	if( !( d = data_find_path( c->data[idx], hval, path, len ) ) )
+	{
+		n->next = c->data[idx];
+		n->valid = 1;
+		c->data[idx] = n;
+	}
+
+	unlock_table( idx );
+
+	// someone else made it in-between
+	// so free the new one and return that one
+	// we don't want to do the free under lock,
+	// as it has its own locking
+	if( d )
+	{
+		//info( "Another thread created '%s' for us.", path );
+		mem_free_dhash( &n );
+		return d;
+	}
+
+	// finish setup
+	data_get_dhash_extras( n );
+
+	return n;
+*/
+}
 

@@ -51,15 +51,15 @@ typedef pthread_mutex_t			dhash_lock_t;
 #define lock_synth( )			pthread_mutex_lock(   &(ctl->locks->synth) )
 #define unlock_synth( )			pthread_mutex_unlock( &(ctl->locks->synth) )
 
+#define lock_stat_cfg( _c )		pthread_mutex_lock(   &(_c->statslock ) )
+#define unlock_stat_cfg( _c )	pthread_mutex_unlock( &(_c->statslock ) )
 
 
 
 
 struct lock_control
 {
-	pthread_mutex_t			hashstats;					// used for counters
 	pthread_mutex_t			synth;						// synthetics control
-
 	pthread_mutex_t			table[HASHT_MUTEX_COUNT];	// hash table locks
 
 	int						init_done;

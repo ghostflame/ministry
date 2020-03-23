@@ -19,9 +19,6 @@ LOCK_CTL *lock_config_defaults( void )
 
 	// and init all the mutexes
 
-	// used to keep counters
-	pthread_mutex_init( &(l->hashstats), &(ctl->proc->mem->mtxa) );
-
 	// used in synths/stats
 	pthread_mutex_init( &(l->synth), &(ctl->proc->mem->mtxa) );
 
@@ -40,9 +37,6 @@ void lock_shutdown( void )
 
 	if( !l || !l->init_done )
 		return;
-
-	// used to keep counters
-	pthread_mutex_destroy( &(l->hashstats) );
 
 	// used in synths/stats
 	pthread_mutex_destroy( &(l->synth) );

@@ -92,7 +92,7 @@ __attribute__((hot)) void data_update_stats( DHASH *d, double val, char unused )
 	// make a new one if need be
 	if( !( p = d->in.points ) || p->count >= PTLIST_SIZE )
 	{
-		if( !( p = mem_new_point( ) ) )
+		if( !( p = mem_new_points( ) ) )
 		{
 			fatal( "Could not allocate new point struct." );
 			unlock_stats( d );

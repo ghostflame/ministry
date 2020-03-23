@@ -74,6 +74,10 @@ void stats_start_one( ST_CFG *cf )
 	info( "Started %s data processing loops.", cf->name );
 }
 
+void stats_stop_one( ST_CFG *cf )
+{
+	pthread_mutex_destroy( &(cf->statslock) );
+}
 
 void stats_start( void )
 {
@@ -88,6 +92,12 @@ void stats_start( void )
 void stats_stop( void )
 {
 	ST_THR *t;
+
+	stats_stop_one( ctl->stats->stats );
+	stats_stop_one( ctl->stats->adder );
+	stats_stop_one( ctl->stats->gauge );
+	stats_stop_one( ctl->stats->histo );
+	stats_stop_one( ctl->stats->self );
 
 	for( t = ctl->stats->adder->ctls; t; t = t->next )
 		pthread_mutex_destroy( &(t->lock) );
@@ -113,6 +123,9 @@ void stats_init_control( ST_CFG *c, int alloc_data )
 	// create the hash structure
 	if( alloc_data )
 		c->data = (DHASH **) mem_perm( c->hsize * sizeof( DHASH * ) );
+
+	// init the stats lock
+	pthread_mutex_init( &(c->statslock), &(ctl->proc->mem->mtxa) );
 
 	// convert msec to usec
 	c->period *= 1000;

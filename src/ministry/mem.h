@@ -27,9 +27,9 @@ struct memt_control
 };
 
 
-PTLIST *mem_new_point( void );
-void mem_free_point( PTLIST **p );
-void mem_free_point_list( PTLIST *list );
+PTLIST *mem_new_points( void );
+void mem_free_points( PTLIST **p );
+void mem_free_points_list( PTLIST *list );
 
 DHASH *mem_new_dhash( const char *str, int len );
 void mem_free_dhash( DHASH **d );
