@@ -336,7 +336,10 @@ FTREE *fs_treemon_create( const char *file_pattern, const char *dir_pattern, ftr
 			regerror( rc, &(ft->dmatch), errbuf, 1024 );
 			err( "Unable to compile dir pattern '%s' -- %s", dir_pattern, errbuf );
 			if( ft->fpattern )
+			{
 				free( ft->fpattern );
+				regfree( &(ft->fmatch ) );
+			}
 			free( ft );
 			return NULL;
 		}
