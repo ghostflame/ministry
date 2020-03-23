@@ -69,12 +69,6 @@ extern DTYPE data_type_defns[];
 #define dhash_do_predict( _d )		( ( _d->checks & DHASH_CHECK_PREDICT ) && _d->predict )
 
 
-struct data_point
-{
-	double				ts;
-	double				val;
-};
-
 
 struct data_histogram	// size 16
 {
@@ -124,8 +118,6 @@ struct data_hash_entry	// size 104
 	uint16_t			tlen;	// tags len
 
 	uint64_t			sum;
-
-	uint32_t			id;
 
 	uint8_t				valid;
 	uint8_t				do_pass;
