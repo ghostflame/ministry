@@ -341,17 +341,14 @@ MEMHL *mem_list_create( int use_lock, mem_free_cb *cb )
 	MEMHL *mhl = (MEMHL *) allocz( sizeof( MEMHL ) );
 
 	mhl->act_lock = 1;
+	mhl->memcb    = cb;
+	mhl->id       = mem_get_id( );
 
 	if( use_lock )
 	{
 		mhl->use_lock = 1;
 		pthread_mutex_init( &(mhl->lock), &(_mem->mtxa) );
 	}
-
-	if( cb )
-		mhl->memcb = cb;
-
-	mhl->id = mem_get_id( );
 
 	return mhl;
 }
