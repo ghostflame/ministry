@@ -100,6 +100,7 @@ struct mem_control
 	MTYPE				*	hanger;
 	MTYPE				*	slkmsg;
 	MTYPE				*	store;
+	MTYPE				*	ptser;
 };
 
 
@@ -166,6 +167,10 @@ void mem_free_slack_msg( SLKMSG **m );
 SSTE *mem_new_store( void );
 void mem_free_store( SSTE **s );
 void mem_free_store_list( SSTE *list );
+
+PTL *mem_new_ptser( int count );
+void mem_free_ptser( PTL **p );
+void mem_free_ptser_list( PTL *list );
 
 // hanger list
 

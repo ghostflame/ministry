@@ -398,3 +398,59 @@ void mem_free_store_list( SSTE *list )
 
 	mtype_free_list( _mem->store, j, list, end );
 }
+
+
+
+PTL *mem_new_ptser( int count )
+{
+	PTL *p = mtype_new( _mem->ptser );
+
+	if( count > MEM_PTSER_MAX_KEEP_POINTS || count > p->sz )
+	{
+		if( p->sz )
+			free( p->points );
+
+		p->sz = count;
+		p->points = allocz( count * sizeof( PNT ) );
+	}
+
+	return p;
+ }
+
+#define mem_clean_ptser( _p )			\
+	if( _p->sz > MEM_PTSER_MAX_KEEP_POINTS ) \
+	{ \
+		free( _p->points ); \
+		_p->points = NULL; \
+		_p->sz = 0; \
+	} \
+	_p->count = 0
+
+void mem_free_ptser( PTL **p )
+{
+	PTL *pp;
+
+	pp = *p;
+	*p = NULL;
+
+	mem_clean_ptser( pp );
+
+	mtype_free( _mem->ptser, pp );
+}
+
+void mem_free_ptser_list( PTL *list )
+{
+	PTL *p;
+	int j;
+
+	for( p = list, j = 0; p->next; p = p->next, ++j )
+	{
+		mem_clean_ptser( p );
+	}
+
+	mem_clean_ptser( p );
+	++j;
+
+	mtype_free_list( _mem->ptser, j, list, p );
+}
+

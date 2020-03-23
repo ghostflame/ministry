@@ -22,9 +22,13 @@ typedef struct pmet_control         PMET_CTL;
 typedef struct net_control          NET_CTL;
 typedef struct slack_control		SLK_CTL;
 typedef struct string_control       STR_CTL;
+typedef struct rkv_control          RKV_CTL;
 
 typedef struct config_section       CSECT;
 typedef struct config_context       CCTXT;
+
+typedef struct data_point			PNT;
+typedef struct data_series			PTL;
 
 typedef struct log_file             LOGFL;
 typedef struct log_setdebug         LOGSD;
@@ -107,6 +111,14 @@ typedef struct slack_handle         SLKHD;
 typedef struct slack_channel        SLKCH;
 typedef struct slack_space          SLKSP;
 
+typedef struct rkv_query            RKQR;
+typedef struct rkv_agg_entry        PNTA;
+typedef struct rkv_header_start     RKSTT;
+typedef struct rkv_bucket           RKBKT;
+typedef struct rkv_bucket_match     RKBMT;
+typedef struct rkv_header           RKHDR;
+typedef struct rkv_data             RKFL;
+
 
 
 // function types
@@ -129,6 +141,7 @@ typedef void iplist_data_fn( void *, IPNET * );
 typedef void mem_free_cb( void * );
 // return 0 for filter 'true'
 typedef int mhl_callback( MEMHL *, void *, MEMHG *, void * );
+typedef void rkv_rd_fn ( RKQR * );
 
 // found in the apps
 typedef int  buf_fn ( HOST *, IOBUF * );
@@ -136,5 +149,9 @@ typedef void line_fn ( HOST *, char *, int );
 typedef void add_fn ( const char *, int, const char * );
 typedef void tcp_setup_fn ( NET_TYPE * );
 typedef void tcp_fn ( HOST * );
+
+// file scanning
+typedef void *rkv_dir_cb_fn ( void *arg, char *name );
+typedef int rkv_file_cb_fn ( void *arg, char *name, char *path );
 
 #endif
