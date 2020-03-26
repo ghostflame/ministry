@@ -1,6 +1,6 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-FILES  = config read scan update rkv
+FILES  = config init read scan tree update rkv
 HEADS  = local rkv
 
 RKV    = rkv_shared.a

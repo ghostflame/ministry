@@ -111,6 +111,7 @@ struct process_control
 	NET_CTL				*	net;
 	SLK_CTL				*	slk;
 	STR_CTL				*	str;
+	RKV_CTL				*	rkv;
 };
 
 

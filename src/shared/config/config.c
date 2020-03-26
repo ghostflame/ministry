@@ -175,7 +175,7 @@ PROC_CTL *config_defaults( const char *app_name, const char *conf_dir )
 {
 	char buf[1024];
 
-	_proc            = (PROC_CTL *) allocz( sizeof( PROC_CTL ) );
+	_proc            = (PROC_CTL *) mem_perm( sizeof( PROC_CTL ) );
 	_proc->version   = str_perm( VERSION_STRING, 0 );
 	_proc->app_name  = str_perm( app_name, 0 );
 	_proc->tick_usec = 1000 * DEFAULT_TICK_MSEC;

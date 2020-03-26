@@ -28,8 +28,10 @@
 #define MEM_ALLOCSZ_HANGER			1024
 #define MEM_ALLOCSZ_SLKMSG			16
 #define MEM_ALLOCSZ_STORE			819		// 32k
-#define MEM_ALLOCSZ_PTSER			1024
-
+#define MEM_ALLOCSZ_PTSER			128
+#define MEM_ALLOCSZ_PTLST			2048	// 2k x 128, so 256k
+#define MEM_ALLOCSZ_TREEL			128		// 64b, so 8k
+#define MEM_ALLOCSZ_TLEAF			128		// ?
 
 // keep points on a PTL if it is less than this
 #define MEM_PTSER_MAX_KEEP_POINTS	3601

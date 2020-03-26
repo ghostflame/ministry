@@ -18,7 +18,7 @@
 #define RKV_CREATE_MODE				0644
 
 #define RKV_DEFAULT_RET				"10s:2d;60s:30d"
-
+#define RKV_DEFAULT_MAXPATH			512
 
 #include "shared.h"
 
@@ -68,9 +68,29 @@ struct rkv_bucket_match
 };
 
 
+struct rkv_file_thread
+{
+	SSTR				*	hash;
+
+	PMET				*	updates;
+	PMET				*	pass_time;
+
+	int64_t					id;
+
+	int64_t					up_ops;
+	double					up_time;
+};
+
+
+
 
 extern RKV_CTL *_rkv;
 
+TEL *rkv_tree_insert_node( TEL *prt, const char *name );
+int rkv_tree_insert_leaf( TEL *prt, const char *name, const char *path );
 
+void rkv_writer( THRD *t );
+
+int rkv_parse_buckets( RKBMT *m, const char *str, int len );
 
 #endif

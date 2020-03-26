@@ -19,16 +19,10 @@ void rkv_set_base_path( const char *path, int len )
 	if( !len )
 		len = strlen( path );
 
-	if( _rkv->base_path )
-		free( _rkv->base_path );
-
-	_rkv->base_path = (char *) allocz( len + 2 );
-	memcpy( _rkv->base_path, path, len );
+	strbuf_copy( _rkv->base_path, path, len );
 
 	if( path[len-1] != '/' )
-		_rkv->base_path[len++] = '/';
-
-	_rkv->bplen = len;
+		strbuf_add( _rkv->base_path, "/", 1 );
 }
 
 
@@ -90,89 +84,51 @@ PARSE_DONE:
 
 
 
-
-int rkv_init( void )
+RKMET *rkv_create_metrics( void )
 {
-	BUF *fbuf, *pbuf;
-	int64_t tsa, fc;
-	double diff;
-	RKBMT *m;
-	//int8_t i;
+	RKMET *m;
 
-	// add a default retention
-	if( _rkv->rblocks == 0 )
-	{
-		warn( "No retention config: adding default of %s", RKV_DEFAULT_RET );
+	m = (RKMET *) mem_perm( sizeof( RKMET ) );
 
-		m = (RKBMT *) allocz( sizeof( RKBMT ) );
-		m->is_default = 1;
-		m->name = str_perm( "Default bucket block", 0 );
-		rkv_parse_buckets( m, RKV_DEFAULT_RET, strlen( RKV_DEFAULT_RET ) );
 
-		_rkv->ret_default = m;
-		_rkv->retentions  = m;
-		_rkv->rblocks     = 1;
-	}
-	else
-	{
-		// fix the order
-		_rkv->retentions = (RKBMT *) mem_reverse_list( _rkv->retentions );
+	m->source    = pmet_add_source( "archive" );
 
-		// check we do have a default
-		if( !_rkv->ret_default )
-		{
-			// choose the last one
-			for( m = _rkv->retentions; m->next; m = m->next );
+	m->nodes     = pmet_new( PMET_TYPE_COUNTER, "archivist_total_nodes",
+	                            "Number of node tree elements" );
+	m->leaves    = pmet_new( PMET_TYPE_COUNTER, "archivist_total_leaves",
+	                            "Number of leaf tree elements" );
 
-			_rkv->ret_default = m;
-			notice( "Chose retention block %s as default.", m->name );
-		}
-	}
+	m->pts_count = pmet_new( PMET_TYPE_GAUGE, "archivist_data_points_current",
+	                            "Number of points processed this interval by archivist" );
+	m->pts_total = pmet_new( PMET_TYPE_COUNTER, "archivist_data_points_total",
+	                            "Number of points processed since startup by archivist" );
 
-	if( fs_mkdir_recursive( _rkv->base_path ) != 0 )
-	{
-		err( "Could not find file base path %s -- %s",
-			_rkv->base_path, Err );
-		return -1;
-	}
+	m->updates   = pmet_new( PMET_TYPE_GAUGE, "archivist_file_update_operations",
+	                            "Number of file updates made by each archivist writer thread" );
+	m->pass_time = pmet_new( PMET_TYPE_COUNTER, "archivist_file_update_time",
+	                            "Time spent doing file update operations by each archivist writer thread" );
 
-	// make sure we don't make crazy paths allowed
-	_rkv->maxpath = 2047 - RKV_EXTENSION_LEN - _rkv->bplen;
-
-	// scan existing files
-	fbuf = strbuf( _rkv->maxpath );
-	pbuf = strbuf( _rkv->maxpath );
-	strbuf_copy( fbuf, _rkv->base_path, _rkv->bplen );
-
-	// scan our files, work out how long it took
-	tsa = get_time64( );
-	// needs moving back into archivist
-	//fc = rkv_scan_dir( fbuf, pbuf, 0, ctl->tree->root, &tree_insert_leaf, &tree_insert_node );
-	fc = 0;
-	diff = (double) ( get_time64( ) - tsa );
-	diff /= BILLIONF;
-
-	info( "Scanned %ld files in %.6f sec.", fc, diff );
-
-	// and start our writers
-	// needs moving back into archivist, for the tree hash
-	//for( i = 0; i < _rkv->wr_threads; ++i )
-	//	thread_throw_named_f( &rkv_writer, ctl->tree->hash, i, "rkv_writer_%d", i );
-
-	return 0;
+	return m;
 }
 
 
 
 RKV_CTL *rkv_config_defaults( void )
 {
-	_rkv = (RKV_CTL *) allocz( sizeof( RKV_CTL ) );
+	_rkv = (RKV_CTL *) mem_perm( sizeof( RKV_CTL ) );
 
+	_rkv->base_path    = strbuf( RKV_DEFAULT_MAXPATH );
 	rkv_set_base_path( DEFAULT_BASE_PATH, 0 );
 
+	_rkv->maxpath      = RKV_DEFAULT_MAXPATH;
 	_rkv->wr_threads   = RKV_DEFAULT_THREADS;
 	_rkv->ms_sync      = MS_ASYNC;	// asynchronous msync on close
 	_rkv->max_open_sec = RKV_MAX_OPEN_SEC;
+
+	_rkv->root         = mem_new_treel( "root", 4 );
+	_rkv->hashsz       = (int64_t) hash_size( "xlarge" );
+
+	_rkv->metrics      = rkv_create_metrics( );
 
 	return _rkv;
 }
@@ -198,6 +154,13 @@ int rkv_config_line( AVP *av )
 		if( attIs( "basePath" ) || attIs( "filePath" ) )
 		{
 			rkv_set_base_path( av->vptr, av->vlen );
+		}
+		if( attIs( "hashSize" ) || attIs( "size" ) )
+		{
+			if( !( v = (int64_t) hash_size( av->vptr ) ) )
+				return -1;
+
+			_rkv->hashsz = v;	
 		}
 		else if( attIs( "ioThreads" ) || attIs( "threads" ) )
 		{
@@ -234,6 +197,16 @@ int rkv_config_line( AVP *av )
 			}
 
 			_rkv->max_open_sec = v;
+		}
+		else if( attIs( "maxPathLength" ) )
+		{
+			if( parse_number( av->vptr, &v, NULL ) == NUM_INVALID )
+			{
+				err( "Invalid max path length: %s", av->vptr );
+				return -1;
+			}
+
+			_rkv->maxpath = v;
 		}
 		else
 			return -1;
@@ -333,3 +306,6 @@ int rkv_config_line( AVP *av )
 
 	return 0;
 }
+
+
+

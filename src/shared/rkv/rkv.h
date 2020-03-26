@@ -17,13 +17,61 @@
 #define RKV_EXTENSION			".rkv"
 #define RKV_EXTENSION_LEN		4
 
-#define RKV_DEFAULT_THREADS	5
+#define RKV_DEFAULT_THREADS		5
 
 #define RKV_MAX_OPEN_SEC		120
 
 
 #define PTS_MAX_SMALL			256		// 2k structure
 #define PTS_MAX_MEDIUM			2048	// 16k structure
+
+
+// 48b
+struct rkv_tree_leaf
+{
+	TEL				*	tel;
+	PTL				*	points;
+	RKFL			*	fh;
+
+	int64_t				oldest;
+	int64_t				last_updated;
+
+	int64_t				last_flushed; // exclusively used by file/update
+};
+
+
+typedef pthread_mutex_t rkv_lock_t;
+
+#define rkv_tree_lock( _t )				pthread_mutex_lock(   &(_t->lock) )
+#define rkv_tree_unlock( _t )			pthread_mutex_unlock( &(_t->lock) )
+
+#define rkv_tree_lock_init( _t )		pthread_mutex_init(    &(_t->lock), NULL )
+#define rkv_tree_lock_dest( _t )		pthread_mutex_destroy( &(_t->lock) )
+
+#define rkv_tid_lock( )					pthread_mutex_lock(   &(_rkv->tid_lock) )
+#define rkv_tid_unlock( )				pthread_mutex_unlock( &(_rkv->tid_lock) )
+
+
+
+// 80-84 bytes
+struct rkv_tree_element
+{
+	TEL				*	next;
+	TEL				*	child;
+	TEL				*	parent;
+
+	SSTE			*	he;
+
+	char			*	name;
+	char			*	path;
+	LEAF			*	leaf;
+
+	uint16_t			len;
+	uint16_t			plen;
+	uint32_t			id;
+
+	rkv_lock_t			lock;
+};
 
 
 
@@ -91,11 +139,6 @@ struct rkv_query
 };
 
 
-struct rkv_entry
-{
-	int64_t					ts;
-	double					val;
-};
 
 
 // 16b
@@ -117,8 +160,8 @@ struct rkv_data
 	// metric path
 	char				*	path;
 
-	// pointer back to an owning struct
-	void				*	ptr;
+	// pointer back to a tree struct
+	TEL					*	tel;
 
 	// mmap pointer
 	void				*	map;
@@ -142,16 +185,41 @@ struct rkv_data
 };
 
 
+
+struct rkv_metrics
+{
+	PMETS			*	source;
+
+	PMETM			*	nodes;
+	PMETM			*	leaves;
+
+	PMETM			*	pts_total;
+	PMETM			*	pts_count;
+	PMETM			*	pts_high;
+
+	PMETM			*	updates;
+	PMETM			*	pass_time;
+};
+
+
 struct rkv_control
 {
-	char				*	base_path;
-
 	RKBMT				*	retentions;
 	RKBMT				*	ret_default;
 
-	int						bplen;
-	int						maxpath;
+	TEL					*	root;
+	SSTR				*	hash;
 
+	BUF					*	base_path;
+
+	RKMET				*	metrics;
+
+	int64_t					hashsz;
+
+	uint32_t				tid;
+	pthread_mutex_t			tid_lock;
+
+	int						maxpath;
 	int						wr_threads;
 	int						ms_sync;
 
@@ -171,15 +239,20 @@ const char *rkv_report_metric( int mval );
 void rkv_read( RKFL *r, RKQR *qry );
 void rkv_update( RKFL *r, PNT *points, int count );
 
+LEAF *rkv_hash_find( char *str, int len );
+
+int rkv_tree_insert( char *name, int nlen, char *path, int plen, TEL *prt, TEL **tp );
+
 int rkv_open( RKFL *r );
 void rkv_close( RKFL *r );
 void rkv_shutdown( RKFL *r );
 
 RKFL *rkv_create_handle( char *path, int plen );
 
-int rkv_scan_dir( BUF *fbuf, BUF *pbuf, int depth, void *cbarg, rkv_dir_cb_fn *dfp, rkv_file_cb_fn *ffp );
+int rkv_scan_dir( BUF *fbuf, BUF *pbuf, int depth, TEL *prt );
 
 int rkv_init( void );
+
 RKV_CTL *rkv_config_defaults( void );
 conf_line_fn rkv_config_line;
 

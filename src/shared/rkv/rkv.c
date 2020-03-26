@@ -2,7 +2,7 @@
 * This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
 *                                                                         *
-* file/file.c - main file-handling functions                              *
+* rkv/rkv.c - main archive file-handling functions                        *
 *                                                                         *
 * Updates:                                                                *
 **************************************************************************/
@@ -231,8 +231,8 @@ void rkv_shutdown( RKFL *r )
 RKFL *rkv_create_handle( char *path, int plen )
 {
 	char *last, *p, *q;
+	int l, k;
 	RKFL *r;
-	int l;
 
 	if( !path || !*path )
 	{
@@ -252,16 +252,22 @@ RKFL *rkv_create_handle( char *path, int plen )
 	r = (RKFL *) allocz( sizeof( RKFL ) );
 
 	// base path already has it's / on the end
-	l = RKV_EXTENSION_LEN + plen + _rkv->bplen;
+	l = RKV_EXTENSION_LEN + plen + _rkv->base_path->len;
 
-	r->fplen  = l;
+	r->fplen = l;
 	r->fpath = (char *) allocz( l + 1 );
-	memcpy( r->fpath,                      _rkv->base_path, _rkv->bplen );
-	memcpy( r->fpath + _rkv->bplen,        path, plen );
-	memcpy( r->fpath + _rkv->bplen + plen, RKV_EXTENSION, RKV_EXTENSION_LEN );
+	k = 0;
+
+	memcpy( r->fpath + k, _rkv->base_path->buf, _rkv->base_path->len );
+	k += _rkv->base_path->len;
+
+	memcpy( r->fpath + k, path, plen );
+	k += plen;
+
+	memcpy( r->fpath + k, RKV_EXTENSION, RKV_EXTENSION_LEN );
 
 	// don't stomp on the *last* dot, the file extension
-	last = r->fpath + _rkv->bplen + plen;
+	last = r->fpath + k;
 
 	p = r->fpath;
 
@@ -291,4 +297,3 @@ RKFL *rkv_create_handle( char *path, int plen )
 
 	return r;
 }
-

@@ -25,6 +25,11 @@
 #define MEM_TYPES_MAX				128
 
 
+// points to add to a ptlist
+#define MEM_PTLIST_SIZE				256
+
+
+
 struct mem_hanger
 {
 	MEMHG				*	next;
@@ -101,6 +106,9 @@ struct mem_control
 	MTYPE				*	slkmsg;
 	MTYPE				*	store;
 	MTYPE				*	ptser;
+	MTYPE				*	ptlst;
+	MTYPE				*	treel;
+	MTYPE				*	tleaf;
 };
 
 
@@ -171,6 +179,19 @@ void mem_free_store_list( SSTE *list );
 PTL *mem_new_ptser( int count );
 void mem_free_ptser( PTL **p );
 void mem_free_ptser_list( PTL *list );
+
+// same as ptser but fixed points, and not freed
+PTL *mem_new_ptlst( void );
+void mem_free_ptlst( PTL **p );
+void mem_free_ptlst_list( PTL *list );
+
+TEL *mem_new_treel( const char *str, int len );
+void mem_free_treel( TEL **t );
+void mem_free_treel_branch( TEL *t );
+
+LEAF *mem_new_tleaf( void );
+void mem_free_tleaf( LEAF **l );
+
 
 // hanger list
 

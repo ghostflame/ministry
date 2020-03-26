@@ -49,6 +49,9 @@ MEM_CTL *mem_config_defaults( void )
 	_mem->slkmsg      = mem_type_declare( "slkmsg", sizeof( SLKMSG ), MEM_ALLOCSZ_SLKMSG, 0x10000, 0 );
 	_mem->store       = mem_type_declare( "store",  sizeof( SSTE ),   MEM_ALLOCSZ_STORE, 0, 1 );
 	_mem->ptser       = mem_type_declare( "ptser",  sizeof( PTL ),    MEM_ALLOCSZ_PTSER, 0, 1 );
+	_mem->ptlst       = mem_type_declare( "ptlst",  sizeof( PTL ),    MEM_ALLOCSZ_PTLST, 0, 1 );
+	_mem->treel       = mem_type_declare( "treel",  sizeof( TEL ),    MEM_ALLOCSZ_TREEL, 0, 1 );
+	_mem->tleaf       = mem_type_declare( "tleaf",  sizeof( LEAF ),   MEM_ALLOCSZ_TLEAF, 0, 1 );
 
 	pthread_mutex_init( &(_mem->idlock), NULL );
 
