@@ -11,9 +11,9 @@ UNIDIR ?= $(DESTDIR)/usr/lib/systemd/system
 SSLDIR ?= $(CFGDIR)/ssl
 TSTDIR ?= $(CFGDIR)/test
 
-BINS    = ministry ministry-test carbon-copy metric-filter
-APPS    = ministry ministry_test carbon_copy metric-filter
-SVCS    = ministry carbon-copy metric-filter
+BINS    = ministry ministry-test carbon-copy metric-filter archivist
+APPS    = ministry ministry_test carbon_copy metric-filter archivist
+SVCS    = ministry carbon-copy metric-filter archivist
 
 CTPATH  = ghostflame/ministry
 
