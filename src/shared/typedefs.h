@@ -117,8 +117,11 @@ typedef struct rkv_header_start     RKSTT;
 typedef struct rkv_bucket           RKBKT;
 typedef struct rkv_bucket_match     RKBMT;
 typedef struct rkv_header           RKHDR;
+typedef struct rkv_metrics          RKMET;
 typedef struct rkv_data             RKFL;
-
+typedef struct rkv_file_thread      RKFT;
+typedef struct rkv_tree_element     TEL;
+typedef struct rkv_tree_leaf        LEAF;
 
 
 // function types
@@ -149,9 +152,5 @@ typedef void line_fn ( HOST *, char *, int );
 typedef void add_fn ( const char *, int, const char * );
 typedef void tcp_setup_fn ( NET_TYPE * );
 typedef void tcp_fn ( HOST * );
-
-// file scanning
-typedef void *rkv_dir_cb_fn ( void *arg, char *name );
-typedef int rkv_file_cb_fn ( void *arg, char *name, char *path );
 
 #endif

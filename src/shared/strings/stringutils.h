@@ -91,6 +91,8 @@ BUF *strbuf_json( BUF *b, json_object *o, int done );
 #define buf_terminate( _b )				_b->buf[_b->len] = '\0'
 #define buf_hasspace( _b, _l )			( ( _b->len + _l ) < _b->sz )
 #define buf_space( _b )					strbuf_space( _b )
+#define buf_tostring( _b, _s )			memcpy( _s, _b->buf, _b->len )
+
 
 // these work as macros - but DO NOT EXPAND b->sz
 #define strbuf_printf( _b, ... )		_b->len  =  snprintf( _b->buf, _b->sz, ##__VA_ARGS__ )
@@ -104,9 +106,8 @@ BUF *strbuf_json( BUF *b, json_object *o, int done );
 #define strbuf_chop( _b )				strbuf_chopn( _b, 1 )
 
 #define strbuf_lastchar( _b )			( ( _b->len ) ? _b->buf[_b->len - 1] : '\0' )
-#define strbuf_append( _b, _o )			strbuf_copy( strbuf_resize( _b, _b->len + _o->len ), _o->buf, _o->len )
+#define strbuf_append( _b, _o )			strbuf_copy( _b, _o->buf, _o->len )
 #define strbuf_space( _b )				( _b->sz - ( _b->len + 1 ) )
-
 
 
 

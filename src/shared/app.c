@@ -81,6 +81,9 @@ int app_init( const char *name, const char *cfgdir, unsigned int flags )
 	// create some stuff
 	config_defaults( name, cfgdir );
 
+	// set our flags
+	runf_add( flags );
+
 	_proc->mem  = mc;
 	_proc->str  = string_config_defaults( );
 	_proc->log  = log_config_defaults( );
@@ -109,8 +112,15 @@ int app_init( const char *name, const char *cfgdir, unsigned int flags )
 	}
 	if( !runf_has( RUN_NO_TARGET ) )
 	{
-		_proc->tgt  = target_config_defaults( );
+		_proc->tgt = target_config_defaults( );
 		config_register_section( "target", &target_config_line );
+	}
+
+
+	if( !runf_has( RUN_NO_RKV ) )
+	{
+		_proc->rkv = rkv_config_defaults( );
+		config_register_section( "archive", &rkv_config_line );
 	}
 
 	// things that needed other stuff first
@@ -259,6 +269,16 @@ void app_ready( void )
 
 	// and any iplists
 	iplist_init( );
+
+	// archive startup - this can take a while scanning for files
+	if( !runf_has( RUN_NO_RKV ) )
+	{
+		if( rkv_init( ) != 0 )
+		{
+			fatal( "Aborting - file storage path cannot be reached." );
+			return;
+		}
+	}
 
 	if( !runf_has( RUN_NO_HTTP ) )
 	{
