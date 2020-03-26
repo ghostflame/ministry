@@ -180,7 +180,7 @@ void stats_report_one( ST_THR *t, DHASH *d )
 	if( dhash_do_mode( d ) && ct >= ctl->stats->mode->min_pts )
 		stats_report_mode( t, d, ct );
 
-	mem_free_point_list( list );
+	mem_free_points_list( list );
 
 	// keep count
 	t->points += ct;

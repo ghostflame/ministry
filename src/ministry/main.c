@@ -100,7 +100,7 @@ int main( int ac, char **av, const char **env )
 	int oc;
 
 	// start the app up
-	app_init( "ministry", "ministry", 0 );
+	app_init( "ministry", "ministry", RUN_NO_RKV );
 
 	// make our combined arg string
 	if( !( optstr = config_arg_string( "p:" ) ) )
