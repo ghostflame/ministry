@@ -26,9 +26,7 @@
 #include "mem.h"
 #include "network.h"
 #include "data.h"
-#include "tree.h"
 #include "query/query.h"
-#include "file/file.h"
 
 
 // main control structure
@@ -37,16 +35,15 @@ struct archivist_control
 	HTTP_CTL			*	http;
 	PROC_CTL			*	proc;
 	MEMT_CTL			*	mem;
-	TREE_CTL			*	tree;
 	QRY_CTL				*	query;
 	NETW_CTL			*	netw;
-	FILE_CTL			*	file;
+	RKV_CTL				*	rkv;
 };
 
 
 
 // global control config
-RKV_CTL *ctl;
+ARCH_CTL *ctl;
 
 
 #endif

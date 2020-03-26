@@ -86,7 +86,7 @@ int query_search( QRY *q )
 	// last index
 	q->plast = q->w.wc - 1;
 
-	query_search_tree( q, 0, ctl->tree->root );
+	query_search_tree( q, 0, ctl->rkv->root );
 
 	free( copy );
 

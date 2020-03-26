@@ -26,14 +26,7 @@ period.  It is expected to be both CPU, memory and IO heavy.\n\n" );
 
 void main_loop( void )
 {
-	tree_init( );
 	query_init( );
-
-	if( file_init( ) != 0 )
-	{
-		fatal( "Aborting - file storage path cannot be reached." );
-		return;
-	}
 
 	// get network threads going
 	net_begin( );
@@ -47,17 +40,15 @@ void main_loop( void )
 
 void main_create_conf( void )
 {
-	ctl             = (RKV_CTL *) allocz( sizeof( RKV_CTL ) );
+	ctl             = (ARCH_CTL *) allocz( sizeof( ARCH_CTL ) );
 	ctl->proc       = app_control( );
 	ctl->mem        = memt_config_defaults( );
-	ctl->tree       = tree_config_defaults( );
 	ctl->query      = query_config_defaults( );
 	ctl->netw       = network_config_defaults( );
-	ctl->file       = file_config_defaults( );
+	ctl->rkv        = ctl->proc->rkv;
+	ctl->http       = ctl->proc->http;
 
-	config_register_section( "tree",  &tree_config_line );
 	config_register_section( "query", &query_config_line );
-	config_register_section( "file",  &file_config_line );
 }
 
 

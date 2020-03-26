@@ -19,9 +19,12 @@ void query_path_get_data( QP *p, QRY *q )
 
 	if( !l->fh )
 	{
-		tree_lock( t );
-		l->fh = file_create_handle( t );
-		tree_unlock( t );
+		rkv_tree_lock( t );
+
+		if( !l->fh )
+			l->fh = rkv_create_handle( t->path, t->plen );
+
+		rkv_tree_unlock( t );
 
 		// TODO - handle persistent failures
 		if( !l->fh )
@@ -36,7 +39,7 @@ void query_path_get_data( QP *p, QRY *q )
 	p->fq->to     = q->end;
 	p->fq->metric = q->metric;
 
-	file_read( l->fh, p->fq );
+	rkv_read( l->fh, p->fq );
 }
 
 
@@ -146,7 +149,7 @@ int query_get_callback( HTREQ *req )
 
 	if( http_request_get_param( req, QUERY_PARAM_METRIC, &str ) )
 	{
-		q->metric = file_choose_metric( str );
+		q->metric = rkv_choose_metric( str );
 		if( q->metric < 0 )
 		{
 			// don't echo the param back out to the user - that's a

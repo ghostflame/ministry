@@ -10,13 +10,67 @@
 #include "archivist.h"
 
 
+
+
+LEAF *data_process_line( char *str, int len )
+{
+	int i, last, clen;
+	TEL *t, *prt;
+	char *copy;
+	WORDS w;
+	LEAF *l;
+
+	// do we already have that one?
+	if( ( l = rkv_hash_find( str, len ) ) )
+		return l;
+
+	prt = ctl->rkv->root;
+	copy = str_copy( str, len );
+	clen = 0;
+	l = NULL;
+
+	strwords( &w, str, len, '.' );
+	last = w.wc - 1;
+
+	for( i = 0; i < w.wc; i++ )
+	{
+		for( t = prt->child; t; t = t->next )
+			if( t->len == w.len[i] && !memcmp( t->name, w.wd[i], t->len ) )
+				break;
+
+		if( !t )
+		{
+			if( i == last )
+				clen = len;
+
+			// leaf/node mismatch?
+			if( rkv_tree_insert( w.wd[i], w.len[i], copy, clen, prt, &t ) < 0 )
+				break;
+		}
+		else
+		{
+			// leaf/node mismatch?
+			if( t->leaf && i < last )
+				break;
+		}
+
+		l = t->leaf;
+		prt = t;
+	}
+
+	free( copy );
+	return l;
+}
+
+
+
 void data_handle_line( HOST *h, char *str, int len )
 {
 	char *sp, *path;
 	int64_t ts, now;
 	double val;
 	LEAF *l;
-	PTS *p;
+	PTL *p;
 	int pl;
 
 	//info( "Saw line: [%d] %s", len, str );
@@ -48,7 +102,7 @@ void data_handle_line( HOST *h, char *str, int len )
 		--len;
 	}
 
-	if( !( l = tree_process_line( path, pl ) ) )
+	if( !( l = data_process_line( path, pl ) ) )
 	{
 		++(h->invalid);
 		return;
@@ -60,24 +114,23 @@ void data_handle_line( HOST *h, char *str, int len )
 	ts  = strtoll( sp, NULL, 10 );
 	now = _proc->curr_usec;
 
-	tree_lock( l->tel );
+	rkv_tree_lock( l->tel );
 
-	if( !( p = l->points )
-	 || p->count == PTS_MAX )
+	if( !( p = l->points ) || p->count >= p->sz )
 	{
 		p = mem_new_ptlst( );
 		p->next = l->points;
 		l->points = p;
 	}
 
-	p->vals[p->count].val = val;
-	p->vals[p->count].ts  = ts;
+	p->points[p->count].val = val;
+	p->points[p->count].ts  = ts;
 	++(p->count);
 
 	if( !l->oldest )
 		l->oldest = now;
 
-	tree_unlock( l->tel );
+	rkv_tree_unlock( l->tel );
 
 	l->last_updated = now;
 	++(h->handled);
