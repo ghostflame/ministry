@@ -55,26 +55,32 @@ chown -R ministry:ministry /etc/ministry/ssl
 %config(noreplace) /etc/ministry/carbon-copy.conf
 %config(noreplace) /etc/ministry/ministry-test.conf
 %config(noreplace) /etc/ministry/metric-filter.conf
+%config(noreplace) /etc/ministry/archivist.conf
 %config(noreplace) /etc/logrotate.d/ministry
 %config(noreplace) /etc/logrotate.d/carbon-copy
 %config(noreplace) /etc/logrotate.d/metric-filter
+%config(noreplace) /etc/logrotate.d/archivist
 %config(noreplace) /etc/ministry/ssl/cert.pem
 %config(noreplace) /etc/ministry/ssl/key.pem
 %{_bindir}/ministry
 %{_bindir}/carbon-copy
 %{_bindir}/ministry-test
 %{_bindir}/metric-filter
+%{_bindir}/archivist
 %{_mandir}/man1/ministry.1.gz
 %{_mandir}/man1/ministry-test.1.gz
 %{_mandir}/man1/carbon-copy.1.gz
 %{_mandir}/man1/metric-filter.1.gz
+%{_mandir}/man1/archivist.1.gz
 %{_mandir}/man5/ministry.conf.5.gz
 %{_mandir}/man5/ministry-test.conf.5.gz
 %{_mandir}/man5/carbon-copy.conf.5.gz
 %{_mandir}/man5/metric-filter.conf.5.gz
+%{_mandir}/man5/archivist.conf.5.gz
 %{_unitdir}/ministry.service
 %{_unitdir}/carbon-copy.service
 %{_unitdir}/metric-filter.service
+%{_unitdir}/archivist.service
 
 %changelog
 
