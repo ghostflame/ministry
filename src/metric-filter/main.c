@@ -63,7 +63,7 @@ int main( int ac, char **av, const char **env )
 	int oc;
 
 	// start us up
-	app_init( "metric-filter", "ministry", 0 );
+	app_init( "metric-filter", "ministry", RUN_NO_RKV );
 
 	// set our default HTTP ports
 	http_set_default_ports( MF_DEFAULT_HTTP_PORT, MF_DEFAULT_HTTPS_PORT );

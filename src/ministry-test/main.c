@@ -59,7 +59,7 @@ int main( int ac, char **av, const char **env )
 	int oc;
 
 	// this first
-	app_init( "ministry-test", "ministry", RUN_NO_HTTP );
+	app_init( "ministry-test", "ministry", RUN_NO_HTTP|RUN_NO_RKV );
 
 	// say we are a by-hand app
 	runf_add( RUN_BY_HAND );

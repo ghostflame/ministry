@@ -64,7 +64,7 @@ int main( int ac, char **av, const char **env )
 	int oc;
 
 	// start us up
-	app_init( "carbon-copy", "ministry", 0 );
+	app_init( "carbon-copy", "ministry", RUN_NO_RKV );
 
 	// set out default HTTP ports
 	http_set_default_ports( CC_DEFAULT_HTTP_PORT, CC_DEFAULT_HTTPS_PORT );
