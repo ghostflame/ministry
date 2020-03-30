@@ -217,13 +217,17 @@ TGT_CTL *target_config_defaults( void )
 	_tgt = (TGT_CTL *) mem_perm( sizeof( TGT_CTL ) );
 
 	m = (TGTMT *) mem_perm( sizeof( TGTMT ) );
-	m->source = pmet_add_source( "targets" );
-	m->bytes = pmet_new( PMET_TYPE_COUNTER, "ministry_target_sent_bytes",
-	                    "Number of bytes sent to a target" );
-	m->conn = pmet_new( PMET_TYPE_GAUGE, "ministry_target_connected",
-                        "Connection status of target" );
 
-	_tgt->metrics = m;
+	if( !runf_has( RUN_NO_HTTP ) )
+	{
+		m->source = pmet_add_source( "targets" );
+		m->bytes = pmet_new( PMET_TYPE_COUNTER, "ministry_target_sent_bytes",
+	                    "Number of bytes sent to a target" );
+		m->conn = pmet_new( PMET_TYPE_GAUGE, "ministry_target_connected",
+	                        "Connection status of target" );
+
+		_tgt->metrics = m;
+	}
 
 	return _tgt;
 }

@@ -110,6 +110,7 @@ int app_init( const char *name, const char *cfgdir, unsigned int flags )
 		config_register_section( "ha",   &ha_config_line );
 
 	}
+
 	if( !runf_has( RUN_NO_TARGET ) )
 	{
 		_proc->tgt = target_config_defaults( );

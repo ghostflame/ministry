@@ -84,7 +84,10 @@ int log_start( void )
 	int ret = 0;
 
 	// add a callback to toggle debugging
-	http_add_control( "set-debug", "Set/unset debug logging", NULL, log_ctl_setdebug, NULL, 0 );
+	if( !runf_has( RUN_NO_HTTP ) )
+	{
+		http_add_control( "set-debug", "Set/unset debug logging", NULL, log_ctl_setdebug, NULL, 0 );
+	}
 
 	if( !_logger )
 		return -1;

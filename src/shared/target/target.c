@@ -95,7 +95,10 @@ void target_loop( THRD *th )
 	t->queue = mem_list_create( 1, NULL );
 
 	// and add some watcher metrics
-	target_add_metrics( t );
+	if( !runf_has( RUN_NO_HTTP ) )
+	{
+		target_add_metrics( t );
+	}
 
 	tgdebug( "Started target, max waiting %d", t->max );
 

@@ -14,7 +14,7 @@ int rkv_init( void )
 {
 	BUF *fbuf, *pbuf;
 	int64_t tsa, fc;
-	char idbuf[4];
+	char idbuf[16];
 	double diff;
 	RKMET *me;
 	RKBMT *m;
@@ -95,7 +95,7 @@ int rkv_init( void )
 		f = mem_perm( sizeof( RKFT ) );
 		f->id = i;
 
-		snprintf( idbuf, 4, "%d", i );
+		snprintf( idbuf, 16, "%d", i );
 
 		f->updates   = pmet_create_gen( me->updates,   me->source, PMET_GEN_IVAL, &(f->up_ops),  NULL, NULL );
 		f->pass_time = pmet_create_gen( me->pass_time, me->source, PMET_GEN_DVAL, &(f->up_time), NULL, NULL );
