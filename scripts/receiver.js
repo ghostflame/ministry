@@ -93,6 +93,8 @@ function PostHandler( port )
 			}
 
 			console.log( JSON.stringify( obj ) );
+			res.writeHead( 204 );
+			res.end( );
 		});
 	};
 
