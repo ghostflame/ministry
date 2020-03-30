@@ -82,7 +82,7 @@ __attribute__((hot)) static inline uint64_t data_path_hash( const char *str, int
 		sum += sum >> 32;
 	}
 
-	while( --ctr != 0 )
+	while( ctr-- > 0 )
 		sum = ( sum << 1 ) ^ *p++;
 
 	// and capture the rest
