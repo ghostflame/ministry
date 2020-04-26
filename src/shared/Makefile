@@ -40,7 +40,7 @@ with_old_gcc: $(RKV)
 
 
 subs:
-	for d in $(SUBS); do ( cd $$d && EARGS=$(EARGS) VERS=$(VERS) $(MAKE) -j4 $(MFLAGS) $(TARGET) ); done
+	for d in $(SUBS); do ( cd $$d && EARGS=$(EARGS) VERS=$(VERS) $(MAKE) -j10 $(MFLAGS) $(TARGET) ); done
 
 $(RKV): $(OBJS)
 	ar crs $(RKV) $(OBJS) $(SUBO)
