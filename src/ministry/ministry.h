@@ -26,7 +26,7 @@
 #include "metrics/metrics.h"
 #include "gc.h"
 #include "mem.h"
-#include "synth.h"
+#include "synth/synth.h"
 #include "maths/maths.h"
 #include "stats/stats.h"
 
