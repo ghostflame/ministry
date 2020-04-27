@@ -19,7 +19,7 @@
 // in order
 #include "locks.h"
 #include "network.h"
-#include "fetch.h"
+#include "fetch/fetch.h"
 #include "post.h"
 #include "targets.h"
 #include "data/data.h"

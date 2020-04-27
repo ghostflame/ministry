@@ -2,7 +2,7 @@
 * This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
 *                                                                         *
-* fetch.h - defines structures and functions controlling data fetch       *
+* fetch/fetch.h - defines structures and functions controlling data fetch *
 *                                                                         *
 * Updates:                                                                *
 **************************************************************************/
@@ -69,3 +69,4 @@ conf_line_fn fetch_config_line;
 
 
 #endif
+

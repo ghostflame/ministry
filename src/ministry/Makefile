@@ -1,9 +1,9 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-FILES  = locks mem fetch post gc network targets main
-HEADS  = locks mem fetch post gc network targets ministry
+FILES  = locks mem post gc network targets main
+HEADS  = locks mem post gc network targets ministry
 
-SUBS   = metrics stats data maths synth
+SUBS   = metrics stats data maths synth fetch
 
 OBJS   = $(FILES:%=%.o)
 HDRS   = $(HEADS:%=%.h)

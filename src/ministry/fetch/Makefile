@@ -1,9 +1,9 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-FILES  = config synth ops
-HEADS  = synth local
+FILES  = config fetch
+HEADS  = fetch
 
-RKV    = synth_shared.a
+RKV    = fetch_shared.a
 EARGS ?=
 
 OBJS   = $(FILES:%=%.o)
