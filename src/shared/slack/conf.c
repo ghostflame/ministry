@@ -208,7 +208,7 @@ int slack_config_line( AVP *av )
 		else if( attIs( "done" ) )
 		{
 			ns = (SLKSP *) mem_perm( sizeof( SLKSP ) );
-			memcpy( ns, s, sizeof( SLKSP ) );
+			*ns = *s;
 			memset( s, 0, sizeof( SLKSP ) );
 			slack_add_space( ns );
 			__slk_cfg_sp_state = 0;
@@ -310,7 +310,7 @@ int slack_config_line( AVP *av )
 			}
 
 			nc = (SLKCH *) mem_perm( sizeof( SLKCH ) );
-			memcpy( nc, c, sizeof( SLKCH ) );
+			*nc = *c;
 			memset( c, 0, sizeof( SLKCH ) );
 
 			slack_add_channel( nc );
@@ -353,7 +353,7 @@ int slack_config_line( AVP *av )
 
 
 			nh = (SLKHD *) mem_perm( sizeof( SLKHD ) );
-			memcpy( nh, h, sizeof( SLKHD ) );
+			*nh = *h;
 			memset( h, 0, sizeof( SLKHD ) );
 
 			slack_add_handle( nh );

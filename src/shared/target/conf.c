@@ -368,7 +368,7 @@ int target_config_line( AVP *av )
 			t->list = __target_list_find_create( t->name );
 
 		n = (TGT *) mem_perm( sizeof( TGT ) );
-		memcpy( n, t, sizeof( TGT ) );
+		*n = *t;
 
 		// add it into the list - preserve order, so append
 		if( !n->list->targets )

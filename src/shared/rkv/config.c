@@ -287,7 +287,7 @@ int rkv_config_line( AVP *av )
 			}
 
 			n = (RKBMT *) allocz( sizeof( RKBMT ) );
-			memcpy( n, m, sizeof( RKBMT ) );
+			*n = *m;
 			memset( m, 0, sizeof( RKBMT ) );
 
 			// put it into the list
