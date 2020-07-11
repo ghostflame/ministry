@@ -13,7 +13,7 @@
 
 
 // called by multiple places, including potentially as policy callback
-int http_access_policy( void *cls, const struct sockaddr *addr, socklen_t addrlen )
+enum MHD_Result http_access_policy( void *cls, const struct sockaddr *addr, socklen_t addrlen )
 {
 	IPLIST *srcs = (IPLIST *) cls;
 	struct in_addr ina;
@@ -50,9 +50,9 @@ int http_check_json( HTREQ *req )
 
 
 
-int http_send_response( HTREQ *req )
+enum MHD_Result http_send_response( HTREQ *req )
 {
-	int ret = MHD_YES;
+	enum MHD_Result ret = MHD_YES;
 	HTTP_RESP *resp;
 
 	if( req->sent )
@@ -186,7 +186,7 @@ int http_request_get_param( HTREQ *req, char *key, char **val )
 
 
 
-int http_get_url_param( void *cls, HTTP_VAL kind, const char *key, const char *value )
+enum MHD_Result http_get_url_param( void *cls, HTTP_VAL kind, const char *key, const char *value )
 {
 	HTREQ *r = (HTREQ *) cls;
 	HTPRM *p;
@@ -351,7 +351,7 @@ HTREQ *http_request_creator( HTTP_CONN *conn, const char *url, const char *metho
 
 
 
-int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
+enum MHD_Result http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
 	const char *method, const char *version, const char *upload_data,
 	size_t *upload_data_size, void **con_cls )
 {
