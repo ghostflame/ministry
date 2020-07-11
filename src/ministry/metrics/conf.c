@@ -75,7 +75,7 @@ int metrics_add_attr( METAL *m, char *str, int len )
 	tmp.len  = len;
 
 	a = (METAT *) mem_perm( sizeof( METAT ) );
-	memcpy( a, &tmp, sizeof( METAT ) );
+	*a = tmp;
 
 	a->next = m->ats;
 	m->ats  = a;
@@ -260,7 +260,7 @@ int metrics_config_line( AVP *av )
 			{
 				return regex_list_add( av->vptr, 0, p->maps->rlist );
 			}
-			else if( attIs( "fail" ) )
+			else if( attIs( "fail" ) || attIs( "unmatch" ) )
 			{
 				return regex_list_add( av->vptr, 1, p->maps->rlist );
 			}
@@ -281,7 +281,7 @@ int metrics_config_line( AVP *av )
 			}
 
 			na = (METAL *) allocz( sizeof( METAL ) );
-			memcpy( na, a, sizeof( METAL ) );
+			*na = *a;
 
 			// take everything off the tmp structure, na owns it now
 			memset( a, 0, sizeof( METAL ) );
@@ -329,7 +329,7 @@ int metrics_config_line( AVP *av )
 				}
 
 			np = (METPR *) allocz( sizeof( METPR ) );
-			memcpy( np, p, sizeof( METPR ) );
+			*np = *p;
 
 			np->next = _met->profiles;
 			_met->profiles = np;
