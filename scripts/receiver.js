@@ -110,7 +110,7 @@ var prts = [ 12003, 12004, 12005, 13003 ];
 var totl = 0;
 var show = false;
 
-var echoport = parseInt( process.argv[2] || '13003', 10 );
+var echoport = parseInt( process.argv[2] || '12003', 10 );
 
 for( var i = 0; i < prts.length; i++ ) {
 	show = ( prts[i] === echoport );
