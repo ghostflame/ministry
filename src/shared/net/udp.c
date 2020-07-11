@@ -138,7 +138,7 @@ void udp_loop_checks( THRD *t )
 
 		b->len = rb;
 
-		// do IP whitelist/blacklist check
+		// do IP filter check
 		if( net_ip_check( _net->filter, h->peer ) != 0 )
 		{
 			++(n->drops.count);

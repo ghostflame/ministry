@@ -2,7 +2,7 @@
 * This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
 *                                                                         *
-* regexp.c - implements a regex whitelist/blacklist                       *
+* regexp.c - implements a regex match/unmatch list                        *
 *                                                                         *
 * Updates:                                                                *
 **************************************************************************/

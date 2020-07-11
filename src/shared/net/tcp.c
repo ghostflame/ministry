@@ -118,7 +118,7 @@ HOST *tcp_get_host( int sock, NET_PORT *np )
 		return NULL;
 	}
 
-	// are we doing blacklisting/whitelisting?
+	// are we doing filtering?
 	if( net_ip_check( _net->filter, &from ) != 0 )
 	{
 		if( _net->filter && _net->filter->verbose )
