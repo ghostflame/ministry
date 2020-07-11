@@ -203,10 +203,6 @@ void stats_stats_pass( ST_THR *t )
 	PTLIST *p;
 	DHASH *d;
 
-#ifdef DEBUG
-	//debug( "[%02d] Stats claim", t->id );
-#endif
-
 	st_thr_time( steal );
 
 	// take the data
@@ -235,10 +231,6 @@ void stats_stats_pass( ST_THR *t )
 				else if( d->empty >= 0 )
 					++(d->empty);
 		}
-
-#ifdef DEBUG
-	//debug( "[%02d] Stats report", t->id );
-#endif
 
 	st_thr_time( stats );
 
