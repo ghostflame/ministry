@@ -32,13 +32,6 @@
 
 
 
-#ifdef DEBUG_SYNTH
-#define debug_synth( ... )			debug( ## __VA_ARGS__ )
-#else
-#define debug_synth( ... )			(void) 0
-#endif
-
-
 
 // main control structure
 struct ministry_control
