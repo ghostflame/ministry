@@ -39,7 +39,7 @@ void iplist_add( IPLIST *l, int dup )
 		IPLIST *nl = (IPLIST *) allocz( sizeof( IPLIST ) );
 
 		// grab all the member elements and allocz
-		memcpy( nl, l, sizeof( IPLIST ) );
+		*nl = *l;
 
 		// and send that list back empty
 		memset( l, 0, sizeof( IPLIST ) );
@@ -137,12 +137,12 @@ int iplist_config_line( AVP *av )
 			l->hashsz = hs;
 		_iplist_cfg_set = 1;
 	}
-	else if( attIs( "match" ) || attIs( "whitelist" ) )
+	else if( attIs( "match" ) )
 	{
 		_iplist_cfg_set = 1;
 		return iplist_add_entry( l, IPLIST_POSITIVE, av->vptr, av->vlen );
 	}
-	else if( attIs( "miss" ) || attIs( "blacklist" ) )
+	else if( attIs( "miss" ) || attIs( "unmatch" ) )
 	{
 		_iplist_cfg_set = 1;
 		return iplist_add_entry( l, IPLIST_NEGATIVE, av->vptr, av->vlen );
