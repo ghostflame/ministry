@@ -182,7 +182,7 @@ int relay_config_line( AVP *av )
 		n = (RELAY *) mem_perm( sizeof( RELAY ) );
 
 		// copy across what we need
-		memcpy( n, r, sizeof( RELAY ) );
+		*n = *r;
 
 		// make it's own memory
 		n->mstats  = (int64_t *) allocz( n->mcount * sizeof( int64_t ) );
