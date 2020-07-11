@@ -319,7 +319,7 @@ int mem_type_stats( int id, MTSTAT *ms )
 
 	// grab the stats
 	mem_lock( m );
-	memcpy( &(ms->ctrs), &(m->ctrs), sizeof( MTCTR ) );
+	ms->ctrs = m->ctrs;
 	mem_unlock( m );
 
 	// these can be after the unlock
