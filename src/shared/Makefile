@@ -15,7 +15,7 @@ SUBO   = $(SUBS:%=%/*.o)
 
 WFLAGS = -Wall -Wshadow
 IFLAGS = -I. 
-DFLAGS = -g -pg -ggdb3 -DDEBUG
+DFLAGS = -g -pg -ggdb3 -DMINDEBUG
 TFLAGS = -pthread
 CFLAGS = -c $(TFLAGS) $(IFLAGS) $(EARGS)
 #CFLAGS = -c $(TFLAGS) $(IFLAGS) -DMIN_MHD_PASS=0

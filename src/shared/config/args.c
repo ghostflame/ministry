@@ -179,10 +179,10 @@ void config_args( int ac, char **av, const char *optstr, help_fn *hfp )
 			case 'D':
 				log_set_level( LOG_LEVEL_DEBUG, 1 );
 				runf_add( RUN_DEBUG );
-//#ifdef DEBUG
-//				// set malloc debugging
-//				mallopt(M_CHECK_ACTION, 0x3);
-//#endif
+#ifdef DEBUG_MALLOC
+				// set malloc debugging
+				mallopt(M_CHECK_ACTION, 0x3);
+#endif
 				break;
 			case 'V':
 				runf_add( RUN_TGT_STDOUT );

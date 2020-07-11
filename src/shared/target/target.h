@@ -10,12 +10,7 @@
 #ifndef SHARED_TARGET_H
 #define SHARED_TARGET_H
 
-#ifdef DEBUG
-#define tgdebug( fmt, ... )		debug( "[%d:%s] " fmt, t->id, t->name, ##__VA_ARGS__ )
-#else
-#define tgdebug( fmt, ... )
-#endif
-
+#define tgdebug( fmt, ... )		debug(  "[%d:%s] " fmt, t->id, t->name, ##__VA_ARGS__ )
 #define tginfo( fmt, ... )		info(   "[%d:%s] " fmt, t->id, t->name, ##__VA_ARGS__ )
 #define tgnotice( fmt, ... )	notice( "[%d:%s] " fmt, t->id, t->name, ##__VA_ARGS__ )
 #define tgwarn( fmt, ... )		warn(   "[%d:%s] " fmt, t->id, t->name, ##__VA_ARGS__ )

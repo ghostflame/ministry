@@ -79,7 +79,7 @@ int str_sub( char **ptr, int *len, int argc, char **argv, int *argl )
 	char *a, *b, numbuf[8];
 	regmatch_t mtc[4];
 	int i, l, c = 0;
-#ifdef DEBUG
+#ifdef DEBUG_STRSUB
 	char *o;
 #endif
 
@@ -95,7 +95,7 @@ int str_sub( char **ptr, int *len, int argc, char **argv, int *argl )
 
 	// start with a copy
 	a = str_copy( *ptr, *len );
-#ifdef DEBUG
+#ifdef DEBUG_STRSUB
 	o = *ptr;
 #endif
 
@@ -137,7 +137,7 @@ int str_sub( char **ptr, int *len, int argc, char **argv, int *argl )
 		++c;
 	}
 
-#ifdef DEBUG
+#ifdef DEBUG_STRSUB
 	if( c > 0 )
 		debug( "str_sub: (%d) (%s) -> (%s)", c, o, *ptr );
 #endif
