@@ -33,7 +33,7 @@ int targets_start_one( TGT **tp )
 
 	// make a new target, a clone of the original
 	t = (TGT *) mem_perm( sizeof( TGT ) );
-	memcpy( t, orig, sizeof( TGT ) );
+	*t = *orig;
 
 	// run an io loop
 	target_run_one( t, 0 );

@@ -90,7 +90,7 @@ int metric_get_interval( char *str, int64_t *res )
 
 int metric_add( MGRP *g, char *str, int len )
 {
-	METRIC *m, nm;;
+	METRIC *m, nm;
 	WORDS w;
 
 	if( strwords( &w, str, len, ' ' ) != METRIC_FLD_MAX )
@@ -138,7 +138,7 @@ int metric_add( MGRP *g, char *str, int len )
 
 	// copy that into a new one
 	m = (METRIC *) mem_perm( sizeof( METRIC ) );
-	memcpy( m, &nm, sizeof( METRIC ) );
+	*m = nm;
 
 	// link it
 	m->next = g->list;
