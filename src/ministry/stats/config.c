@@ -288,17 +288,17 @@ int stats_config_line( AVP *av )
 			t = config_bool( av );
 			regex_list_set_fallback( t, s->mom->rgx );
 		}
-		else if( attIs( "whitelist" ) )
+		else if( attIs( "match" ) )
 		{
 			if( regex_list_add( av->vptr, 0, s->mom->rgx ) )
 				return -1;
-			debug( "Added moments whitelist regex: %s", av->vptr );
+			debug( "Added moments match regex: %s", av->vptr );
 		}
-		else if( attIs( "blacklist" ) )
+		else if( attIs( "unmatch" ) )
 		{
 			if( regex_list_add( av->vptr, 1, s->mom->rgx ) )
 				return -1;
-			debug( "Added moments blacklist regex: %s", av->vptr );
+			debug( "Added moments unmatch regex: %s", av->vptr );
 		}
 		else
 			return -1;
@@ -323,17 +323,17 @@ int stats_config_line( AVP *av )
 			t = config_bool( av );
 			regex_list_set_fallback( t, s->mode->rgx );
 		}
-		else if( attIs( "whitelist" ) )
+		else if( attIs( "match" ) )
 		{
 			if( regex_list_add( av->vptr, 0, s->mode->rgx ) )
 				return -1;
-			debug( "Added mode whitelist regex: %s", av->vptr );
+			debug( "Added mode match regex: %s", av->vptr );
 		}
-		else if( attIs( "blacklist" ) )
+		else if( attIs( "unmatch" ) )
 		{
 			if( regex_list_add( av->vptr, 1, s->mode->rgx ) )
 				return -1;
-			debug( "Added mode blacklist regex: %s", av->vptr );
+			debug( "Added mode unmatch regex: %s", av->vptr );
 		}
 		else
 			return -1;
@@ -371,17 +371,17 @@ int stats_config_line( AVP *av )
 			t = config_bool( av );
 			regex_list_set_fallback( t, s->pred->rgx );
 		}
-		else if( attIs( "whitelist" ) )
+		else if( attIs( "match" ) )
 		{
 			if( regex_list_add( av->vptr, 0, s->pred->rgx ) )
 				return -1;
-			debug( "Added prediction whitelist regex: %s", av->vptr );
+			debug( "Added prediction match regex: %s", av->vptr );
 		}
-		else if( attIs( "blacklist" ) )
+		else if( attIs( "unmatch" ) )
 		{
 			if( regex_list_add( av->vptr, 1, s->pred->rgx ) )
 				return -1;
-			debug( "Added prediction blacklist regex: %s", av->vptr );
+			debug( "Added prediction unmatch regex: %s", av->vptr );
 		}
 		else
 			return -1;
@@ -472,23 +472,23 @@ int stats_config_line( AVP *av )
 			// and sort those into ascending order
 			sort_qsort_dbl_arr( h->bounds, wd.wc );
 		}
-		else if( attIs( "whitelist" ) )
+		else if( attIs( "match" ) )
 		{
 			HistCfCheck;
 
 			if( regex_list_add( av->vptr, 0, h->rgx ) )
 				return -1;
 
-			debug( "Added histogram %s whitelist regex: %s", h->name, av->vptr );
+			debug( "Added histogram %s match regex: %s", h->name, av->vptr );
 		}
-		else if( attIs( "blacklist" ) )
+		else if( attIs( "unmatch" ) )
 		{
 			HistCfCheck;
 
 			if( regex_list_add( av->vptr, 1, h->rgx ) )
 				return -1;
 
-			debug( "Added histogram %s blacklist regex: %s", h->name, av->vptr );
+			debug( "Added histogram %s unmatch regex: %s", h->name, av->vptr );
 		}
 		else if( attIs( "end" ) )
 		{
