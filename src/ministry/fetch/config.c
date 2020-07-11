@@ -251,7 +251,7 @@ int fetch_config_line( AVP *av )
 
 		// copy it
 		n = (FETCH *) allocz( sizeof( FETCH ) );
-		memcpy( n, f, sizeof( FETCH ) );
+		*n = *f;
 
 		// zero the static struct
 		memset( f, 0, sizeof( FETCH ) );
