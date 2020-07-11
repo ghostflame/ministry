@@ -138,8 +138,10 @@ struct stat_config
 	int					dcurr;
 	LLCT				creates;
 	LLCT				gc_count;
-	uint32_t			did;
+
+	pthread_mutex_t		statslock;
 };
+
 
 
 struct stats_metrics

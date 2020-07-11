@@ -45,7 +45,6 @@ enum http_post_states
 };
 
 
-
 struct http_post_state
 {
 	void				*	obj;
@@ -63,6 +62,21 @@ struct http_post_state
 	int8_t					state;	// where in the post cycle are we?
 };
 
+
+#define HTTP_PARAM_MAX_KEY	128
+#define HTTP_PARAM_MAX_VAL	1904
+
+// 2KB
+struct http_param
+{
+	HTPRM				*	next;
+	int8_t					klen;
+	int8_t					has_val;
+	int16_t					vlen;
+	char					key[HTTP_PARAM_MAX_KEY];
+	char					val[HTTP_PARAM_MAX_VAL];
+};
+
 #define HTTP_CLS_CHECK		0xdeadbeefdeadbeef
 
 struct http_req_data
@@ -74,6 +88,7 @@ struct http_req_data
 	HTTP_CONN			*	conn;
 	BUF					*	text;
 	struct sockaddr_in		sin;
+	HTPRM				*	params;
 	HTTP_POST			*	post;
 	int						code;
 	int						meth;
@@ -160,6 +175,8 @@ int http_add_control( char *path, char *desc, void *arg, http_callback *fp, IPLI
 
 int http_stats_handler( json_callback *fp );
 
+int http_request_get_param( HTREQ *req, char *key, char **val );
+
 // give us a simple call to add get handlers
 #define http_add_simple_get( _p, _d, _c )			http_add_handler( _p, _d, NULL, HTTP_METH_GET, _c, NULL, 0 )
 #define http_add_json_get( _p, _d, _c )				http_add_handler( _p, _d, NULL, HTTP_METH_GET, _c, NULL, HTTP_FLAGS_JSON )
@@ -173,6 +190,8 @@ void http_stop( void );
 
 int http_tls_enabled( void );
 int http_ask_password( void );
+
+void http_enable( void );
 
 void http_set_default_ports( uint16_t hport, uint16_t tport );
 

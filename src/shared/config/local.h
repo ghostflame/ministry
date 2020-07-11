@@ -48,16 +48,17 @@ extern CSECT config_sections[CONF_SECT_MAX];
 
 
 // context
-CCTXT *config_make_context( char *path, WORDS *w );
-int config_source_dupe( char *path );
+CCTXT *config_make_context( const char *path, WORDS *w );
+int config_source_dupe( const char *path );
 
 
+int config_handle_dir( const char *path, WORDS *w );
 
+void config_set_main_file( const char *path );
+void config_choose_section( CCTXT *c, const char *section );
 
-void config_choose_section( CCTXT *c, char *section );
-
-void config_set_main_file( char *path );
-void config_set_env_prefix( char *prefix );
-void config_set_suffix( char *suffix );
+void config_set_main_file( const char *path );
+void config_set_env_prefix( const char *prefix );
+void config_set_suffix( const char *suffix );
 
 #endif

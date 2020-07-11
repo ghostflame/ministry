@@ -16,10 +16,6 @@ void stats_gauge_pass( ST_THR *t )
 	uint64_t i;
 	DHASH *d;
 
-#ifdef DEBUG
-	//debug( "[%02d] Gauge claim", t->id );
-#endif
-
 	st_thr_time( steal );
 
 	// take the data
@@ -41,10 +37,6 @@ void stats_gauge_pass( ST_THR *t )
 				else if( d->empty >= 0 )
 					++(d->empty);
 		}
-
-#ifdef DEBUG
-	//debug( "[%02d] Gauge report", t->id );
-#endif
 
 	st_thr_time( stats );
 

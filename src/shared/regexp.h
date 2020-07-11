@@ -21,7 +21,7 @@ enum regex_responses
 struct regex_entry
 {
 	RGX					*	next;
-	regex_t				*	r;
+	regex_t					r;
 	char				*	src;
 	int						slen;
 	int						ret;
@@ -32,6 +32,7 @@ struct regex_entry
 struct regex_list
 {
 	RGX					*	list;
+	RGX					*	last;
 	int						count;
 	int						fb;
 };

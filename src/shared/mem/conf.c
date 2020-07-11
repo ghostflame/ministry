@@ -14,24 +14,44 @@ MEM_CTL *_mem = NULL;
 
 MEM_CTL *mem_config_defaults( void )
 {
-	MCHK *mc = (MCHK *) allocz( sizeof( MCHK ) );
+	PERM *perm;
+	MCHK *mc;
 
+	perm              = (PERM *) allocz( sizeof( PERM ) );
+	perm->size        = PERM_SPACE_BLOCK;
+	pthread_mutex_init( &(perm->lock), NULL );
+
+	_mem              = (MEM_CTL *) allocz( sizeof( MEM_CTL ) );
+	_mem->perm        = perm;
+	_mem->prealloc    = DEFAULT_MEM_PRE_INTV;
+
+	mc                = (MCHK *) mem_perm( sizeof( MCHK ) );
 	mc->max_kb        = DEFAULT_MEM_MAX_KB;
 	mc->interval      = DEFAULT_MEM_CHECK_INTV;
 	mc->psize         = getpagesize( ) >> 10;
 	mc->checks        = 0;
 
-	_mem              = (MEM_CTL *) allocz( sizeof( MEM_CTL ) );
 	_mem->mcheck      = mc;
-	_mem->prealloc    = DEFAULT_MEM_PRE_INTV;
+
+	pthread_mutexattr_init( &(_mem->mtxa) );
+#ifdef DEFAULT_MUTEXES
+	pthread_mutexattr_settype( &(_mem->mtxa), PTHREAD_MUTEX_DEFAULT );
+#else
+	pthread_mutexattr_settype( &(_mem->mtxa), PTHREAD_MUTEX_ADAPTIVE_NP );
+#endif
 
 	_mem->iobufs      = mem_type_declare( "iobufs", sizeof( IOBUF ),  MEM_ALLOCSZ_IOBUF, IO_BUF_SZ, 1 );
 	_mem->htreq       = mem_type_declare( "htreqs", sizeof( HTREQ ),  MEM_ALLOCSZ_HTREQ, 2048, 0 );
+	_mem->htprm       = mem_type_declare( "htprm",  sizeof( HTPRM ),  MEM_ALLOCSZ_HTPRM, 0, 1 );
 	_mem->hosts       = mem_type_declare( "hosts",  sizeof( HOST ),   MEM_ALLOCSZ_HOSTS, 0, 1 );
 	_mem->token       = mem_type_declare( "tokens", sizeof( TOKEN ),  MEM_ALLOCSZ_TOKENS, 0, 0 );
 	_mem->hanger      = mem_type_declare( "hanger", sizeof( MEMHG ),  MEM_ALLOCSZ_HANGER, 0, 1 );
 	_mem->slkmsg      = mem_type_declare( "slkmsg", sizeof( SLKMSG ), MEM_ALLOCSZ_SLKMSG, 0x10000, 0 );
 	_mem->store       = mem_type_declare( "store",  sizeof( SSTE ),   MEM_ALLOCSZ_STORE, 0, 1 );
+	_mem->ptser       = mem_type_declare( "ptser",  sizeof( PTL ),    MEM_ALLOCSZ_PTSER, 0, 1 );
+	_mem->ptlst       = mem_type_declare( "ptlst",  sizeof( PTL ),    MEM_ALLOCSZ_PTLST, 0, 1 );
+	_mem->treel       = mem_type_declare( "treel",  sizeof( TEL ),    MEM_ALLOCSZ_TREEL, 0, 1 );
+	_mem->tleaf       = mem_type_declare( "tleaf",  sizeof( LEAF ),   MEM_ALLOCSZ_TLEAF, 0, 1 );
 
 	pthread_mutex_init( &(_mem->idlock), NULL );
 

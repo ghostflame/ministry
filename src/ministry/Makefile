@@ -1,9 +1,9 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-FILES  = locks mem fetch post gc network targets synth main
-HEADS  = locks mem fetch post gc network targets synth ministry
+FILES  = locks mem post gc network targets main
+HEADS  = locks mem post gc network targets ministry
 
-SUBS   = metrics stats data maths
+SUBS   = metrics stats data maths synth fetch
 
 OBJS   = $(FILES:%=%.o)
 HDRS   = $(HEADS:%=%.h)
@@ -16,8 +16,7 @@ LARGS ?= -lm -lcurl -lmicrohttpd -ljson-c
 WFLAGS = -Wall -Wshadow
 #IFLAGS = -I. -I../shared
 IFLAGS = -I.
-#DFLAGS = -g -pg -ggdb3 -DDEBUG -DDEBUG_LOOPS -DDEBUG_SYNTH -DDEBUG_IO -DDEBUG_ENV
-DFLAGS = -g -pg -ggdb3 -DDEBUG
+DFLAGS = -g -pg -ggdb3 -DMINDEBUG
 TFLAGS = -pthread
 CFLAGS = $(TFLAGS) $(IFLAGS) $(EARGS)
 LFLAGS = $(TFLAGS) $(IFLAGS) $(LARGS)
@@ -47,7 +46,7 @@ with_old_gcc:  $(BIN)
 
 
 subs:
-	@for d in $(SUBS); do ( cd $$d && $(MAKE) -j4 $(MFLAGS) $(TARGET) ); done
+	@for d in $(SUBS); do ( cd $$d && $(MAKE) -j10 $(MFLAGS) $(TARGET) ); done
 
 $(BIN): $(HDRS) $(OBJS)
 	$(CC) -o $(BIN) $(LFLAGS) $(OBJS) $(SUBO) $(RKVS)

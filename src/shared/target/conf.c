@@ -83,7 +83,7 @@ int __target_set_host( TGT *t, char *host )
 		debug( "Target writing to stdout." );
 	}
 
-	t->host = str_dup( host, 0 );
+	t->host = str_perm( host, 0 );
 	return 0;
 }
 
@@ -106,8 +106,8 @@ TGTL *__target_list_find_create( char *name )
 
 	if( !( l = target_list_find( name ) ) )
 	{
-		l           = (TGTL *) allocz( sizeof( TGTL ) );
-		l->name     = str_dup( name, 0 );
+		l           = (TGTL *) mem_perm( sizeof( TGTL ) );
+		l->name     = str_perm( name, 0 );
 		l->next     = _tgt->lists;
 		_tgt->lists = l;
 		++(_tgt->count);
@@ -153,7 +153,7 @@ TGT *target_create( char *list, char *name, char *proto, char *host, uint16_t po
 
 	l = strlen( name );
 
-	t = (TGT *) allocz( sizeof( TGT ) );
+	t = (TGT *) mem_perm( sizeof( TGT ) );
 	t->port = port;
 	t->name = str_copy( name, l );
 	t->nlen = (int16_t) l;
@@ -214,16 +214,20 @@ TGT_CTL *target_config_defaults( void )
 {
 	TGTMT *m;
 
-	_tgt = (TGT_CTL *) allocz( sizeof( TGT_CTL ) );
+	_tgt = (TGT_CTL *) mem_perm( sizeof( TGT_CTL ) );
 
-	m = (TGTMT *) allocz( sizeof( TGTMT ) );
-	m->source = pmet_add_source( "targets" );
-	m->bytes = pmet_new( PMET_TYPE_COUNTER, "ministry_target_sent_bytes",
+	m = (TGTMT *) mem_perm( sizeof( TGTMT ) );
+
+	if( !runf_has( RUN_NO_HTTP ) )
+	{
+		m->source = pmet_add_source( "targets" );
+		m->bytes = pmet_new( PMET_TYPE_COUNTER, "ministry_target_sent_bytes",
 	                    "Number of bytes sent to a target" );
-	m->conn = pmet_new( PMET_TYPE_GAUGE, "ministry_target_connected",
-                        "Connection status of target" );
+		m->conn = pmet_new( PMET_TYPE_GAUGE, "ministry_target_connected",
+	                        "Connection status of target" );
 
-	_tgt->metrics = m;
+		_tgt->metrics = m;
+	}
 
 	return _tgt;
 }
@@ -363,8 +367,8 @@ int target_config_line( AVP *av )
 		if( !t->list )
 			t->list = __target_list_find_create( t->name );
 
-		n = (TGT *) allocz( sizeof( TGT ) );
-		memcpy( n, t, sizeof( TGT ) );
+		n = (TGT *) mem_perm( sizeof( TGT ) );
+		*n = *t;
 
 		// add it into the list - preserve order, so append
 		if( !n->list->targets )
@@ -388,6 +392,4 @@ int target_config_line( AVP *av )
 
 	return 0;
 }
-
-
 

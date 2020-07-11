@@ -132,7 +132,7 @@ throw_fn metric_group_report_loop;
 throw_fn metric_group_io_loop;
 
 // const.c
-const MODEL *metric_get_model( char *name );
-int metric_get_type( char *name );
+const MODEL *metric_get_model( const char *name );
+int metric_get_type( const char *name );
 
 #endif

@@ -22,9 +22,13 @@ typedef struct pmet_control         PMET_CTL;
 typedef struct net_control          NET_CTL;
 typedef struct slack_control		SLK_CTL;
 typedef struct string_control       STR_CTL;
+typedef struct rkv_control          RKV_CTL;
 
 typedef struct config_section       CSECT;
 typedef struct config_context       CCTXT;
+
+typedef struct data_point			PNT;
+typedef struct data_series			PTL;
 
 typedef struct log_file             LOGFL;
 typedef struct log_setdebug         LOGSD;
@@ -40,6 +44,7 @@ typedef struct mem_type             MTYPE;
 typedef struct mem_check            MCHK;
 typedef struct mem_hanger           MEMHG;
 typedef struct mem_hanger_list      MEMHL;
+typedef struct mem_perm             PERM;
 
 typedef struct iterator             ITER;
 
@@ -81,6 +86,7 @@ typedef struct http_path            HTPATH;
 typedef struct http_handlers        HTHDLS;
 typedef struct http_req_data        HTREQ;
 typedef struct http_post_state      HTTP_POST;
+typedef struct http_param           HTPRM;
 
 typedef struct http_callbacks       HTTP_CB;
 typedef struct http_tls             TLS_CONF;
@@ -105,6 +111,17 @@ typedef struct slack_handle         SLKHD;
 typedef struct slack_channel        SLKCH;
 typedef struct slack_space          SLKSP;
 
+typedef struct rkv_query            RKQR;
+typedef struct rkv_agg_entry        PNTA;
+typedef struct rkv_header_start     RKSTT;
+typedef struct rkv_bucket           RKBKT;
+typedef struct rkv_bucket_match     RKBMT;
+typedef struct rkv_header           RKHDR;
+typedef struct rkv_metrics          RKMET;
+typedef struct rkv_data             RKFL;
+typedef struct rkv_file_thread      RKFT;
+typedef struct rkv_tree_element     TEL;
+typedef struct rkv_tree_leaf        LEAF;
 
 
 // function types
@@ -113,7 +130,7 @@ typedef void throw_fn ( THRD * );
 typedef int conf_line_fn ( AVP * );
 typedef int http_callback ( HTREQ * );
 typedef int json_callback ( JSON * );
-typedef int ftree_callback ( FTREE *, uint32_t, char *, char *, void * );
+typedef int ftree_callback ( FTREE *, uint32_t, const char *, const char *, void * );
 typedef int http_reporter ( HTPATH *, void *, int64_t, int64_t );
 typedef int store_callback( SSTE *e, void *arg );
 typedef void help_fn ( void );
@@ -127,11 +144,12 @@ typedef void iplist_data_fn( void *, IPNET * );
 typedef void mem_free_cb( void * );
 // return 0 for filter 'true'
 typedef int mhl_callback( MEMHL *, void *, MEMHG *, void * );
+typedef void rkv_rd_fn ( RKQR * );
 
 // found in the apps
 typedef int  buf_fn ( HOST *, IOBUF * );
 typedef void line_fn ( HOST *, char *, int );
-typedef void add_fn ( char *, int, char * );
+typedef void add_fn ( const char *, int, const char * );
 typedef void tcp_setup_fn ( NET_TYPE * );
 typedef void tcp_fn ( HOST * );
 

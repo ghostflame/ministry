@@ -40,6 +40,52 @@ uint32_t mem_alloc_size( int len )
 }
 
 
+void *mem_perm( uint32_t len )
+{
+	void *p;
+
+	// ensure 4-byte alignment
+	if( len & 0x3 )
+		len += 4 - ( len % 4 );
+
+	if( len >= ( _mem->perm->size >> 5 ) )
+	{
+		return allocz( len );
+	}
+
+	pthread_mutex_lock( &(_mem->perm->lock ) );
+
+	if( len > _mem->perm->left )
+	{
+		_mem->perm->space = allocz( _mem->perm->size );
+		_mem->perm->curr  = _mem->perm->space;
+		_mem->perm->left  = _mem->perm->size;
+	}
+
+	p = _mem->perm->curr;
+
+#ifdef __GNUC__
+#if __GNUC_PREREQ(4,8)
+#pragma GCC diagnostic ignored "-Wpointer-arith"
+#pragma GCC diagnostic ignored "-Wpedantic"
+#endif
+#endif
+	_mem->perm->curr += len;
+#ifdef __GNUC__
+#if __GNUC_PREREQ(4,8)
+#pragma GCC diagnostic pop
+#pragma GCC diagnostic pop
+#endif
+#endif
+	_mem->perm->left -= len;
+
+	pthread_mutex_unlock( &(_mem->perm->lock) );
+
+	return p;
+}
+
+
+
 /*
  * This is a chunk of memory we hand back if calloc failed.
  *
@@ -76,7 +122,9 @@ static const uint8_t mem_signal_array[128] = {
 // zero'd memory
 void *allocz( size_t size )
 {
-	void *p = calloc( 1, size );
+	//void *p = calloc( 1, size );
+	void *p = malloc( size );
+	memset( p, 0, size );
 
 #ifdef USE_MEM_SIGNAL_ARRAY
 	if( !p )

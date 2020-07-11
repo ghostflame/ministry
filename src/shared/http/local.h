@@ -20,7 +20,6 @@
 #endif
 
 
-
 #define DEFAULT_HTTP_PORT               9080
 #define DEFAULT_HTTPS_PORT              9443
 
@@ -97,13 +96,15 @@ ssize_t http_unused_reader( void *cls, uint64_t pos, char *buf, size_t max );
 void http_unused_reader_free( void *cls );
 
 // request handling
-int http_access_policy( void *cls, const struct sockaddr *addr, socklen_t addrlen );
-int http_send_response( HTREQ *req );
+enum MHD_Result http_get_url_param( void *cls, HTTP_VAL kind, const char *key, const char *value );
+int http_parse_url( HTREQ *req, char *url );
+enum MHD_Result http_access_policy( void *cls, const struct sockaddr *addr, socklen_t addrlen );
+enum MHD_Result http_send_response( HTREQ *req );
 void http_request_complete( void *cls, HTTP_CONN *conn, void **arg, HTTP_CODE toe );
 int http_request_access_check( IPLIST *src, HTREQ *req, struct sockaddr *sa );
 HTREQ *http_request_creator( HTTP_CONN *conn, const char *url, const char *method );
 
-int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
+enum MHD_Result http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
 	const char *method, const char *version, const char *upload_data,
 	size_t *upload_data_size, void **con_cls );
 

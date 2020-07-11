@@ -95,7 +95,10 @@ void target_loop( THRD *th )
 	t->queue = mem_list_create( 1, NULL );
 
 	// and add some watcher metrics
-	target_add_metrics( t );
+	if( !runf_has( RUN_NO_HTTP ) )
+	{
+		target_add_metrics( t );
+	}
 
 	tgdebug( "Started target, max waiting %d", t->max );
 
@@ -119,10 +122,21 @@ void target_loop( THRD *th )
 }
 
 
+void target_set_default_type( TGT *t )
+{
+	if( !t->type )
+	{
+		t->typestr = str_copy( _proc->app_name, 0 );
+	}
+}
+
+
 
 int target_run_one( TGT *t, int idx )
 {
 	target_set_id( t );
+
+	target_set_default_type( t );
 
 	// start a loop for each one
 	thread_throw_named_f( target_loop, t, idx, "target_loop_%d", idx );

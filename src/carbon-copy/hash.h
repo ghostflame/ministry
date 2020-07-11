@@ -10,8 +10,12 @@
 #ifndef CARBON_COPY_HASH_H
 #define CARBON_COPY_HASH_H
 
-uint32_t hash_fnv1( char *str, int32_t len );
-uint32_t hash_fnv1a( char *str, int32_t len );
-uint32_t hash_cksum( char *str, int32_t len );
+//uint32_t hash_fnv1( char *str, int32_t len );
+//uint32_t hash_fnv1a( char *str, int32_t len );
+//uint32_t hash_cksum( char *str, int32_t len );
+
+hash_fn hash_fnv1;
+hash_fn hash_fnv1a;
+hash_fn hash_cksum;
 
 #endif

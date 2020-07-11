@@ -395,7 +395,7 @@ also allowed, and are 0 < x < 1000, but must have an \fIm\fP appended, eg: \fI99
 In addition to regular thresholds and calculated values, \fBMinistry\fP can produce other sample-moment based
 statistics: standard deviation, skewness and kurtosis.  It does not do this by default, and has a minimum points
 check to avoid producing relatively meaningless stats about a half-dozen data points.  It also can match paths
-against a whitelist/blacklist regex check - a series of expressions defining whether a path is in or out of the
+against a match/unmatch list regex check - a series of expressions defining whether a path is in or out of the
 list of paths receiving moments processing.
 .TP
 \fBmoments.enable\fP
@@ -404,7 +404,7 @@ Enable or disable moments processing (boolean, defaults to 0)
 \fBmoments.minimum\fP
 Set the minimum point count in stats to trigger moment calculations (default is 30)
 .TP
-\fBmoments.whitelist\fP, \fBmoments.blacklist\fP
+\fBmoments.match\fP, \fBmoments.unmatch\fP
 A set of regular expressions to control moments calculation.  Each can appear multiple times.  The order of the
 list is preserved and paths are checked against it in order, to decide if they should or should not have this
 processing done.  This will have a performance impact on new path creation for stats paths, depending on the
@@ -424,7 +424,7 @@ Enable prediction processing (boolean, defaults to 0)
 \fBpredict.size\fP
 The number of points of data to keep for matching metrics (default 32)
 .TP
-\fBpredict.whitelist\fP, \fBpredict.blacklist\fP
+\fBpredict.match\fP, \fBpredict.unmatch\fP
 A set of regular expressions to control metric prediction.  Each can appear multiple times.  The order of the
 list is preserved and paths are checked against it in order, to decide if they should or should not have this
 processing done.  This will have a performance impact on new path creation for stats paths, depending on the
@@ -461,7 +461,7 @@ flag may be overridden if all supplied configs are disabled.  The order of choos
 A list of float values representing the \fIupper\fP bound of each bucket.  They will be sorted.  A maximum
 of 10 buckets in a map is supported.  An extra '+Infinity' upper bound is implicit and should not be given.
 .TP
-\fBhistogram.whitelist\fP, \fBhistogram.blacklist\fP
+\fBhistogram.match\fP, \fBhistogram.unmatch\fP
 A set of regular expressions to control histogram map matching.  Each can appear multiple times.  The order
 of the list is preserved and paths are checked against it in order, to decide if they should or should not
 match against this map.  This inevitably has a performance penalty at the creation time for new metrics.
@@ -541,7 +541,7 @@ Enable or disable this type of collection (boolean, defaults to 1 for all).
 Backlog for incoming TCP connections (default 32).
 .TP
 \fBTYPE.udp.checks\fP
-Perform blacklist/whitelist checks and prefixing on UDP for this type.
+Perform unmatch/match checks and prefixing on UDP for this type.
 .PP
 Everything after this is of the form TYPE.udp.XXX or TYPE.tcp.XXX, pertaining to either UDP ports
 or TCP ports respectively.

@@ -2,15 +2,18 @@
 * This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
 *                                                                         *
-* synth.h - defines synthetics structures                                 *
+* synth/local.h - defines synthetics structures                           *
 *                                                                         *
 * Updates:                                                                *
 **************************************************************************/
 
-#ifndef MINISTRY_SYNTH_H
-#define MINISTRY_SYNTH_H
+#ifndef MINISTRY_SYNTH_LOCAL_H
+#define MINISTRY_SYNTH_LOCAL_H
 
 #define SYNTH_PART_MAX			32
+
+
+#include "ministry.h"
 
 
 // just used for parsing config lines
@@ -48,23 +51,6 @@ struct synth_data
 };
 
 
-struct synth_control
-{
-	SYNTH			*	list;
-	int					scount;
-	int					wait_usec;
-
-	int					tcount;
-	int					tready;
-	int					tproceed;
-
-	pthread_cond_t		threads_ready;
-	pthread_cond_t      threads_done;
-};
-
-
-
-
 
 synth_fn synth_sum;
 synth_fn synth_diff;
@@ -72,20 +58,14 @@ synth_fn synth_div;
 synth_fn synth_prod;
 synth_fn synth_max;
 synth_fn synth_min;
+synth_fn synth_cap;
 synth_fn synth_spread;
 synth_fn synth_mean;
+synth_fn synth_meanIf;
 synth_fn synth_count;
 synth_fn synth_active;
 
-loop_call_fn synth_pass;
 
-throw_fn synth_loop;
-
-
-void synth_init( void );
-
-SYN_CTL *synth_config_defaults( void );
-conf_line_fn synth_config_line;
-
+extern SYN_CTL *_syn;
 
 #endif

@@ -14,6 +14,10 @@
 HFILT *mem_new_hfilt( void )
 {
 	HFILT *h = mtype_new( ctl->mem->hfilt );
+
+	if( !h->path )
+		h->path = strbuf( MAX_PATH_SZ );
+
 	return h;
 }
 
@@ -21,11 +25,25 @@ HFILT *mem_new_hfilt( void )
 void mem_free_hfilt( HFILT **h )
 {
 	HFILT *hp;
+	FILT *f;
+	BUF *b;
 
 	hp = *h;
 	*h = NULL;
 
-	// TODO
+	b = hp->path;
+	strbuf_empty( b );
+
+	while( hp->filters )
+	{
+		f = hp->filters;
+		hp->filters = f->next;
+		free( f );
+	}
+
+	memset( hp, 0, sizeof( HFILT ) );
+
+	hp->path = b;
 
 	mtype_free( ctl->mem->hfilt, hp );
 }
@@ -36,7 +54,7 @@ MEMT_CTL *memt_config_defaults( void )
 {
 	MEMT_CTL *m;
 
-	m = (MEMT_CTL *) allocz( sizeof( MEMT_CTL ) );
+	m = (MEMT_CTL *) mem_perm( sizeof( MEMT_CTL ) );
 	m->hfilt = mem_type_declare( "hfilt", sizeof( HFILT ), MEM_ALLOCSZ_HFILT, 0, 1 );
 
 	return m;

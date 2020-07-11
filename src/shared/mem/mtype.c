@@ -289,7 +289,7 @@ MTYPE *mem_type_declare( char *name, int sz, int ct, int extra, uint32_t pre )
 	mt->alloc_sz  = sz;
 	mt->alloc_ct  = ct;
 	mt->stats_sz  = sz + extra;
-	mt->name      = str_dup( name, 0 );
+	mt->name      = str_perm( name, 0 );
 	mt->threshold = DEFAULT_MEM_PRE_THRESH;
 	mt->prealloc  = pre;
 
@@ -302,7 +302,7 @@ MTYPE *mem_type_declare( char *name, int sz, int ct, int extra, uint32_t pre )
 	__mtype_alloc_free( mt, 4 * mt->alloc_ct, 1 );
 
 	// init the mutex
-	pthread_mutex_init( &(mt->lock), &(_proc->mtxa) );
+	pthread_mutex_init( &(mt->lock), &(_mem->mtxa) );
 
 	return mt;
 }
@@ -319,7 +319,7 @@ int mem_type_stats( int id, MTSTAT *ms )
 
 	// grab the stats
 	mem_lock( m );
-	memcpy( &(ms->ctrs), &(m->ctrs), sizeof( MTCTR ) );
+	ms->ctrs = m->ctrs;
 	mem_unlock( m );
 
 	// these can be after the unlock

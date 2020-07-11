@@ -115,8 +115,8 @@ extern MET_CTL *_met;
 int metrics_cmp_attrs( const void *ap1, const void *ap2 );
 int metrics_cmp_maps( const void *ap1, const void *ap2 );
 void metrics_sort_attrs( METAL *a );
-METPR *metrics_find_profile( char *name );
-METRY *metrics_find_entry( MDATA *m, char *str, int len );
+METPR *metrics_find_profile( const char *name );
+METRY *metrics_find_entry( MDATA *m, const char *str, int len );
 
 
 // metrics.c

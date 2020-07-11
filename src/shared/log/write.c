@@ -10,7 +10,7 @@
 #include "local.h"
 
 
-int log_write_ts( char *to, int len )
+void log_write_ts( BUF *b )
 {
 	char tbuf[64];
 	struct tm t;
@@ -31,16 +31,17 @@ int log_write_ts( char *to, int len )
 	localtime_r( &sec, &t );
 	strftime( tbuf, 64, "%F %T", &t );
 
-	return snprintf( to, len, "[%s.%06ld] ", tbuf, usec );
+	strbuf_printf( b, "[%s.%06ld] ", tbuf, usec );
 }
 
 
 int log_line( int fi, int8_t level, const char *file, const int line, const char *fn, char *fmt, ... )
 {
 	char buf[LOG_LINE_MAX];
-	int l = 0, d, tslen;
 	va_list args;
+	BUF bf, *b;
 	LOGFL *lf;
+	int l, d;
 
 	lf = _logger->fps[fi];
 
@@ -57,50 +58,53 @@ int log_line( int fi, int8_t level, const char *file, const int line, const char
 	// keep score
 	++(_logger->counts[level]);
 
-	// capture the timestamp length, we won't write it to syslog
-	l += log_write_ts( buf, LOG_LINE_MAX );
-	tslen = l;
+	bf.len = 0;
+	bf.sz  = LOG_LINE_MAX;
+	bf.buf = buf;
+	b      = &bf;
 
-	// and if we don't want the log level either, step over that
-	l += snprintf( buf + l, LOG_LINE_MAX - l, "[%s] ", log_level_strings[level] );
-	if( !_logger->write_level )
-		tslen = l;
+	if( !lf->use_syslog )
+	{
+		log_write_ts( b );
+
+		if( _logger->write_level )
+			strbuf_aprintf( b, "[%s] ", log_level_strings[level] );
+	}
 
 	// fatals, errs and debugs get details
 	switch( level )
 	{
 		case LOG_LEVEL_FATAL:
 		case LOG_LEVEL_DEBUG:
-			l += snprintf( buf + l, LOG_LINE_MAX - l,
-					"[%s:%d:%s] ", file, line, fn );
+			strbuf_aprintf( b, "[%s:%d:%s] ", file, line, fn );
 			break;
 	}
 
 	// and we're off
 	va_start( args, fmt );
-	l += vsnprintf( buf + l, LOG_LINE_MAX - l, fmt, args );
+	strbuf_avprintf( b, fmt, args );
 	va_end( args );
 
 	// add a newline
-	if( buf[l - 1] != '\n' )
+	if( strbuf_lastchar( b ) != '\n' )
 	{
-		buf[l++] = '\n';
-		buf[l]   = '\0';
+		buf_addchar( b, '\n' );
+		buf_terminate( b );
 	}
 
 	// maybe always log to stdout?
 	if( _logger->force_stdout && !lf->use_std )
-		printf( "%s", buf );
+		printf( "%s", b->buf );
 
 	// use syslog?
 	if( lf->use_syslog )
 	{
-		syslog( _logger->facility|log_syslog_levels[level], "%s", buf + tslen );
-		return l;
+		syslog( _logger->facility|log_syslog_levels[level], "%s", b->buf );
+		return b->len;
 	}
 
 	// OK, on to the file then
-	l = write( d, buf, l );
+	l = write( d, b->buf, b->len );
 
 	// FATAL never returns
 	if( level == LOG_LEVEL_FATAL )

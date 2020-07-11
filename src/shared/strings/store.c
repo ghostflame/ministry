@@ -24,7 +24,7 @@ static const uint64_t str_hash_primes[8] =
  *
  * It replaces an xor based hash that showed too many collisions.
  */
-__attribute__((hot)) static inline uint64_t str_hash( char *str, int len )
+__attribute__((hot)) static inline uint64_t str_hash( const char *str, int len )
 {
 	register uint64_t sum = 5381;
 	register int ctr, rem;
@@ -65,7 +65,7 @@ __attribute__((hot)) static inline uint64_t str_hash( char *str, int len )
 		sum += ( sum << 5 ) + *p++;
 
 	// and capture the rest
-	str = (char *) p;
+	str = (const char *) p;
 	while( rem-- > 0 )
 		sum += *str++ * str_hash_primes[rem];
 
@@ -131,9 +131,9 @@ int string_store_free_cb( SSTR *st, mem_free_cb *fp )
 }
 
 
-SSTR *string_store_create( int64_t sz, char *size, int *default_value, int freeable )
+SSTR *string_store_create( int64_t sz, const char *size, int *default_value, int freeable )
 {
-	SSTR *s = (SSTR *) allocz( sizeof( SSTR ) );
+	SSTR *s = (SSTR *) mem_perm( sizeof( SSTR ) );
 
 	if( sz )
 		s->hsz = sz;
@@ -143,7 +143,7 @@ SSTR *string_store_create( int64_t sz, char *size, int *default_value, int freea
 	if( !s->hsz )
 		s->hsz = hash_size( "medium" );
 
-	s->hashtable = (SSTE **) allocz( s->hsz * sizeof( SSTE * ) );
+	s->hashtable = (SSTE **) mem_perm( s->hsz * sizeof( SSTE * ) );
 	s->freeable  = freeable;
 
 	pthread_mutex_init( &(s->mtx), NULL );
@@ -165,7 +165,7 @@ SSTR *string_store_create( int64_t sz, char *size, int *default_value, int freea
 
 
 
-SSTE *string_store_look( SSTR *store, char *str, int len, int val_set )
+SSTE *string_store_look( SSTR *store, const char *str, int len, int val_set )
 {
 	uint64_t hv;
 	SSTE *e;
@@ -213,9 +213,7 @@ int string_store_locking( SSTR *store, int lk )
 	return 0;
 }
 
-
-
-SSTE *string_store_add( SSTR *store, char *str, int len )
+SSTE *string_store_add_with_vals( SSTR *store, const char *str, int len, int32_t *val, void *ptr )
 {
 	uint64_t hv, pos;
 	SSTE *e, *en;
@@ -265,12 +263,20 @@ SSTE *string_store_add( SSTR *store, char *str, int len )
 	{
 		e  = en;
 		en = NULL;
-		e->str = ( store->freeable ) ? str_copy( str, len ) : str_dup( str, len );
+		e->str = ( store->freeable ) ? str_copy( str, len ) : str_perm( str, len );
 		e->len = (uint16_t) len;
 		e->hv  = hv;
 
 		if( store->freeable )
 			flagf_add( e, STRSTORE_FLAG_FREEABLE );
+
+		if( val )
+			e->val = *val;
+
+		if( ptr )
+			e->ptr = ptr;
+
+		flagf_add( e, STRSTORE_FLAG_VALID );
 
 		e->next = store->hashtable[pos];
 		store->hashtable[pos] = e;
@@ -279,7 +285,7 @@ SSTE *string_store_add( SSTR *store, char *str, int len )
 	}
 
 	// OK, renew the value
-	if( store->set_default )
+	if( !val && store->set_default )
 		e->val = store->val_default;
 
 	store_unlock( store );
@@ -292,18 +298,54 @@ SSTE *string_store_add( SSTR *store, char *str, int len )
 }
 
 
-// call a function on every member
-int string_store_iterator( SSTR *store, void *arg, store_callback *fp )
+// divide the store's hash table into section
+void __string_store_select_section( SSTR *store, int idx, int mod, int *start, int *end )
 {
-	int i, ret = 0;
+	int s, e, p;
+
+	if( mod == 0 )
+	{
+		*start = 0;
+		*end   = store->hsz;
+		return;
+	}
+
+	p = store->hsz / mod;
+
+	s =   idx       * p;
+	e = ( idx + 1 ) * p;
+
+	// make sure integer maths
+	// doesn't mess with us
+	// has uneven behaviour on very
+	// small hash tables, but that's
+	// unlikely to matter much
+	if( idx == ( mod - 1 ) )
+		e = store->hsz;
+
+	*start = s;
+	*end   = e;
+
+	//info( "Selecting store section %d to %d (%d).", s, e, e - s );
+}
+
+
+
+// call a function on every member
+int string_store_iterator( SSTR *store, void *arg, store_callback *fp, int idx, int mod )
+{
+	int i, ret = 0, stt, end;
 	SSTE *e, *en;
 
 	if( !store )
 		return -1;
 
+	// divvy up the workload between threads?
+	__string_store_select_section( store, idx, mod, &stt, &end );
+
 	store_lock( store );
 
-	for( i = 0; i < store->hsz; ++i )
+	for( i = stt; i < end; ++i )
 		for( e = store->hashtable[i]; e; e = en )
 		{
 			// just in case derp happens to e
@@ -315,6 +357,43 @@ int string_store_iterator( SSTR *store, void *arg, store_callback *fp )
 		}
 
 	store_unlock( store );
+
+	return ret;
+}
+
+
+
+int string_store_iterator_nolock( SSTR *store, void *arg, store_callback *fp, int idx, int mod )
+{
+	int i, ret = 0, stt, end;
+	SSTE *e, *en;
+
+	if( !store )
+	{
+		warn( "NULL store passed to (nolock) iterator." );
+		return -1;
+	}
+
+	__string_store_select_section( store, idx, mod, &stt, &end );
+
+	// DOES NOT LOCK THE STORE!  We use a valid-flag test
+	// whatever frees them must remove that flag before doing so
+
+	for( i = stt; i < end; ++i )
+		for( e = store->hashtable[i]; e; e = en )
+		{
+			en = e->next;
+
+			// if that e is no longer valid, abort this list
+			// we cannot continue, as next is no longer safe
+			if( !flagf_has( e, STRSTORE_FLAG_VALID ) )
+				break;
+
+			// and call back on this one
+			// checking it is valid is your problem
+			if( (*fp)( e, arg ) != 0 )
+				ret++;
+		}
 
 	return ret;
 }

@@ -44,7 +44,7 @@ void main_loop( void )
 
 void main_create_conf( void )
 {
-	ctl				= (RCTL *) allocz( sizeof( RCTL ) );
+	ctl				= (RCTL *) mem_perm( sizeof( RCTL ) );
 	ctl->proc		= app_control( );
 	ctl->mem		= memt_config_defaults( );
 	ctl->relay		= relay_config_defaults( );
@@ -58,13 +58,13 @@ void main_create_conf( void )
 
 
 
-int main( int ac, char **av, char **env )
+int main( int ac, char **av, const char **env )
 {
 	char *pidfile = NULL, *optstr;
 	int oc;
 
 	// start us up
-	app_init( "carbon-copy", "ministry" );
+	app_init( "carbon-copy", "ministry", RUN_NO_RKV );
 
 	// set out default HTTP ports
 	http_set_default_ports( CC_DEFAULT_HTTP_PORT, CC_DEFAULT_HTTPS_PORT );
@@ -86,6 +86,8 @@ int main( int ac, char **av, char **env )
 				break;
 		}
 
+	mem_set_max_kb( DEFAULT_CC_MAX_KB );
+
 	// read our env; has to happen before parsing config
 	// because we might get handed a config file in env
 	config_read_env( env );
@@ -100,7 +102,6 @@ int main( int ac, char **av, char **env )
 	if( pidfile )
 		snprintf( ctl->proc->pidfile, CONF_LINE_MAX, "%s", pidfile );
 
-	mem_set_max_kb( DEFAULT_CC_MAX_KB );
 	app_start( 1 );
 
 	// resolve relay targets

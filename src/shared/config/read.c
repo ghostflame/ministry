@@ -115,7 +115,7 @@ int config_ignore_section( FILE *fh )
 
 
 // always returns a new string
-char *config_relative_path( char *inpath )
+char *config_relative_path( const char *inpath )
 {
 	char *ret;
 	int len;
@@ -141,139 +141,6 @@ char *config_relative_path( char *inpath )
 }
 
 
-int __config_handle_dir( char *path, WORDS *w )
-{
-	int ret = 0, count = 0, must = 1, nl;
-	char fname[CONF_LINE_MAX];
-	struct dirent *de;
-	struct stat sb;
-	char *p;
-	DIR *d;
-
-	if( !path || !*path )
-	{
-		warn( "Null directory handed by include-dir." );
-		return 0;
-	}
-
-	if( *path == '?' )
-	{
-		++path;
-		must = 0;
-		debug( "Included directory '%s' is optional.", path );
-	}
-
-	if( stat( path, &sb ) )
-	{
-		if( errno == ENOENT )
-		{
-			if( must )
-			{
-				err( "Included directory '%s' does not exist.", path );
-				return -1;
-			}
-
-			info( "Included (optional) directory '%s' does not exist, skipping.", path );
-			return 0;
-		}
-
-		err( "Cannot stat include directory '%s' -- %s", path, Err );
-		return -1;
-	}
-
-	if( !S_ISDIR( sb.st_mode ) )
-	{
-		if( must )
-		{
-			err( "Path '%s' is not a directory - cannot include-dir this path.", path );
-			return -1;
-		}
-
-		info( "Path '%s' is not a directory - skipping include-dir.", path );
-		return 0;
-	}
-
-	// add it to the watch tree
-	fs_treemon_add( _proc->cfiles, path, 1 );
-
-	debug( "Handling included directory '%s'", path );
-
-	if( !( d = opendir( path ) ) )
-	{
-		err( "Could not read included directory '%s", path );
-		return -1;
-	}
-
-	while( ( de = readdir( d ) ) != NULL )
-	{
-		if( snprintf( fname, CONF_LINE_MAX, "%s/%s", path, de->d_name ) == CONF_LINE_MAX )
-		{
-			warn( "Entry in include directory '%s' too long, skipping.", path );
-			continue;
-		}
-
-		if( stat( fname, &sb ) )
-		{
-			warn( "Could not stat included file '%s, skipping.", fname );
-			continue;
-		}
-
-		// ignore things that start with a dot - let's not have trouble
-		if( *(de->d_name) == '.' )
-		{
-			debug( "Ignoring included entry '%s' (dot)", fname );
-			continue;
-		}
-
-		// are we filtering this one out based on suffix check?
-		if( chkcfFlag( SUFFIX ) && _proc->cfg_sffx_len )
-		{
-			nl = strlen( de->d_name );
-
-			if( nl < ( _proc->cfg_sffx_len + 1 ) )
-			{
-				debug( "Ignoring included entry '%s' (non-matching, length)", fname );
-				continue;
-			}
-
-			p = de->d_name + nl - _proc->cfg_sffx_len;
-
-			if( memcmp( p, _proc->conf_sfx, _proc->cfg_sffx_len ) )
-			{
-				debug( "Ignoring included entry '%s', (non-matching, suffix)", fname );
-				continue;
-			}
-		}
-
-		// recurse?
-		if( S_ISDIR( sb.st_mode ) )
-		{
-			// go deeper
-			if( __config_handle_dir( fname, w ) )
-			{
-				ret = -1;
-				break;
-			}
-
-			continue;
-		}
-
-		// ok try what's left
-		if( config_read( fname, w ) )
-		{
-			err( "Included (dir) config file '%s' is not valid.", fname );
-			ret = -1;
-			break;
-		}
-
-		++count;
-	}
-
-	closedir( d );
-
-	debug( "Read %d files from included directory '%s'", count, path );
-	return ret;
-}
 
 
 int __config_handle_line( AVP *av )
@@ -310,7 +177,7 @@ int __config_handle_line( AVP *av )
 
 		strwords( &w, av->vptr, av->vlen, ' ' );
 
-		return __config_handle_dir( w.wd[0], &w );
+		return config_handle_dir( w.wd[0], &w );
 	}
 
 	debug( "Config line: %s = %s", av->aptr, av->vptr );
@@ -435,7 +302,7 @@ int __config_read_file( FILE *fh )
 
 
 
-int config_read_file( char *path, int fail_ok )
+int config_read_file( const char *path, int fail_ok )
 {
 	FILE *fh = NULL;
 
@@ -464,7 +331,7 @@ int config_read_file( char *path, int fail_ok )
 
 
 
-int config_read_url( char *url, int fail_ok )
+int config_read_url( const char *url, int fail_ok )
 {
 	CURLWH ch;
 	int ret;
@@ -507,7 +374,7 @@ int config_read_url( char *url, int fail_ok )
 #undef CErr
 
 
-int config_read( char *inpath, WORDS *w )
+int config_read( const char *inpath, WORDS *w )
 {
 	int ret = 0, p_url = 0, p_ssl = 0, s, fail_ok = 0;
 	char *path;
@@ -610,7 +477,7 @@ Read_Done:
 
 
 
-void config_choose_section( CCTXT *c, char *section )
+void config_choose_section( CCTXT *c, const char *section )
 {
 	int i;
 

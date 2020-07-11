@@ -10,20 +10,6 @@
 #include "local.h"
 
 
-void filter_host_free( HFILT *hf )
-{
-	FILT *f;
-
-	while( hf->filters )
-	{
-		f = hf->filters;
-		hf->filters = f->next;
-		free( f );
-	}
-	strbuf_free( hf->path );
-	free( hf );
-}
-
 
 
 __attribute__((hot)) void filter_flush_host( HOST *h, int refresh )
@@ -199,9 +185,11 @@ void filter_host_watcher( THRD *t )
 			flagf_add( h->net, IO_CLOSE );
 	}
 
+	t->arg = NULL;
+
 	// sanity time
-	usleep( 100000 );
-	filter_host_free( hf );
+	usleep( 1000000 );
+	mem_free_hfilt( &hf );
 }
 
 
@@ -226,8 +214,7 @@ void filter_host_setup( HOST *h )
 		return;
 	}
 
-	flist = (HFILT *) allocz( sizeof( HFILT ) );
-	flist->path = strbuf( MAX_PATH_SZ );
+	flist = mem_new_hfilt( );
 	flist->best_mode = FILTER_MODE_MAX;
 	flist->running = 1;
 	flist->host = h;

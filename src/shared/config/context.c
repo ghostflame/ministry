@@ -17,7 +17,7 @@ CCTXT *ctxt_top = NULL;
 CCTXT *context  = NULL;
 
 
-CCTXT *config_make_context( char *path, WORDS *w )
+CCTXT *config_make_context( const char *path, WORDS *w )
 {
 	CCTXT *ctx, *parent = context;
 	int i;
@@ -70,7 +70,7 @@ CCTXT *config_make_context( char *path, WORDS *w )
 
 
 
-int config_source_dupe( char *path )
+int config_source_dupe( const char *path )
 {
 	CCTXT *c = context;
 

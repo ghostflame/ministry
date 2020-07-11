@@ -30,6 +30,6 @@ typedef struct dhash_locks			DLOCKS;
 
 // function types
 typedef int  relay_fn ( HBUFS *, RLINE * );
-typedef uint32_t hash_fn ( char *, int32_t );
+typedef uint32_t hash_fn ( const char *, int32_t );
 
 #endif

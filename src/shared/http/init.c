@@ -16,7 +16,7 @@ int http_tls_load_file( TLS_FILE *sf, char *type )
 {
 	char desc[32];
 
-	sf->type = str_dup( type, 0 );
+	sf->type = str_perm( type, 0 );
 
 	snprintf( desc, 32, "TLS %s file", sf->type );
 
@@ -191,6 +191,13 @@ void http_stop( void )
 		pthread_mutex_destroy( &(h->hitlock) );
 		notice( "Shut down %s server.", h->proto );
 	}
+}
+
+
+// turn on the http server by default
+void http_enable( void )
+{
+	_http->enabled = 1;
 }
 
 

@@ -22,9 +22,9 @@ STAT_CTL *stats_config_defaults( void )
 {
 	STAT_CTL *s;
 
-	s = (STAT_CTL *) allocz( sizeof( STAT_CTL ) );
+	s = (STAT_CTL *) mem_perm( sizeof( STAT_CTL ) );
 
-	s->stats          = (ST_CFG *) allocz( sizeof( ST_CFG ) );
+	s->stats          = (ST_CFG *) mem_perm( sizeof( ST_CFG ) );
 	s->stats->threads = DEFAULT_STATS_THREADS;
 	s->stats->statfn  = &stats_stats_pass;
 	s->stats->period  = DEFAULT_STATS_MSEC;
@@ -35,7 +35,7 @@ STAT_CTL *stats_config_defaults( void )
 	s->stats->enable  = 1;
 	stats_prefix( s->stats, DEFAULT_STATS_PREFIX );
 
-	s->adder          = (ST_CFG *) allocz( sizeof( ST_CFG ) );
+	s->adder          = (ST_CFG *) mem_perm( sizeof( ST_CFG ) );
 	s->adder->threads = DEFAULT_ADDER_THREADS;
 	s->adder->statfn  = &stats_adder_pass;
 	s->adder->period  = DEFAULT_STATS_MSEC;
@@ -46,7 +46,7 @@ STAT_CTL *stats_config_defaults( void )
 	s->adder->enable  = 1;
 	stats_prefix( s->adder, DEFAULT_ADDER_PREFIX );
 
-	s->gauge          = (ST_CFG *) allocz( sizeof( ST_CFG ) );
+	s->gauge          = (ST_CFG *) mem_perm( sizeof( ST_CFG ) );
 	s->gauge->threads = DEFAULT_GAUGE_THREADS;
 	s->gauge->statfn  = &stats_gauge_pass;
 	s->gauge->period  = DEFAULT_STATS_MSEC;
@@ -57,7 +57,7 @@ STAT_CTL *stats_config_defaults( void )
 	s->gauge->enable  = 1;
 	stats_prefix( s->gauge, DEFAULT_GAUGE_PREFIX );
 
-	s->histo          = (ST_CFG *) allocz( sizeof( ST_CFG ) );
+	s->histo          = (ST_CFG *) mem_perm( sizeof( ST_CFG ) );
 	s->histo->threads = DEFAULT_HISTO_THREADS;
 	s->histo->statfn  = &stats_histo_pass;
 	s->histo->period  = DEFAULT_STATS_MSEC;
@@ -68,7 +68,7 @@ STAT_CTL *stats_config_defaults( void )
 	s->histo->enable  = 1;
 	stats_prefix( s->histo, DEFAULT_HISTO_PREFIX );
 
-	s->self           = (ST_CFG *) allocz( sizeof( ST_CFG ) );
+	s->self           = (ST_CFG *) mem_perm( sizeof( ST_CFG ) );
 	s->self->threads  = 1;
 	s->self->statfn   = &stats_self_stats_pass;
 	s->self->period   = DEFAULT_STATS_MSEC;
@@ -85,19 +85,19 @@ STAT_CTL *stats_config_defaults( void )
 	data_type_defns[s->histo->dtype].stc = s->histo;
 
 	// moment checks are off by default
-	s->mom            = (ST_MOM *) allocz( sizeof( ST_MOM ) );
+	s->mom            = (ST_MOM *) mem_perm( sizeof( ST_MOM ) );
 	s->mom->min_pts   = DEFAULT_MOM_MIN;
 	s->mom->enabled   = 0;
 	s->mom->rgx       = regex_list_create( 1 );
 
 	// mode checks are off by default
-	s->mode           = (ST_MOM *) allocz( sizeof( ST_MOM ) );
+	s->mode           = (ST_MOM *) mem_perm( sizeof( ST_MOM ) );
 	s->mode->min_pts  = DEFAULT_MODE_MIN;
 	s->mode->enabled  = 0;
 	s->mode->rgx      = regex_list_create( 1 );
 
 	// predictions are off by default
-	s->pred           = (ST_PRED *) allocz( sizeof( ST_PRED ) );
+	s->pred           = (ST_PRED *) mem_perm( sizeof( ST_PRED ) );
 	s->pred->enabled  = 0;
 	s->pred->vsize    = DEFAULT_MATHS_PREDICT;
 	s->pred->pmax     = DEFAULT_MATHS_PREDICT / 3;
@@ -109,7 +109,7 @@ STAT_CTL *stats_config_defaults( void )
 	s->qsort_thresh   = DEFAULT_QSORT_THRESHOLD;
 
 	// metrics source
-	s->metrics            = (ST_MET *) allocz( sizeof( ST_MET ) );
+	s->metrics            = (ST_MET *) mem_perm( sizeof( ST_MET ) );
 	s->metrics->source    = pmet_add_source( "stats" );
 	s->metrics->pts_high  = pmet_new( PMET_TYPE_GAUGE, "ministry_stats_metric_points_max",
 	                                  "Max number of points from one single metric for each thread" );
@@ -196,10 +196,10 @@ int stats_config_line( AVP *av )
 				l = snprintf( thrbuf, 64, fmt, ( ( t < mid ) ? "lower" : "upper" ), t );
 
 				// OK, make a struct
-				th = (ST_THOLD *) allocz( sizeof( ST_THOLD ) );
+				th = (ST_THOLD *) mem_perm( sizeof( ST_THOLD ) );
 				th->val = t;
 				th->max = top;
-				th->label = str_dup( thrbuf, l );
+				th->label = str_perm( thrbuf, l );
 
 				th->next = s->thresholds;
 				s->thresholds = th;
@@ -288,17 +288,17 @@ int stats_config_line( AVP *av )
 			t = config_bool( av );
 			regex_list_set_fallback( t, s->mom->rgx );
 		}
-		else if( attIs( "whitelist" ) )
+		else if( attIs( "match" ) )
 		{
 			if( regex_list_add( av->vptr, 0, s->mom->rgx ) )
 				return -1;
-			debug( "Added moments whitelist regex: %s", av->vptr );
+			debug( "Added moments match regex: %s", av->vptr );
 		}
-		else if( attIs( "blacklist" ) )
+		else if( attIs( "unmatch" ) )
 		{
 			if( regex_list_add( av->vptr, 1, s->mom->rgx ) )
 				return -1;
-			debug( "Added moments blacklist regex: %s", av->vptr );
+			debug( "Added moments unmatch regex: %s", av->vptr );
 		}
 		else
 			return -1;
@@ -323,17 +323,17 @@ int stats_config_line( AVP *av )
 			t = config_bool( av );
 			regex_list_set_fallback( t, s->mode->rgx );
 		}
-		else if( attIs( "whitelist" ) )
+		else if( attIs( "match" ) )
 		{
 			if( regex_list_add( av->vptr, 0, s->mode->rgx ) )
 				return -1;
-			debug( "Added mode whitelist regex: %s", av->vptr );
+			debug( "Added mode match regex: %s", av->vptr );
 		}
-		else if( attIs( "blacklist" ) )
+		else if( attIs( "unmatch" ) )
 		{
 			if( regex_list_add( av->vptr, 1, s->mode->rgx ) )
 				return -1;
-			debug( "Added mode blacklist regex: %s", av->vptr );
+			debug( "Added mode unmatch regex: %s", av->vptr );
 		}
 		else
 			return -1;
@@ -371,17 +371,17 @@ int stats_config_line( AVP *av )
 			t = config_bool( av );
 			regex_list_set_fallback( t, s->pred->rgx );
 		}
-		else if( attIs( "whitelist" ) )
+		else if( attIs( "match" ) )
 		{
 			if( regex_list_add( av->vptr, 0, s->pred->rgx ) )
 				return -1;
-			debug( "Added prediction whitelist regex: %s", av->vptr );
+			debug( "Added prediction match regex: %s", av->vptr );
 		}
-		else if( attIs( "blacklist" ) )
+		else if( attIs( "unmatch" ) )
 		{
 			if( regex_list_add( av->vptr, 1, s->pred->rgx ) )
 				return -1;
-			debug( "Added prediction blacklist regex: %s", av->vptr );
+			debug( "Added prediction unmatch regex: %s", av->vptr );
 		}
 		else
 			return -1;
@@ -461,7 +461,7 @@ int stats_config_line( AVP *av )
 
 			h->bcount = wd.wc + 1;
 			h->brange = wd.wc;
-			h->bounds = (double *) allocz( h->brange * sizeof( double ) );
+			h->bounds = (double *) mem_perm( h->brange * sizeof( double ) );
 
 			for( i = 0; i < wd.wc; ++i )
 			{
@@ -472,23 +472,23 @@ int stats_config_line( AVP *av )
 			// and sort those into ascending order
 			sort_qsort_dbl_arr( h->bounds, wd.wc );
 		}
-		else if( attIs( "whitelist" ) )
+		else if( attIs( "match" ) )
 		{
 			HistCfCheck;
 
 			if( regex_list_add( av->vptr, 0, h->rgx ) )
 				return -1;
 
-			debug( "Added histogram %s whitelist regex: %s", h->name, av->vptr );
+			debug( "Added histogram %s match regex: %s", h->name, av->vptr );
 		}
-		else if( attIs( "blacklist" ) )
+		else if( attIs( "unmatch" ) )
 		{
 			HistCfCheck;
 
 			if( regex_list_add( av->vptr, 1, h->rgx ) )
 				return -1;
 
-			debug( "Added histogram %s blacklist regex: %s", h->name, av->vptr );
+			debug( "Added histogram %s unmatch regex: %s", h->name, av->vptr );
 		}
 		else if( attIs( "end" ) )
 		{
@@ -506,7 +506,7 @@ int stats_config_line( AVP *av )
 			}
 
 			// make a copy
-			nh  = (ST_HIST *) allocz( sizeof( ST_HIST ) );
+			nh  = (ST_HIST *) mem_perm( sizeof( ST_HIST ) );
 			*nh = *h;
 
 			memset( h, 0, sizeof( ST_HIST ) );

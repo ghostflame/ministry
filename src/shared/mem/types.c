@@ -106,6 +106,9 @@ void mem_free_request( HTREQ **h )
 	b = r->text;
 	p = r->post;
 
+	if( r->params )
+		mem_free_htprm_list( r->params );
+
 	memset( r, 0, sizeof( HTREQ ) );
 
 	if( p )
@@ -117,6 +120,44 @@ void mem_free_request( HTREQ **h )
 	r->post = p;
 
 	mtype_free( _mem->htreq, r );
+}
+
+HTPRM *mem_new_htprm( void )
+{
+	return (HTPRM *) mtype_new( _mem->htprm );
+}
+
+#define mem_clean_htprm( _h )		_h->key[0] = '\0'; _h->val[0] = '\0'; _h->klen = 0; _h->vlen = 0; _h->has_val = 0
+
+
+void mem_free_htprm( HTPRM **p )
+{
+	HTPRM *pp;
+
+	pp = *p;
+	*p = NULL;
+
+	mem_clean_htprm( pp );
+
+	mtype_free( _mem->htprm, pp );
+}
+
+void mem_free_htprm_list( HTPRM *list )
+{
+	HTPRM *p, *pn;
+	int j;
+
+	for( j = 0, p = list; p->next; p = p->next, ++j )
+	{
+		pn = p->next;
+		mem_clean_htprm( p );
+		p->next = pn;
+	}
+
+	// and do the last one
+	mem_clean_htprm( p );
+
+	mtype_free_list( _mem->htprm, j, list, p );
 }
 
 
@@ -239,10 +280,11 @@ void mem_free_token_list( TOKEN *list )
 }
 
 
-MEMHG *mem_new_hanger( void *ptr )
+MEMHG *mem_new_hanger( void *ptr, MEMHL *list )
 {
 	MEMHG *h = mtype_new( _mem->hanger );
-	h->ptr = ptr;
+	h->ptr  = ptr;
+	h->list = list;
 	return h;
 }
 
@@ -355,4 +397,212 @@ void mem_free_store_list( SSTE *list )
 	}
 
 	mtype_free_list( _mem->store, j, list, end );
+}
+
+
+
+PTL *mem_new_ptser( int count )
+{
+	PTL *p = mtype_new( _mem->ptser );
+
+	if( count > MEM_PTSER_MAX_KEEP_POINTS || count > p->sz )
+	{
+		if( p->sz )
+			free( p->points );
+
+		p->sz = count;
+		p->points = allocz( count * sizeof( PNT ) );
+	}
+
+	return p;
+ }
+
+#define mem_clean_ptser( _p )			\
+	if( _p->sz > MEM_PTSER_MAX_KEEP_POINTS ) \
+	{ \
+		free( _p->points ); \
+		_p->points = NULL; \
+		_p->sz = 0; \
+	} \
+	_p->count = 0
+
+void mem_free_ptser( PTL **p )
+{
+	PTL *pp;
+
+	pp = *p;
+	*p = NULL;
+
+	mem_clean_ptser( pp );
+
+	mtype_free( _mem->ptser, pp );
+}
+
+void mem_free_ptser_list( PTL *list )
+{
+	PTL *p;
+	int j;
+
+	for( p = list, j = 0; p->next; p = p->next, ++j )
+	{
+		mem_clean_ptser( p );
+	}
+
+	mem_clean_ptser( p );
+	++j;
+
+	mtype_free_list( _mem->ptser, j, list, p );
+}
+
+
+// same as a ptser, but with a fixed size
+// but we don't free the pts when we free it
+PTL *mem_new_ptlst( void )
+{
+	PTL *p = mtype_new( _mem->ptlst );
+
+	if( !p->sz )
+	{
+		p->sz = MEM_PTLIST_SIZE;
+		p->points = allocz( p->sz * sizeof( double ) );
+	}
+
+	return p;
+}
+
+void mem_free_ptlst( PTL **p )
+{
+	PTL *pp;
+
+	pp = *p;
+	*p = NULL;
+
+	pp->count = 0;
+
+	mtype_free( _mem->ptlst, pp );
+}
+
+void mem_free_ptlst_list( PTL *list )
+{
+	PTL *p;
+	int j;
+
+	for( j = 0, p = list; p->next; p = p->next, ++j )
+		p->count = 0;
+
+	p->count = 0;
+	++j;
+
+	mtype_free_list( _mem->ptlst, j, list, p );
+}
+
+
+
+
+TEL *mem_new_treel( const char *str, int len )
+{
+	TEL *t = mtype_new( _mem->treel );
+
+	t->len = len;
+	t->name = allocz( len + 1 );
+	memcpy( t->name, str, len );
+
+	rkv_tree_lock_init( t );
+
+	return t;
+}
+
+
+static inline void __mem_clean_treel( TEL *t )
+{
+	// unhooking it was the caller's problem
+	t->child  = NULL;
+	t->parent = NULL;
+	t->he     = NULL;
+
+	if( t->leaf )
+	 	mem_free_tleaf( &(t->leaf) );
+
+	if( t->path )
+	{
+		free( t->path );
+		t->path = NULL;
+		t->plen = 0;
+	}
+
+	free( t->name );
+	t->name = NULL;
+	t->len = 0;
+
+	t->id  = 0;
+
+	rkv_tree_lock_dest( t );
+}
+
+void mem_free_treel( TEL **t )
+{
+	TEL *tp;
+
+	tp = *t;
+	*t = NULL;
+
+	__mem_clean_treel( tp );
+
+	mtype_free( _mem->treel, tp );
+}
+
+
+void mem_flatten_tree( TEL *root, TEL **list, TEL **end )
+{
+	TEL *t;
+
+	if( !*end )
+		*list = *end = root;
+
+	while( root->child )
+	{
+		t = root->child;
+		root->child = t->next;
+
+		if( t->child )
+			mem_flatten_tree( t, list, end );
+		else
+		{
+			t->next = *list;
+			*list = t;
+		}
+	}
+}
+
+
+void mem_free_treel_branch( TEL *br )
+{
+	TEL *t, *list, *end;
+	int j;
+
+	list = end = NULL;
+
+	mem_flatten_tree( br, &list, &end );
+
+	for( j = 0, t = list; t; t = t->next, ++j )
+		__mem_clean_treel( t );
+
+	mtype_free_list( _mem->treel, j, list, end );
+}
+
+LEAF *mem_new_tleaf( void )
+{
+	return (LEAF *) mtype_new( _mem->tleaf );
+}
+
+void mem_free_tleaf( LEAF **l )
+{
+	LEAF *lp;
+
+	lp = *l;
+	*l = NULL;
+
+	memset( lp, 0, sizeof( LEAF ) );
+
+	mtype_free( _mem->tleaf, lp );
 }

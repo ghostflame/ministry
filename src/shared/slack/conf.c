@@ -116,7 +116,7 @@ void slack_add_handle( SLKHD *hd )
 
 SLK_CTL *slack_config_defaults( void )
 {
-	_slk = (SLK_CTL *) allocz( sizeof( SLK_CTL ) );
+	_slk = (SLK_CTL *) mem_perm( sizeof( SLK_CTL ) );
 	_slk->enabled = 0;
 	_slk->handles = string_store_create( MEM_HSZ_NANO, NULL, NULL, 0 );
 	_slk->assign  = string_store_create( MEM_HSZ_NANO, NULL, NULL, 0 );
@@ -207,8 +207,8 @@ int slack_config_line( AVP *av )
 		}
 		else if( attIs( "done" ) )
 		{
-			ns = (SLKSP *) allocz( sizeof( SLKSP ) );
-			memcpy( ns, s, sizeof( SLKSP ) );
+			ns = (SLKSP *) mem_perm( sizeof( SLKSP ) );
+			*ns = *s;
 			memset( s, 0, sizeof( SLKSP ) );
 			slack_add_space( ns );
 			__slk_cfg_sp_state = 0;
@@ -309,8 +309,8 @@ int slack_config_line( AVP *av )
 				return -1;
 			}
 
-			nc = (SLKCH *) allocz( sizeof( SLKCH ) );
-			memcpy( nc, c, sizeof( SLKCH ) );
+			nc = (SLKCH *) mem_perm( sizeof( SLKCH ) );
+			*nc = *c;
 			memset( c, 0, sizeof( SLKCH ) );
 
 			slack_add_channel( nc );
@@ -352,8 +352,8 @@ int slack_config_line( AVP *av )
 			}
 
 
-			nh = (SLKHD *) allocz( sizeof( SLKHD ) );
-			memcpy( nh, h, sizeof( SLKHD ) );
+			nh = (SLKHD *) mem_perm( sizeof( SLKHD ) );
+			*nh = *h;
 			memset( h, 0, sizeof( SLKHD ) );
 
 			slack_add_handle( nh );
@@ -373,12 +373,12 @@ int slack_config_line( AVP *av )
 						return -1;
 					}
 
-					pt = (SLKPT *) allocz( sizeof( SLKPT ) );
-					pt->spacename = str_dup( w.wd[0], w.len[0] );
-					pt->channame = str_dup( w.wd[1], w.len[1] );
+					pt = (SLKPT *) mem_perm( sizeof( SLKPT ) );
+					pt->spacename = str_perm( w.wd[0], w.len[0] );
+					pt->channame = str_perm( w.wd[1], w.len[1] );
 					if( w.wc > 2 && w.len[2] > 0 )
 					{
-						pt->emoji = str_perm( w.len[2] + 3 );
+						pt->emoji = mem_perm( w.len[2] + 3 );
 						snprintf( pt->emoji, w.len[2] + 3, ":%s:", w.wd[2] );
 					}
 

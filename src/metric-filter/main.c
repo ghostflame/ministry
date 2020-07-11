@@ -44,7 +44,7 @@ void main_loop( void )
 
 void main_create_conf( void )
 {
-	ctl				= (MCTL *) allocz( sizeof( MCTL ) );
+	ctl				= (MCTL *) mem_perm( sizeof( MCTL ) );
 	ctl->proc		= app_control( );
 	ctl->mem		= memt_config_defaults( );
 	ctl->filt       = filter_config_defaults( );
@@ -57,13 +57,13 @@ void main_create_conf( void )
 
 
 
-int main( int ac, char **av, char **env )
+int main( int ac, char **av, const char **env )
 {
 	char *pidfile = NULL, *optstr;
 	int oc;
 
 	// start us up
-	app_init( "metric-filter", "ministry" );
+	app_init( "metric-filter", "ministry", RUN_NO_RKV );
 
 	// set our default HTTP ports
 	http_set_default_ports( MF_DEFAULT_HTTP_PORT, MF_DEFAULT_HTTPS_PORT );
@@ -85,6 +85,8 @@ int main( int ac, char **av, char **env )
 				break;
 		}
 
+	mem_set_max_kb( DEFAULT_MF_MAX_KB );
+
 	// read our env; has to happen before parsing config
 	// because we might get handed a config file in env
 	config_read_env( env );
@@ -99,7 +101,6 @@ int main( int ac, char **av, char **env )
 	if( pidfile )
 		snprintf( ctl->proc->pidfile, CONF_LINE_MAX, "%s", pidfile );
 
-	mem_set_max_kb( DEFAULT_MF_MAX_KB );
 	app_start( 1 );
 
 	// resolve relay targets

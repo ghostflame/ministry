@@ -52,7 +52,7 @@ char config_args_opt_merged[CONF_LINE_MAX];
 struct option long_options[] = {
 	// behaviours
 	{ "help",               no_argument,          NULL, 'h' },
-	{ "version",            no_argument,          NULL, 'v' },
+	{ "version",            no_argument,          NULL, 'w' },
 	{ "config-test",        no_argument,          NULL, 't' },
 	{ "daemon",             no_argument,          NULL, 'd' },
 	// config
@@ -83,24 +83,28 @@ struct option long_options[] = {
 };
 
 
-char *config_arg_string( char *argstr )
+char *config_arg_string( const char *argstr )
 {
 	snprintf( config_args_opt_merged, CONF_LINE_MAX, "%s%s", config_args_opt_string, argstr );
 	return config_args_opt_merged;
 }
 
 
-void config_set_main_file( char *path )
+void config_set_main_file( const char *path )
 {
-	snprintf( _proc->cfg_file, CONF_LINE_MAX, "%s", path );
+	if( _proc->cfg_file )
+		free( _proc->cfg_file );
+
+	_proc->cfg_file = str_copy( path, 0 );
 
 	// this wins against env
 	setcfFlag( FILE_OPT );
 }
 
-void config_set_env_prefix( char *prefix )
+void config_set_env_prefix( const char *prefix )
 {
-	char *p, prev = ' ';
+	char prev = ' ';
+	const char *p;
 	int i;
 
 	// it needs to be uppercase
@@ -122,7 +126,7 @@ void config_set_env_prefix( char *prefix )
 	_proc->env_prfx_len = i;
 }
 
-void config_set_suffix( char *suffix )
+void config_set_suffix( const char *suffix )
 {
 	char tmp[256];
 	int len;
@@ -151,7 +155,7 @@ void config_set_suffix( char *suffix )
 }
 
 
-void config_args( int ac, char **av, char *optstr, help_fn *hfp )
+void config_args( int ac, char **av, const char *optstr, help_fn *hfp )
 {
 	int oc, idx;
 
@@ -175,6 +179,10 @@ void config_args( int ac, char **av, char *optstr, help_fn *hfp )
 			case 'D':
 				log_set_level( LOG_LEVEL_DEBUG, 1 );
 				runf_add( RUN_DEBUG );
+#ifdef DEBUG_MALLOC
+				// set malloc debugging
+				mallopt(M_CHECK_ACTION, 0x3);
+#endif
 				break;
 			case 'V':
 				runf_add( RUN_TGT_STDOUT );
@@ -186,8 +194,12 @@ void config_args( int ac, char **av, char *optstr, help_fn *hfp )
 			case 'X':
 				cutcfFlag( SUFFIX );
 				break;
-			case 'v':
+			case 'w':
 				printf( "%s version: %s\n", _proc->app_upper, _proc->version );
+				exit( 0 );
+				break;
+			case 'v':
+				printf( "%s\n", _proc->version );
 				exit( 0 );
 				break;
 			case 't':
@@ -231,6 +243,9 @@ void config_args( int ac, char **av, char *optstr, help_fn *hfp )
 				break;
 			case 'F':
 				cutcfFlag( READ_FILE );
+				break;
+			default:
+				exit( 1 );
 				break;
 		}
 

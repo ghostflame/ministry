@@ -48,7 +48,7 @@ struct log_facility log_facilities[] =
 
 
 
-int8_t log_get_level( char *str )
+int8_t log_get_level( const char *str )
 {
 	int8_t i;
 
@@ -69,13 +69,15 @@ int8_t log_get_level( char *str )
 		return LOG_LEVEL_DEBUG;
 	}
 
-	for( i = LOG_LEVEL_MIN; i < LOG_LEVEL_MAX; ++i )
-		if( !strcasecmp( str, log_level_strings[i] ) )
-		  	return i;
+	i = str_search( str, log_level_strings, LOG_LEVEL_MAX );
 
+	if( i < 0 )
+	{
+		warn( "Unrecognised log level string '%s'", str );
+		i = LOG_LEVEL_DEBUG;
+	}
 
-	warn( "Unrecognised log level string '%s'", str );
-	return LOG_LEVEL_DEBUG;
+	return i;
 }
 
 const char *log_get_level_name( int8_t level )
@@ -117,10 +119,10 @@ LOG_CTL *log_config_defaults( void )
 {
 	LOGFL *m, *h;
 
-	_logger = (LOG_CTL *) allocz( sizeof( LOG_CTL ) );
+	_logger = (LOG_CTL *) mem_perm( sizeof( LOG_CTL ) );
 
 	// main file - stdout by default
-	m               = (LOGFL *) allocz( sizeof( LOGFL ) );
+	m               = (LOGFL *) mem_perm( sizeof( LOGFL ) );
 	m->filename     = strdup( "-" );
 	m->type         = "main";
 	m->level        = LOG_LEVEL_INFO;
@@ -130,7 +132,7 @@ LOG_CTL *log_config_defaults( void )
 	m->err_fd       = fileno( stderr );
 
 	// http file - stdout by default
-	h               = (LOGFL *) allocz( sizeof( LOGFL ) );
+	h               = (LOGFL *) mem_perm( sizeof( LOGFL ) );
 	h->filename     = strdup( "-" );
 	h->type         = "http";
 	h->level        = LOG_LEVEL_INFO;
@@ -141,7 +143,7 @@ LOG_CTL *log_config_defaults( void )
 
 	_logger->main   = m;
 	_logger->http   = h;
-	_logger->fps    = (LOGFL **) allocz( 2 * sizeof( LOGFL * ) );
+	_logger->fps    = (LOGFL **) mem_perm( 2 * sizeof( LOGFL * ) );
 
 	_logger->fps[0] = _logger->main;
 	_logger->fps[1] = _logger->http;

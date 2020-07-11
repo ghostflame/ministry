@@ -46,7 +46,7 @@ const char *metric_type_names[METRIC_TYPE_MAX] =
 };
 
 
-const MODEL *metric_get_model( char *name )
+const MODEL *metric_get_model( const char *name )
 {
 	const MODEL *m;
 	int i;
@@ -62,16 +62,16 @@ const MODEL *metric_get_model( char *name )
 	return NULL;
 }
 
-int metric_get_type( char *name )
+int metric_get_type( const char *name )
 {
 	int i;
 
-	for( i = 0; i < METRIC_TYPE_MAX; ++i )
-		if( !strcasecmp( name, metric_type_names[i] ) )
-			return i;
+	i = str_search( name, metric_type_names, METRIC_TYPE_MAX );
 
-	err( "Metric type '%s' not found.", name );
-	return -1;
+	if( i < 0 )
+		err( "Metric type '%s' not found.", name );
+
+	return i;
 }
 
 

@@ -40,6 +40,11 @@
 #define RUN_SHUT_STATS				0x00010000
 #define RUN_SHUT_MASK				0x000f0000
 
+// eliminate some code from some apps
+#define RUN_NO_HTTP					0x00100000
+#define RUN_NO_TARGET				0x00200000
+#define RUN_NO_RKV					0x00400000
+
 // runtime control
 #define RUN_SILENT_OUT				0x01000000
 

@@ -10,15 +10,21 @@
 #include "shared.h"
 
 
-JSON *parse_json_file( FILE *fh, char *path )
+JSON *parse_json_file( FILE *fh, const char *path )
 {
+	struct json_object *jo = NULL;
 	enum json_tokener_error jerr;
-	struct json_object *jo;
-	int d, cfh = 0;
-	char *m;
-	off_t s;
+	struct json_tokener *jtk;
+	int d = -1, cfh = 0;
+	struct stat sb;
+	void *m;
 
-	if( !fh )
+	if( fh )
+	{
+		rewind( fh );
+		d = fileno( fh );
+	}
+	else
 	{
 		if( !path )
 		{
@@ -26,7 +32,8 @@ JSON *parse_json_file( FILE *fh, char *path )
 			return NULL;
 		}
 
-		if( !( fh = fopen( path, "r" ) ) )
+		d = open( path, O_RDONLY );
+		if( d < 0 )
 		{
 			err( "Cannot open path '%s' to parse for JSON -- %s",
 				path, Err );
@@ -36,47 +43,61 @@ JSON *parse_json_file( FILE *fh, char *path )
 		cfh = 1;
 	}
 
-	rewind( fh );
-	d = fileno( fh );
-
-	s = lseek( d, 0, SEEK_END );
-	lseek( d, 0, SEEK_SET );
-
-	if( s > _proc->max_json_sz )
+	if( fstat( d, &sb ) != 0 )
 	{
-		err( "Chickening out of parsing file, size %ld is > than max allowed %d.",
-			s, _proc->max_json_sz );
-		return NULL;
+		err( "Could not stat JSON file %s -- %s", path, Err );
+		goto JSON_FILE_DONE;
 	}
 
-	m = mmap( NULL, s, PROT_READ, MAP_PRIVATE, d, 0 );
+	if( sb.st_size > _proc->max_json_sz )
+	{
+		err( "Chickening out of parsing file, size %ld is > than max allowed %d.",
+			sb.st_size, _proc->max_json_sz );
+		goto JSON_FILE_DONE;
+	}
+
+	m = mmap( NULL, sb.st_size, PROT_READ, MAP_PRIVATE, d, 0 );
 
 	if( m == MAP_FAILED )
 	{
 		err( "Could not mmap file for JSON parsing -- %s", Err );
-		return NULL;
+		goto JSON_FILE_DONE;
 	}
 
-	jo = json_tokener_parse_verbose( m, &jerr );
+	// don't need this any more
+	if( cfh )
+		close( d );
+	d = -1;
 
-	munmap( m, s );
+	jtk  = json_tokener_new( );
+	jo   = json_tokener_parse_ex( jtk, (char *) m, sb.st_size );
+	jerr = json_tokener_get_error( jtk );
+
+	json_tokener_free( jtk );
+
+	munmap( m, sb.st_size );
 
 	if( jerr != json_tokener_success )
 	{
-		if( jo )
-			json_object_put( jo );
+		err( "Could not parse JSON file -- %s",
+			json_tokener_error_desc( jerr ) );
 
-		return NULL;
+		if( jo )
+		{
+			json_object_put( jo );
+			jo = NULL;
+		}
 	}
 
-	if( cfh )
-		fclose( fh );
+JSON_FILE_DONE:
+	if( cfh && d >= 0 )
+		close( d );
 
 	return jo;
 }
 
 
-void create_json_result( BUF *buf, int ok, char *fmt, ... )
+void create_json_result( BUF *buf, int ok, const char *fmt, ... )
 {
 	json_object *o;
 

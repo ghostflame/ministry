@@ -51,10 +51,6 @@ void stats_histo_pass( ST_THR *t )
 	uint64_t i, sz;
 	DHASH *d;
 
-#ifdef DEBUG
-	//debug( "[%02d] Histogram claim", t->id );
-#endif
-
 	st_thr_time( steal );
 
 	// take the data
@@ -81,10 +77,6 @@ void stats_histo_pass( ST_THR *t )
 		}
 
 	st_thr_time( wait );
-
-#ifdef DEBUG
-	//debug( "[%02d] Histogram report", t->id );
-#endif
 
 	st_thr_time( stats );
 

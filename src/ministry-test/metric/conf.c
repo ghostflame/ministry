@@ -90,7 +90,7 @@ int metric_get_interval( char *str, int64_t *res )
 
 int metric_add( MGRP *g, char *str, int len )
 {
-	METRIC *m, nm;;
+	METRIC *m, nm;
 	WORDS w;
 
 	if( strwords( &w, str, len, ' ' ) != METRIC_FLD_MAX )
@@ -137,8 +137,8 @@ int metric_add( MGRP *g, char *str, int len )
 		nm.d3 = nm.d2 / 2;
 
 	// copy that into a new one
-	m = (METRIC *) allocz( sizeof( METRIC ) );
-	memcpy( m, &nm, sizeof( METRIC ) );
+	m = (METRIC *) mem_perm( sizeof( METRIC ) );
+	*m = nm;
 
 	// link it
 	m->next = g->list;
@@ -154,7 +154,7 @@ int metric_add( MGRP *g, char *str, int len )
 
 MTRC_CTL *metric_config_defaults( void )
 {
-	MTRC_CTL *c = (MTRC_CTL *) allocz( sizeof( MTRC_CTL ) );
+	MTRC_CTL *c = (MTRC_CTL *) mem_perm( sizeof( MTRC_CTL ) );
 
 	c->max_age = METRIC_MAX_AGE;
 
@@ -198,7 +198,7 @@ int metric_config_line( AVP *av )
 	}
 	else if( attIs( "group" ) )
 	{
-		ng = (MGRP *) allocz( sizeof( MGRP ) );
+		ng = (MGRP *) mem_perm( sizeof( MGRP ) );
 		ng->name = av_copyp( av );
 		ng->nlen = av->vlen;
 		ng->prefix = strbuf( METRIC_MAX_PATH );

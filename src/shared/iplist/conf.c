@@ -39,7 +39,7 @@ void iplist_add( IPLIST *l, int dup )
 		IPLIST *nl = (IPLIST *) allocz( sizeof( IPLIST ) );
 
 		// grab all the member elements and allocz
-		memcpy( nl, l, sizeof( IPLIST ) );
+		*nl = *l;
 
 		// and send that list back empty
 		memset( l, 0, sizeof( IPLIST ) );
@@ -66,8 +66,8 @@ IPL_CTL *iplist_config_defaults( void )
 	int rv;
 
 	// make our ip network regex
-	_iplist = (IPL_CTL *) allocz( sizeof( IPL_CTL ) );
-	_iplist->netrgx = (regex_t *) allocz( sizeof( regex_t ) );
+	_iplist = (IPL_CTL *) mem_perm( sizeof( IPL_CTL ) );
+	_iplist->netrgx = (regex_t *) mem_perm( sizeof( regex_t ) );
 
 	pthread_mutex_init( &(_iplist->lock), NULL );
 
@@ -137,12 +137,12 @@ int iplist_config_line( AVP *av )
 			l->hashsz = hs;
 		_iplist_cfg_set = 1;
 	}
-	else if( attIs( "match" ) || attIs( "whitelist" ) )
+	else if( attIs( "match" ) )
 	{
 		_iplist_cfg_set = 1;
 		return iplist_add_entry( l, IPLIST_POSITIVE, av->vptr, av->vlen );
 	}
-	else if( attIs( "miss" ) || attIs( "blacklist" ) )
+	else if( attIs( "miss" ) || attIs( "unmatch" ) )
 	{
 		_iplist_cfg_set = 1;
 		return iplist_add_entry( l, IPLIST_NEGATIVE, av->vptr, av->vlen );

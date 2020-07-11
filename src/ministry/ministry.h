@@ -12,13 +12,6 @@
 
 #include "../shared/shared.h"
 
-#ifndef Err
-#define Err strerror( errno )
-#endif
-
-// include epoll
-#include <sys/epoll.h>
-
 
 // crazy control
 #include "typedefs.h"
@@ -26,24 +19,17 @@
 // in order
 #include "locks.h"
 #include "network.h"
-#include "fetch.h"
+#include "fetch/fetch.h"
 #include "post.h"
 #include "targets.h"
 #include "data/data.h"
 #include "metrics/metrics.h"
 #include "gc.h"
 #include "mem.h"
-#include "synth.h"
+#include "synth/synth.h"
 #include "maths/maths.h"
 #include "stats/stats.h"
 
-
-
-#ifdef DEBUG_SYNTH
-#define debug_synth( ... )			debug( ## __VA_ARGS__ )
-#else
-#define debug_synth( ... )			(void) 0
-#endif
 
 
 

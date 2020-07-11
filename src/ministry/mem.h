@@ -27,11 +27,11 @@ struct memt_control
 };
 
 
-PTLIST *mem_new_point( void );
-void mem_free_point( PTLIST **p );
-void mem_free_point_list( PTLIST *list );
+PTLIST *mem_new_points( void );
+void mem_free_points( PTLIST **p );
+void mem_free_points_list( PTLIST *list );
 
-DHASH *mem_new_dhash( char *str, int len );
+DHASH *mem_new_dhash( const char *str, int len );
 void mem_free_dhash( DHASH **d );
 void mem_free_dhash_list( DHASH *list );
 
@@ -43,7 +43,7 @@ HIST *mem_new_history( uint16_t size );
 void mem_free_history( HIST **h );
 void mem_free_history_list( HIST *list );
 
-METRY *mem_new_metry( char *str, int len );
+METRY *mem_new_metry( const char *str, int len );
 void mem_free_metry( METRY **m );
 void mem_free_metry_list( METRY *list );
 

@@ -100,12 +100,12 @@ PMETM *pmet_metric_create( int type, char *path, char *help )
 		return NULL;
 	}
 
-	met = (PMETM *) allocz( sizeof( PMETM ) );
+	met = (PMETM *) mem_perm( sizeof( PMETM ) );
 	met->plen = strlen( path );
-	met->path = str_dup( path, met->plen );
+	met->path = str_perm( path, met->plen );
 
 	if( help )
-		met->help = str_dup( help, 0 );
+		met->help = str_perm( help, 0 );
 
 	for( i = 0; i < PMET_TYPE_MAX; ++i )
 		if( pmet_types[i].type == type )

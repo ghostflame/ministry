@@ -26,7 +26,7 @@ It can be configured to point at either ministry or compat format targets.\n\n" 
 
 void main_create_conf( void )
 {
-	ctl             = (MTEST_CTL *) allocz( sizeof( MTEST_CTL ) );
+	ctl             = (MTEST_CTL *) mem_perm( sizeof( MTEST_CTL ) );
 
 	ctl->proc       = app_control( );
 	ctl->metric     = metric_config_defaults( );
@@ -53,13 +53,13 @@ void main_loop( void )
 
 
 
-int main( int ac, char **av, char **env )
+int main( int ac, char **av, const char **env )
 {
 	char *optstr;
 	int oc;
 
 	// this first
-	app_init( "ministry-test", "ministry" );
+	app_init( "ministry-test", "ministry", RUN_NO_HTTP|RUN_NO_RKV );
 
 	// say we are a by-hand app
 	runf_add( RUN_BY_HAND );

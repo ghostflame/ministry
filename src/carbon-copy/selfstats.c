@@ -192,7 +192,7 @@ void self_stats_init( void )
 
 SST_CTL *self_stats_config_defaults( void )
 {
-	SST_CTL *sc = (SST_CTL *) allocz( sizeof( SST_CTL ) );
+	SST_CTL *sc = (SST_CTL *) mem_perm( sizeof( SST_CTL ) );
 
 	sc->enabled = 1;
 	sc->intv    = DEFAULT_SELF_INTERVAL;

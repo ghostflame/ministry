@@ -13,7 +13,7 @@
 
 
 
-int config_on_change( FTREE *ft, uint32_t mask, char *path, char *desc, void *arg )
+int config_on_change( FTREE *ft, uint32_t mask, const char *path, const char *desc, void *arg )
 {
 	// notify that we have changed - no locking needed, only one thread watches config
 	++(_proc->cfgChanged);
@@ -113,11 +113,11 @@ int config_line( AVP *av )
 	}
 	else if( attIs( "pidFile" ) )
 	{
-		snprintf( _proc->pidfile, CONF_LINE_MAX, "%s", av->vptr );
+		config_set_pid_file( av->vptr );
 	}
 	else if( attIs( "baseDir" ) )
 	{
-		snprintf( _proc->basedir, CONF_LINE_MAX, "%s", av->vptr );
+		config_set_basedir( av->vptr );
 	}
 	else if( attIs( "exitOnChange" ) )
 	{
@@ -133,10 +133,23 @@ int config_line( AVP *av )
 
 
 
-void config_set_pid_file( char *path )
+void config_set_pid_file( const char *path )
 {
-	snprintf( _proc->pidfile, CONF_LINE_MAX, "%s", path );
+	if( _proc->pidfile )
+		free( _proc->pidfile );
+
+	_proc->pidfile = str_copy( path, 0 );
 }
+
+void config_set_basedir( const char *dir )
+{
+	if( _proc->basedir )
+		free( _proc->basedir );
+
+	_proc->basedir = str_copy( dir, 0 );
+}
+
+
 
 void config_late_setup( void )
 {
@@ -145,11 +158,11 @@ void config_late_setup( void )
 }
 
 
-void config_register_section( char *name, conf_line_fn *fp )
+void config_register_section( const char *name, conf_line_fn *fp )
 {
 	CSECT *s = &(config_sections[_proc->sect_count]);
 
-	s->name    = str_dup( name, 0 );
+	s->name    = str_perm( name, 0 );
 	s->fp      = fp;
 	s->section = _proc->sect_count;
 
@@ -158,13 +171,13 @@ void config_register_section( char *name, conf_line_fn *fp )
 
 
 
-PROC_CTL *config_defaults( char *app_name, char *conf_dir )
+PROC_CTL *config_defaults( const char *app_name, const char *conf_dir )
 {
 	char buf[1024];
 
-	_proc            = (PROC_CTL *) allocz( sizeof( PROC_CTL ) );
-	_proc->version   = strdup( VERSION_STRING );
-	_proc->app_name  = strdup( app_name );
+	_proc            = (PROC_CTL *) mem_perm( sizeof( PROC_CTL ) );
+	_proc->version   = str_perm( VERSION_STRING, 0 );
+	_proc->app_name  = str_perm( app_name, 0 );
 	_proc->tick_usec = 1000 * DEFAULT_TICK_MSEC;
 
 	if( gethostname( buf, 1024 ) )
@@ -174,30 +187,27 @@ PROC_CTL *config_defaults( char *app_name, char *conf_dir )
 	}
 	// just in case
 	buf[1023] = '\0';
-	_proc->hostname = str_dup( buf, 0 );
+	_proc->hostname = str_perm( buf, 0 );
 
 	// prefer .conf files in includes
 	config_set_suffix( ".conf" );
 
-	snprintf( _proc->app_upper, CONF_LINE_MAX, "%s", app_name );
+	_proc->app_upper = str_perm( app_name, 0 );
 	_proc->app_upper[0] = toupper( _proc->app_upper[0] );
 
-	snprintf( _proc->basedir,  CONF_LINE_MAX, "/etc/%s", conf_dir );
-	snprintf( _proc->cfg_file, CONF_LINE_MAX, "/etc/%s/%s.conf", conf_dir, app_name );
-	snprintf( _proc->pidfile,  CONF_LINE_MAX, "/var/run/%s/%s.pid", conf_dir, app_name );
+	snprintf( buf, 1024, "/etc/%s/%s.conf", conf_dir, app_name );
+	config_set_main_file( buf );
+
+	snprintf( buf, 1024, "/var/run/%s/%s.pid", conf_dir, app_name );
+	config_set_pid_file( buf );
+
+	snprintf( buf, 1024, "/etc/%s", conf_dir );
+	config_set_basedir( buf );
 
 	_proc->tmpdir = str_copy( TMP_DIR, 0 );
 	_proc->max_json_sz = MAX_JSON_SZ;
 
 	config_set_env_prefix( app_name );
-
-	// we like adaptive mutexes please
-	pthread_mutexattr_init( &(_proc->mtxa) );
-#ifdef DEFAULT_MUTEXES
-	pthread_mutexattr_settype( &(_proc->mtxa), PTHREAD_MUTEX_DEFAULT );
-#else
-	pthread_mutexattr_settype( &(_proc->mtxa), PTHREAD_MUTEX_ADAPTIVE_NP );
-#endif
 
 	// max these two out
 	config_set_limit( _proc, RLIMIT_NOFILE, -1 );

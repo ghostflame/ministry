@@ -57,20 +57,21 @@ struct process_control
 	struct timespec			init_time;
 	struct timespec			curr_time;
 	int64_t					curr_tval;
+	int64_t					curr_usec;
 
 	unsigned int			conf_flags;
 	unsigned int			run_flags;
 
 	char				*	hostname;
 	char				*	app_name;
-	char					app_upper[CONF_LINE_MAX];
+	char				*	app_upper;
 	char				*	version;
+	char				*	pidfile;
+	char				*	basedir;
+	char				*	cfg_file;
 	char				*	tmpdir;
 	char				*	conf_sfx;
 	char					env_prfx[128];
-	char					cfg_file[CONF_LINE_MAX];
-	char					pidfile[CONF_LINE_MAX];
-	char					basedir[CONF_LINE_MAX];
 
 	//SLKHD				*	apphdl;
 
@@ -78,7 +79,6 @@ struct process_control
 	int64_t					loop_count;
 
 	pthread_mutex_t			loop_lock;
-	pthread_mutexattr_t		mtxa;
 
 	int						env_prfx_len;
 	int						cfg_sffx_len;
@@ -111,6 +111,7 @@ struct process_control
 	NET_CTL				*	net;
 	SLK_CTL				*	slk;
 	STR_CTL				*	str;
+	RKV_CTL				*	rkv;
 };
 
 
@@ -125,19 +126,20 @@ ftree_callback config_on_change;
 
 void config_help( void );
 
-char *config_arg_string( char *argstr );
-void config_args( int ac, char **av, char *optstr, help_fn *hfp );
+char *config_arg_string( const char *argstr );
+void config_args( int ac, char **av, const char *optstr, help_fn *hfp );
 
 int config_bool( AVP *av );
-int config_read( char *path, WORDS *w );
-int config_read_env( char **env );
+int config_read( const char *path, WORDS *w );
+int config_read_env( const char **env );
 
-void config_set_pid_file( char *path );
+void config_set_pid_file( const char *path );
+void config_set_basedir( const char *dir );
 
 // things that require the other structures
 void config_late_setup( void );
 
-void config_register_section( char *name, conf_line_fn *fp );
-PROC_CTL *config_defaults( char *app_name, char *conf_dir );
+void config_register_section( const char *name, conf_line_fn *fp );
+PROC_CTL *config_defaults( const char *app_name, const char *conf_dir );
 
 #endif

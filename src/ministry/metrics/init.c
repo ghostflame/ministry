@@ -86,7 +86,7 @@ int metrics_init( void )
 
 		// run through the paths entries, which was path:list
 		// make sure we can resolve each one of those
-		if( string_store_iterator( p->paths, NULL, &metrics_fix_pointer ) != 0 )
+		if( string_store_iterator( p->paths, NULL, &metrics_fix_pointer, 0, 0 ) != 0 )
 			return -3;
 	}
 

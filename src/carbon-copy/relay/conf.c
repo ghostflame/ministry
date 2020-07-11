@@ -17,11 +17,11 @@ RLY_CTL *_relay = NULL;
 
 RLY_CTL *relay_config_defaults( void )
 {
-	RLY_CTL *r = (RLY_CTL *) allocz( sizeof( RLY_CTL ) );
+	RLY_CTL *r = (RLY_CTL *) mem_perm( sizeof( RLY_CTL ) );
 	NET_TYPE *nt;
 
-	nt               = (NET_TYPE *) allocz( sizeof( NET_TYPE ) );
-	nt->tcp          = (NET_PORT *) allocz( sizeof( NET_PORT ) );
+	nt               = (NET_TYPE *) mem_perm( sizeof( NET_TYPE ) );
+	nt->tcp          = (NET_PORT *) mem_perm( sizeof( NET_PORT ) );
 	nt->tcp->ip      = INADDR_ANY;
 	nt->tcp->back    = DEFAULT_NET_BACKLOG;
 	nt->tcp->port    = DEFAULT_RELAY_PORT;
@@ -120,7 +120,7 @@ int relay_config_line( AVP *av )
 		}
 
 		// keep a copy of the string
-		r->rgxstr[r->mcount] = str_dup( av->vptr, av->vlen );
+		r->rgxstr[r->mcount] = str_perm( av->vptr, av->vlen );
 
 		++(r->mcount);
 		r->type = RTYPE_REGEX;
@@ -179,10 +179,10 @@ int relay_config_line( AVP *av )
 		}
 
 		// let's make a new struct with the right amount of matches
-		n = (RELAY *) allocz( sizeof( RELAY ) );
+		n = (RELAY *) mem_perm( sizeof( RELAY ) );
 
 		// copy across what we need
-		memcpy( n, r, sizeof( RELAY ) );
+		*n = *r;
 
 		// make it's own memory
 		n->mstats  = (int64_t *) allocz( n->mcount * sizeof( int64_t ) );

@@ -14,7 +14,7 @@ FLT_CTL *_filt = NULL;
 
 FLT_CTL *filter_config_defaults( void )
 {
-	_filt = (FLT_CTL *) allocz( sizeof( FLT_CTL ) );
+	_filt = (FLT_CTL *) mem_perm( sizeof( FLT_CTL ) );
 
 	_filt->filter_dir = str_copy( DEFAULT_FILTER_DIR, 0 );
 	_filt->generation = 1;

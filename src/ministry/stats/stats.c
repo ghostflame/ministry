@@ -114,7 +114,7 @@ void stats_report_one( ST_THR *t, DHASH *d )
 	if( ( ct = (int32_t) d->proc.count ) == 0 )
 	{
 		if( list )
-			mem_free_point_list( list );
+			mem_free_points_list( list );
 		return;
 	}
 
@@ -180,7 +180,7 @@ void stats_report_one( ST_THR *t, DHASH *d )
 	if( dhash_do_mode( d ) && ct >= ctl->stats->mode->min_pts )
 		stats_report_mode( t, d, ct );
 
-	mem_free_point_list( list );
+	mem_free_points_list( list );
 
 	// keep count
 	t->points += ct;
@@ -203,10 +203,6 @@ void stats_stats_pass( ST_THR *t )
 	PTLIST *p;
 	DHASH *d;
 
-#ifdef DEBUG
-	//debug( "[%02d] Stats claim", t->id );
-#endif
-
 	st_thr_time( steal );
 
 	// take the data
@@ -220,7 +216,7 @@ void stats_stats_pass( ST_THR *t )
 					// outside the lock
 					// this may fix some of the
 					// locking issues under high load
-					p = mem_new_point( );
+					p = mem_new_points( );
 
 					lock_stats( d );
 
@@ -235,10 +231,6 @@ void stats_stats_pass( ST_THR *t )
 				else if( d->empty >= 0 )
 					++(d->empty);
 		}
-
-#ifdef DEBUG
-	//debug( "[%02d] Stats report", t->id );
-#endif
 
 	st_thr_time( stats );
 

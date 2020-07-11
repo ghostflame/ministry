@@ -102,10 +102,6 @@ void stats_adder_pass( ST_THR *t )
 	uint64_t i;
 	DHASH *d;
 
-#ifdef DEBUG
-	//debug( "[%02d] Adder claim", t->id );
-#endif
-
 	st_thr_time( steal );
 
 	// take the data
@@ -164,10 +160,6 @@ void stats_adder_pass( ST_THR *t )
 	// decrement the counter - it hits zero once every thread has done this
 	sc->tproceed--;
 	unlock_synth( );
-
-#ifdef DEBUG
-	//debug( "[%02d] Adder report", t->id );
-#endif
 
 	st_thr_time( stats );
 

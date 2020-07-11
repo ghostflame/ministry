@@ -8,8 +8,8 @@
 **************************************************************************/
 
 
-#ifndef APP_SHARED_H
-#define APP_SHARED_H
+#ifndef SHARED_SHARED_H
+#define SHARED_SHARED_H
 
 
 #define _GNU_SOURCE
@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <dirent.h>
 #include <getopt.h>
+#include <malloc.h>
 #include <signal.h>
 #include <stdarg.h>
 #include <stdint.h>
@@ -79,6 +80,7 @@
 #include "net/token.h"
 #include "net/udp.h"
 #include "mem/mem.h"
+#include "rkv/rkv.h"
 #include "target/target.h"
 #include "io/io.h"
 #include "thread.h"

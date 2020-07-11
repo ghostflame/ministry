@@ -16,8 +16,8 @@ NETW_CTL *network_config_defaults( void )
 	NETW_CTL *net;
 	NET_TYPE *nt;
 
-	nt               = (NET_TYPE *) allocz( sizeof( NET_TYPE ) );
-	nt->tcp          = (NET_PORT *) allocz( sizeof( NET_PORT ) );
+	nt               = (NET_TYPE *) mem_perm( sizeof( NET_TYPE ) );
+	nt->tcp          = (NET_PORT *) mem_perm( sizeof( NET_PORT ) );
 	nt->tcp->ip      = INADDR_ANY;
 	nt->tcp->back    = DEFAULT_NET_BACKLOG;
 	nt->tcp->port    = DEFAULT_RR_PORT;
@@ -33,7 +33,7 @@ NETW_CTL *network_config_defaults( void )
 
 	net_add_type( nt );
 
-	net              = (NETW_CTL *) allocz( sizeof( NETW_CTL ) );
+	net              = (NETW_CTL *) mem_perm( sizeof( NETW_CTL ) );
 	net->relay       = nt;
 
 	// can't add default target, it's a linked list

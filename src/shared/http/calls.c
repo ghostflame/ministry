@@ -271,7 +271,12 @@ void http_calls_init( void )
 
 	http_add_json_get( "/stats", "Internal stats", &http_calls_stats );
 	http_add_json_get( "/counts", "HTTP request counts", &http_calls_count );
-	http_add_json_get( "/targets", "List metric targets", &target_http_list );
+
+	if( !runf_has( RUN_NO_TARGET ) )
+	{
+		http_add_json_get( "/targets", "List metric targets", &target_http_list );
+	}
+
 	http_add_json_get( "/version", "Display version information", &http_calls_version );
 
 	// prometheus support
@@ -281,7 +286,10 @@ void http_calls_init( void )
 		http_add_simple_get( "/control", "List control paths", &http_calls_ctl_list );
 
 	// add target control
-	http_add_control( "target", "Enable/disable target", NULL, &target_http_toggle, NULL, 0 );
+	if( !runf_has( RUN_NO_TARGET ) )
+	{
+		http_add_control( "target", "Enable/disable target", NULL, &target_http_toggle, NULL, 0 );
+	}
 }
 
 

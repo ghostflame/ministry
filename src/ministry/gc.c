@@ -52,7 +52,7 @@ __attribute__((hot)) int gc_hash_list( DHASH **list, DHASH **flist, PRED **plist
 				unlock_stats( h );
 
 				if( pts )
-					mem_free_point_list( pts );
+					mem_free_points_list( pts );
 			}
 			else if( h->type == DATA_TYPE_HISTO )
 			{
@@ -111,7 +111,7 @@ void gc_one_set( ST_CFG *c, DHASH **flist, PRED **plist, int thresh )
 
 	if( hits > 0 )
 	{
-		pthread_mutex_lock( &(ctl->locks->hashstats) );
+		lock_stat_cfg( c );
 
 		c->dcurr -= hits;
 
@@ -124,7 +124,7 @@ void gc_one_set( ST_CFG *c, DHASH **flist, PRED **plist, int thresh )
 			c->dcurr = 0;
 		}
 
-		pthread_mutex_unlock( &(ctl->locks->hashstats) );
+		unlock_stat_cfg( c );
 
 		if( hits < 0 )
 			warn( "Dcurr went negative for %s", c->name );
@@ -140,6 +140,7 @@ void gc_pass( int64_t tval, void *arg )
 	gc_one_set( ctl->stats->stats, &flist, &plist, ctl->gc->thresh );
 	gc_one_set( ctl->stats->adder, &flist, &plist, ctl->gc->thresh );
 	gc_one_set( ctl->stats->gauge, &flist, &plist, ctl->gc->gg_thresh );
+	// TODO histo
 
 	if( flist )
 		mem_free_dhash_list( flist );
@@ -165,7 +166,7 @@ void gc_loop( THRD *t )
 
 GC_CTL *gc_config_defaults( void )
 {
-	GC_CTL *g = (GC_CTL *) allocz( sizeof( GC_CTL ) );
+	GC_CTL *g = (GC_CTL *) mem_perm( sizeof( GC_CTL ) );
 
 	g->enabled        = 0;
 	g->thresh         = DEFAULT_GC_THRESH;
