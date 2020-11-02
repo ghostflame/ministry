@@ -23,6 +23,7 @@ It can be configured to point at either ministry or compat format targets.\n\n" 
 }
 
 
+MTEST_CTL *ctl = NULL;
 
 void main_create_conf( void )
 {

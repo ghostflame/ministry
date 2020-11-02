@@ -37,6 +37,7 @@ void main_loop( void )
 }
 
 
+ARCH_CTL *ctl = NULL;
 
 void main_create_conf( void )
 {

@@ -36,7 +36,7 @@ struct mintest_control
 
 
 // global control config
-MTEST_CTL *ctl;
+extern MTEST_CTL *ctl;
 
 
 #endif

@@ -69,6 +69,7 @@ void main_loop( void )
 }
 
 
+MIN_CTL *ctl = NULL;
 
 void main_create_conf( void )
 {

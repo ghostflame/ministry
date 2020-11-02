@@ -40,7 +40,7 @@ struct carbon_copy_control
 
 
 // global control config
-RCTL *ctl;
+extern RCTL *ctl;
 
 
 #endif

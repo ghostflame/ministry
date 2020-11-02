@@ -53,7 +53,7 @@ struct ministry_control
 
 
 // global control config
-MIN_CTL *ctl;
+extern MIN_CTL *ctl;
 
 
 #endif

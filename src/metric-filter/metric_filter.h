@@ -31,7 +31,7 @@ struct metric_filter_control
 
 
 // global control config
-MCTL *ctl;
+extern MCTL *ctl;
 
 
 #endif

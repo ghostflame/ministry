@@ -142,5 +142,158 @@ int query_xform_integral( QRY *q, PTL *in, PTL **out, int argc, void **argv )
 	return 0;
 }
 
+// we expect the offset to be parsed, in nsec, where going backwards is a
+// negative offset.
+int query_xform_timeshift( QRY *q, PTL *in, PTL **out, int argc, void **argv )
+{
+	register int j;
+	int64_t offs;
+
+	if( argc > 0 )
+	{
+		offs = *((int64_t *) argv[0]);
+
+		for( j = 0; j < in->count; ++j )
+			in->points[j].ts += offs;
+	}
+
+	return 0;
+}
+
+enum {
+	XFORM_OP_SUM = 0,
+	XFORM_OP_MEAN,
+	XFORM_OP_MIN,
+	XFORM_OP_MAX,
+	XFORM_OP_DIFF,
+	XFORM_OP_END
+};
+
+
+#define _xform_offset( _q, _in, _j, _per )		_in->points[_j].ts + ( ( _in->points[_j].ts - _q->start ) % _per )
+#define _xform_index( _off, _fir, _per )		(int) ( ( _off - _fir ) / _per )
+
+#define _xform_ts( _q, _in, _j, _fir, _per )	off = _xform_offset( _q, _in, _j, _per ); \
+												if( off > _q->end ) break; \
+												k = _xform_index( off, _fir, _per )
+
+
+void query_xform_op_sum( QRY *q, PTL *in, PTL *out, int64_t first, int64_t period )
+{
+	register int j, k;
+	int64_t off;
+
+	for( j = 0; j < in->count; ++j )
+	{
+		// set off and k
+		_xform_ts( q, in, j, first, period );
+
+		// just do sum for now
+		out->points[k].ts = off;
+		out->points[k].val += in->points[j].val;
+	}
+}
+
+void query_xform_op_min( QRY *q, PTL *in, PTL *out, int64_t first, int64_t period )
+{
+	register int j, k;
+	int64_t off;
+
+	for( j = 0; j < in->count; ++j )
+	{
+		// set off and k
+		_xform_ts( q, in, j, first, period );
+
+		// set if unset or lower
+		if( out->points[k].ts == 0 || out->points[k].val > in->points[j].val )
+		{
+			out->points[k].ts = off;
+			out->points[k].val = in->points[j].val;
+		}
+	}
+}
+
+void query_xform_op_max( QRY *q, PTL *in, PTL *out, int64_t first, int64_t period )
+{
+	register int j, k;
+	int64_t off;
+
+	for( j = 0; j < in->count; ++j )
+	{
+		// set off and k
+		_xform_ts( q, in, j, first, period );
+
+		// set if unset or lower
+		if( out->points[k].ts == 0 || out->points[k].val < in->points[j].val )
+		{
+			out->points[k].ts = off;
+			out->points[k].val = in->points[j].val;
+		}
+	}
+}
+
+
+void query_xform_op_mean( QRY *q, PTL *in, PTL *out, int64_t first, int64_t period )
+{
+	register int j, k;
+	int64_t off;
+	int *counts;
+
+	counts = (int *) allocz( out->count * sizeof( int ) );
+
+	for( j = 0; j < in->count; ++j )
+	{
+		// set off and k
+		_xform_ts( q, in, j, first, period );
+
+		out->points[k].ts = off;
+		out->points[k].val += in->points[j].val;
+		counts[k]++;
+	}
+
+	for( k = 0; k < out->count; ++k )
+		if( counts[k] > 0 )
+			out->points[k].val /= (double) counts[k];
+
+	free( counts );
+}
+
+
+// we need a period, in nsec
+int query_xform_summarize( QRY *q, PTL *in, PTL **out, int argc, void **argv )
+{
+	int64_t period, start;
+	int32_t nct, op;
+
+	if( argc > 0 )
+		period = *((int64_t *) argv[0]);
+	else
+		return 0;
+
+	if( argc > 1 )
+		op = *((int32_t *) argv[1]);
+	else
+		op = XFORM_OP_SUM;
+
+	if( !period )
+		return 0;
+
+	nct  = (int32_t) ( ( q->end - q->start ) / period );
+	*out = mem_new_ptser( nct );
+
+	// figure out the first summarization point
+	start = q->start;
+	if( ( start % period ) > 0 )
+		start = q->start + ( period - ( q->start % period ) );
+
+	switch( op )
+	{
+		case XFORM_OP_SUM:
+			query_xform_op_sum( q, in, *out, start, period );
+			break;
+	}
+
+	return 0;
+}
 
 

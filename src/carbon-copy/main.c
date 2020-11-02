@@ -41,6 +41,7 @@ void main_loop( void )
 	io_stop( );
 }
 
+RCTL *ctl = NULL;
 
 void main_create_conf( void )
 {

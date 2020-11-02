@@ -43,7 +43,7 @@ struct archivist_control
 
 
 // global control config
-ARCH_CTL *ctl;
+extern ARCH_CTL *ctl;
 
 
 #endif
