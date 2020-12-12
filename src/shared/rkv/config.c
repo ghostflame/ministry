@@ -167,7 +167,7 @@ int rkv_config_line( AVP *av )
 		{
 			rkv_set_base_path( av->vptr, av->vlen );
 		}
-		if( attIs( "hashSize" ) || attIs( "size" ) )
+		else if( attIs( "hashSize" ) || attIs( "size" ) )
 		{
 			if( !( v = (int64_t) hash_size( av->vptr ) ) )
 				return -1;
