@@ -177,7 +177,6 @@ enum {
 	XFORM_OP_MEAN,
 	XFORM_OP_MIN,
 	XFORM_OP_MAX,
-	XFORM_OP_DIFF,
 	XFORM_OP_END
 };
 
@@ -302,6 +301,15 @@ int query_xform_summarize( QRY *q, PTL *in, PTL **out, int argc, void **argv )
 	{
 		case XFORM_OP_SUM:
 			query_xform_op_sum( q, in, *out, start, period );
+			break;
+		case XFORM_OP_MEAN:
+			query_xform_op_mean( q, in, *out, start, period );
+			break;
+		case XFORM_OP_MIN:
+			query_xform_op_min( q, in, *out, start, period );
+			break;
+		case XFORM_OP_MAX:
+			query_xform_op_max( q, in, *out, start, period );
 			break;
 	}
 

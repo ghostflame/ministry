@@ -21,7 +21,7 @@
 
 #include "local.h"
 
-QRFN query_function_defns[7] =
+QRFN query_function_defns[10] =
 {
 	// transform one series
 	{
@@ -69,6 +69,30 @@ QRFN query_function_defns[7] =
 	{
 		.name  = "integral",
 		.fn    = &query_xform_scale,
+		.argc  = 0,
+		.argm  = 0,
+		.types = { QARG_TYPE_NONE, QARG_TYPE_NONE, QARG_TYPE_NONE, QARG_TYPE_NONE }
+	},
+	{
+		.name  = "summarize",
+		.fn    = &query_xform_summarize,
+		.argc  = 2,
+		.argm  = 1,
+		.types = { QARG_TYPE_INTEGER, QARG_TYPE_INTEGER, QARG_TYPE_NONE, QARG_TYPE_NONE }
+	},
+
+	// combine series
+
+	{
+		.name  = "sum",
+		.fn    = &query_combine_sum,
+		.argc  = 0,
+		.argm  = 0,
+		.types = { QARG_TYPE_NONE, QARG_TYPE_NONE, QARG_TYPE_NONE, QARG_TYPE_NONE }
+	},
+	{
+		.name  = "average",
+		.fn    = &query_combine_average,		
 		.argc  = 0,
 		.argm  = 0,
 		.types = { QARG_TYPE_NONE, QARG_TYPE_NONE, QARG_TYPE_NONE, QARG_TYPE_NONE }

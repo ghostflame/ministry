@@ -14,38 +14,56 @@
 * limitations under the License.                                          *
 *                                                                         *
 *                                                                         *
-* query/local.h - local query object structures                           *
+* query/comvbine.c - query data functions - combine                       *
 *                                                                         *
 * Updates:                                                                *
 **************************************************************************/
 
-#ifndef ARCHIVIST_QUERY_LOCAL_H
-#define ARCHIVIST_QUERY_LOCAL_H
+#include "local.h"
 
 
-#define DEFAULT_QUERY_TIMESPAN			3600		// 1hr
-#define DEFAULT_QUERY_MAX_PATHS			2500
+// These functions iterate across the linked list of in - order may matter!
+// they create an out series
 
+int query_combine_sum( QRY *q, PTL *in, PTL **out, int argc, void **argv )
+{
+	register int32_t j;
+	int32_t isize;
 
+	isize = in->count;
 
-#include "archivist.h"
+	*out = mem_new_ptser( isize );
 
-extern QRFN query_function_defns[];
+	while( in )
+	{
+		for( j = 0; j < in->count && j < isize; ++j )
+			if( in->points[j].ts > 0 )
+			{
+				(*out)->points[j].ts   = in->points[j].ts;
+				(*out)->points[j].val += in->points[j].val;
+			}
 
-query_data_fn query_xform_scale;
-query_data_fn query_xform_offset;
-query_data_fn query_xform_abs;
-query_data_fn query_xform_log;
-query_data_fn query_xform_deriv;
-query_data_fn query_xform_nn_deriv;
-query_data_fn query_xform_integral;
-query_data_fn query_xform_summarize;
+		in = in->next;
+	}
 
-query_data_fn query_combine_sum;
-query_data_fn query_combine_average;
+	return 0;
+}
 
+int query_combine_average( QRY *q, PTL *in, PTL **out, int argc, void **argv )
+{
+	register int32_t j;
+	double ctr;
+	PTL *l;
 
-int query_parse( QRY *q );
+	query_combine_sum( q, in, out, argc, argv );
 
+	ctr = 0.0;
+	for( l = in; l; l = l->next )
+		ctr += 1.0;
 
-#endif
+	for( j = 0; j < (*out)->count; ++j )
+		(*out)->points[j].val /= ctr;
+
+	return 0;
+}
+
