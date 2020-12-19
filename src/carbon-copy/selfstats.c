@@ -122,7 +122,7 @@ void self_stats_pass( int64_t tval, void *arg )
 
 	// do we need set a timestamp?
 	if( sc->tsdiv )
-		sc->tslen = snprintf( sc->ts, 32, " %ld\n", tval / sc->tsdiv );
+		sc->tslen = snprintf( sc->ts, 32, " %ld", tval / sc->tsdiv );
 
 	// network stats
 	self_report_nettype( ctl->relay->net );

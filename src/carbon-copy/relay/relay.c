@@ -40,6 +40,7 @@ __attribute__((hot)) static inline void relay_write( HBUFS *hb, int idx, RLINE *
 
 	// add it to the buffer
 	buf_appends( b->bf, l->line, l->len );
+
 	// and the newline
 	buf_addchar( b->bf, '\n' );
 }
