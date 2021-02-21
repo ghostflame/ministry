@@ -3,6 +3,9 @@ Stats generation
 
 Monitoring
 	carbon-copy self-metrics
+		difficult - lines accumulate on connected hosts,
+		not on a structure about the target.  Need to move
+		the stats onto some per-target structure.
 
 Operational Readiness
 

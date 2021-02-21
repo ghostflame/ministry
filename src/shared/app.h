@@ -24,8 +24,8 @@
 #ifndef SHARED_APP_H
 #define SHARED_APP_H
 
-int set_signals( void );
-int set_limits( void );
+int app_signals( void );
+int app_limits( void );
 
 int app_init( const char *name, const char *cfgdir, unsigned int flags );
 int app_start( int writePid );
