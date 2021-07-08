@@ -58,9 +58,13 @@ void *mem_perm( uint32_t len )
 
 	// ensure 4-byte alignment
 	if( len & 0x3 )
-		len += 4 - ( len % 4 );
+	{
+		len &= ~0x3;
+		len +=  0x4;
+	}
 
-	if( len >= ( _mem->perm->size >> 5 ) )
+	// changed to 1/16 th of the max size
+	if( len >= ( _mem->perm->size >> 4 ) )
 	{
 		return allocz( len );
 	}
