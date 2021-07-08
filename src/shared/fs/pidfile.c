@@ -24,7 +24,7 @@
 
 int fs_pidfile_mkdir( const char *filepath )
 {
-	char dbuf[2028], *s;
+	char dbuf[2048], *s;
 	int l;
 
 	// are we right there?
