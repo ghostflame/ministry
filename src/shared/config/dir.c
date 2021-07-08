@@ -35,7 +35,7 @@ int config_handle_dir( const char *path, WORDS *w )
 
 	if( !path || !*path )
 	{
-		warn( "Null directory handed by include-dir." );
+		warn( "Null directory passed by include-dir." );
 		return 0;
 	}
 

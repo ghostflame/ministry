@@ -113,14 +113,20 @@ void config_set_main_file( const char *path )
 	setcfFlag( FILE_OPT );
 }
 
+
 void config_set_env_prefix( const char *prefix )
 {
+	const char *p = prefix;
 	char prev = ' ';
-	const char *p;
-	int i;
+	int i, l;
+
+	l = strlen( prefix );
+
+	if( l > 124 )
+		l = 124;
 
 	// it needs to be uppercase
-	for( i = 0, p = prefix; i < 125 && *p; ++p, ++i )
+	for( i = 0; i < l; ++i, ++p )
 	{
 		if( *p == '-' )
 			_proc->env_prfx[i] = '_';
@@ -137,6 +143,7 @@ void config_set_env_prefix( const char *prefix )
 	_proc->env_prfx[i]  = '\0';
 	_proc->env_prfx_len = i;
 }
+
 
 void config_set_suffix( const char *suffix )
 {
