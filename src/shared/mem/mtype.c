@@ -179,7 +179,7 @@ inline void *mtype_new_list( MTYPE *mt, int count )
 	top = end = mt->flist;
 
 	// run down count - 1 elements
-	for( i = c - 1; i > 0; i-- )
+	for( i = c - 1; i > 0; --i )
 		end = end->next;
 
 	// end is now the last in the list we want
