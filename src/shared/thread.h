@@ -33,9 +33,9 @@ struct thread_data
 	const char				name[16];
 };
 
-pthread_t thread_throw( throw_fn *fp, void *arg, int64_t num );
-pthread_t thread_throw_named( throw_fn *fp, void *arg, int64_t num, char *name );
-pthread_t thread_throw_named_f( throw_fn *fp, void *arg, int64_t num, char *fmt, ... );
+void thread_throw( throw_fn *fp, void *arg, int64_t num );
+void thread_throw_named( throw_fn *fp, void *arg, int64_t num, char *name );
+void thread_throw_named_f( throw_fn *fp, void *arg, int64_t num, char *fmt, ... );
 
 
 #endif
