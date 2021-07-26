@@ -128,6 +128,7 @@ double ts_diff( struct timespec to, struct timespec from, double *store );
 
 // get our uptime
 double get_uptime( void );
+int get_uptime_msec( char *buf, int len );
 time_t get_uptime_sec( void );
 
 // set an rlimit

@@ -47,14 +47,17 @@ int http_calls_stats( HTREQ *req )
 #ifdef MTYPE_TRACING
 	char tmp[16];
 #endif
+	char upt[24];
 	MTSTAT ms;
 	int j;
 
 	jo = json_object_new_object( );
 	jm = json_object_new_object( );
 
+	get_uptime_msec( upt, 24 );
+
 	json_insert( jo, "app",    string, _proc->app_name );
-	json_insert( jo, "uptime", double, get_uptime( ) );
+	json_insert( jo, "uptime", string, upt );
 	json_insert( jo, "mem",    int64,  mem_curr_kb( ) );
 
 	for( j = 0; j < _proc->mem->type_ct; ++j )
@@ -92,10 +95,13 @@ int http_calls_stats( HTREQ *req )
 int http_calls_version( HTREQ *req )
 {
 	json_object *jo;
+	char upt[24];
+
+	get_uptime_msec( upt, 24 );
 
 	jo = json_object_new_object( );
 	json_insert( jo, "app",     string, _proc->app_name );
-	json_insert( jo, "uptime",  double, get_uptime( ) );
+	json_insert( jo, "uptime",  string, upt );
 	json_insert( jo, "version", string, _proc->version );
 
 	strbuf_json( req->text, jo, 1 );

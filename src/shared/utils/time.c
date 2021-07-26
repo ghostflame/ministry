@@ -68,6 +68,14 @@ double get_uptime( void )
 	return diff;
 }
 
+// trimmed to the nearest msec
+int get_uptime_msec( char *buf, int len )
+{
+	snprintf( buf, len, "%.3f", get_uptime( ) );
+	return len;
+}
+
+
 time_t get_uptime_sec( void )
 {
 	get_time( );
