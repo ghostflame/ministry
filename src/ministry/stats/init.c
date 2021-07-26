@@ -260,7 +260,7 @@ void stats_init_histograms( void )
 	}
 
 	// reverse the list, back into config order
-	mem_reverse_list( &(ctl->stats->histcf) );
+	ctl->stats->histcf = (ST_HIST *) mem_reverse_list( ctl->stats->histcf );
 }
 
 
