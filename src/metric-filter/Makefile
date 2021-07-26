@@ -11,7 +11,7 @@ SUBO   = $(SUBS:%=%/*.o)
 RKVS   = ../shared/app_shared.a
 
 EARGS ?=
-LARGS ?= -lm -lcurl -lmicrohttpd -ljson-c
+LARGS ?= -lm -lcurl -lmicrohttpd -ljson-c -lgnutls
 
 WFLAGS = -Wall -Wshadow
 #IFLAGS = -I. -I../shared
