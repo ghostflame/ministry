@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * relay/relay.c - handles connections and processes lines                 *
 *                                                                         *
@@ -28,6 +40,7 @@ __attribute__((hot)) static inline void relay_write( HBUFS *hb, int idx, RLINE *
 
 	// add it to the buffer
 	buf_appends( b->bf, l->line, l->len );
+
 	// and the newline
 	buf_addchar( b->bf, '\n' );
 }

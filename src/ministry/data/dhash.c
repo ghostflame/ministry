@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * data/dhash.c - data hash structure handling                             *
 *                                                                         *
@@ -317,7 +329,6 @@ __attribute__((hot)) DHASH *data_create_dhash( const char *path, int len, ST_CFG
 __attribute__((hot)) DHASH *data_get_dhash( const char *path, int len, ST_CFG *c )
 {
 	uint64_t hval, idx;
-	//DHASH *d, *n;
 	DHASH *d;
 
 	hval = data_path_hash( path, len );
@@ -328,44 +339,5 @@ __attribute__((hot)) DHASH *data_get_dhash( const char *path, int len, ST_CFG *c
 
 	/* try again, under lock this time, assuming we will create it */
 	return data_create_dhash( path, len, c, hval, idx );
-/*
-	n = mem_new_dhash( path, len );
-
-	if( !n )
-	{
-		fatal( "Could not allocate dhash for %s.", c->name );
-		return NULL;
-	}
-
-	n->sum   = hval;
-	n->type  = c->dtype;
-
-	lock_table( idx );
-
-	if( !( d = data_find_path( c->data[idx], hval, path, len ) ) )
-	{
-		n->next = c->data[idx];
-		n->valid = 1;
-		c->data[idx] = n;
-	}
-
-	unlock_table( idx );
-
-	// someone else made it in-between
-	// so free the new one and return that one
-	// we don't want to do the free under lock,
-	// as it has its own locking
-	if( d )
-	{
-		//info( "Another thread created '%s' for us.", path );
-		mem_free_dhash( &n );
-		return d;
-	}
-
-	// finish setup
-	data_get_dhash_extras( n );
-
-	return n;
-*/
 }
 

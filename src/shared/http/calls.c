@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * http/calls.c - built-in HTTP endpoints                                  *
 *                                                                         *
@@ -35,14 +47,17 @@ int http_calls_stats( HTREQ *req )
 #ifdef MTYPE_TRACING
 	char tmp[16];
 #endif
+	char upt[24];
 	MTSTAT ms;
 	int j;
 
 	jo = json_object_new_object( );
 	jm = json_object_new_object( );
 
+	get_uptime_msec( upt, 24 );
+
 	json_insert( jo, "app",    string, _proc->app_name );
-	json_insert( jo, "uptime", double, get_uptime( ) );
+	json_insert( jo, "uptime", string, upt );
 	json_insert( jo, "mem",    int64,  mem_curr_kb( ) );
 
 	for( j = 0; j < _proc->mem->type_ct; ++j )
@@ -80,10 +95,13 @@ int http_calls_stats( HTREQ *req )
 int http_calls_version( HTREQ *req )
 {
 	json_object *jo;
+	char upt[24];
+
+	get_uptime_msec( upt, 24 );
 
 	jo = json_object_new_object( );
 	json_insert( jo, "app",     string, _proc->app_name );
-	json_insert( jo, "uptime",  double, get_uptime( ) );
+	json_insert( jo, "uptime",  string, upt );
 	json_insert( jo, "version", string, _proc->version );
 
 	strbuf_json( req->text, jo, 1 );

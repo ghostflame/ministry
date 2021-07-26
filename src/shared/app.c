@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * app.c - basic app startup and shutdown                                  *
 *                                                                         *
@@ -13,12 +25,12 @@
 PROC_CTL *_proc = NULL;
 
 
-void catch_pipe( int sig )
+void app_catch_pipe( int sig )
 {
 	debug( "Caught SIGPIPE." );
 }
 
-int set_signals( void )
+int app_signals( void )
 {
 	struct sigaction sa;
 
@@ -44,7 +56,7 @@ int set_signals( void )
 	}
 
 	// and sigpipe
-	sa.sa_handler = catch_pipe;
+	sa.sa_handler = app_catch_pipe;
 	if( sigaction( SIGPIPE, &sa, NULL ) )
 	{
 		err( "Could not set pipe signal handler -- %s", Err );
@@ -55,7 +67,7 @@ int set_signals( void )
 }
 
 
-int set_limits( void )
+int app_limits( void )
 {
 	int i, ret = 0;
 
@@ -127,7 +139,7 @@ int app_init( const char *name, const char *cfgdir, unsigned int flags )
 	// things that needed other stuff first
 	config_late_setup( );
 
-	if( set_signals( ) )
+	if( app_signals( ) )
 	{
 		err( "Could not set signals." );
 		app_finish( 2 );
@@ -166,7 +178,7 @@ int app_start( int writePid )
 			fatal( "Failed to get password interactively." );
 	}
 
-	if( set_limits( ) )
+	if( app_limits( ) )
 		fatal( "Failed to set limits." );
 
 	// move our tmpdir as desired

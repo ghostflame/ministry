@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * config.c - read config files and create config object                   *
 *                                                                         *
@@ -101,14 +113,20 @@ void config_set_main_file( const char *path )
 	setcfFlag( FILE_OPT );
 }
 
+
 void config_set_env_prefix( const char *prefix )
 {
+	const char *p = prefix;
 	char prev = ' ';
-	const char *p;
-	int i;
+	int i, l;
+
+	l = strlen( prefix );
+
+	if( l > 124 )
+		l = 124;
 
 	// it needs to be uppercase
-	for( i = 0, p = prefix; i < 125 && *p; ++p, ++i )
+	for( i = 0; i < l; ++i, ++p )
 	{
 		if( *p == '-' )
 			_proc->env_prfx[i] = '_';
@@ -125,6 +143,7 @@ void config_set_env_prefix( const char *prefix )
 	_proc->env_prfx[i]  = '\0';
 	_proc->env_prfx_len = i;
 }
+
 
 void config_set_suffix( const char *suffix )
 {

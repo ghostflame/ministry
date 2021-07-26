@@ -14,39 +14,56 @@
 * limitations under the License.                                          *
 *                                                                         *
 *                                                                         *
-* synth/synth.h - defines synthetics structures                           *
+* query/comvbine.c - query data functions - combine                       *
 *                                                                         *
 * Updates:                                                                *
 **************************************************************************/
 
-#ifndef MINISTRY_SYNTH_H
-#define MINISTRY_SYNTH_H
+#include "local.h"
 
 
-struct synth_control
+// These functions iterate across the linked list of in - order may matter!
+// they create an out series
+
+int query_combine_sum( QRY *q, PTL *in, PTL **out, int argc, void **argv )
 {
-	SYNTH			*	list;
-	int					scount;
-	int					wait_usec;
+	register int32_t j;
+	int32_t isize;
 
-	int					tcount;
-	int					tready;
-	int					tproceed;
+	isize = in->count;
 
-	pthread_cond_t		threads_ready;
-	pthread_cond_t      threads_done;
-};
+	*out = mem_new_ptser( isize );
 
+	while( in )
+	{
+		for( j = 0; j < in->count && j < isize; ++j )
+			if( in->points[j].ts > 0 )
+			{
+				(*out)->points[j].ts   = in->points[j].ts;
+				(*out)->points[j].val += in->points[j].val;
+			}
 
-loop_call_fn synth_pass;
+		in = in->next;
+	}
 
-throw_fn synth_loop;
+	return 0;
+}
 
+int query_combine_average( QRY *q, PTL *in, PTL **out, int argc, void **argv )
+{
+	register int32_t j;
+	double ctr;
+	PTL *l;
 
-void synth_init( void );
+	query_combine_sum( q, in, out, argc, argv );
 
-SYN_CTL *synth_config_defaults( void );
-conf_line_fn synth_config_line;
+	ctr = 0.0;
+	for( l = in; l; l = l->next )
+		ctr += 1.0;
 
+	for( j = 0; j < (*out)->count; ++j )
+		(*out)->points[j].val /= ctr;
 
-#endif
+	return 0;
+}
+
