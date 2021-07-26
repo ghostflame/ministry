@@ -15,6 +15,7 @@ Operational Readiness
 
 Carbon-Copy
     Crashing with multiple sources (from ministry test)
+		Can no longer reproduce
 
 Clustering
 	Maintain a cluster geometry and hash on the first 20 chars
