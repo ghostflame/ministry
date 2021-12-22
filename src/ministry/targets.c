@@ -47,7 +47,7 @@ TTYPE targets_type_defns[TGTS_TYPE_MAX] =
 		.type  = TGTS_TYPE_ARCHIVIST,
 		.name  = "archivist",
 		.port  = 3801,
-		.tsfp  = &stats_tsf_nsec,
+		.tsfp  = &stats_tsf_usec,
 		.wrfp  = &targets_write_graphite
 	},
 	{
