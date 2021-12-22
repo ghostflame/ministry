@@ -67,3 +67,55 @@ int query_combine_average( QRY *q, PTL *in, PTL **out, int argc, void **argv )
 	return 0;
 }
 
+int query_combine_presence( QRY *q, PTL *in, PTL **out, int argc, void **argv )
+{
+	int segs, *ptct, k, expc;
+	register int32_t j;
+	int64_t intv, ts;
+
+	if( argc > 0 )
+	{
+		segs = *((int *) argv[0]);
+
+		if( segs < 1 )
+			segs = 1;
+		else if( segs > 1024 )
+			segs = 1024;
+	}
+	else
+		segs = 1;
+
+	*out = mem_new_ptser( segs );
+	// interval per segment
+	intv = ( q->end - q->start ) / (int64_t) segs;
+	// expected points per segment INTERVAL FROM WHERE??
+	expc = ( q->end - q->start ) / in->period;
+	// timestamp for the output points
+	ts   = q->end - ( intv * ( segs - 1 ) );
+	// block of counters to keep counts in
+	ptct = (int *) allocz( segs * sizeof( int ) );
+
+	// go through the points, counting them
+	for( j = 0, k = 0; j < in->count; ++j )
+	{
+		if( in->points[j].ts >= (*out)->points[k].ts )
+		{
+			if( k < (segs - 1) )
+				++k;
+		}
+		++(ptct[k]);
+	}
+
+	// then calculate percentages
+	for( k = 0; k < segs; ++k, ts += intv )
+	{
+		(*out)->points[k].ts = ts;
+
+		if( expc > 0 )
+			(*out)->points[k].val = (double) ptct[k] / (double) expc;
+	}
+
+	free( ptct );
+	return 0;
+}
+

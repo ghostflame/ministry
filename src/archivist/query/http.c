@@ -89,6 +89,7 @@ void query_write( HTREQ *req, QRY *q )
 
 		json_insert( jpth, "target", string, p->tel->path );
 		json_object_object_add( jpth, "datapoints", jpts );
+		json_insert( jpth, "count", int, p->fq->pcount );
 
 		json_object_array_add( res, jpth );
 	}
@@ -108,6 +109,7 @@ int query_get_callback( HTREQ *req )
 	QRY *q;
 	QP *p;
 
+
 	if( !http_request_get_param( req, QUERY_PARAM_PATH, &str ) || !str || !*str )
 	{
 		req->code = MHD_HTTP_BAD_REQUEST;
@@ -120,6 +122,12 @@ int query_get_callback( HTREQ *req )
 		return 1;
 	}
 
+	if( http_request_get_param( req, QUERY_PARAM_DEBUG, &str ) )
+	{
+		if( str && *str && atoi( str ) )
+			flagf_add( q, QUERY_FLAGS_DEBUG );
+	}
+
 	query_search( q );
 
 	if( q->pcount == 0 )
@@ -129,14 +137,21 @@ int query_get_callback( HTREQ *req )
 		return 0;
 	}
 
-	q->end = _proc->curr_usec;
-
 	if( http_request_get_param( req, QUERY_PARAM_TO, &str ) && str && *str )
 	{
-		// expect it in msec
-		q->end = 1000 * strtoll( str, NULL, 10 );
+		// expect it in msec but who knows
+		if( time_usec( str, &(q->end) ) != 0 )
+		{
+			req->code = MHD_HTTP_BAD_REQUEST;
+			return 1;
+		}
 	}
+	else
+		q->end = _proc->curr_usec;
 
+	// q->end is now safe to use
+
+	// span overrides to
 	if( http_request_get_param( req, QUERY_PARAM_SPAN, &str ) && str && *str )
 	{
 		if( time_span_usec( str, &usec ) )
@@ -152,12 +167,18 @@ int query_get_callback( HTREQ *req )
 	{
 		if( http_request_get_param( req, QUERY_PARAM_FROM, &str ) && str && *str )
 		{
-			// expect it in msec
-			q->start = 1000 * strtoll( str, NULL, 10 );
+			// expect it in msec but who knows
+			if( time_usec( str, &(q->start) ) != 0 )
+			{
+				req->code = MHD_HTTP_BAD_REQUEST;
+				return 1;
+			}
 		}
 		else
 			q->start = q->end - _qry->default_timespan;
 	}
+
+	// q->start and q->end now safe
 
 	if( http_request_get_param( req, QUERY_PARAM_METRIC, &str ) )
 	{
@@ -172,6 +193,10 @@ int query_get_callback( HTREQ *req )
 		}
 	}
 
+	if( flagf_has( q, QUERY_FLAGS_DEBUG ) )
+	{
+		debug( "Query created: %lld %lld for %s", q->start, q->end, q->search );
+	}
 
 	for( p = q->paths; p; p = p->next )
 		query_path_get_data( p, q );
@@ -179,5 +204,4 @@ int query_get_callback( HTREQ *req )
 	query_write( req, q );
 	return 0;
 }
-
 

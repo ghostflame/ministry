@@ -24,7 +24,7 @@
 
 
 
-LEAF *data_process_line( char *str, int len )
+LEAF *data_process_path( char *str, int len )
 {
 	int i, last, clen;
 	TEL *t, *prt;
@@ -63,7 +63,10 @@ LEAF *data_process_line( char *str, int len )
 		{
 			// leaf/node mismatch?
 			if( t->leaf && i < last )
+			{
+				warn( "Made a leaf but not for the last element -- YAAAASSS broken." );
 				break;
+			}
 		}
 
 		l = t->leaf;
@@ -79,17 +82,17 @@ LEAF *data_process_line( char *str, int len )
 void data_handle_line( HOST *h, char *str, int len )
 {
 	char *sp, *path;
-	int64_t ts, now;
+	int64_t ts, now;	// all usec
 	double val;
 	LEAF *l;
 	PTL *p;
 	int pl;
 
-	//info( "Saw line: [%d] %s", len, str );
+	//debug( "Saw line: [%d] %s", len, str );
 
 	if( !( sp = memchr( str, ' ', len ) ) )
 	{
-		info( "No first space in the line." );
+		debug( "No first space in the line." );
 		++(h->invalid);
 		return;
 	}
@@ -105,6 +108,7 @@ void data_handle_line( HOST *h, char *str, int len )
 	if( !( sp = memchr( str, ' ', len ) ) )
 	{
 		++(h->invalid);
+		debug( "No second space in the line." );
 		return;
 	}
 
@@ -114,16 +118,24 @@ void data_handle_line( HOST *h, char *str, int len )
 		--len;
 	}
 
-	if( !( l = data_process_line( path, pl ) ) )
+	if( !( l = data_process_path( path, pl ) ) )
 	{
 		++(h->invalid);
+		debug( "Line just looked overly sketchy, ignoring." );
 		return;
 	}
+
+	if( time_usec( sp, &ts ) )
+	{
+		++(h->invalid);
+		debug( "Line had a duff timestamp, ignoring." );
+		return;
+	}
+
 
 	++(h->lines);
 
 	val = strtod( str, NULL );
-	ts  = strtoll( sp, NULL, 10 );
 	now = _proc->curr_usec;
 
 	rkv_tree_lock( l->tel );

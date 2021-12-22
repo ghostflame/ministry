@@ -171,7 +171,7 @@ int time_span_usec( const char *str, int64_t *usec )
 
 int time_usec( const char *str, int64_t *usec )
 {
-	int64_t v, lim;
+	int64_t v;
 
 	if( !str || !*str )
 		return 1;

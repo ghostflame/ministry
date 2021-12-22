@@ -28,6 +28,10 @@
 #define QUERY_PARAM_SPAN		"span"
 #define QUERY_PARAM_TO			"to"
 #define QUERY_PARAM_METRIC		"metric"
+#define QUERY_PARAM_DEBUG		"debug"
+
+
+#define QUERY_FLAGS_DEBUG		0x0001
 
 
 enum query_arg_types
@@ -77,6 +81,7 @@ struct query_data
 	int64_t					q_when;		// when it was asked for
 
 	int32_t					pcount;
+
 	int16_t					slen;
 	uint16_t				flags;
 
@@ -85,7 +90,7 @@ struct query_data
 
 	WORDS					w;
 	int						plast;
-	int						metric;
+	int						metric;		// RKV_VAL_METR_*
 
 	char					partbuf[512];
 };
