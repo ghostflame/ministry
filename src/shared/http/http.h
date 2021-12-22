@@ -158,6 +158,7 @@ struct http_control
 	struct sockaddr_in	*	sin;
 
 	json_callback		*	stats_fp;	// extra stats callback
+	json_callback		*	health_fp;	// extra health callback
 
 	http_reporter		*	rpt_fp;
 	void				*	rpt_arg;
@@ -185,7 +186,8 @@ struct http_control
 int http_add_handler( char *path, char *desc, void *arg, int method, http_callback *fp, IPLIST *srcs, int flags );
 int http_add_control( char *path, char *desc, void *arg, http_callback *fp, IPLIST *srcs, int flags );
 
-int http_stats_handler( json_callback *fp );
+int http_handler_stats( json_callback *fp );
+int http_handler_health( json_callback *fp );
 
 int http_request_get_param( HTREQ *req, char *key, char **val );
 
