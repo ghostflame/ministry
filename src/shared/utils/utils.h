@@ -117,6 +117,10 @@ void microsleep( int64_t usec );
 // parse a timespan, eg 10s, 40w, 2mo
 int time_span_usec( const char *str, int64_t *usec );
 
+// parse a timestamp, get usec
+// uses 250* thresholds
+int time_usec( const char *str, int64_t *usec );
+
 // get a percentage - 1-100
 int8_t percent( void );
 
