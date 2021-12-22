@@ -27,7 +27,7 @@ enum targets_backends
 {
 	TGTS_TYPE_UNKNOWN = 0,
 	TGTS_TYPE_GRAPHITE,		// set type: graphite (sec)
-	TGTS_TYPE_COAL,			// set type: coal (nsec)
+	TGTS_TYPE_ARCHIVIST,	// set type: archivist (nsec)
 	TGTS_TYPE_OPENTSDB,		// set type: opentsdb (msec)
 	TGTS_TYPE_MAX
 };

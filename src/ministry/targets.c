@@ -44,8 +44,8 @@ TTYPE targets_type_defns[TGTS_TYPE_MAX] =
 		.wrfp  = &targets_write_graphite
 	},
 	{
-		.type  = TGTS_TYPE_COAL,
-		.name  = "coal",
+		.type  = TGTS_TYPE_ARCHIVIST,
+		.name  = "archivist",
 		.port  = 3801,
 		.tsfp  = &stats_tsf_nsec,
 		.wrfp  = &targets_write_graphite
