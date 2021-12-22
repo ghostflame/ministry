@@ -80,7 +80,9 @@ int rkv_init( void )
 	// scan existing files
 	fbuf = strbuf( _rkv->maxpath );
 	pbuf = strbuf( _rkv->maxpath );
-	strbuf_append( fbuf, _rkv->base_path );
+	fbuf = strbuf_append( fbuf, _rkv->base_path );
+
+	info( "Scanning archive root directory %s", _rkv->base_path->buf );
 
 	// scan our files, work out how long it took
 	tsa = get_time64( );

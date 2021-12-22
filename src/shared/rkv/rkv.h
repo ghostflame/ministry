@@ -45,10 +45,10 @@ struct rkv_tree_leaf
 	PTL				*	points;
 	RKFL			*	fh;
 
-	int64_t				oldest;
-	int64_t				last_updated;
+	int64_t				oldest;			// usec
+	int64_t				last_updated;	// usec
 
-	int64_t				last_flushed; // exclusively used by file/update
+	int64_t				last_flushed;	// usec; exclusively used by file/update
 };
 
 
@@ -91,17 +91,19 @@ struct rkv_tree_element
 // PNT
 struct data_point
 {
-	int64_t				ts;
+	int64_t				ts;			// usec
 	double				val;
 };
 
-// 24b + points
+
+// 32b + points
 struct data_series
 {
 	PTL				*	next;
 	PNT				*	points;
 	int32_t				count;
 	int32_t				sz;
+	int64_t				period;		// usec
 };
 
 
@@ -135,12 +137,12 @@ struct rkv_query
 	PTL					*	data;
 
 	// original requested timestamps
-	int64_t					from;
-	int64_t					to;
+	int64_t					from;		// usec
+	int64_t					to;			// usec
 
 	// timestamps provided by bucket
-	int64_t					first;
-	int64_t					last;
+	int64_t					first;		// usec
+	int64_t					last;		// usec
 
 	// offsets - array of 2 if needed
 	int64_t					oa[2];
@@ -148,6 +150,8 @@ struct rkv_query
 
 	int						metric;
 	int						bkt;
+
+	int						pcount;
 };
 
 
