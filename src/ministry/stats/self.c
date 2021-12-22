@@ -54,10 +54,16 @@ void stats_self_report_mtypes( ST_THR *t )
 #undef __srmt_ct
 
 
+float stats_self_report_hash_ratio( ST_CFG *c )
+{
+	return (float) c->dcurr / (float) c->hsize;
+}
+
+
 
 void stats_self_report_types( ST_THR *t, ST_CFG *c )
 {
-	float hr = (float) c->dcurr / (float) c->hsize;
+	float hr = stats_self_report_hash_ratio( c );
 
 	bprintf( t, "paths.%s.curr %d",           c->name, c->dcurr );
 	bprintf( t, "paths.%s.gc %lu",            c->name, lockless_fetch( &(c->gc_count) ) );
@@ -207,8 +213,10 @@ void stats_thread_report( ST_THR *t )
 
 void stats_self_report_http_types( json_object *js, ST_CFG *c )
 {
-	float hr = (float) c->dcurr / (float) c->hsize;
-	json_object *jt, *jc;;
+	json_object *jt, *jc;
+	float hr;
+
+	hr = stats_self_report_hash_ratio( c );
 
 	jt = json_object_new_object( );
 	jc = json_object_new_object( );
@@ -238,6 +246,48 @@ int stats_self_stats_cb_stats( json_object *jo )
 	json_object_object_add( jo, "statsTypes", js );
 
 	return 0;
+}
+
+
+int stats_self_health_ratio_one( json_object *jo, ST_CFG *c )
+{
+	json_object *js;
+	float hr;
+	int ht;
+
+	hr = stats_self_report_hash_ratio( c );
+	ht = ( hr > 0.3 ) ? 0 : 1;
+
+	js = json_object_new_object( );
+
+	json_insert( js, "hashRatio", double, hr );
+	json_insert( js, "healthy", int, ht );
+
+	json_object_object_add( jo, c->name, js );
+
+	return ht;
+}
+
+
+int stats_self_health_ratios( json_object *jo )
+{
+	json_object *js;
+	int ret = 0;
+
+	js = json_object_new_object( );
+
+	if( !stats_self_health_ratio_one( js, ctl->stats->stats ) )
+		ret = -1;
+	if( !stats_self_health_ratio_one( js, ctl->stats->adder ) )
+		ret = -1;
+	if( !stats_self_health_ratio_one( js, ctl->stats->gauge ) )
+		ret = -1;
+	if( !stats_self_health_ratio_one( js, ctl->stats->histo ) )
+		ret = -1;
+
+	json_object_object_add( jo, "hashHealth", js );
+
+	return ret;
 }
 
 

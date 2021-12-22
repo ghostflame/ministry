@@ -283,8 +283,9 @@ void stats_init( void )
 	ctl->stats->self->threads = 1;
 	stats_init_control( ctl->stats->self, 0 );
 
-	// set up the http callback
-	http_stats_handler( &stats_self_stats_cb_stats );
+	// set up the http callbacks
+	http_handler_stats( &stats_self_stats_cb_stats );
+	http_handler_health( &stats_self_health_ratios );
 }
 
 
