@@ -49,6 +49,98 @@ int query_combine_sum( QRY *q, PTL *in, PTL **out, int argc, void **argv )
 	return 0;
 }
 
+
+// multiply together *present* values.  If only one present, use that
+int query_combine_product( QRY *q, PTL *in, PTL **out, int argc, void **argv )
+{
+	register int32_t j;
+	int32_t isize;
+
+	isize = in->count;
+
+	*out = mem_new_ptser( isize );
+
+	while( in )
+	{
+		for( j = 0; j < in->count && j < isize; ++j )
+			if( in->points[j].ts > 0 )
+			{
+				if( (*out)->points[j].ts == 0 )
+				{
+					(*out)->points[j].ts  = in->points[j].ts;
+					(*out)->points[j].val = in->points[j].val;				
+				}
+				else
+					(*out)->points[j].val *= in->points[j].val;
+			}
+
+		in = in->next;
+	}
+
+	return 0;
+}
+
+
+
+int query_combine_min( QRY *q, PTL *in, PTL **out, int argc, void **argv )
+{
+	register int32_t j;
+	int32_t isize;
+
+	isize = in->count;
+
+	*out = mem_new_ptser( isize );
+
+	while( in )
+	{
+		for( j = 0; j < in->count && j < isize; ++j )
+			if( in->points[j].ts > 0 )
+			{
+				if( (*out)->points[j].ts == 0 )
+				{
+					(*out)->points[j].ts  = in->points[j].ts;
+					(*out)->points[j].val = in->points[j].val;				
+				}
+				else if( in->points[j].val < (*out)->points[j].val )
+					(*out)->points[j].val = in->points[j].val;
+			}
+
+		in = in->next;
+	}
+
+	return 0;
+}
+
+int query_combine_max( QRY *q, PTL *in, PTL **out, int argc, void **argv )
+{
+	register int32_t j;
+	int32_t isize;
+
+	isize = in->count;
+
+	*out = mem_new_ptser( isize );
+
+	while( in )
+	{
+		for( j = 0; j < in->count && j < isize; ++j )
+			if( in->points[j].ts > 0 )
+			{
+				if( (*out)->points[j].ts == 0 )
+				{
+					(*out)->points[j].ts  = in->points[j].ts;
+					(*out)->points[j].val = in->points[j].val;				
+				}
+				else if( in->points[j].val > (*out)->points[j].val )
+					(*out)->points[j].val = in->points[j].val;
+			}
+
+		in = in->next;
+	}
+
+	return 0;
+}
+
+
 int query_combine_average( QRY *q, PTL *in, PTL **out, int argc, void **argv )
 {
 	register int32_t j;
