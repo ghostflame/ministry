@@ -21,13 +21,13 @@
 
 #include "local.h"
 
-#define rkrb_loop0( _p )			for( i = q->oa[0]; i < q->ob[0]; ++i, ++j, ++_p, ts += q->b->period )
-#define rkrb_loop1( _p )			for( i = 0; i < q->ob[1]; ++i, ++j, ++_p, ts += q->b->period )
+#define rkrb_loop0( _p )		for( i = q->oa[0]; i < q->ob[0]; ++i, ++j, ++_p )
+#define rkrb_loop1( _p )		for( i = 0; i < q->ob[1]; ++i, ++j, ++_p )
 
-#define rkrb_setpt( _p, _d )		if( _p->ts == ts ) { q->data->points[j].ts = ts; q->data->points[j].val = _d; }
+#define rkrb_setpt( _t, _d )	if( _t >= q->first && _t <= q->last ) { q->data->points[j].ts = _t; q->data->points[j].val = _d; ++(q->pcount); }
 
-#define rkrb_setupP( )			j = 0; ts = q->first; parr = (PNT *) q->fl->ptrs[0]; p = parr + q->oa[0]
-#define rkrb_setupA( )			j = 0; ts = q->first; aarr = (PNTA *) q->fl->ptrs[q->bkt]; a = aarr + q->oa[0]
+#define rkrb_setupP( )			j = 0; parr = (PNT *) q->fl->ptrs[0]; p = parr + q->oa[0]
+#define rkrb_setupA( )			j = 0; aarr = (PNTA *) q->fl->ptrs[q->bkt]; a = aarr + q->oa[0]
 
 #define rkrb_check1P( )			if( q->ob[1] == 0 ) { return; } p = parr
 #define rkrb_check1A( )			if( q->ob[1] == 0 ) { return; } a = aarr
@@ -35,174 +35,181 @@
 
 void rkv_read_blocks_points( RKQR *q )
 {
-	int64_t ts, i, j;
 	PNT *parr, *p;
+	int64_t i, j;
 
 	rkrb_setupP( );
 
 	rkrb_loop0( p )
 	{
-		rkrb_setpt( p, p->val );
+		rkrb_setpt( p->ts, p->val );
 	}
 
 	rkrb_check1P( );
 
 	rkrb_loop1( p )
 	{
-		rkrb_setpt( p, p->val );
+		rkrb_setpt( p->ts, p->val );
 	}
 }
 
 void rkv_read_blocks_mean( RKQR *q )
 {
-	int64_t ts, i, j;
 	PNTA *aarr, *a;
+	int64_t i, j;
 
 	rkrb_setupA( );
 
 	rkrb_loop0( a )
 	{
-		rkrb_setpt( a, ( a->sum / (double) a->count ) );
+//		if( a->ts > 0 )
+//		{
+//			debug( "Point-array pointer %p, %lld / %f - %d", a, a->ts, a->sum, a->count );
+//			debug( "Timestamp match:  %lld <= %lld <= %lld  ??  %d", q->first, a->ts, q->last,
+//				( a->ts >= q->first && a->ts <= q->last ) );
+//		}
+		rkrb_setpt( a->ts, ( a->sum / (double) a->count ) );
 	}
 
 	rkrb_check1A( );
 
 	rkrb_loop1( a )
 	{
-		rkrb_setpt( a, ( a->sum / (double) a->count ) );
+		rkrb_setpt( a->ts, ( a->sum / (double) a->count ) );
 	}
 }
 
 void rkv_read_blocks_count( RKQR *q )
 {
-	int64_t ts, i, j;
 	PNTA *aarr, *a;
+	int64_t i, j;
 
 	rkrb_setupA( );
 
 	rkrb_loop0( a )
 	{
-		rkrb_setpt( a, ( (double) a->count ) );
+		rkrb_setpt( a->ts, ( (double) a->count ) );
 	}
 
 	rkrb_check1A( );
 
 	rkrb_loop1( a )
 	{
-		rkrb_setpt( a, ( (double) a->count ) );
+		rkrb_setpt( a->ts, ( (double) a->count ) );
 	}
 }
 
 
 void rkv_read_blocks_sum( RKQR *q )
 {
-	int64_t ts, i, j;
 	PNTA *aarr, *a;
+	int64_t i, j;
 
 	rkrb_setupA( );
 
 	rkrb_loop0( a )
 	{
-		rkrb_setpt( a, a->sum );
+		rkrb_setpt( a->ts, a->sum );
 	}
 
 	rkrb_check1A( );
 
 	rkrb_loop1( a )
 	{
-		rkrb_setpt( a, a->sum );
+		rkrb_setpt( a->ts, a->sum );
 	}
 }
 
 
 void rkv_read_blocks_min( RKQR *q )
 {
-	int64_t ts, i, j;
 	PNTA *aarr, *a;
+	int64_t i, j;
 
 	rkrb_setupA( );
 
 	rkrb_loop0( a )
 	{
-		rkrb_setpt( a, a->min );
+		rkrb_setpt( a->ts, a->min );
 	}
 
 	rkrb_check1A( );
 
 	rkrb_loop1( a )
 	{
-		rkrb_setpt( a, a->min );
+		rkrb_setpt( a->ts, a->min );
 	}
 }
 
 
 void rkv_read_blocks_max( RKQR *q )
 {
-	int64_t ts, i, j;
 	PNTA *aarr, *a;
+	int64_t i, j;
 
 	rkrb_setupA( );
 
 	rkrb_loop0( a )
 	{
-		rkrb_setpt( a, a->max );
+		rkrb_setpt( a->ts, a->max );
 	}
 
 	rkrb_check1A( );
 
 	rkrb_loop1( a )
 	{
-		rkrb_setpt( a, a->max );
+		rkrb_setpt( a->ts, a->max );
 	}
 }
 
 
 void rkv_read_blocks_spread( RKQR *q )
 {
-	int64_t ts, i, j;
 	PNTA *aarr, *a;
+	int64_t i, j;
 
 	rkrb_setupA( );
 
 	rkrb_loop0( a )
 	{
-		rkrb_setpt( a, ( a->max - a->min ) );
+		rkrb_setpt( a->ts, ( a->max - a->min ) );
 	}
 
 	rkrb_check1A( );
 
 	rkrb_loop1( a )
 	{
-		rkrb_setpt( a, ( a->max - a->min ) );
+		rkrb_setpt( a->ts, ( a->max - a->min ) );
 	}
 }
 
 
 void rkv_read_blocks_middle( RKQR *q )
 {
-	int64_t ts, i, j;
 	PNTA *aarr, *a;
+	int64_t i, j;
 
 	rkrb_setupA( );
 
 	rkrb_loop0( a )
 	{
-		rkrb_setpt( a, ( ( a->max + a->min ) / 2.0 ) );
+		rkrb_setpt( a->ts, ( ( a->max + a->min ) / 2.0 ) );
 	}
 
 	rkrb_check1A( );
 
 	rkrb_loop1( a )
 	{
-		rkrb_setpt( a, ( ( a->max + a->min ) / 2.0 ) );
+		rkrb_setpt( a->ts, ( ( a->max + a->min ) / 2.0 ) );
 	}
 }
+
 
 // proportion of spread against the mean
 void rkv_read_blocks_range( RKQR *q )
 {
-	int64_t ts, i, j;
 	PNTA *aarr, *a;
+	int64_t i, j;
 
 	rkrb_setupA( );
 
@@ -210,7 +217,7 @@ void rkv_read_blocks_range( RKQR *q )
 	{
 		if( a->count && a->sum != 0.0 )
 		{
-			rkrb_setpt( a, ( ( a->max - a->min ) / ( a->sum / (double) a->count ) ) );
+			rkrb_setpt( a->ts, ( ( a->max - a->min ) / ( a->sum / (double) a->count ) ) );
 		}
 	}
 
@@ -220,7 +227,7 @@ void rkv_read_blocks_range( RKQR *q )
 	{
 		if( a->count && a->sum != 0.0 )
 		{
-			rkrb_setpt( a, ( ( a->max - a->min ) / ( a->sum / (double) a->count ) ) );
+			rkrb_setpt( a->ts, ( ( a->max - a->min ) / ( a->sum / (double) a->count ) ) );
 		}
 	}
 }
@@ -308,7 +315,10 @@ void rkv_read( RKFL *r, RKQR *qry )
 	int64_t x, y, count;
 
 	if( !r->map && rkv_open( r ) != 0 )
+	{
+		warn( "Reading from unopened and unopenable rkv failed." );
 		return;
+	}
 
 	qry->fl  = r;
 	qry->bkt = rkv_choose_bucket( r, qry->from, qry->to );
@@ -337,12 +347,15 @@ void rkv_read( RKFL *r, RKQR *qry )
 		qry->ob[1] = y;
 	}
 
-	//debug( "Query offsets: %ld -> %ld   %ld -> %ld",
-	//	qry->oa[0], qry->ob[0],
-	//	qry->oa[1], qry->ob[1] );
-
+//	debug( "Query offsets: [%d/%lld] from   %ld -> %ld   %ld -> %ld",
+//		qry->bkt, count,
+//		qry->oa[0], qry->ob[0],
+//		qry->oa[1], qry->ob[1] );
 
 	qry->data = mem_new_ptser( count );
+
+	// we need this for PTL functions
+	qry->data->period = qry->b->period;
 
 	// are we looking at the first bucket?  that's simpler, but
 	// we ignore the metric, because there is only one option

@@ -128,27 +128,27 @@ int time_span_usec( const char *str, int64_t *usec )
 			v *= 60 * 60 * MILLION;
 //			info( "Recognised %s as hours.", str );
 		}
-		else if( !strprefix( u, "minutes" ) )
+		else if( !strprefix( u, "minutes" ) || !strprefix( u, "mins" ) )
 		{
 			v *= 60 * MILLION;
 //			info( "Recognised %s as minutes.", str );
 		}
-		else if( !strprefix( u, "seconds" ) )
+		else if( !strprefix( u, "seconds" ) || !strprefix( u, "secs" ) )
 		{
 			v *= MILLION;
 //			info( "Recognised %s as seconds.", str );
 		}
-		else if( !strprefix( u, "msec" ) || !strprefix( u, "milliseconds" ) )
+		else if( !strprefix( u, "msecs" ) || !strprefix( u, "milliseconds" ) )
 		{
 			v *= 1000;
 //			info( "Recognised %s as msec.", str );
 		}
-		else if( !strprefix( u, "months" ) )
+		else if( !strprefix( u, "months" ) || !strprefix( u, "mths" ) )
 		{
 			v *= 30 * 24 * 60 * 60 * MILLION;
 //			info( "Recognised %s as months.", str );
 		}
-		else if( !strprefix( u, "usec" ) || !strprefix( u, "microseconds" ) )
+		else if( !strprefix( u, "usecs" ) || !strprefix( u, "microseconds" ) )
 		{
 			v *= 1;
 //			info( "Recognised %s as usec.", str );
@@ -163,3 +163,39 @@ int time_span_usec( const char *str, int64_t *usec )
 	*usec = v;
 	return 0;
 }
+
+
+#define NSEC_THRESH		250 * MILLION * BILLION
+#define USEC_THRESH		250 * MILLION * MILLION
+#define MSEC_THRESH		250 * BILLION
+
+int time_usec( const char *str, int64_t *usec )
+{
+	int64_t v;
+
+	if( !str || !*str )
+		return 1;
+
+	v = strtoll( str, NULL, 10 );
+
+	// convert nsec to usec
+	if( v > NSEC_THRESH )
+		v /= 1000;
+
+	// convert seconds to msec
+	if( v < MSEC_THRESH )
+		v *= 1000;
+
+	// convert msec to usec
+	if( v < USEC_THRESH)
+		v *= 1000;
+
+	if( usec )
+		*usec = v;
+
+	return 0;
+}
+
+#undef MSEC_THRESH
+#undef USEC_THRESH
+#undef NSEC_THRESH

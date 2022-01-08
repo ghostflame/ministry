@@ -87,6 +87,7 @@ void stats_set_workspace( ST_THR *t, int32_t len );
 void stats_set_bufs( ST_THR *t, ST_CFG *c, int64_t tval );
 
 // self
+float stats_self_report_hash_ratio( ST_CFG *c );
 void stats_thread_report( ST_THR *t );
 
 #endif

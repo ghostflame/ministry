@@ -43,6 +43,7 @@ query_data_fn query_xform_summarize;
 
 query_data_fn query_combine_sum;
 query_data_fn query_combine_average;
+query_data_fn query_combine_presence;
 
 
 int query_parse( QRY *q );

@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "node-getopt": "^0.3.2"
+  }
+}

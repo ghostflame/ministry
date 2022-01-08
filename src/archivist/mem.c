@@ -95,6 +95,8 @@ void mem_free_rkqry( RKQR **q )
 	if( qp->data )
 		mem_free_ptser( &(qp->data) );
 
+	qp->pcount = 0;
+
 	mtype_free( ctl->mem->rkqry, qp );
 }
 
@@ -113,6 +115,8 @@ void mem_free_rkqry_list( RKQR *list )
 			ptl = q->data;
 			q->data = NULL;
 		}
+
+		q->pcount = 0;
 	}
 
 	if( q->data )
@@ -121,6 +125,9 @@ void mem_free_rkqry_list( RKQR *list )
 		ptl = q->data;
 		q->data = NULL;
 	}
+
+	q->pcount = 0;
+
 	++j;
 
 	mtype_free_list( ctl->mem->rkqry, j, list, q );

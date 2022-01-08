@@ -425,6 +425,7 @@ PTL *mem_new_ptser( int count )
 		p->sz = count;
 		p->points = allocz( count * sizeof( PNT ) );
 	}
+	p->count = count;
 
 	return p;
  }

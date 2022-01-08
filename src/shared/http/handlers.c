@@ -124,8 +124,9 @@ int http_add_control( char *path, char *desc, void *arg, http_callback *fp, IPLI
 	return __http_add_handler( urlbuf, desc, arg, HTTP_METH_POST, fp, srcs, flags|HTTP_FLAGS_CONTROL|HTTP_FLAGS_JSON );
 }
 
+
 // set an extra stats handler
-int http_stats_handler( json_callback *fp )
+int http_handler_stats( json_callback *fp )
 {
 	if( fp )
 	{
@@ -136,7 +137,17 @@ int http_stats_handler( json_callback *fp )
 	return -1;
 }
 
+// set an extra health handler
+int http_handler_health( json_callback *fp )
+{
+	if( fp )
+	{
+		_http->health_fp = fp;
+		return 0;
+	}
 
+	return -1;
+}
 
 
 
