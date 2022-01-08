@@ -2,25 +2,25 @@ All functions act on the innermost list of series
 
 COMBINE:  Produces one series from many
 
-sum()
-average()
-product()
-min values()
-max values()
+sum() .
+average() .
+product() .
+min values() .
+max values() .
 group() - does what?
 range() - does what? diff between lowest and highest?
 count()
 
 TRANSFORM:  Works on each series separately
 
-scale(double)
+scale(double) .
 scaleToSeconds(int)
-offset(double)
-derivative()
+offset(double) .
+derivative() .
 time-adjusted derivative(int?)  does what?
 integral()
 percentile values(double)  no argument - of highest?
-non-negative derivative()
+non-negative derivative() .
 log()
 absolute value()
 timeShift(span)  -  this one is hard

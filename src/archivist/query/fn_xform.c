@@ -189,7 +189,7 @@ enum {
 												k = _xform_index( off, _fir, _per )
 
 
-void query_xform_op_sum( QRY *q, PTL *in, PTL *out, int64_t first, int64_t period )
+void _query_xform_op_sum( QRY *q, PTL *in, PTL *out, int64_t first, int64_t period )
 {
 	register int j, k;
 	int64_t off;
@@ -205,7 +205,7 @@ void query_xform_op_sum( QRY *q, PTL *in, PTL *out, int64_t first, int64_t perio
 	}
 }
 
-void query_xform_op_min( QRY *q, PTL *in, PTL *out, int64_t first, int64_t period )
+void _query_xform_op_min( QRY *q, PTL *in, PTL *out, int64_t first, int64_t period )
 {
 	register int j, k;
 	int64_t off;
@@ -224,7 +224,7 @@ void query_xform_op_min( QRY *q, PTL *in, PTL *out, int64_t first, int64_t perio
 	}
 }
 
-void query_xform_op_max( QRY *q, PTL *in, PTL *out, int64_t first, int64_t period )
+void _query_xform_op_max( QRY *q, PTL *in, PTL *out, int64_t first, int64_t period )
 {
 	register int j, k;
 	int64_t off;
@@ -244,7 +244,7 @@ void query_xform_op_max( QRY *q, PTL *in, PTL *out, int64_t first, int64_t perio
 }
 
 
-void query_xform_op_mean( QRY *q, PTL *in, PTL *out, int64_t first, int64_t period )
+void _query_xform_op_mean( QRY *q, PTL *in, PTL *out, int64_t first, int64_t period )
 {
 	register int j, k;
 	int64_t off;
@@ -300,16 +300,16 @@ int query_xform_summarize( QRY *q, PTL *in, PTL **out, int argc, void **argv )
 	switch( op )
 	{
 		case XFORM_OP_SUM:
-			query_xform_op_sum( q, in, *out, start, period );
+			_query_xform_op_sum( q, in, *out, start, period );
 			break;
 		case XFORM_OP_MEAN:
-			query_xform_op_mean( q, in, *out, start, period );
+			_query_xform_op_mean( q, in, *out, start, period );
 			break;
 		case XFORM_OP_MIN:
-			query_xform_op_min( q, in, *out, start, period );
+			_query_xform_op_min( q, in, *out, start, period );
 			break;
 		case XFORM_OP_MAX:
-			query_xform_op_max( q, in, *out, start, period );
+			_query_xform_op_max( q, in, *out, start, period );
 			break;
 	}
 

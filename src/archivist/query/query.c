@@ -35,6 +35,11 @@ void query_add_path( QRY *q, TEL *tel )
 		qp->next = q->paths;
 		q->paths = qp;
 
+		if( flagf_has( q, QUERY_FLAGS_DEBUG ) )
+		{
+			debug( "Matched path %s", tel->path );
+		}
+
 		++(q->pcount);
 	}
 	else
@@ -113,7 +118,8 @@ QRY *query_create( const char *search_string )
 
 	q->slen   = strlen( search_string );
 	q->search = str_copy( search_string, q->slen );
-	q->q_when = get_time64( );
+	q->q_when = get_time64( ); // nsec
+	q->metric = RKV_VAL_METR_MEAN;
 
 	if( query_parse( q ) != 0 )
 	{
@@ -129,7 +135,7 @@ void query_free( QRY *q )
 {
 	double diff;
 
-	diff = (double) ( get_time64( ) - q->q_when );
+	diff = (double) ( get_time64( ) - q->q_when ); // nsec
 	diff /= BILLIONF;
 
 	info( "Query fetched %d path%s in %.6fs", q->pcount,

@@ -21,7 +21,7 @@
 
 #include "local.h"
 
-QRFN query_function_defns[10] =
+QRFN query_function_defns[11] =
 {
 	// transform one series
 	{
@@ -96,6 +96,13 @@ QRFN query_function_defns[10] =
 		.argc  = 0,
 		.argm  = 0,
 		.types = { QARG_TYPE_NONE, QARG_TYPE_NONE, QARG_TYPE_NONE, QARG_TYPE_NONE }
+	},
+	{
+		.name  = "presence",
+		.fn    = &query_combine_presence,
+		.argc  = 2,
+		.argm  = 0,
+		.types = { QARG_TYPE_INTEGER, QARG_TYPE_INTEGER, QARG_TYPE_NONE, QARG_TYPE_NONE }
 	}
 };
 
@@ -105,6 +112,7 @@ QRFN query_function_defns[10] =
 
 int query_parse( QRY *q )
 {
+	debug( "Query parse called." );
 	return 0;
 }
 

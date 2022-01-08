@@ -24,6 +24,31 @@
 
 
 
+int http_calls_health( HTREQ *req )
+{
+	json_object *jo;
+	int hret = 0;
+
+	jo = json_object_new_object( );
+
+	if( _proc->http->health_fp )
+		hret = (*(_proc->http->health_fp))( jo );
+
+	strbuf_json( req->text, jo, 1 );
+
+	// did we just return failure?
+	if( hret < 0 )
+		req->code = 500;
+	// let the health check specify a code
+	else if( hret > 1 )
+		req->code = hret;
+
+	return 0;
+}
+
+
+
+
 int http_calls_metrics( HTREQ *req )
 {
 	// this does all the hard work
@@ -289,6 +314,7 @@ void http_calls_init( void )
 
 	http_add_json_get( "/stats", "Internal stats", &http_calls_stats );
 	http_add_json_get( "/counts", "HTTP request counts", &http_calls_count );
+	http_add_json_get( "/health", "Health check", &http_calls_health );
 
 	if( !runf_has( RUN_NO_TARGET ) )
 	{

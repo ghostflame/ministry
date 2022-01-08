@@ -24,6 +24,7 @@
 
 
 json_callback stats_self_stats_cb_stats;
+json_callback stats_self_health_ratios;
 loop_call_fn stats_thread_pass;
 throw_fn stats_loop;
 

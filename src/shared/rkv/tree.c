@@ -134,7 +134,8 @@ int rkv_tree_insert( char *name, int nlen, char *path, int plen, TEL *prt, TEL *
 
 	if( r )
 	{
-		*tp = r;
+		if( tp )
+			*tp = r;
 
 		// this free's the path
 		mem_free_treel( &t );
@@ -154,8 +155,11 @@ int rkv_tree_insert( char *name, int nlen, char *path, int plen, TEL *prt, TEL *
 	// give it an id
 	t->id = rkv_tree_get_id( );
 
-	if( !( t->id & 0xffff ) )
+	if( !( t->id & 0xff ) )
 		info( "Latest tree element ID is %u", t->id );
+
+	if( tp )
+		*tp = t;
 
 	return 1;
 }
