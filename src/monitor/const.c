@@ -14,7 +14,7 @@
 * limitations under the License.                                          *
 *                                                                         *
 *                                                                         *
-* monitors.c - read config and start monitors                             *
+* const.c - constants associated with the monitors                        *
 *                                                                         *
 * Updates:                                                                *
 **************************************************************************/
@@ -22,29 +22,54 @@
 #include "min-monitor.h"
 
 
-int monitors_init( void )
+const char *monitor_type_names[MON_TYPE_MAX] =
 {
-	// convert to nsec
-	ctl->mons->intv = MILLION * ctl->mons->intv_msec;
+	"http",
+	"tcp",
+	"file"
+};
 
-	return 0;
-}
+/*
+
+*/
 
-
-MONCFG *monitors_config_defaults( void )
+const char *monitor_error_strings[MON_ERR_MAX] =
 {
-	MONCFG *mc = (MONCFG *) mem_perm( sizeof( MONCFG ) );
+	"no error",
+	"connection timeout",
+	"connection refused",
+	"request failed",
+	"request denied",
+	"invalid path"
+};
 
-	mc->mondir    = str_copy( DEFAULT_MONITORS_DIR, 0 );
-	mc->intv_msec = DEFAULT_INTERVAL_MSEC;
-	mc->max_ctr   = DEFAULT_MAX_MONITORS;
 
-	return mc;
-}
-
-
-int monitors_config_line( AVP *av )
+int monitor_type_lookup( const char *name )
 {
+	int i;
+
+	for( i = 0; i < MON_TYPE_MAX; ++i )
+		if( !strcasecmp( name, monitor_type_names[i] ) )
+			return i;
+
 	return -1;
 }
+
+const char *monitor_type_name( int mtype )
+{
+	if( mtype < 0 || mtype >= MON_TYPE_MAX )
+		return "unknown";
+
+	return monitor_type_names[mtype];
+}
+
+const char *monitor_error_label( int etype )
+{
+	if( etype < 0 || etype >= MON_ERR_MAX )
+		return "unknown";
+
+	return monitor_error_strings[etype];
+}
+
+
 

@@ -32,12 +32,58 @@
 #define DEFAULT_MAX_MONITORS		512
 
 
+enum monitor_type_values
+{
+	MON_TYPE_HTTP = 0,
+	MON_TYPE_TCP,
+	MON_TYPE_FILE,
+	MON_TYPE_MAX
+};
+
+enum monitor_result_values
+{
+	MON_RES_SUCCESS = 0,
+	MON_RES_FAILED,
+	MON_RES_NO_RESULT,
+	MON_RES_MAX
+};
+
+enum monitor_error_types
+{
+	MON_ERR_NONE = 0,
+	MON_ERR_CONNECT_TIMEOUT,
+	MON_ERR_CONNECT_REFUSED,
+	MON_ERR_REQUEST_FAILED,
+	MON_ERR_REQUEST_DENIED,
+	MON_ERR_INVALID_PATH,
+	MON_ERR_MAX
+};
+
+extern const char *monitor_type_names[MON_TYPE_MAX];
+extern const char *monitor_result_strings[MON_RES_MAX];
+
+
 
 struct monitor_data
 {
+	MON					*	next;
+
+	char				*	name;
+
+	// http
+	char				*	user;
+	char				*	pass;
+
+	// http, file
+	char				*	path;
+
+	// http, tcp
+	uint16_t				port;
+
+	int8_t					active;		// 0 no, 1 yes
+	int8_t					type;
+
 	int32_t					intv_msec;
-
-
 	int64_t					intv;
 };
 
@@ -54,6 +100,15 @@ struct monitors_config
 
 	int64_t					intv;
 };
+
+
+
+// off in const.c - lookups
+int monitor_type_lookup( const char *name );
+const char *monitor_type_name( int mtype );
+const char *monitor_error_label( int etype );
+
+
 
 
 int monitors_init( void );

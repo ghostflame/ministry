@@ -14,37 +14,19 @@
 * limitations under the License.                                          *
 *                                                                         *
 *                                                                         *
-* monitors.c - read config and start monitors                             *
+* config.h - defines functions and structures of monitor config           *
 *                                                                         *
 * Updates:                                                                *
 **************************************************************************/
 
-#include "min-monitor.h"
+
+#ifndef MONITOR_CONFIG_H
+#define MONITOR_CONFIG_H
 
 
-int monitors_init( void )
-{
-	// convert to nsec
-	ctl->mons->intv = MILLION * ctl->mons->intv_msec;
-
-	return 0;
-}
 
 
-MONCFG *monitors_config_defaults( void )
-{
-	MONCFG *mc = (MONCFG *) mem_perm( sizeof( MONCFG ) );
-
-	mc->mondir    = str_copy( DEFAULT_MONITORS_DIR, 0 );
-	mc->intv_msec = DEFAULT_INTERVAL_MSEC;
-	mc->max_ctr   = DEFAULT_MAX_MONITORS;
-
-	return mc;
-}
 
 
-int monitors_config_line( AVP *av )
-{
-	return -1;
-}
 
+#endif

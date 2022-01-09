@@ -1,6 +1,6 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-FILES  = monitors mem main
+FILES  = monitors const mem main
 HEADS  = monitors mem min-monitor typedefs
 
 SUBS   = 
