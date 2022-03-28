@@ -1,0 +1,10 @@
+name: Actions demo
+on: [push]
+jobs:
+  Explore-Actions:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "OK that action looks like it is firing, triggered by a ${{github.event_name}}"
+      - run: echo "Job is now running on ${{runner.os}}"
+      - name: Checkout repo
+        uses: actions/checkout@v2
