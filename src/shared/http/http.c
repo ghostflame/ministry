@@ -420,7 +420,7 @@ enum MHD_Result http_request_handler( void *cls, HTTP_CONN *conn, const char *ur
 				if( req->is_json )
 					http_calls_json_done( req );
 
-				req->code = MHD_HTTP_PAYLOAD_TOO_LARGE;
+				req->code = MHD_HTTP_CONTENT_TOO_LARGE;
 				http_send_response( req );
 				return MHD_NO;
 			}

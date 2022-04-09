@@ -50,7 +50,7 @@ int data_http_rmpaths( HTREQ *req )
 
 	if( !req->is_json || !req->post->jo )
 	{
-		req->code = MHD_HTTP_UNPROCESSABLE_ENTITY;
+		req->code = MHD_HTTP_UNPROCESSABLE_CONTENT;
 		return -1;
 	}
 
