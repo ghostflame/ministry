@@ -121,7 +121,10 @@ int query_add_current( void )
 
 		// can we do another query?
 		if( _qry->curr < _qry->max_curr )
+		{
 			++(_qry->curr);
+			++(_qry->count);
+		}
 		else
 			ret = 1;
 

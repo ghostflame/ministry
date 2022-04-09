@@ -35,12 +35,23 @@ void query_close( void )
 
 void query_init( void )
 {
+	QRMET *m;
+
 	//http_add_handler( char *path, char *desc, void *arg, int method, http_callback *fp, IPLIST *srcs, int flags )
 
 	http_add_handler( "/query", "Query the timeseries store", NULL, HTTP_METH_GET,
 		&query_get_callback, NULL, HTTP_FLAGS_JSON );
 
 	debug( "Query callback registered; max concurrency %d.", _qry->max_curr );
+
+	// set up our metrics
+	m = _qry->metrics;
+
+	// these autogenerate
+	m->pm_qry = pmet_create_gen( m->queries, m->source, PMET_GEN_IVAL, &(_qry->count), NULL, NULL );
+	m->pm_cur = pmet_create_gen( m->current, m->source, PMET_GEN_IVAL, &(_qry->curr), NULL, NULL );
+	// we'll feed this one values directly
+	m->pm_tmg = pmet_create( m->timings, m->source );
 
 	pthread_mutex_init( &(_qry->qlock), NULL );
 	_qry->use_lock = 1;
@@ -54,6 +65,17 @@ QRY_CTL *query_config_defaults( void )
 	_qry->default_timespan = DEFAULT_QUERY_TIMESPAN * MILLION;
 	_qry->max_paths = DEFAULT_QUERY_MAX_PATHS;
 	_qry->max_curr = DEFAULT_QUERY_MAX_CURR;
+
+	_qry->metrics			= (QRMET *) allocz( sizeof( QRMET ) );
+	_qry->metrics->source	= pmet_add_source( "queries" );
+	_qry->metrics->queries	= pmet_new( PMET_TYPE_COUNTER, "archivist_queries_total",
+	                                    "Ministry archivist total number of queries since start" );
+	_qry->metrics->current	= pmet_new( PMET_TYPE_GAUGE, "archivist_queries_current",
+	                                    "Ministry archivist current number of concurrent queries" );
+	// this one needs data posting to it
+	_qry->metrics->timings	= pmet_new( PMET_TYPE_SUMMARY, "archivist_queries_times",
+	                                    "Ministry archivist summary of query times" );
+
 
 	return _qry;
 }

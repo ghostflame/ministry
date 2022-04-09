@@ -35,6 +35,7 @@ typedef struct query_path           QP;
 typedef struct query_data           QRY;
 typedef struct query_fn             QRFN;
 typedef struct query_fn_call		QRFC;
+typedef struct query_metrics		QRMET;
 
 
 // function types

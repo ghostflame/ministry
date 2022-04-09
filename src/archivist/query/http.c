@@ -60,6 +60,7 @@ void query_write( HTREQ *req, QRY *q )
 {
 	JSON *res, *jpth, *jpts, *jva, *jt, *jv;
 	//int64_t ts;
+	double dur;
 	PNT *pt;
 	QP *p;
 	int j;
@@ -96,6 +97,11 @@ void query_write( HTREQ *req, QRY *q )
 
 	// this takes care of freeing things
 	strbuf_json( req->text, res, 1 );
+
+	// get the timing
+	dur = ((double) get_time64( ) - q->q_when) / MILLIONF;
+	// and report that value
+	pmet_value( _qry->metrics->pm_tmg, dur );
 
 	query_free( q );
 }

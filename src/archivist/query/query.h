@@ -96,11 +96,26 @@ struct query_data
 };
 
 
+struct query_metrics
+{
+	PMETS				*	source;
+	PMETM				*	queries;
+	PMETM				*	current;
+	PMETM				*	timings;
+	PMET				*	pm_qry;
+	PMET				*	pm_cur;
+	PMET				*	pm_tmg;
+};
+
+
 struct query_control
 {
+	QRMET				*	metrics;
+
 	int64_t					default_timespan;
 	int						max_paths;
 
+	int64_t					count;
 	int						max_curr;
 	int						curr;
 
