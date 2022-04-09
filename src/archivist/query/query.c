@@ -111,6 +111,43 @@ int query_search( QRY *q )
 }
 
 
+int query_add_current( void )
+{
+	int ret = 0;
+
+	if( _qry->use_lock )
+	{
+		query_curr_lock( );
+
+		// can we do another query?
+		if( _qry->curr < _qry->max_curr )
+			++(_qry->curr);
+		else
+			ret = 1;
+
+		query_curr_unlock( );
+	}
+
+	if( ret )
+		notice( "Query concurrency limit %d hit.", _qry->max_curr );
+
+	return ret;
+}
+
+void query_rem_current( void )
+{
+	if( _qry->use_lock )
+	{
+		query_curr_lock( );
+
+		if( _qry->curr > 0 )
+			--(_qry->curr);
+
+		query_curr_unlock( );
+	}
+}
+
+
 
 QRY *query_create( const char *search_string )
 {

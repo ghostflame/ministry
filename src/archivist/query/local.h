@@ -25,10 +25,19 @@
 
 #define DEFAULT_QUERY_TIMESPAN			3600		// 1hr
 #define DEFAULT_QUERY_MAX_PATHS			2500
-
+#define DEFAULT_QUERY_MAX_CURR			100			// concurrency limit
 
 
 #include "archivist.h"
+
+
+
+#define query_curr_lock( )				pthread_mutex_lock(   &(_qry->qlock) );
+#define query_curr_unlock( )			pthread_mutex_unlock( &(_qry->qlock) );
+
+
+
+
 
 extern QRFN query_function_defns[];
 
@@ -44,6 +53,10 @@ query_data_fn query_xform_summarize;
 query_data_fn query_combine_sum;
 query_data_fn query_combine_average;
 query_data_fn query_combine_presence;
+
+
+int query_add_current( void );
+void query_rem_current( void );
 
 
 int query_parse( QRY *q );

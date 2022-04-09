@@ -100,7 +100,14 @@ struct query_control
 {
 	int64_t					default_timespan;
 	int						max_paths;
+
+	int						max_curr;
+	int						curr;
+
+	pthread_mutex_t			qlock;
+	int						use_lock;
 };
+
 
 extern QRY_CTL *_qry;
 

@@ -25,12 +25,25 @@
 QRY_CTL *_qry = NULL;
 
 
+void query_close( void )
+{
+	_qry->use_lock = 0;
+	usleep( 200000 );
+	pthread_mutex_destroy( &(_qry->qlock) );
+}
+
+
 void query_init( void )
 {
 	//http_add_handler( char *path, char *desc, void *arg, int method, http_callback *fp, IPLIST *srcs, int flags )
 
 	http_add_handler( "/query", "Query the timeseries store", NULL, HTTP_METH_GET,
 		&query_get_callback, NULL, HTTP_FLAGS_JSON );
+
+	debug( "Query callback registered; max concurrency %d.", _qry->max_curr );
+
+	pthread_mutex_init( &(_qry->qlock), NULL );
+	_qry->use_lock = 1;
 }
 
 
@@ -40,6 +53,7 @@ QRY_CTL *query_config_defaults( void )
 
 	_qry->default_timespan = DEFAULT_QUERY_TIMESPAN * MILLION;
 	_qry->max_paths = DEFAULT_QUERY_MAX_PATHS;
+	_qry->max_curr = DEFAULT_QUERY_MAX_CURR;
 
 	return _qry;
 }
@@ -68,6 +82,16 @@ int query_config_line( AVP *av )
 		}
 
 		_qry->max_paths = v;
+	}
+	else if( attIs( "queryLimit" ) )
+	{
+		if( parse_number( av->vptr, &v, NULL ) == NUM_INVALID )
+		{
+			err( "Invalid concurrent query limit: %s", av->vptr );
+			return -1;
+		}
+
+		_qry->max_curr = v;
 	}
 	else
 		return -1;

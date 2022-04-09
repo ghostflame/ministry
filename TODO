@@ -13,6 +13,16 @@ Operational Readiness
     review:  https://cwe.mitre.org/data/definitions/658.html
 		done:	https://cwe.mitre.org/data/definitions/14.html
 
+
+Limits
+	Concurrent query limit in archivist
+		queries ++ and -- on entry and exit
+			on >= limit, hang query thread
+			on >= 2x limit, refuse query
+
+	Caretaker thread to kill over-time queries?
+		how would that work?
+
 Carbon-Copy
     Crashing with multiple sources (from ministry test)
 		Can no longer reproduce

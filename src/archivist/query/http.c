@@ -128,12 +128,21 @@ int query_get_callback( HTREQ *req )
 			flagf_add( q, QUERY_FLAGS_DEBUG );
 	}
 
+	// let's go check concurrency
+	if( query_add_current( ) != 0 )
+	{
+		strbuf_copy( req->text, "Too many concurrent queries -- try again later.", 0 );
+		req->code = MHD_HTTP_TOO_MANY_REQUESTS;
+		return 1;
+	}
+
 	query_search( q );
 
 	if( q->pcount == 0 )
 	{
 		//info( "Found no paths." );
 		query_write( req, q );
+		query_rem_current( );
 		return 0;
 	}
 
@@ -142,6 +151,7 @@ int query_get_callback( HTREQ *req )
 		// expect it in msec but who knows
 		if( time_usec( str, &(q->end) ) != 0 )
 		{
+			query_rem_current( );
 			req->code = MHD_HTTP_BAD_REQUEST;
 			return 1;
 		}
@@ -157,6 +167,7 @@ int query_get_callback( HTREQ *req )
 		if( time_span_usec( str, &usec ) )
 		{
 			strbuf_copy( req->text, "Invalid time span.", 0 );
+			query_rem_current( );
 			req->code = MHD_HTTP_BAD_REQUEST;
 			return 1;
 		}
@@ -170,6 +181,7 @@ int query_get_callback( HTREQ *req )
 			// expect it in msec but who knows
 			if( time_usec( str, &(q->start) ) != 0 )
 			{
+				query_rem_current( );
 				req->code = MHD_HTTP_BAD_REQUEST;
 				return 1;
 			}
@@ -188,6 +200,7 @@ int query_get_callback( HTREQ *req )
 			// don't echo the param back out to the user - that's a
 			// bad idea
 			strbuf_copy( req->text, "Metric not recognised.", 0 );
+			query_rem_current( );
 			req->code = MHD_HTTP_BAD_REQUEST;
 			return 1;
 		}
@@ -202,6 +215,8 @@ int query_get_callback( HTREQ *req )
 		query_path_get_data( p, q );
 
 	query_write( req, q );
+	query_rem_current( );
+
 	return 0;
 }
 
