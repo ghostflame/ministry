@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * metric/const.c - metrics config constants and lookup functions          *
 *                                                                         *
@@ -41,11 +53,12 @@ const char *metric_type_names[METRIC_TYPE_MAX] =
 	"adder",
 	"stats",
 	"gauge",
+	"histo",
 	"compat"
 };
 
 
-const MODEL *metric_get_model( char *name )
+const MODEL *metric_get_model( const char *name )
 {
 	const MODEL *m;
 	int i;
@@ -61,16 +74,16 @@ const MODEL *metric_get_model( char *name )
 	return NULL;
 }
 
-int metric_get_type( char *name )
+int metric_get_type( const char *name )
 {
 	int i;
 
-	for( i = 0; i < METRIC_TYPE_MAX; ++i )
-		if( !strcasecmp( name, metric_type_names[i] ) )
-			return i;
+	i = str_search( name, metric_type_names, METRIC_TYPE_MAX );
 
-	err( "Metric type '%s' not found.", name );
-	return -1;
+	if( i < 0 )
+		err( "Metric type '%s' not found.", name );
+
+	return i;
 }
 
 

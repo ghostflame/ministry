@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * http/local.h - http structure and fn definitions                        *
 *                                                                         *
@@ -18,7 +30,6 @@
     #define MIN_MHD_PASS 0
   #endif
 #endif
-
 
 
 #define DEFAULT_HTTP_PORT               9080
@@ -97,13 +108,15 @@ ssize_t http_unused_reader( void *cls, uint64_t pos, char *buf, size_t max );
 void http_unused_reader_free( void *cls );
 
 // request handling
-int http_access_policy( void *cls, const struct sockaddr *addr, socklen_t addrlen );
-int http_send_response( HTREQ *req );
+enum MHD_Result http_get_url_param( void *cls, HTTP_VAL kind, const char *key, const char *value );
+int http_parse_url( HTREQ *req, char *url );
+enum MHD_Result http_access_policy( void *cls, const struct sockaddr *addr, socklen_t addrlen );
+enum MHD_Result http_send_response( HTREQ *req );
 void http_request_complete( void *cls, HTTP_CONN *conn, void **arg, HTTP_CODE toe );
 int http_request_access_check( IPLIST *src, HTREQ *req, struct sockaddr *sa );
 HTREQ *http_request_creator( HTTP_CONN *conn, const char *url, const char *method );
 
-int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
+enum MHD_Result http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
 	const char *method, const char *version, const char *upload_data,
 	size_t *upload_data_size, void **con_cls );
 
@@ -126,9 +139,11 @@ HTPATH *http_find_callback( const char *url, int rlen, HTHDLS *hd );
 
 
 // calls
+http_callback http_calls_health;
 http_callback http_calls_metrics;
 http_callback http_calls_stats;
 http_callback http_calls_count;
+http_callback http_calls_time;
 http_callback http_calls_usage;
 http_callback http_calls_version;
 

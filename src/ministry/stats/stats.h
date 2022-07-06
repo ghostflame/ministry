@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * stats.h - defines stats structures and routines                         *
 *                                                                         *
@@ -12,9 +24,13 @@
 
 
 json_callback stats_self_stats_cb_stats;
+json_callback stats_self_health_ratios;
 loop_call_fn stats_thread_pass;
 throw_fn stats_loop;
 
+
+#define STATS_HISTO_MAX			10
+#define STATS_THRESH_MAX		20
 
 
 enum stats_types
@@ -22,6 +38,7 @@ enum stats_types
 	STATS_TYPE_STATS = 0,
 	STATS_TYPE_ADDER,
 	STATS_TYPE_GAUGE,
+	STATS_TYPE_HISTO,
 	STATS_TYPE_SELF,
 	STATS_TYPE_MAX
 };
@@ -98,6 +115,22 @@ struct stat_moments
 
 
 
+struct stat_hist_conf
+{
+	ST_HIST			*	next;
+	RGXL			*	rgx;
+	char			*	name;
+	double			*	bounds;
+
+	int32_t				matches;
+
+	int8_t				bcount;
+	int8_t				brange; // == count - 1
+	int8_t				enabled;
+	int8_t				is_default;
+};
+
+
 
 struct stat_config
 {
@@ -116,9 +149,12 @@ struct stat_config
 	DHASH			**	data;
 	uint64_t			hsize;
 	int					dcurr;
+	LLCT				creates;
 	LLCT				gc_count;
-	uint32_t			did;
+
+	pthread_mutex_t		statslock;
 };
+
 
 
 struct stats_metrics
@@ -137,6 +173,7 @@ struct stats_control
 	ST_CFG			*	stats;
 	ST_CFG			*	adder;
 	ST_CFG			*	gauge;
+	ST_CFG			*	histo;
 	ST_CFG			*	self;
 
 	ST_THOLD		*	thresholds;
@@ -144,10 +181,17 @@ struct stats_control
 	ST_MOM			*	mode;
 	ST_PRED			*	pred;
 
+	ST_HIST			*	histcf;
+	ST_HIST			*	histdefl;
+
 	ST_MET			*	metrics;
 
 	// for new sorting
 	int32_t				qsort_thresh;
+	int32_t				histcf_count;
+
+	char				tags_char;
+	int					tags_enabled;
 };
 
 // target timestamp functions
@@ -160,12 +204,12 @@ tsf_fn stats_tsf_dotusec;
 tsf_fn stats_tsf_dotnsec;
 
 
-void stats_start( ST_CFG *cf );
+void stats_start( void );
 void stats_init( void );
 void stats_stop( void );
 
 STAT_CTL *stats_config_defaults( void );
-int stats_config_line( AVP *av );
+conf_line_fn stats_config_line;
 
 
 #endif

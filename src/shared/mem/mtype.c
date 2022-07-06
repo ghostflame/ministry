@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * mem/mtype.c - functions for controlled memory types & preallocation     *
 *                                                                         *
@@ -167,7 +179,7 @@ inline void *mtype_new_list( MTYPE *mt, int count )
 	top = end = mt->flist;
 
 	// run down count - 1 elements
-	for( i = c - 1; i > 0; i-- )
+	for( i = c - 1; i > 0; --i )
 		end = end->next;
 
 	// end is now the last in the list we want
@@ -289,7 +301,7 @@ MTYPE *mem_type_declare( char *name, int sz, int ct, int extra, uint32_t pre )
 	mt->alloc_sz  = sz;
 	mt->alloc_ct  = ct;
 	mt->stats_sz  = sz + extra;
-	mt->name      = str_dup( name, 0 );
+	mt->name      = str_perm( name, 0 );
 	mt->threshold = DEFAULT_MEM_PRE_THRESH;
 	mt->prealloc  = pre;
 
@@ -302,7 +314,7 @@ MTYPE *mem_type_declare( char *name, int sz, int ct, int extra, uint32_t pre )
 	__mtype_alloc_free( mt, 4 * mt->alloc_ct, 1 );
 
 	// init the mutex
-	pthread_mutex_init( &(mt->lock), &(_proc->mtxa) );
+	pthread_mutex_init( &(mt->lock), &(_mem->mtxa) );
 
 	return mt;
 }
@@ -319,7 +331,7 @@ int mem_type_stats( int id, MTSTAT *ms )
 
 	// grab the stats
 	mem_lock( m );
-	memcpy( &(ms->ctrs), &(m->ctrs), sizeof( MTCTR ) );
+	ms->ctrs = m->ctrs;
 	mem_unlock( m );
 
 	// these can be after the unlock

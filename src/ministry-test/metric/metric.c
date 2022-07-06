@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * metric/metric.c - metrics functions                                     *
 *                                                                         *
@@ -28,11 +40,10 @@ void metric_report( int64_t tval, METRIC *m )
 
 	for( i = 0; i < g->repeat; ++i )
 	{
-		memcpy( g->buf->buf + g->buf->len, g->wtmp, l );
-		g->buf->len += l;
+		buf_appends( g->buf->bf, g->wtmp, l );
 
 		// check buffer rollover
-		if( g->buf->len > g->buf->hwmk )
+		if( g->buf->bf->len > g->buf->hwmk )
 		{
 			//debug( "Posting group %s buffer %p (size).", g->name, g->buf );
 			g->buf->refs = 1;
@@ -74,9 +85,9 @@ void metric_group_io( int64_t tval, void *arg )
 	if( tval > g->buf->expires )
 	{
 		// got something?  post it and get a new buffer
-		if( g->buf->len > 0 )
+		if( g->buf->bf->len > 0 )
 		{
-			debug( "Posting group %s buffer %p / %d (timer: %ld).", g->name, g->buf, g->buf->len, g->buf->expires );
+			debug( "Posting group %s buffer %p / %d (timer: %ld).", g->name, g->buf, g->buf->bf->len, g->buf->expires );
 			g->buf->refs = 1;
 			io_buf_post_one( g->target, g->buf );
 			g->buf = mem_new_iobuf( IO_BUF_SZ );

@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * tcp/pool.c - handles tcp thread pool functions                          *
 *                                                                         *
@@ -95,7 +107,7 @@ __attribute__((hot)) void tcp_pool_handler( TCPTH *th, struct pollfd *p, HOST *h
 			break;
 
 		// do we have anything
-		if( !n->in->len )
+		if( !n->in->bf->len )
 		{
 			tdebug( "No incoming data from %s", n->name );
 			break;
@@ -231,14 +243,14 @@ void tcp_pool_setup( NET_TYPE *nt )
 	int i, j;
 
 	// start up our handler threads
-	nt->tcp->threads = (TCPTH **) allocz( nt->threads * sizeof( TCPTH * ) );
+	nt->tcp->threads = (TCPTH **) mem_perm( nt->threads * sizeof( TCPTH * ) );
 	for( i = 0; i < nt->threads; ++i )
 	{
-		th = (TCPTH *) allocz( sizeof( TCPTH ) );
+		th = (TCPTH *) mem_perm( sizeof( TCPTH ) );
 
 		th->type  = nt;
-		th->hosts = (HOST **) allocz( nt->pollmax * sizeof( HOST * ) );
-		th->polls = (struct pollfd *) allocz( nt->pollmax * sizeof( struct pollfd ) );
+		th->hosts = (HOST **) mem_perm( nt->pollmax * sizeof( HOST * ) );
+		th->polls = (struct pollfd *) mem_perm( nt->pollmax * sizeof( struct pollfd ) );
 		for( j = 0; j < nt->pollmax; ++j )
 		{
 			th->polls[j].fd     = -1;  // makes poll ignore this one

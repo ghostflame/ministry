@@ -56,6 +56,6 @@ path.connect( 9225, '127.0.0.1', function( ) {
     sendSet( path, 9900, 200 );
 });
 
-stat.connect( 9125, '127.0.0.1', function( ) {
+stat.connect( 9425, '127.0.0.1', function( ) {
     sendSet( stat, 10, 20 );
 });

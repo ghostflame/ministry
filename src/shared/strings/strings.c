@@ -1,65 +1,44 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * strings/strings.c - routines for string handling                        *
 *                                                                         *
 * Updates:                                                                *
 **************************************************************************/
 
-#include "shared.h"
+#include "local.h"
 
 
 
-char *perm_space_ptr  = NULL;
-char *perm_space_curr = NULL;
-int   perm_space_left = 0;
 
-
-char *str_perm( int len )
-{
-	char *p;
-
-	// ensure we are 4-byte aligned
-	if( len & 0x3 )
-		len += 4 - ( len % 4 );
-
-	// just malloc big blocks
-	if( len >= ( PERM_SPACE_BLOCK >> 8 ) )
-	{
-		return (char *) allocz( len );
-	}
-
-	if( len > perm_space_left )
-	{
-		perm_space_ptr  = (char *) allocz( PERM_SPACE_BLOCK );
-		perm_space_curr = perm_space_ptr;
-		perm_space_left = PERM_SPACE_BLOCK;
-	}
-
-	p = perm_space_curr;
-	perm_space_curr += len;
-	perm_space_left -= len;
-
-	return p;
-}
-
-
-char *str_dup( char *src, int len )
+char *str_perm( const char *src, int len )
 {
 	char *p;
 
 	if( !len )
 		len = strlen( src );
 
-	p = str_perm( len + 1 );
+	p = mem_perm( (uint32_t) ( len + 1 ) );
 	memcpy( p, src, len );
 	p[len] = '\0';
 
 	return p;
 }
 
-char *str_copy( char *src, int len )
+char *str_copy( const char *src, int len )
 {
 	char *p;
 
@@ -75,7 +54,7 @@ char *str_copy( char *src, int len )
 
 
 // a capped version of strlen
-int str_nlen( char *src, int max )
+int str_nlen( const char *src, int max )
 {
 	char *p;
 
@@ -84,6 +63,18 @@ int str_nlen( char *src, int max )
 
 	return max;
 }
+
+
+
+int str_search( const char *str, const char **list, int len )
+{
+	while( len-- > 0 )
+		if( !strcasecmp( str, list[len] ) )
+			break;
+
+	return len;
+}
+
 
 
 //
@@ -100,7 +91,7 @@ int str_sub( char **ptr, int *len, int argc, char **argv, int *argl )
 	char *a, *b, numbuf[8];
 	regmatch_t mtc[4];
 	int i, l, c = 0;
-#ifdef DEBUG
+#ifdef DEBUG_STRSUB
 	char *o;
 #endif
 
@@ -116,7 +107,7 @@ int str_sub( char **ptr, int *len, int argc, char **argv, int *argl )
 
 	// start with a copy
 	a = str_copy( *ptr, *len );
-#ifdef DEBUG
+#ifdef DEBUG_STRSUB
 	o = *ptr;
 #endif
 
@@ -158,7 +149,7 @@ int str_sub( char **ptr, int *len, int argc, char **argv, int *argl )
 		++c;
 	}
 
-#ifdef DEBUG
+#ifdef DEBUG_STRSUB
 	if( c > 0 )
 		debug( "str_sub: (%d) (%s) -> (%s)", c, o, *ptr );
 #endif
@@ -222,6 +213,20 @@ __attribute__((hot)) int trim( char **str, int *len )
 	*len = l;
 
 	return o - l;
+}
+
+
+// compare two strings as potential for one prefix of the other
+int strprefix( const char *pr, const char *of )
+{
+	while( *pr && *of && *pr == *of )
+	{
+		++pr;
+		++of;
+	}
+
+	// did we run out of prefix?
+	return ( *pr ) ? 1 : 0;
 }
 
 

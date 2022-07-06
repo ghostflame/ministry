@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * mem/mem.c - memory control functions and utilities                      *
 *                                                                         *
@@ -148,6 +160,8 @@ void mem_shutdown( void )
 
 		pthread_mutex_destroy( &(mt->lock) );
 	}
+
+	pthread_mutex_destroy( &(_mem->idlock) );
 }
 
 // do we do checks?
@@ -187,4 +201,13 @@ void mem_set_max_kb( int64_t kb )
 		_mem->mcheck->max_kb = kb;
 }
 
+uint64_t mem_get_id( void )
+{
+	uint64_t id;
 
+	pthread_mutex_lock(   &(_mem->idlock) );
+	id = ++(_mem->id);
+	pthread_mutex_unlock( &(_mem->idlock) );
+
+	return id;
+}

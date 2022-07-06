@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * relay/relay.c - handles connections and processes lines                 *
 *                                                                         *
@@ -22,7 +34,7 @@ void relay_flush_host( RDATA *r )
 	// send all bufs that have data in
 	for( hb = r->hbufs; hb; hb = hb->next )
 		for( i = 0; i < hb->bcount; i++ )
-			if( hb->bufs[i] && hb->bufs[i]->len > 0 )
+			if( hb->bufs[i] && hb->bufs[i]->bf->len > 0 )
 			{
 				io_buf_post( hb->rule->targets[i], hb->bufs[i] );
 				hb->bufs[i] = mem_new_iobuf( IO_BUF_SZ );

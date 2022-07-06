@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * http/http.c - handle an http request                                    *
 *                                                                         *
@@ -13,7 +25,7 @@
 
 
 // called by multiple places, including potentially as policy callback
-int http_access_policy( void *cls, const struct sockaddr *addr, socklen_t addrlen )
+enum MHD_Result http_access_policy( void *cls, const struct sockaddr *addr, socklen_t addrlen )
 {
 	IPLIST *srcs = (IPLIST *) cls;
 	struct in_addr ina;
@@ -50,9 +62,9 @@ int http_check_json( HTREQ *req )
 
 
 
-int http_send_response( HTREQ *req )
+enum MHD_Result http_send_response( HTREQ *req )
 {
-	int ret = MHD_YES;
+	enum MHD_Result ret = MHD_YES;
 	HTTP_RESP *resp;
 
 	if( req->sent )
@@ -69,10 +81,14 @@ int http_send_response( HTREQ *req )
 	else
 	{
 		resp = MHD_create_response_from_buffer( 0, "", MHD_RESPMEM_MUST_COPY );
+
+		// change 200's to 204's when we have no output
+		if( req->code == 200 )
+			req->code = 204;
 	}
 
 	// is it a json method?
-	if( req->path && req->path->flags & HTTP_FLAGS_JSON )
+	if( req->path && ( req->path->flags & HTTP_FLAGS_JSON ) && req->text->len )
 		MHD_add_response_header( resp, MHD_HTTP_HEADER_CONTENT_TYPE, "application/json; charset=utf-8" );
 
 	ret = MHD_queue_response( req->conn, req->code, resp );
@@ -98,6 +114,13 @@ void http_request_complete( void *cls, HTTP_CONN *conn,
 	//debug( "Complete with req arg value as %p.", req );
 
 	bytes = ( req->text ) ? req->text->len : 0;
+
+	// does this return anything?
+	if( req->path->flags & HTTP_FLAGS_NO_OUT )
+	{
+		req->text->len = 0;
+		req->code = MHD_HTTP_NO_CONTENT;
+	}
 
 	if( req->sent == 0 )
 		http_send_response( req );
@@ -147,6 +170,93 @@ int http_request_access_check( IPLIST *src, HTREQ *req, struct sockaddr *sa )
 }
 
 
+int http_request_get_param( HTREQ *req, char *key, char **val )
+{
+	HTPRM *p;
+	int l;
+
+	if( !req || !key || !val )
+		return 0;
+
+	l = strlen( key );
+	*val = NULL;
+
+	for( p = req->params; p; p = p->next )
+		if( l == p->klen && !memcmp( p->key, key, l ) )
+		{
+			// might be NULL or empty string
+			if( p->has_val )
+				*val = p->val;
+
+			// found
+			return 1;
+		}
+
+	// not found
+	return 0;
+}
+
+
+
+enum MHD_Result http_get_url_param( void *cls, HTTP_VAL kind, const char *key, const char *value )
+{
+	HTREQ *r = (HTREQ *) cls;
+	HTPRM *p;
+	int l;
+
+	if( !r )
+	{
+		herr( "No request passed to http_get_url_param!" );
+		return MHD_NO;
+	}
+
+	if( kind != MHD_GET_ARGUMENT_KIND )
+	{
+		herr( "Unknown data passed to http_get_url_param!" );
+		return MHD_NO;
+	}
+
+	p = mem_new_htprm( );
+	l = strlen( key );
+	if( l >= HTTP_PARAM_MAX_KEY )
+	{
+		hwarn( "Rejecting overlong (%d) key: %s", l, key );
+		mem_free_htprm( &p );
+		return MHD_YES;
+	}
+	p->klen = (int8_t) l;
+	memcpy( p->key, key, l );
+	p->key[l] = '\0';
+
+	if( value )
+	{
+		p->has_val = 1;
+		l = strlen( value );
+
+		if( l >= HTTP_PARAM_MAX_VAL )
+		{
+			hwarn( "Rejecting overlong (%d) value: %s", l, value );
+			mem_free_htprm( &p );
+			return MHD_YES;
+		}
+
+		if( l )
+		{
+			p->vlen = l;
+			memcpy( p->val, value, l );
+			p->val[l] = '\0';
+		}
+	}
+
+	// link it
+	p->next = r->params;
+	r->params = p;
+
+	return MHD_YES;
+}
+
+
+
 HTREQ *http_request_creator( HTTP_CONN *conn, const char *url, const char *method )
 {
 	union MHD_ConnectionInfo *ci;
@@ -161,6 +271,9 @@ HTREQ *http_request_creator( HTTP_CONN *conn, const char *url, const char *metho
 	req->start = get_time64( );
 
 	rlen = strlen( url );
+
+	// read out url param values
+	MHD_get_connection_values( conn, MHD_GET_ARGUMENT_KIND, &http_get_url_param, req );
 
 	if( !strcasecmp( method, MHD_HTTP_METHOD_GET ) )
 	{
@@ -250,7 +363,7 @@ HTREQ *http_request_creator( HTTP_CONN *conn, const char *url, const char *metho
 
 
 
-int http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
+enum MHD_Result http_request_handler( void *cls, HTTP_CONN *conn, const char *url,
 	const char *method, const char *version, const char *upload_data,
 	size_t *upload_data_size, void **con_cls )
 {

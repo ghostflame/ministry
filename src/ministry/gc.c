@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * gc.c - Handles recycling data hash memory                               *
 *                                                                         *
@@ -52,7 +64,22 @@ __attribute__((hot)) int gc_hash_list( DHASH **list, DHASH **flist, PRED **plist
 				unlock_stats( h );
 
 				if( pts )
-					mem_free_point_list( pts );
+					mem_free_points_list( pts );
+			}
+			else if( h->type == DATA_TYPE_HISTO )
+			{
+				lock_histo( h );
+
+				if( h->in.hist.counts )
+				{
+					free( h->in.hist.counts );
+					free( h->proc.hist.counts );
+
+					h->in.hist.counts   = NULL;
+					h->proc.hist.counts = NULL;
+				}
+
+				unlock_histo( h );
 			}
 
 			// clear any predictor block
@@ -62,8 +89,15 @@ __attribute__((hot)) int gc_hash_list( DHASH **list, DHASH **flist, PRED **plist
 				*plist = h->predict;
 				h->predict = NULL;
 			}
+
+			// go no further - we need to set
+			// prev
+			continue;
 		}
-		else if( h->empty > thresh )
+
+		prev = h;
+
+		if( h->empty > thresh )
 		{
 			// unset the valid flag in the first pass
 			// then tidy up in the second pass
@@ -89,7 +123,7 @@ void gc_one_set( ST_CFG *c, DHASH **flist, PRED **plist, int thresh )
 
 	if( hits > 0 )
 	{
-		pthread_mutex_lock( &(ctl->locks->hashstats) );
+		lock_stat_cfg( c );
 
 		c->dcurr -= hits;
 
@@ -102,7 +136,7 @@ void gc_one_set( ST_CFG *c, DHASH **flist, PRED **plist, int thresh )
 			c->dcurr = 0;
 		}
 
-		pthread_mutex_unlock( &(ctl->locks->hashstats) );
+		unlock_stat_cfg( c );
 
 		if( hits < 0 )
 			warn( "Dcurr went negative for %s", c->name );
@@ -118,6 +152,7 @@ void gc_pass( int64_t tval, void *arg )
 	gc_one_set( ctl->stats->stats, &flist, &plist, ctl->gc->thresh );
 	gc_one_set( ctl->stats->adder, &flist, &plist, ctl->gc->thresh );
 	gc_one_set( ctl->stats->gauge, &flist, &plist, ctl->gc->gg_thresh );
+	// TODO histo
 
 	if( flist )
 		mem_free_dhash_list( flist );
@@ -143,7 +178,7 @@ void gc_loop( THRD *t )
 
 GC_CTL *gc_config_defaults( void )
 {
-	GC_CTL *g = (GC_CTL *) allocz( sizeof( GC_CTL ) );
+	GC_CTL *g = (GC_CTL *) mem_perm( sizeof( GC_CTL ) );
 
 	g->enabled        = 0;
 	g->thresh         = DEFAULT_GC_THRESH;

@@ -26,9 +26,6 @@ just test config and exit
 \fB\-c\fR \fI<FILE|URI>\fR
 select config source instead of default file
 .TP
-\fB\-C\fR \fI<FILE|URI>\fR
-as -c but with strict processing
-.TP
 \fB\-E\fR
 disable reading variables from the environment
 .TP
@@ -37,6 +34,9 @@ override the prefix for environment variable
 .TP
 \fB\-F\fR
 disable reading config source (environment only)
+.TP
+\fB\-R\fR
+disable all including of other config
 .TP
 \fB\-U\fR
 disable reading any URI config (even if given with -c)
@@ -59,6 +59,12 @@ Validate the certificates of any secure URI's
 \fB\-W\fR
 Permit invalid certificates from fetch targets even if we are validating config certificates.
 .TP
+\fB\-x\fR \fI<suffix>\fR
+Set config file suffix filter for include-dir
+.TP
+\fB\-X\fR
+Disable matching config file suffix for include-dir (match all files)
+.TP
 \fB\-d\fR
 run in daemon mode (background)
 .TP
@@ -80,10 +86,10 @@ The config file format is in sections, denoted as \fB[Section]\fR and is of a ge
 .PP
 It may use the keyword \fBinclude\fR to read in another file - the current section context is kept.
 .PP
-The default config file is /etc/carbon-copy/carbon-copy.conf
+The default config file is /etc/ministry/carbon-copy.conf
 .SH Behaviour
 .PP
-\fBCarbon-copy\fP listens on a network port for graphite/coal metrics.  It assesses each line
+\fBCarbon-copy\fP listens on a network port for graphite metrics.  It assesses each line
 against configured rules, and forwards the metrics according to those rules to none, one or more
 targets.  It does not transform metrics in any way, nor aggregate them.  It is a drop-in replacement
 for the likes of \fBcarbon-relay\fP or \fBcarbon-c-relay\fP.

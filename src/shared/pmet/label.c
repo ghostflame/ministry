@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * pmet/label.c - functions to provide prometheus metrics labels          *
 *                                                                         *
@@ -54,10 +66,10 @@ void pmet_label_render( BUF *b, int count, ... )
 
 PMET_LBL *pmet_label_create( char *name, char *val )
 {
-	PMET_LBL *l = (PMET_LBL *) allocz( sizeof( PMET_LBL ) );
+	PMET_LBL *l = (PMET_LBL *) mem_perm( sizeof( PMET_LBL ) );
 
-	l->name = str_dup( name, 0 );
-	l->val = str_dup( val, 0 );
+	l->name = str_perm( name, 0 );
+	l->val = str_perm( val, 0 );
 
 	return l;
 }
@@ -151,7 +163,7 @@ int pmet_label_common( char *name, char *val )
 	return 0;
 }
 
-PMET_LBL *pmet_label_clone( PMET_LBL *in, int max )
+PMET_LBL *pmet_label_clone( PMET_LBL *in, int max, PMET_LBL *except )
 {
 	PMET_LBL *out = NULL, *l;
 	int i = 0;
@@ -164,7 +176,13 @@ PMET_LBL *pmet_label_clone( PMET_LBL *in, int max )
 
 	while( in && i++ < max )
 	{
-		l = pmet_label_create( in->name, in->val );
+		if( except && !strcmp( in->name, except->name ) )
+		{
+			l = except;
+			except = NULL;
+		}
+		else
+			l = pmet_label_create( in->name, in->val );
 
 		l->next = out;
 		out = l;

@@ -1,6 +1,6 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-FILES  = adder config gauge init render self stats utils
+FILES  = adder config gauge histo init render self stats utils
 HEADS  = local stats
 
 RKV    = stats_shared.a
@@ -11,7 +11,7 @@ HDRS   = $(HEADS:%=%.h)
 
 WFLAGS = -Wall -Wshadow
 IFLAGS = -I. -I..
-DFLAGS = -g -pg -ggdb3 -DDEBUG
+DFLAGS = -g -pg -ggdb3 -DMINDEBUG
 TFLAGS = -pthread
 CFLAGS = -c $(TFLAGS) $(IFLAGS) $(EARGS)
 #CFLAGS = -c $(TFLAGS) $(IFLAGS) -DMIN_MHD_PASS=0

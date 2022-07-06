@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * metrics/sort.c - sorting functions for handling metrics                 *
 *                                                                         *
@@ -43,7 +55,7 @@ void metrics_sort_attrs( METAL *a )
 
 
 
-METPR *metrics_find_profile( char *name )
+METPR *metrics_find_profile( const char *name )
 {
 	METPR *pr;
 
@@ -67,7 +79,7 @@ METPR *metrics_find_profile( char *name )
 
 
 
-METRY *metrics_find_entry( MDATA *m, char *str, int len )
+METRY *metrics_find_entry( MDATA *m, const char *str, int len )
 {
 	SSTE *se;
 

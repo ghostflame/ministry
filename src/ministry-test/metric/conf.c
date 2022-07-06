@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * metric/conf.c - metrics config functions                                *
 *                                                                         *
@@ -90,7 +102,7 @@ int metric_get_interval( char *str, int64_t *res )
 
 int metric_add( MGRP *g, char *str, int len )
 {
-	METRIC *m, nm;;
+	METRIC *m, nm;
 	WORDS w;
 
 	if( strwords( &w, str, len, ' ' ) != METRIC_FLD_MAX )
@@ -132,13 +144,13 @@ int metric_add( MGRP *g, char *str, int len )
 	}
 
 	// a little setup
-	if( nm.type == METRIC_MODEL_TRACK_MEAN
-	 || nm.type == METRIC_MODEL_SMTS_TRACK )
+	if( nm.model->model == METRIC_MODEL_TRACK_MEAN
+	 || nm.model->model == METRIC_MODEL_SMTS_TRACK )
 		nm.d3 = nm.d2 / 2;
 
 	// copy that into a new one
-	m = (METRIC *) allocz( sizeof( METRIC ) );
-	memcpy( m, &nm, sizeof( METRIC ) );
+	m = (METRIC *) mem_perm( sizeof( METRIC ) );
+	*m = nm;
 
 	// link it
 	m->next = g->list;
@@ -154,7 +166,7 @@ int metric_add( MGRP *g, char *str, int len )
 
 MTRC_CTL *metric_config_defaults( void )
 {
-	MTRC_CTL *c = (MTRC_CTL *) allocz( sizeof( MTRC_CTL ) );
+	MTRC_CTL *c = (MTRC_CTL *) mem_perm( sizeof( MTRC_CTL ) );
 
 	c->max_age = METRIC_MAX_AGE;
 
@@ -198,8 +210,8 @@ int metric_config_line( AVP *av )
 	}
 	else if( attIs( "group" ) )
 	{
-		ng = (MGRP *) allocz( sizeof( MGRP ) );
-		ng->name = dup_val( );
+		ng = (MGRP *) mem_perm( sizeof( MGRP ) );
+		ng->name = av_copyp( av );
 		ng->nlen = av->vlen;
 		ng->prefix = strbuf( METRIC_MAX_PATH );
 		ng->repeat = 1;

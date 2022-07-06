@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * target/http.c - network targets http interface                          *
 *                                                                         *
@@ -24,7 +36,7 @@ void __target_http_list( json_object *o, int enval )
 	{
 		// see if we have anything in this list that matches
 		for( t = l->targets; t; t = t->next )
-			if( t->enabled == enval )
+			if( flagf_val( t, TGT_FLAG_ENABLED ) == enval )
 				break;
 
 		if( !t )
@@ -34,17 +46,17 @@ void __target_http_list( json_object *o, int enval )
 
 		for( t = l->targets; t; t = t->next )
 		{
-			if( t->enabled != enval )
+			if( flagf_val( t, TGT_FLAG_ENABLED ) != enval )
 				continue;
 
 			snprintf( ebuf, 512, "%s:%hu", t->host, t->port );
 
 			jt = json_object_new_object( );
 
-			json_object_object_add( jt, "name",     json_object_new_string( t->name ) );
-			json_object_object_add( jt, "endpoint", json_object_new_string( ebuf ) );
-			json_object_object_add( jt, "type",     json_object_new_string( t->typestr ) );
-			json_object_object_add( jt, "bytes",    json_object_new_int( t->bytes ) );
+			json_insert( jt, "name",     string, t->name );
+			json_insert( jt, "endpoint", string, ebuf );
+			json_insert( jt, "type",     string, t->typestr );
+			json_insert( jt, "bytes",    int,    t->bytes );
 
 			json_object_array_add( jl, jt );
 		}
@@ -101,9 +113,9 @@ int target_http_toggle( HTREQ *req )
 		return 0;
 	}
 
-	if( t->enabled != e )
+	if( flagf_val( t, TGT_FLAG_ENABLED ) != e )
 	{
-		t->enabled = e;
+		flagf_set( t, TGT_FLAG_ENABLED, e );
 
 		create_json_result( req->text, 1, "Target %s/%s %sabled.",
 			l->name, t->name, ( e ) ? "en" : "dis" );

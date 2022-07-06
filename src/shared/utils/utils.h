@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * utils.h - routine declations and utility structures                     *
 *                                                                         *
@@ -74,12 +86,6 @@ struct lockless_counter
 	uint64_t				prev;
 };
 
-struct hash_size_data
-{
-	const char			*	name;
-	uint64_t				size;
-};
-
 
 struct av_pair
 {
@@ -108,21 +114,25 @@ int64_t get_rand( int64_t n );
 // wraps nanosleep
 void microsleep( int64_t usec );
 
+// parse a timespan, eg 10s, 40w, 2mo
+int time_span_usec( const char *str, int64_t *usec );
+
+// parse a timestamp, get usec
+// uses 250* thresholds
+int time_usec( const char *str, int64_t *usec );
+
 // get a percentage - 1-100
 int8_t percent( void );
 
 // processing a config line in variable/value
 int var_val( char *line, int len, AVP *av, int flags );
 
-// handle our pidfile
-void pidfile_write( void );
-void pidfile_remove( void );
-
 // timespec difference as a double
 double ts_diff( struct timespec to, struct timespec from, double *store );
 
 // get our uptime
 double get_uptime( void );
+int get_uptime_msec( char *buf, int len );
 time_t get_uptime_sec( void );
 
 // set an rlimit
@@ -132,17 +142,17 @@ int setlimit( int res, int64_t val );
 uint64_t lockless_fetch( LLCT *l );
 
 // read a file into memory
-int read_file( char *path, char **buf, int *len, int perm, char *desc );
+int read_file( const char *path, char **buf, int *len, int perm, const char *desc );
 
 // handle any number type
 // returns the type it thought it was
-int parse_number( char *str, int64_t *iv, double *dv );
+int parse_number( const char *str, int64_t *iv, double *dv );
 
 // parse a file for json
-json_object *parse_json_file( FILE *fh, char *path );
+json_object *parse_json_file( FILE *fh, const char *path );
 
 // create a json result and put it in a buffer
-void create_json_result( BUF *buf, int ok, char *fmt, ... );
+void create_json_result( BUF *buf, int ok, const char *fmt, ... );
 
 
 // is this an http url
@@ -152,7 +162,7 @@ enum str_url_types
 	STR_URL_YES,
 	STR_URL_SSL
 };
-int is_url( char *str );
+int is_url( const char *str );
 
 
 // easier av reads
@@ -162,14 +172,21 @@ int is_url( char *str );
 #define av_intk( _v )		av_int( _v ); _v *= 1000
 #define av_intK( _v )		av_int( _v ); _v <<= 10
 
+#define av_copy( _v )		str_copy( _v->vptr, _v->vlen )
+#define av_copyp( _v )		str_perm( _v->vptr, _v->vlen )
+
+
 // flags field laziness
 #define flag_add( _i, _f )	_i |=  _f
 #define flag_rmv( _i, _f )	_i &= ~_f
 #define flag_has( _i, _f )	( _i & _f )
 
 #define flagf_add( _o, _f )	flag_add( (_o->flags), _f )
-#define flagf_rmv( _o, _f )	flag_add( (_o->flags), _f )
+#define flagf_rmv( _o, _f )	flag_rmv( (_o->flags), _f )
 #define flagf_has( _o, _f )	flag_has( (_o->flags), _f )
+#define flagf_val( _o, _f )	( ( flagf_has( _o, _f ) ) ? 1 : 0 )
+
+#define flagf_set( _o, _f, _b )	if( _b ) flagf_add( _o, _f ); else flagf_rmv( _o, _f )
 
 #define runf_add( _f )		flag_add( _proc->run_flags, _f )
 #define runf_rmv( _f )		flag_rmv( _proc->run_flags, _f )
@@ -179,10 +196,16 @@ int is_url( char *str );
 #define RUN_STOP( )         runf_rmv( RUN_LOOP )
 #define RUNNING( )          runf_has( RUN_LOOP )
 
+#define plural( _d )		( ( _d == 1 ) ? "" : "s" )
+
+
+// json shortcuts
+#define json_fetch( _obj, _key, _type )         json_object_get_##_type( json_object_object_get( _obj, _key ) )
+#define json_insert( _obj, _key, _type, _item ) json_object_object_add( _obj, _key, json_object_new_##_type( _item ) )
 
 
 // hash size lookup
-uint64_t hash_size( char *str );
+uint64_t hash_size( const char *str );
 
 
 #endif

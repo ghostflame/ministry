@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * pmet.c - functions to provide prometheus metrics endpoint               *
 *                                                                         *
@@ -90,10 +102,41 @@ void pmet_pass( int64_t tval, void *arg )
 }
 
 
+void pmet_scrape_check( int64_t tval, void *arg )
+{
+	int64_t sd, ad, nt;
+
+	nt = _proc->curr_time.tv_sec;
+	sd = nt - _pmet->last_scrape;
+	ad = nt - _pmet->last_alert;
+
+	debug( "Scrape delta: %ld, alert delta: %ld, alert period: %ld", sd, ad, _pmet->alert_period );
+
+	if( sd > _pmet->alert_period && ad > _pmet->alert_period )
+	{
+		warn( "Scrape expectations not met - not been scraped in %ld seconds.", sd );
+		_pmet->last_alert = nt;
+	}
+}
+
+void pmet_scrape_loop( THRD *t )
+{
+	// set last-scrape to now, so we don't alert at once
+	_pmet->last_scrape = _proc->curr_time.tv_sec;
+	// alert delta left to be big, so that we alert at once
+
+	info( "Beginning scrape expectation check, threshold %ld sec.", _pmet->alert_period );
+
+	loop_control( "pmet_check", pmet_scrape_check, NULL, _pmet->period, LOOP_TRIM|LOOP_SYNC, _pmet->period / 3 );
+}
+
 
 void pmet_report( BUF *into )
 {
 	strbuf_empty( into );
+
+	// last scrape time, to the nearest second
+	_pmet->last_scrape = _proc->curr_time.tv_sec;
 
 	if( !_pmet->enabled )
 		return;
@@ -112,15 +155,14 @@ void pmet_run( THRD *t )
 {
 	notice( "Beginning generation of prometheus metrics." );
 
-	_pmet->period *= 1000; // convert to usec
-
-	loop_control( "pmet_gen", pmet_pass, NULL, _pmet->period, LOOP_TRIM|LOOP_SYNC, _pmet->period / 4 );;
+	loop_control( "pmet_gen", pmet_pass, NULL, _pmet->period, LOOP_TRIM|LOOP_SYNC, _pmet->period / 4 );
 }
 
 
 int pmet_init( void )
 {
 	PMET_CTL *p = _pmet;
+	int8_t i;
 
 	if( !p->enabled )
 	{
@@ -142,9 +184,28 @@ int pmet_init( void )
 	p->shared->memmet = pmet_new( PMET_TYPE_GAUGE, "process_memory_usage_bytes", "How many bytes used in memory" );
 	p->shared->mem    = pmet_create_gen( p->shared->memmet, p->shared->source, PMET_GEN_FN, NULL, &pmet_get_memory, NULL );
 
+	p->shared->cfgmet = pmet_new( PMET_TYPE_GAUGE, "ministry_config_changed", "Has the config on disk been changed" );
+	p->shared->cfgChg = pmet_create_gen( p->shared->cfgmet, p->shared->source, PMET_GEN_IVAL, &(_proc->cfgChanged), NULL, NULL );
+
+	p->shared->logmet = pmet_new( PMET_TYPE_COUNTER, "ministry_log_level_count", "Count of logs at each level" );
+	for( i = 0; i < LOG_LEVEL_MAX; ++i )
+	{
+		p->shared->logs[i] = pmet_create_gen( p->shared->logmet, p->shared->source, PMET_GEN_IVAL,
+		                                      &(_proc->log->counts[i]), NULL, NULL);
+		pmet_label_apply_item( pmet_label_create( "level", (char *) log_get_level_name( i ) ), p->shared->logs[i] );
+	}
+
+
 	p->sources = mem_reverse_list( p->sources );
 
+	_pmet->period *= 1000; // convert to usec
+
 	thread_throw_named( &pmet_run, NULL, 0, "pmet_gen" );
+
+	if( _pmet->alert_period > 0 )
+	{
+		thread_throw_named( &pmet_scrape_loop, NULL, 0, "pmet_scrape_chk" );
+	}
 
 	// and add our paths
 	http_add_control( "pmet", "Control prometheus metrics generation", NULL, &pmet_source_control, NULL, 0 );
@@ -178,8 +239,8 @@ PMETS *pmet_add_source( char *name )
 		return NULL;
 	}
 
-	ps = (PMETS *) allocz( sizeof( PMETS ) );
-	ps->name = str_dup( name, l );
+	ps = (PMETS *) mem_perm( sizeof( PMETS ) );
+	ps->name = str_perm( name, l );
 	ps->nlen = l;
 	ps->sse  = sse;
 
@@ -223,8 +284,8 @@ int pmet_source_list( HTREQ *req )
 	{
 		js = json_object_new_object( );
 
-		json_object_object_add( js, "name",      json_object_new_string( s->name ) );
-		json_object_object_add( js, "lastCount", json_object_new_int( s->last_ct ) );
+		json_insert( js, "name",      string, s->name );
+		json_insert( js, "lastCount", int,    s->last_ct );
 
 		json_object_array_add( ( pmets_enabled( s ) ) ? je : jd, js );
 	}

@@ -1,0 +1,105 @@
+.\" Metric-filter manual page
+.TH METRIC-FILTER "1" "Nov 2017" "Networking Utilities" "User Commands"
+.SH NAME
+metric-filter \- metrics routing daemon
+.SH SYNOPSIS
+.nf
+.BI "metric-filter [-v|-h]"
+.BI "metric-filter [-DVtEdsKFIiTUu] -c <" config-file "> [-p <" pid-file ">]
+.fi
+.SH DESCRIPTION
+.PP
+\fBMetric-filter\fP is a network daemon which can filter ministry-style and statsd-style metrics based on
+configured rules, forwarding to all configured targets.
+.PP
+The main options are:
+.TP
+\fB\-h\fR
+print help
+.TP
+\fB-v\fR
+print version and exit
+.TP
+\fB\-t\fR
+just test config and exit
+.TP
+\fB\-s\fR
+be strict about parsing config
+.TP
+\fB\-c\fR \fI<FILE|URI>\fR
+select config source instead of default file
+.TP
+\fB\-P\fR \fI<prefix>\fP
+override the prefix for environment variable
+.TP
+\fB\-E\fR
+disable reading variables from the environment
+.TP
+\fB\-F\fR
+disable reading config source (environment only)
+.TP
+\fB\-R\fR
+disable all including of other config
+.TP
+\fB\-U\fR
+disable reading any URI config (even if given with -c)
+.TP
+\fB\-u\fR
+disable URI config including other URI configs
+.TP
+\fB\-X\fR
+disable matching of config file suffix in include-dir
+.TP
+\fB\-x\fR \fI<suffix>\fR
+Set config file suffix for include-dir
+.TP
+\fB\-i\fR
+allow insecure URI's
+.TP
+\fB\-I\fR
+allow secure URI's to include insecure URI's
+.TP
+\fB\-K\fR
+interactively ask for a TLS key password
+.TP
+\fB\-T\fR
+Validate the certificates of any secure URI's
+.TP
+\fB\-W\fR
+Permit invalid certificates from fetch targets even if we are validating config certificates.
+.TP
+\fB\-x\fR \fI<suffix>\fR
+Set config file suffix filter for include-dir
+.TP
+\fB\-X\fR
+Disable matching config file suffix for include-dir (match all files)
+.TP
+\fB\-d\fR
+run in daemon mode (background)
+.TP
+\fB\-D\fR
+run in debug mode
+.TP
+\fB\-V\fR
+run in verbose mode, with more output to stdout
+.TP
+\fB\-p\fR \fI<FILE>\fR
+override the configured pidfile
+.PP
+The config file format is in sections, denoted as \fB[Section]\fR and is of a general format of:
+.TP
+\fBvariable\fR = \fIvalue\fR
+.PP
+It may use the keyword \fBinclude\fR to read in another file - the current section context is kept.
+.PP
+The default config file is /etc/ministry/metric-filter.conf
+.SH Behaviour
+.PP
+\fBMetric-filter\fP listens on a network port for graphite metrics, either raw or timestamped.  It
+seeks out the first space (or colon) in the metrics and compares the line up to that point against
+its filters, to see if the line should be forwarded or dropped.  It uses \fIinotify\fP to watch the
+filter files directory and reloads the config upon changes (after a small delay).
+.SH SEE ALSO
+.BR ministry (1)
+.SH AUTHOR
+\fBMetric-filter\fP is written and maintained by John Denholm, Sky Betting And Gaming.

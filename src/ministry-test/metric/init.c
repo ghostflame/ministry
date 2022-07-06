@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * metric/init.c - metrics runtime setup functions                         *
 *                                                                         *
@@ -94,7 +106,7 @@ void metric_init_group( MGRP *g )
 	g->buf = mem_new_iobuf( IO_BUF_SZ );
 	g->buf->lifetime = ctl->metric->max_age;
 
-	pthread_mutex_init( &(g->lock), &(ctl->proc->mtxa) );
+	pthread_mutex_init( &(g->lock), &(ctl->proc->mem->mtxa) );
 
 	// do we need to merge parents?
 	if( g->parent )
@@ -127,7 +139,7 @@ void metric_init_group( MGRP *g )
 		metric_set_target_params( m );
 
 	// make our write buffer
-	g->wtmp = (char *) allocz( METRIC_WTMP_SZ );
+	g->wtmp = (char *) mem_perm( METRIC_WTMP_SZ );
 
 	// and start up the target - we get a new one
 	targets_start_one( &(g->target) );
@@ -175,7 +187,7 @@ void metric_start_all( void )
 		notice( "Target dump : List : %2d / %s", l->count, l->name );
 		for( t = l->targets; t; t = t->next )
 			notice( "Target dump :      : %d / %s / %hu / %s",
-				t->enabled, t->host, t->port, t->name );
+				flagf_val( t, TGT_FLAG_ENABLED ), t->host, t->port, t->name );
 	}
 
 

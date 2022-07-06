@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * http/handlers.c - functions to set/control url handlers                 *
 *                                                                         *
@@ -63,10 +75,10 @@ int __http_add_handler( char *path, char *desc, void *arg, int method, http_call
 		return -1;
 	}
 
-	p = (HTPATH *) allocz( sizeof( HTPATH ) );
+	p        = (HTPATH *) mem_perm( sizeof( HTPATH ) );
 	p->plen  = len;
-	p->path  = str_dup( path, len );
-	p->desc  = str_dup( desc, 0 );
+	p->path  = str_perm( path, len );
+	p->desc  = str_perm( desc, 0 );
 	p->arg   = arg;
 	p->flags = flags;
 	p->list  = hd;
@@ -112,8 +124,9 @@ int http_add_control( char *path, char *desc, void *arg, http_callback *fp, IPLI
 	return __http_add_handler( urlbuf, desc, arg, HTTP_METH_POST, fp, srcs, flags|HTTP_FLAGS_CONTROL|HTTP_FLAGS_JSON );
 }
 
+
 // set an extra stats handler
-int http_stats_handler( json_callback *fp )
+int http_handler_stats( json_callback *fp )
 {
 	if( fp )
 	{
@@ -124,7 +137,17 @@ int http_stats_handler( json_callback *fp )
 	return -1;
 }
 
+// set an extra health handler
+int http_handler_health( json_callback *fp )
+{
+	if( fp )
+	{
+		_http->health_fp = fp;
+		return 0;
+	}
 
+	return -1;
+}
 
 
 

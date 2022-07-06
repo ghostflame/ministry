@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * http.h - defines HTTP structures and functions                          *
 *                                                                         *
@@ -15,6 +27,9 @@
 #define HTTP_FLAGS_CONTROL				0x0001
 #define HTTP_FLAGS_JSON					0x0002
 #define HTTP_FLAGS_AUTH					0x0004
+
+#define HTTP_FLAGS_NO_OUT				0x0010
+
 #define HTTP_FLAGS_NO_REPORT			0x0100
 
 
@@ -42,7 +57,6 @@ enum http_post_states
 };
 
 
-
 struct http_post_state
 {
 	void				*	obj;
@@ -52,12 +66,27 @@ struct http_post_state
 	size_t					bytes;	// this post size
 
 	AVP						kv;		// key-value for post-processor
-	json_object			*	jo;		// json object pointer
+	JSON				*	jo;		// json object pointer
 
 	size_t					total;
 
 	int						calls;
 	int8_t					state;	// where in the post cycle are we?
+};
+
+
+#define HTTP_PARAM_MAX_KEY	128
+#define HTTP_PARAM_MAX_VAL	1904
+
+// 2KB
+struct http_param
+{
+	HTPRM				*	next;
+	int8_t					klen;
+	int8_t					has_val;
+	int16_t					vlen;
+	char					key[HTTP_PARAM_MAX_KEY];
+	char					val[HTTP_PARAM_MAX_VAL];
 };
 
 #define HTTP_CLS_CHECK		0xdeadbeefdeadbeef
@@ -71,6 +100,7 @@ struct http_req_data
 	HTTP_CONN			*	conn;
 	BUF					*	text;
 	struct sockaddr_in		sin;
+	HTPRM				*	params;
 	HTTP_POST			*	post;
 	int						code;
 	int						meth;
@@ -128,6 +158,7 @@ struct http_control
 	struct sockaddr_in	*	sin;
 
 	json_callback		*	stats_fp;	// extra stats callback
+	json_callback		*	health_fp;	// extra health callback
 
 	http_reporter		*	rpt_fp;
 	void				*	rpt_arg;
@@ -155,7 +186,10 @@ struct http_control
 int http_add_handler( char *path, char *desc, void *arg, int method, http_callback *fp, IPLIST *srcs, int flags );
 int http_add_control( char *path, char *desc, void *arg, http_callback *fp, IPLIST *srcs, int flags );
 
-int http_stats_handler( json_callback *fp );
+int http_handler_stats( json_callback *fp );
+int http_handler_health( json_callback *fp );
+
+int http_request_get_param( HTREQ *req, char *key, char **val );
 
 // give us a simple call to add get handlers
 #define http_add_simple_get( _p, _d, _c )			http_add_handler( _p, _d, NULL, HTTP_METH_GET, _c, NULL, 0 )
@@ -171,8 +205,12 @@ void http_stop( void );
 int http_tls_enabled( void );
 int http_ask_password( void );
 
+void http_enable( void );
+
+void http_set_default_ports( uint16_t hport, uint16_t tport );
+
 HTTP_CTL *http_config_defaults( void );
-int http_config_line( AVP *av );
+conf_line_fn http_config_line;
 
 #endif
 

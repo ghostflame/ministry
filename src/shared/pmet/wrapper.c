@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * pmet/wrapper.c - functions exposed to the calling applications          *
 *                                                                         *
@@ -101,14 +113,18 @@ PMET *pmet_create( PMETM *metric, PMETS *source )
 
 PMET *pmet_clone_gen( PMET *item, PMETS *source, void *genptr, pmet_gen_fn *fp, void *genarg )
 {
-	return pmet_item_clone( item, source, genptr, fp, genarg );
+	return pmet_item_clone( item, source, genptr, fp, genarg, NULL );
 }
 
 PMET *pmet_clone( PMET *item )
 {
-	return pmet_item_clone( item, NULL, NULL, NULL, NULL );
+	return pmet_item_clone( item, NULL, NULL, NULL, NULL, NULL );
 }
 
+PMET *pmet_clone_vary( PMET *item, PMET_LBL *lbl )
+{
+	return pmet_item_clone( item, NULL, NULL, NULL, NULL, lbl );
+}
 
 
 PMETM *pmet_new( int type, char *path, char *help )

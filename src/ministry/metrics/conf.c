@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * metrics/conf.c - functions for metrics configuration                    *
 *                                                                         *
@@ -31,7 +43,7 @@ int metrics_add_path( METPR *p, char *str, int len )
 	if( !p->paths )
 	{
 		dv = 1;
-		p->paths = string_store_create( 0, "small", &dv );
+		p->paths = string_store_create( 0, "small", &dv, 0 );
 	}
 
 	// store the path name only
@@ -71,11 +83,11 @@ int metrics_add_attr( METAL *m, char *str, int len )
 		return -1;
 	}
 
-	tmp.name = str_dup( str, len );
+	tmp.name = str_perm( str, len );
 	tmp.len  = len;
 
-	a = (METAT *) allocz( sizeof( METAT ) );
-	memcpy( a, &tmp, sizeof( METAT ) );
+	a = (METAT *) mem_perm( sizeof( METAT ) );
+	*a = tmp;
 
 	a->next = m->ats;
 	m->ats  = a;
@@ -89,12 +101,12 @@ int metrics_add_attr( METAL *m, char *str, int len )
 
 MET_CTL *metrics_config_defaults( void )
 {
-	MET_CTL *m = (MET_CTL *) allocz( sizeof( MET_CTL ) );
+	MET_CTL *m = (MET_CTL *) mem_perm( sizeof( MET_CTL ) );
 	METAL *none;
 
 	// we get a free attributes list called "none"
-	none = (METAL *) allocz( sizeof( METAL ) );
- 	none->name = str_dup( "none", 4 );
+	none = (METAL *) mem_perm( sizeof( METAL ) );
+ 	none->name = str_perm( "none", 4 );
 
  	m->alists = none;
  	m->alist_ct = 1;
@@ -260,7 +272,7 @@ int metrics_config_line( AVP *av )
 			{
 				return regex_list_add( av->vptr, 0, p->maps->rlist );
 			}
-			else if( attIs( "fail" ) )
+			else if( attIs( "fail" ) || attIs( "unmatch" ) )
 			{
 				return regex_list_add( av->vptr, 1, p->maps->rlist );
 			}
@@ -281,7 +293,7 @@ int metrics_config_line( AVP *av )
 			}
 
 			na = (METAL *) allocz( sizeof( METAL ) );
-			memcpy( na, a, sizeof( METAL ) );
+			*na = *a;
 
 			// take everything off the tmp structure, na owns it now
 			memset( a, 0, sizeof( METAL ) );
@@ -303,7 +315,7 @@ int metrics_config_line( AVP *av )
 				return -1;
 			}
 
-			if( !p->maps || !p->paths || !p->paths->entries )
+			if( !p->maps || !p->paths || !string_store_entries( p->paths ) )
 			{
 				err( "Metrics profile '%s' will not match anything.  Aborting." );
 				return -1;
@@ -329,7 +341,7 @@ int metrics_config_line( AVP *av )
 				}
 
 			np = (METPR *) allocz( sizeof( METPR ) );
-			memcpy( np, p, sizeof( METPR ) );
+			*np = *p;
 
 			np->next = _met->profiles;
 			_met->profiles = np;

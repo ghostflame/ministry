@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * http/config.c - config and setup for libmicrohttpd                      *
 *                                                                         *
@@ -14,6 +26,15 @@
 HTTP_CTL *_http = NULL;
 
 
+void http_set_default_ports( uint16_t hport, uint16_t tport )
+{
+	if( hport )
+		_http->port = hport;
+
+	if( tport )
+		_http->tls->port = tport;
+}
+
 
 
 HTTP_CTL *http_config_defaults( void )
@@ -21,9 +42,9 @@ HTTP_CTL *http_config_defaults( void )
 	struct sockaddr_in *sin;
 	HTTP_CTL *h;
 
-	h                  = (HTTP_CTL *) allocz( sizeof( HTTP_CTL ) );
-	h->tls             = (TLS_CONF *) allocz( sizeof( TLS_CONF ) );
-	h->calls           = (HTTP_CB *) allocz( sizeof( HTTP_CB ) );
+	h                  = (HTTP_CTL *) mem_perm( sizeof( HTTP_CTL ) );
+	h->tls             = (TLS_CONF *) mem_perm( sizeof( TLS_CONF ) );
+	h->calls           = (HTTP_CB *)  mem_perm( sizeof( HTTP_CB ) );
 
 	h->conns_max       = DEFAULT_HTTP_CONN_LIMIT;
 	h->conns_max_ip    = DEFAULT_HTTP_CONN_IP_LIMIT;
@@ -43,6 +64,7 @@ HTTP_CTL *http_config_defaults( void )
 	h->enabled         = 0;
 	h->ctl_enabled     = 0;
 	h->tls->enabled    = 0;
+	h->tls->port       = DEFAULT_HTTPS_PORT;
 	h->ctl_iplist      = str_copy( "localhost-only", 0 );
 
 	// only allow 1.3, 1.2 by default
@@ -62,15 +84,15 @@ HTTP_CTL *http_config_defaults( void )
 	pthread_mutex_init( &(h->hitlock), NULL );
 
 	// make the address binding structure
-	sin = (struct sockaddr_in *) allocz( sizeof( struct sockaddr_in ) );
+	sin = (struct sockaddr_in *) mem_perm( sizeof( struct sockaddr_in ) );
 	sin->sin_family      = AF_INET;
 	sin->sin_addr.s_addr = INADDR_ANY;
 	h->sin               = sin;
 
 	// and handler structures
-	h->get_h          = (HTHDLS *) allocz( sizeof( HTHDLS ) );
+	h->get_h          = (HTHDLS *) mem_perm( sizeof( HTHDLS ) );
 	h->get_h->method  = "GET";
-	h->post_h         = (HTHDLS *) allocz( sizeof( HTHDLS ) );
+	h->post_h         = (HTHDLS *) mem_perm( sizeof( HTHDLS ) );
 	h->post_h->method = "POST";
 
 	_http = h;

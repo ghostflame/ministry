@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * config.c - read config files and create config object                   *
 *                                                                         *
@@ -32,6 +44,8 @@ Options:\n", _proc->app_name, _proc->app_name );
   -R --no-include             Disable all including of other config\n\
   -U --no-uri                 Disable all reading of URI's\n\
   -u --no-uri-include         Disable URI config including other URI's\n\
+  -X --no-suffix              Disable matching file suffix in include-dir\n\
+  -x --suffix      <suffix>   Set config file suffix for include-dir\n\
   -i --insecure-uri           Allow insecure URI's\n\
   -I --insecure-include       Allow secure URI's to include insecure URI's\n\
   -K --interactive-pass       Interactively ask for an SSL key password\n\
@@ -44,13 +58,13 @@ Options:\n", _proc->app_name, _proc->app_name );
 }
 
 
-const char *config_args_opt_string = "HhDVvtsUuiIEKTWFdP:c:";
+const char *config_args_opt_string = "HhDVvtsUuiIEKTWFdXx:P:c:";
 char config_args_opt_merged[CONF_LINE_MAX];
 
 struct option long_options[] = {
 	// behaviours
 	{ "help",               no_argument,          NULL, 'h' },
-	{ "version",            no_argument,          NULL, 'v' },
+	{ "version",            no_argument,          NULL, 'w' },
 	{ "config-test",        no_argument,          NULL, 't' },
 	{ "daemon",             no_argument,          NULL, 'd' },
 	// config
@@ -58,11 +72,14 @@ struct option long_options[] = {
 	{ "env-prefix",         required_argument,    NULL, 'P' },
 	{ "pidfile",            required_argument,    NULL, 'p' },
 	{ "strict",             no_argument,          NULL, 's' },
+	{ "suffix",             required_argument,    NULL, 'x' },
 	// switches
 	{ "no-environment",     no_argument,          NULL, 'E' },
 	{ "no-config",          no_argument,          NULL, 'F' },
 	{ "no-uri",             no_argument,          NULL, 'U' },
 	{ "no-uri-include",     no_argument,          NULL, 'u' },
+	{ "no-suffix",          no_argument,          NULL, 'X' },
+	{ "no-byhand",          no_argument,          NULL, 'a' },
 	// security
 	{ "no-include",         no_argument,          NULL, 'R' },
 	{ "insecure-uri",       no_argument,          NULL, 'i' },
@@ -78,28 +95,38 @@ struct option long_options[] = {
 };
 
 
-char *config_arg_string( char *argstr )
+char *config_arg_string( const char *argstr )
 {
 	snprintf( config_args_opt_merged, CONF_LINE_MAX, "%s%s", config_args_opt_string, argstr );
 	return config_args_opt_merged;
 }
 
 
-void config_set_main_file( char *path )
+void config_set_main_file( const char *path )
 {
-	snprintf( _proc->cfg_file, CONF_LINE_MAX, "%s", path );
+	if( _proc->cfg_file )
+		free( _proc->cfg_file );
+
+	_proc->cfg_file = str_copy( path, 0 );
 
 	// this wins against env
 	setcfFlag( FILE_OPT );
 }
 
-void config_set_env_prefix( char *prefix )
+
+void config_set_env_prefix( const char *prefix )
 {
-	char *p, prev = ' ';
-	int i;
+	const char *p = prefix;
+	char prev = ' ';
+	int i, l;
+
+	l = strlen( prefix );
+
+	if( l > 124 )
+		l = 124;
 
 	// it needs to be uppercase
-	for( i = 0, p = prefix; i < 125 && *p; ++p, ++i )
+	for( i = 0; i < l; ++i, ++p )
 	{
 		if( *p == '-' )
 			_proc->env_prfx[i] = '_';
@@ -118,7 +145,36 @@ void config_set_env_prefix( char *prefix )
 }
 
 
-void config_args( int ac, char **av, char *optstr, help_fn *hfp )
+void config_set_suffix( const char *suffix )
+{
+	char tmp[256];
+	int len;
+
+	if( !suffix )
+		suffix = "";
+
+	if( *suffix == '.' )
+		++suffix;
+
+	if( *suffix )
+		len = snprintf( tmp, 256, ".%s", suffix );
+	else
+		len = 0;
+
+	if( _proc->conf_sfx )
+	{
+		free( _proc->conf_sfx );
+		_proc->conf_sfx = NULL;
+	}
+
+	if( len )
+		_proc->conf_sfx = str_copy( tmp, len );
+
+	_proc->cfg_sffx_len = len;
+}
+
+
+void config_args( int ac, char **av, const char *optstr, help_fn *hfp )
 {
 	int oc, idx;
 
@@ -142,13 +198,27 @@ void config_args( int ac, char **av, char *optstr, help_fn *hfp )
 			case 'D':
 				log_set_level( LOG_LEVEL_DEBUG, 1 );
 				runf_add( RUN_DEBUG );
+#ifdef DEBUG_MALLOC
+				// set malloc debugging
+				mallopt(M_CHECK_ACTION, 0x3);
+#endif
 				break;
 			case 'V':
 				runf_add( RUN_TGT_STDOUT );
 				log_set_force_stdout( 1 );
 				break;
-			case 'v':
+			case 'x':
+				config_set_suffix( optarg );
+				break;
+			case 'X':
+				cutcfFlag( SUFFIX );
+				break;
+			case 'w':
 				printf( "%s version: %s\n", _proc->app_upper, _proc->version );
+				exit( 0 );
+				break;
+			case 'v':
+				printf( "%s\n", _proc->version );
 				exit( 0 );
 				break;
 			case 't':
@@ -192,6 +262,9 @@ void config_args( int ac, char **av, char *optstr, help_fn *hfp )
 				break;
 			case 'F':
 				cutcfFlag( READ_FILE );
+				break;
+			default:
+				exit( 1 );
 				break;
 		}
 
