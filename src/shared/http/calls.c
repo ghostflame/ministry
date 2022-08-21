@@ -294,7 +294,7 @@ int http_calls_json_done( HTREQ *req )
 	}
 	else
 	{
-		req->code = MHD_HTTP_UNPROCESSABLE_ENTITY;
+		req->code = MHD_HTTP_UNPROCESSABLE_CONTENT;
 		ret = -1;
 	}
 
