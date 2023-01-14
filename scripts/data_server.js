@@ -1,5 +1,8 @@
+#!/usr/bin/node 
+
 var http = require( 'http' );
 var fs   = require( 'fs' );
+var util = require( 'util' );
 var optM = require( 'node-getopt' );
 
 var args = [
@@ -7,12 +10,15 @@ var args = [
 	[ 'p', 'port=i',            'Port to serve on.' ],
 	[ 'd', 'data=ARG',          'File to read for stats data.' ],
 	[ 'm', 'metrics=ARG',       'File to read for metrics data.' ],
+	[ 'j', 'json=ARG',          'File to read for json data.' ],
 ];
 
 var data = {
-	'/data':		null,
-	'/metrics':		null,
-	'/':			'',
+	'/slack':		[ 'ok', { } ],
+	'/data':		[ null, { } ],
+	'/metrics':		[ null, { } ],
+	'/json':        [ null, { 'Content-Type': 'application/json' } ],
+	'/':			[ '', { } ],
 };
 
 var port = 10000;
@@ -22,7 +28,18 @@ var logmsg = function( msg ) {
 	console.log( '[' + ((new Date).getTime( ) / 1000).toFixed( 3 ) + '] ' + msg );
 };
 
+var logobj = function( obj ) {
+	logmsg( 'Object:\n' + util.inspect( obj, {
+		showHidden: 	true,
+		customInspect:	true,
+		colors:			true,
+		depth:			6,
+	}));
+};
+
 var respond = function( req, res ) {
+
+	var sent = '';
 
 	if( !( req.url in data ) ) {
 		logmsg( 'Unexpected path: ' + req.url );
@@ -31,10 +48,41 @@ var respond = function( req, res ) {
 		return;
 	}
 
-	logmsg( 'Serving ' + req.url );
-	res.writeHead( 200, { 'Content-Length': data[req.url].length } );
-	res.write( data[req.url] );
-	res.end( );
+	req.on( 'data', function( chunk ) {
+		sent += chunk.toString( );
+	});
+
+	req.on( 'end', function( ) {
+		if( sent.length > 0 ) {
+			var o;
+
+			try {
+				o = JSON.parse( sent );
+			} catch( err ) {
+				logmsg( 'Invalid JSON posted: ' + err.toSring( ) );
+				return;
+			}
+
+			logobj( o );
+		}
+
+		var arr = data[req.url];
+		var code = 200;
+		var hdr = { };
+		if( arr[0].length ) {
+			hdr['Content-Length'] = arr[0].length;
+		} else {
+			code = 204;
+		}
+		for( var h in arr[1] ) {
+			hdr[h] = arr[1][h];
+		}
+
+		logmsg( 'Serving ' + req.url );
+		res.writeHead( code, hdr );
+		res.write( arr[0] );
+		res.end( );
+	});
 };
 
 
@@ -47,12 +95,16 @@ opt.setHelp(
 var opts = opt.bindHelp( ).parseSystem( ).options;
 
 if( opts.metrics ) {
-	data['/metrics'] = fs.readFileSync( opts.metrics );
+	data['/metrics'][0] = fs.readFileSync( opts.metrics );
 	logmsg( `/metrics taken from ${opts.metrics}.` ); 
 }
 if( opts.data ) {
-	data['/data'] = fs.readFileSync( opts.data );
+	data['/data'][0] = fs.readFileSync( opts.data );
 	logmsg( `/data taken from ${opts.data}.` );
+}
+if( opts.json ) {
+	data['/json'][0] = fs.readFileSync( opts.json );
+	logmsg( `/json take from ${opts.json}.` );
 }
 if( opts.port ) {
 	port = parseInt( opts.port, 10 );
@@ -60,11 +112,11 @@ if( opts.port ) {
 
 var str = '';
 for( var p in data ) {
-	if( data[p] ) {
+	if( data[p][0] ) {
 		str += p + "\n";
 	}
 }
-data['/'] = str;
+data['/'][0] = str;
 
 var svr = http.createServer( respond );
 svr.listen( port, function( ) {

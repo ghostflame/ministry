@@ -1,0 +1,14 @@
+{
+	"type": "allow",
+	"comment": "allow selected paths",
+	"matches": [
+		"^this\\.is\\.allowed\\.",
+		"^also\\.this\\."
+	],
+	"ips": [
+		"1.2.3.4",
+		"10.20.30.40/30",
+		"10.50.0.0/15",
+		"127.0.0.1"
+	]
+}

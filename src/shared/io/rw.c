@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * io/rw.c - network io send and recv functions                            *
 *                                                                         *
@@ -14,7 +26,7 @@ __attribute__((hot)) int io_read_data( SOCK *s )
 {
 	int i;
 
-	if( !( i = recv( s->fd, s->in->buf + s->in->len, s->in->sz - ( s->in->len + 2 ), MSG_DONTWAIT ) ) )
+	if( !( i = recv( s->fd, s->in->bf->buf + s->in->bf->len, s->in->bf->sz - ( s->in->bf->len + 2 ), MSG_DONTWAIT ) ) )
 	{
 		if( s->flags & IO_CLOSE_EMPTY )
 		{
@@ -38,7 +50,7 @@ __attribute__((hot)) int io_read_data( SOCK *s )
 	}
 
 	// got some data then
-	s->in->len += i;
+	s->in->bf->len += i;
 
 	//debug( "Received %d bytes on socket %d/%s", i, s->fd, s->name );
 
@@ -64,8 +76,8 @@ int io_write_data( SOCK *s, int off )
 	tries    = 3;
 	sent     = 0;
 	b        = s->out;
-	ptr      = b->buf + off;
-	len      = b->len - off;
+	ptr      = b->bf->buf + off;
+	len      = b->bf->len - off;
 
 	while( len > 0 )
 	{

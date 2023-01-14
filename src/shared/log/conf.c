@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * log/conf.c - handles log config                                         *
 *                                                                         *
@@ -11,7 +23,7 @@
 
 LOG_CTL *_logger = NULL;
 
-char *log_level_strings[LOG_LEVEL_MAX] =
+const char *log_level_strings[LOG_LEVEL_MAX] =
 {
 	"FATAL",
 	"ERROR",
@@ -48,7 +60,7 @@ struct log_facility log_facilities[] =
 
 
 
-int8_t log_get_level( char *str )
+int8_t log_get_level( const char *str )
 {
 	int8_t i;
 
@@ -69,13 +81,23 @@ int8_t log_get_level( char *str )
 		return LOG_LEVEL_DEBUG;
 	}
 
-	for( i = LOG_LEVEL_FATAL; i < LOG_LEVEL_MAX; ++i )
-		if( !strcasecmp( str, log_level_strings[i] ) )
-		  	return i;
+	i = str_search( str, log_level_strings, LOG_LEVEL_MAX );
 
+	if( i < 0 )
+	{
+		warn( "Unrecognised log level string '%s'", str );
+		i = LOG_LEVEL_DEBUG;
+	}
 
-	warn( "Unrecognised log level string '%s'", str );
-	return LOG_LEVEL_DEBUG;
+	return i;
+}
+
+const char *log_get_level_name( int8_t level )
+{
+	if( level >= LOG_LEVEL_MIN && level < LOG_LEVEL_MAX )
+		return log_level_strings[level];
+
+	return "unknown";
 }
 
 
@@ -109,10 +131,10 @@ LOG_CTL *log_config_defaults( void )
 {
 	LOGFL *m, *h;
 
-	_logger = (LOG_CTL *) allocz( sizeof( LOG_CTL ) );
+	_logger = (LOG_CTL *) mem_perm( sizeof( LOG_CTL ) );
 
 	// main file - stdout by default
-	m               = (LOGFL *) allocz( sizeof( LOGFL ) );
+	m               = (LOGFL *) mem_perm( sizeof( LOGFL ) );
 	m->filename     = strdup( "-" );
 	m->type         = "main";
 	m->level        = LOG_LEVEL_INFO;
@@ -122,7 +144,7 @@ LOG_CTL *log_config_defaults( void )
 	m->err_fd       = fileno( stderr );
 
 	// http file - stdout by default
-	h               = (LOGFL *) allocz( sizeof( LOGFL ) );
+	h               = (LOGFL *) mem_perm( sizeof( LOGFL ) );
 	h->filename     = strdup( "-" );
 	h->type         = "http";
 	h->level        = LOG_LEVEL_INFO;
@@ -133,7 +155,7 @@ LOG_CTL *log_config_defaults( void )
 
 	_logger->main   = m;
 	_logger->http   = h;
-	_logger->fps    = (LOGFL **) allocz( 2 * sizeof( LOGFL * ) );
+	_logger->fps    = (LOGFL **) mem_perm( 2 * sizeof( LOGFL * ) );
 
 	_logger->fps[0] = _logger->main;
 	_logger->fps[1] = _logger->http;
@@ -149,6 +171,7 @@ LOG_CTL *log_config_defaults( void )
 
 	// unification - unified by default
 	_logger->unified        = 1;
+
 
 	return _logger;
 }

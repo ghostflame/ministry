@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * target/target.c - handles network targets                               *
 *                                                                         *
@@ -9,6 +21,14 @@
 
 #include "local.h"
 
+
+void target_write_all( IOBUF *buf )
+{
+	TGTL *l;
+
+	for( l = _tgt->lists; l; l = l->next )
+		io_buf_post( l, buf );
+}
 
 
 void target_add_metrics( TGT *t )
@@ -40,11 +60,12 @@ void target_loop( THRD *th )
 	IO_CTL *io = _proc->io;
 	struct sockaddr_in sa;
 	int64_t fires = 0, r;
+	struct timespec ts;
 	TGT *t;
 
 	t = (TGT *) th->arg;
 
-	if( t->to_stdout )
+	if( flagf_has( t, TGT_FLAG_STDOUT ) )
 	{
 		t->iofp = io_send_stdout;
 	}
@@ -58,6 +79,8 @@ void target_loop( THRD *th )
 
 		if( t->proto == TARGET_PROTO_UDP )
 			t->iofp = io_send_net_udp;
+		else if( flagf_has( t, TGT_FLAG_TLS ) )
+			t->iofp = io_send_net_tls;
 		else
 			t->iofp = io_send_net_tcp;
 	}
@@ -66,7 +89,7 @@ void target_loop( THRD *th )
 	sa.sin_port = htons( t->port );
 
 	// make a socket with no buffers of its own
-	t->sock = io_make_sock( 0, 0, &sa );
+	t->sock = io_make_sock( 0, 0, &sa, t->flags, t->host );
 
 	// calculate how many sleeps for reconnect
 	r = 1000 * io->rc_msec;
@@ -78,20 +101,27 @@ void target_loop( THRD *th )
 	if( t->max == 0 )
 		t->max = IO_MAX_WAITING;
 
-	// init the lock
-	io_lock_init( t->lock );
+	// make the queue - with a lock, but no free
+	// callback - we add and remove things
+	// explicitly
+	t->queue = mem_list_create( 1, NULL );
 
 	// and add some watcher metrics
-	target_add_metrics( t );
+	if( !runf_has( RUN_NO_HTTP ) )
+	{
+		target_add_metrics( t );
+	}
 
 	tgdebug( "Started target, max waiting %d", t->max );
+
+	llts( ( 1000 * io->send_usec ), ts );
 
 	loop_mark_start( "io" );
 
 	// now loop around sending
 	while( RUNNING( ) )
 	{
-		microsleep( io->send_usec );
+		nanosleep( &ts, NULL );
 
 		// call the io_fn
 		fires += (*(t->iofp))( t );
@@ -100,8 +130,16 @@ void target_loop( THRD *th )
 	loop_mark_done( "io", 0, fires );
 
 	// disconnect
-	io_disconnect( t->sock );
-	io_lock_destroy( t->lock );
+	io_disconnect( t->sock, 1 );
+}
+
+
+void target_set_default_type( TGT *t )
+{
+	if( !t->type )
+	{
+		t->typestr = str_copy( _proc->app_name, 0 );
+	}
 }
 
 
@@ -109,6 +147,8 @@ void target_loop( THRD *th )
 int target_run_one( TGT *t, int idx )
 {
 	target_set_id( t );
+
+	target_set_default_type( t );
 
 	// start a loop for each one
 	thread_throw_named_f( target_loop, t, idx, "target_loop_%d", idx );

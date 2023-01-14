@@ -1,9 +1,9 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-FILES  = locks mem fetch post gc network targets data synth sort history maths main
-HEADS  = locks mem fetch post gc network targets data synth sort history maths ministry
+FILES  = locks mem post gc network targets main
+HEADS  = locks mem post gc network targets ministry
 
-SUBS   = metrics stats
+SUBS   = metrics stats data maths synth fetch
 
 OBJS   = $(FILES:%=%.o)
 HDRS   = $(HEADS:%=%.h)
@@ -11,13 +11,12 @@ SUBO   = $(SUBS:%=%/*.o)
 RKVS   = ../shared/app_shared.a
 
 EARGS ?=
-LARGS ?=
+LARGS ?= -lm -lcurl -lmicrohttpd -ljson-c
 
 WFLAGS = -Wall -Wshadow
 #IFLAGS = -I. -I../shared
 IFLAGS = -I.
-#DFLAGS = -g -pg -ggdb3 -DDEBUG -DDEBUG_LOOPS -DDEBUG_SYNTH -DDEBUG_IO -DDEBUG_ENV
-DFLAGS = -g -pg -ggdb3 -DDEBUG
+DFLAGS = -g -pg -ggdb3 -DMINDEBUG
 TFLAGS = -pthread
 CFLAGS = $(TFLAGS) $(IFLAGS) $(EARGS)
 LFLAGS = $(TFLAGS) $(IFLAGS) $(LARGS)
@@ -47,7 +46,7 @@ with_old_gcc:  $(BIN)
 
 
 subs:
-	@for d in $(SUBS); do ( cd $$d && $(MAKE) $(MFLAGS) $(TARGET) ); done
+	@for d in $(SUBS); do ( cd $$d && $(MAKE) -j10 $(MFLAGS) $(TARGET) ); done
 
 $(BIN): $(HDRS) $(OBJS)
 	$(CC) -o $(BIN) $(LFLAGS) $(OBJS) $(SUBO) $(RKVS)

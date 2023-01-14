@@ -1,6 +1,6 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-FILES  = conf alloc mtype types mem
+FILES  = conf alloc mtype types memhl mem
 HEADS  = local mem
 
 RKV    = mem_shared.a
@@ -11,7 +11,7 @@ HDRS   = $(HEADS:%=%.h)
 
 WFLAGS = -Wall -Wshadow
 IFLAGS = -I. -I..
-DFLAGS = -g -pg -ggdb3 -DDEBUG
+DFLAGS = -g -pg -ggdb3 -DMINDEBUG
 TFLAGS = -pthread
 CFLAGS = -c $(TFLAGS) $(IFLAGS) $(EARGS)
 

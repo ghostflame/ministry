@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * http/calls.c - built-in HTTP endpoints                                  *
 *                                                                         *
@@ -9,6 +21,31 @@
 
 
 #include "local.h"
+
+
+
+int http_calls_health( HTREQ *req )
+{
+	json_object *jo;
+	int hret = 0;
+
+	jo = json_object_new_object( );
+
+	if( _proc->http->health_fp )
+		hret = (*(_proc->http->health_fp))( jo );
+
+	strbuf_json( req->text, jo, 1 );
+
+	// did we just return failure?
+	if( hret < 0 )
+		req->code = 500;
+	// let the health check specify a code
+	else if( hret > 1 )
+		req->code = hret;
+
+	return 0;
+}
+
 
 
 
@@ -24,9 +61,9 @@ int http_calls_metrics( HTREQ *req )
 
 
 #define _jmtype( n, mc )		snprintf( tmp, 16, "%s_calls", n ); \
-								json_object_object_add( jt, tmp, json_object_new_int64( mc.ctr ) ); \
+								json_insert( jt, tmp, int64, mc.ctr ); \
 								snprintf( tmp, 16, "%s_total", n ); \
-								json_object_object_add( jt, tmp, json_object_new_int64( mc.sum ) )
+								json_insert( jt, tmp, int64, mc.sum )
 
 
 int http_calls_stats( HTREQ *req )
@@ -35,16 +72,18 @@ int http_calls_stats( HTREQ *req )
 #ifdef MTYPE_TRACING
 	char tmp[16];
 #endif
+	char upt[24];
 	MTSTAT ms;
 	int j;
 
 	jo = json_object_new_object( );
 	jm = json_object_new_object( );
 
-	json_object_object_add( jo, "app",    json_object_new_string( _proc->app_name ) );
-	json_object_object_add( jo, "uptime", json_object_new_double( get_uptime( ) ) );
-	json_object_object_add( jo, "mem",    json_object_new_int64( mem_curr_kb( ) ) );
+	get_uptime_msec( upt, 24 );
 
+	json_insert( jo, "app",    string, _proc->app_name );
+	json_insert( jo, "uptime", string, upt );
+	json_insert( jo, "mem",    int64,  mem_curr_kb( ) );
 
 	for( j = 0; j < _proc->mem->type_ct; ++j )
 	{
@@ -53,9 +92,9 @@ int http_calls_stats( HTREQ *req )
 
 		jt = json_object_new_object( );
 
-		json_object_object_add( jt, "free",  json_object_new_int( ms.ctrs.fcount ) );
-		json_object_object_add( jt, "alloc", json_object_new_int( ms.ctrs.total ) );
-		json_object_object_add( jt, "kb",    json_object_new_int64( ms.bytes >> 10 ) );
+		json_insert( jt, "free",  int,   ms.ctrs.fcount );
+		json_insert( jt, "alloc", int,   ms.ctrs.total );
+		json_insert( jt, "kb",    int64, ( ms.bytes >> 10 ) );
 
 #ifdef MTYPE_TRACING
 		_jmtype( "alloc",  ms.ctrs.all );
@@ -81,11 +120,14 @@ int http_calls_stats( HTREQ *req )
 int http_calls_version( HTREQ *req )
 {
 	json_object *jo;
+	char upt[24];
+
+	get_uptime_msec( upt, 24 );
 
 	jo = json_object_new_object( );
-	json_object_object_add( jo, "app",     json_object_new_string( _proc->app_name ) );
-	json_object_object_add( jo, "uptime",  json_object_new_double( get_uptime( ) ) );
-	json_object_object_add( jo, "version", json_object_new_string( _proc->version ) );
+	json_insert( jo, "app",     string, _proc->app_name );
+	json_insert( jo, "uptime",  string, upt );
+	json_insert( jo, "version", string, _proc->version );
 
 	strbuf_json( req->text, jo, 1 );
 	return 0;
@@ -100,10 +142,10 @@ void __http_calls_count_one( json_object *a, HTPATH *pt )
 
 	o = json_object_new_object( );
 
-	json_object_object_add( o, "path",        json_object_new_string( pt->path ) );
-	json_object_object_add( o, "description", json_object_new_string( pt->desc ) );
-	json_object_object_add( o, "iplist",      json_object_new_string( ( pt->iplist ) ? pt->iplist : "(none)" ) );
-	json_object_object_add( o, "hits",        json_object_new_int64( pt->hits ) );
+	json_insert( o, "path",        string, pt->path );
+	json_insert( o, "description", string, pt->desc );
+	json_insert( o, "iplist",      string, ( ( pt->iplist ) ? pt->iplist : "(none)" ) );
+	json_insert( o, "hits",        int64,  pt->hits );
 
 	json_object_array_add( a, o );
 }
@@ -137,6 +179,7 @@ int http_calls_count( HTREQ *req )
 
 void __http_calls_usage_type( HTHDLS *hd, BUF *b )
 {
+	char *jflag;
 	HTPATH *p;
 
 	if( hd->count )
@@ -144,11 +187,21 @@ void __http_calls_usage_type( HTHDLS *hd, BUF *b )
 		strbuf_aprintf( b, "[%s]\n", hd->method );
 
 		for( p = hd->list; p; p = p->next )
-			strbuf_aprintf( b, "%-24s  %s  %s\n",
-				p->path,
-				( p->flags & HTTP_FLAGS_JSON ) ? "json" : "    ",
-				p->desc );
+		{
+			jflag = ( p->flags & HTTP_FLAGS_JSON ) ? "json" : "    ";
+			strbuf_aprintf( b, "%-24s  %s  %s\n", p->path, jflag, p->desc );
+		}
 	}
+}
+
+int http_calls_time( HTREQ *req )
+{
+	double d;
+
+	d = timedbl( get_time64( ) );
+	strbuf_printf( req->text, "%f\n", d );
+
+	return 0;
 }
 
 
@@ -240,7 +293,10 @@ int http_calls_json_done( HTREQ *req )
 		ret = (req->path->cb)( req );
 	}
 	else
+	{
+		req->code = MHD_HTTP_UNPROCESSABLE_CONTENT;
 		ret = -1;
+	}
 
 	fclose( tfh );
 	req->post->obj = NULL;
@@ -254,10 +310,17 @@ int http_calls_json_done( HTREQ *req )
 void http_calls_init( void )
 {
 	http_add_simple_get( "/", "Usage information", &http_calls_usage );
+	http_add_simple_get( "/time", "Get the current time", &http_calls_time );
 
 	http_add_json_get( "/stats", "Internal stats", &http_calls_stats );
 	http_add_json_get( "/counts", "HTTP request counts", &http_calls_count );
-	http_add_json_get( "/targets", "List metric targets", &target_http_list );
+	http_add_json_get( "/health", "Health check", &http_calls_health );
+
+	if( !runf_has( RUN_NO_TARGET ) )
+	{
+		http_add_json_get( "/targets", "List metric targets", &target_http_list );
+	}
+
 	http_add_json_get( "/version", "Display version information", &http_calls_version );
 
 	// prometheus support
@@ -267,7 +330,10 @@ void http_calls_init( void )
 		http_add_simple_get( "/control", "List control paths", &http_calls_ctl_list );
 
 	// add target control
-	http_add_control( "target", "Enable/disable target", NULL, &target_http_toggle, NULL, 0 );
+	if( !runf_has( RUN_NO_TARGET ) )
+	{
+		http_add_control( "target", "Enable/disable target", NULL, &target_http_toggle, NULL, 0 );
+	}
 }
 
 

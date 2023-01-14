@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * utils/utils.c - utility routines                                        *
 *                                                                         *
@@ -90,7 +102,7 @@ uint64_t lockless_fetch( LLCT *l )
 }
 
 
-int read_file( char *path, char **buf, int *len, int perm, char *desc )
+int read_file( const char *path, char **buf, int *len, int perm, const char *desc )
 {
 	int l, max, r, fd;
 	struct stat sb;
@@ -136,7 +148,7 @@ int read_file( char *path, char **buf, int *len, int perm, char *desc )
 		return -4;
 	}
 
-	if( ( fd = open( path, O_RDONLY ) ) < 0 )
+	if( ( fd = open( path, O_RDONLY|O_CLOEXEC ) ) < 0 )
 	{
 		err( "Cannot open %s %s: %s", desc, path, Err );
 		return -5;
@@ -145,7 +157,7 @@ int read_file( char *path, char **buf, int *len, int perm, char *desc )
 	if( !*buf )
 	{
 		// we need a buffer if you want to read from /proc
-		*buf = ( perm ) ? str_perm( l + 1 ) : (char *) allocz( l + 1 );
+		*buf = ( perm ) ? mem_perm( l + 1 ) : allocz( l + 1 );
 		debug( "Creating buffer of %d bytes for %s.", 1 + *len, desc );
 	}
 	else
@@ -170,7 +182,7 @@ int read_file( char *path, char **buf, int *len, int perm, char *desc )
 }
 
 
-int parse_number( char *str, int64_t *iv, double *dv )
+int parse_number( const char *str, int64_t *iv, double *dv )
 {
 	if( iv )
 		*iv = 0;
@@ -213,44 +225,32 @@ int parse_number( char *str, int64_t *iv, double *dv )
 }
 
 
-struct hash_size_data hash_sizes[8] =
+const char *hash_size_names[8] =
 {
-	{
-		.name = "nano",
-		.size = MEM_HSZ_NANO,
-	},
-	{
-		.name = "micro",
-		.size = MEM_HSZ_MICRO,
-	},
-	{
-		.name = "tiny",
-		.size = MEM_HSZ_TINY,
-	},
-	{
-		.name = "small",
-		.size = MEM_HSZ_SMALL,
-	},
-	{
-		.name = "medium",
-		.size = MEM_HSZ_MEDIUM,
-	},
-	{
-		.name = "large",
-		.size = MEM_HSZ_LARGE,
-	},
-	{
-		.name = "xlarge",
-		.size = MEM_HSZ_XLARGE,
-	},
-	{
-		.name = "x2large",
-		.size = MEM_HSZ_X2LARGE,
-	}
+	"nano",
+	"micro",
+	"tiny",
+	"small",
+	"medium",
+	"large",
+	"xlarge",
+	"x2large",
+};
+
+uint64_t hash_size_vals[8] =
+{
+	MEM_HSZ_NANO,
+	MEM_HSZ_MICRO,
+	MEM_HSZ_TINY,
+	MEM_HSZ_SMALL,
+	MEM_HSZ_MEDIUM,
+	MEM_HSZ_LARGE,
+	MEM_HSZ_XLARGE,
+	MEM_HSZ_X2LARGE
 };
 
 
-uint64_t hash_size( char *str )
+uint64_t hash_size( const char *str )
 {
 	int64_t v = 0;
 	int i;
@@ -261,9 +261,8 @@ uint64_t hash_size( char *str )
 		return 0;
 	}
 
-	for( i = 0; i < 8; ++i )
-		if( !strcasecmp( str, hash_sizes[i].name ) )
-			return hash_sizes[i].size;
+	if( ( i = str_search( str, hash_size_names, 8 ) ) >= 0 )
+		return hash_size_vals[i];
 
 	if( parse_number( str, &v, NULL ) == NUM_INVALID )
 	{
@@ -277,7 +276,7 @@ uint64_t hash_size( char *str )
 
 
 
-int is_url( char *str )
+int is_url( const char *str )
 {
 	int l = strlen( str );
 
@@ -292,7 +291,6 @@ int is_url( char *str )
 
 	return STR_URL_NO;
 }
-
 
 
 

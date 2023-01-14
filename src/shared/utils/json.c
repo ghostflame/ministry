@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * utils/json.c - utilities around JSON parsing                            *
 *                                                                         *
@@ -10,15 +22,21 @@
 #include "shared.h"
 
 
-json_object *parse_json_file( FILE *fh, char *path )
+JSON *parse_json_file( FILE *fh, const char *path )
 {
+	struct json_object *jo = NULL;
 	enum json_tokener_error jerr;
-	struct json_object *jo;
-	char *m;
-	off_t s;
-	int d;
+	struct json_tokener *jtk;
+	int d = -1, cfh = 0;
+	struct stat sb;
+	void *m;
 
-	if( !fh )
+	if( fh )
+	{
+		rewind( fh );
+		d = fileno( fh );
+	}
+	else
 	{
 		if( !path )
 		{
@@ -26,52 +44,72 @@ json_object *parse_json_file( FILE *fh, char *path )
 			return NULL;
 		}
 
-		if( !( fh = fopen( path, "r" ) ) )
+		d = open( path, O_RDONLY );
+		if( d < 0 )
 		{
 			err( "Cannot open path '%s' to parse for JSON -- %s",
 				path, Err );
 			return NULL;
 		}
+
+		cfh = 1;
 	}
 
-	rewind( fh );
-	d = fileno( fh );
+	if( fstat( d, &sb ) != 0 )
+	{
+		err( "Could not stat JSON file %s -- %s", path, Err );
+		goto JSON_FILE_DONE;
+	}
 
-	s = lseek( d, 0, SEEK_END );
-	lseek( d, 0, SEEK_SET );
-
-	if( s > _proc->max_json_sz )
+	if( sb.st_size > _proc->max_json_sz )
 	{
 		err( "Chickening out of parsing file, size %ld is > than max allowed %d.",
-			s, _proc->max_json_sz );
-		return NULL;
+			sb.st_size, _proc->max_json_sz );
+		goto JSON_FILE_DONE;
 	}
 
-	m = mmap( NULL, s, PROT_READ, MAP_PRIVATE, d, 0 );
+	m = mmap( NULL, sb.st_size, PROT_READ, MAP_PRIVATE, d, 0 );
 
 	if( m == MAP_FAILED )
 	{
 		err( "Could not mmap file for JSON parsing -- %s", Err );
-		return NULL;
+		goto JSON_FILE_DONE;
 	}
 
-	jo = json_tokener_parse_verbose( m, &jerr );
+	// don't need this any more
+	if( cfh )
+		close( d );
+	d = -1;
 
-	munmap( m, s );
+	jtk  = json_tokener_new( );
+	jo   = json_tokener_parse_ex( jtk, (char *) m, sb.st_size );
+	jerr = json_tokener_get_error( jtk );
+
+	json_tokener_free( jtk );
+
+	munmap( m, sb.st_size );
 
 	if( jerr != json_tokener_success )
 	{
-		if( jo )
-			json_object_put( jo );
+		err( "Could not parse JSON file -- %s",
+			json_tokener_error_desc( jerr ) );
 
-		return NULL;
+		if( jo )
+		{
+			json_object_put( jo );
+			jo = NULL;
+		}
 	}
+
+JSON_FILE_DONE:
+	if( cfh && d >= 0 )
+		close( d );
 
 	return jo;
 }
 
 
-void create_json_result( BUF *buf, int ok, char *fmt, ... )
+void create_json_result( BUF *buf, int ok, const char *fmt, ... )
 {
 	json_object *o;
 
@@ -86,10 +124,10 @@ void create_json_result( BUF *buf, int ok, char *fmt, ... )
 		vsnprintf( mbuf, 2048, fmt, args );
 		va_end( args );
 
-		json_object_object_add( o, ( ok ) ? "result" : "error", json_object_new_string( mbuf ) );
+		json_insert( o, ( ( ok ) ? "result" : "error" ), string, mbuf );
 	}
 
-	json_object_object_add( o, "success", json_object_new_boolean( ok ) );
+	json_insert( o, "success", boolean, ok );
 	strbuf_json( buf, o, 1 );
 }
 

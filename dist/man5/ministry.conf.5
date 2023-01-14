@@ -88,6 +88,12 @@ source is paused until the included file is read (possibly recursively).  This i
 duplication of config values, as the last one read will win.  If include is found within a section,
 that section context is preserved into the new file, until it is changed by a new section heading.
 .TP
+\fBinclude-dir\fP
+The name of a directory to scan for files to read in as config sources.  By default, ministry scans
+for files with the suffix ".conf".  This interacts with the command-line option \fI-x <suffix>\fP
+and \fI-X\fP, setting a non-default config suffix, or turning off suffix checks.  Each file that
+passes the filtering, or lack of, is read in as if called by \fBinclude\fP.
+.TP
 \fBforeach\fP
 Cycle over possible values, passing each to the next line of config.
 
@@ -112,6 +118,10 @@ can also be overriden with the -p <file> CLI option.
 \fBlimits.TYPE\fP
 Make a call to setrlimit for the specified type.  Supported types are \fBprocs\fP and \fBfiles\fP.
 Both default to the system hard limit of the type.
+.TP
+\fBconfigMonitorSec\fP
+Value in seconds for how often to stat all config files (note: not URLs) to detect mtime changes.
+The default is 0, disabling the check.
 
 .SS [Logging]
 .PP
@@ -323,10 +333,10 @@ Number of msec to wait before attempting to reconnect a dead socket (default 200
 .SS [Target]
 .PP
 \fBMinistry\fP shares a lot of code with \fBcarbon-copy\fP and so duplicates its behaviour for describing
-network metric targets.  While \fBministry\fP sends to all enabled targets, \fBcarbon-copy\fP has rules for
-which metrics to send to which targets.  So the organisation of targets makes a little more sense in the
-context of \fBcarbon-copy\fP than \fBministry\fP, but for simplicity (and re-useability of target config
-files) the conventions and format at the same.
+network metric targets.  While \fBministry\fP sends to all enabled targets, \fBcarbon-copy\fP has rules
+for which metrics to send to which targets.  So the organisation of targets makes a little more sense in
+the context of \fBcarbon-copy\fP than \fBministry\fP, but for simplicity (and re-useability of target
+config files) the conventions and format at the same.
 .PP
 The basic principle is that targets are organised into lists of equivalent targets, which will always be
 given the same metrics.  This makes handling resilient multi-server targets easier.  There is no reason
@@ -337,6 +347,10 @@ Targets have names, and lists have names.  If no list is given for a target, a n
 target is created, so any reference to lists is fully optional within \fBministry\fP.  All targets must
 have a type and a \fBdone\fP statement.  There is no limit to the number of targets, though each target
 has a compute cost associated with it.
+.PP
+\fBMinistry\fP can use a GNUTLS wrapper around the socket connecting to a TLS-enabled target.  GNUTLS
+can be used to verify the target's certificates using system CAs.  \fBMinistry\fB will only use TLSv1.2
+and SECURE-256 ciphers.  Verification of certificates can be disabled.
 .TP
 \fBname\fP
 The name of the target, and the list if no list name is given.
@@ -363,6 +377,12 @@ yet support 0-second TTL DNS from the likes of consul which need looking up each
 The maximum number of outstanding network buffers waiting to be sent to this target before new buffers
 are dropped (default 1024).
 .TP
+\fBtls\fP
+Whether this target use TLS around the connection, boolean, defaults to false.
+.TP
+\fBverify\fP
+Whether to attempt certificate verification, boolean, defaults to false.
+.TP
 \fBdone\fP
 Signals the end of one target block.
 
@@ -375,7 +395,7 @@ also allowed, and are 0 < x < 1000, but must have an \fIm\fP appended, eg: \fI99
 In addition to regular thresholds and calculated values, \fBMinistry\fP can produce other sample-moment based
 statistics: standard deviation, skewness and kurtosis.  It does not do this by default, and has a minimum points
 check to avoid producing relatively meaningless stats about a half-dozen data points.  It also can match paths
-against a whitelist/blacklist regex check - a series of expressions defining whether a path is in or out of the
+against a match/unmatch list regex check - a series of expressions defining whether a path is in or out of the
 list of paths receiving moments processing.
 .TP
 \fBmoments.enable\fP
@@ -384,7 +404,7 @@ Enable or disable moments processing (boolean, defaults to 0)
 \fBmoments.minimum\fP
 Set the minimum point count in stats to trigger moment calculations (default is 30)
 .TP
-\fBmoments.whitelist\fP, \fBmoments.blacklist\fP
+\fBmoments.match\fP, \fBmoments.unmatch\fP
 A set of regular expressions to control moments calculation.  Each can appear multiple times.  The order of the
 list is preserved and paths are checked against it in order, to decide if they should or should not have this
 processing done.  This will have a performance impact on new path creation for stats paths, depending on the
@@ -404,7 +424,7 @@ Enable prediction processing (boolean, defaults to 0)
 \fBpredict.size\fP
 The number of points of data to keep for matching metrics (default 32)
 .TP
-\fBpredict.whitelist\fP, \fBpredict.blacklist\fP
+\fBpredict.match\fP, \fBpredict.unmatch\fP
 A set of regular expressions to control metric prediction.  Each can appear multiple times.  The order of the
 list is preserved and paths are checked against it in order, to decide if they should or should not have this
 processing done.  This will have a performance impact on new path creation for stats paths, depending on the
@@ -413,8 +433,44 @@ number and nature of the expressions.
 \fBpredict.fallbackMatch\fP
 Set whether matching no regexes results in an overall match or no match (default is to \fBNOT\fP match)
 .PP
-The rest of these are of the form stats.XXX, adder.XXX, gauge.XXX or self.XXX, affecting the behaviour of
-stats reporting, adder reporting, gauge reporting or self reporting.
+\fBMinistry\fP can produce histogram data for metrics, showing the count of values falling into each bucket.
+However, it needs these bucket maps defining, along with a regular expression map to match metrics to the
+right map.  One of these maps must be the default, as every histogram metric path needs a map.  If none of
+the buckets are so labelled, \fBministry\fP will choose the last one to appear in config.  The maps are applied
+in the order they appear in config.  In the absence of any maps, a dummy one will be created, but this is \fInot
+likely to give useful results\fP.
+.TP
+\fBhistogram.begin\fP
+Begin a named histogram map - names should be unique but this is not actually a constraint
+.TP
+\fBhistogram.enable\fP
+A boolean to enable or disable this config (default true)
+.TP
+\fBhistogram.default\fP
+A boolean to make this the default config to choose (default false)
+.PP
+\fBNote\fP, disabling the default config is a botch.  We must have at least one enabled config.  So the enable
+flag may be overridden if all supplied configs are disabled.  The order of choosing is:
+.EX
+		1/ Search in order for one flagged as default
+		2/ Search from the back of the list for an enable block
+		3/ Forcibly enable the last block and choose that
+.EE
+.TP
+\fBhistogram.bounds\fP
+A list of float values representing the \fIupper\fP bound of each bucket.  They will be sorted.  A maximum
+of 10 buckets in a map is supported.  An extra '+Infinity' upper bound is implicit and should not be given.
+.TP
+\fBhistogram.match\fP, \fBhistogram.unmatch\fP
+A set of regular expressions to control histogram map matching.  Each can appear multiple times.  The order
+of the list is preserved and paths are checked against it in order, to decide if they should or should not
+match against this map.  This inevitably has a performance penalty at the creation time for new metrics.
+.TP
+\fBhistogram.end\fP
+Complete the current histogram block.
+.PP
+The rest of these are of the form stats.XXX, adder.XXX, gauge.XXX, histo.XXX or self.XXX, affecting the
+behaviour of stats reporting, adder reporting, gauge reporting, histo reporting or self reporting.
 .TP
 \fBTYPE.threads\fP
 How many reporting threads to run (not used for self) (default 2)
@@ -474,8 +530,9 @@ to create and order an Iplist.
 \fBfilterList\fP
 The named filter list to apply.
 .PP
-All remaining network variables are of the form stats.XXX, compat.XXX, gauge.XXX or adder.XXX, pertaining
-to new-style stats ports, statsd-compatible ports, new-style gauge ports or new-style adder ports.
+All remaining network variables are of the form stats.XXX, compat.XXX, histo.XXX, gauge.XXX or
+adder.XXX, pertaining to new-style stats ports, statsd-compatible ports, new-style histo ports,
+new-style gauge ports or new-style adder ports.
 .TP
 \fBTYPE.enable\fP
 Enable or disable this type of collection (boolean, defaults to 1 for all).
@@ -484,7 +541,7 @@ Enable or disable this type of collection (boolean, defaults to 1 for all).
 Backlog for incoming TCP connections (default 32).
 .TP
 \fBTYPE.udp.checks\fP
-Perform blacklist/whitelist checks and prefixing on UDP for this type.
+Perform unmatch/match checks and prefixing on UDP for this type.
 .PP
 Everything after this is of the form TYPE.udp.XXX or TYPE.tcp.XXX, pertaining to either UDP ports
 or TCP ports respectively.
@@ -497,7 +554,8 @@ Enable or disable his protocol for this type of collection (boolean, defaults to
 .TP
 \fBTYPE.PROTO.port\fP
 A list of listen ports, comma separated.  By default, statsd-compatible listens on 8125, the default
-statsd port, new-style stats is on 9125 and new-style adder is on 9225.
+statsd port, new-style stats is on 9125, new-style adder is on 9225, new-style gauge on 9325 and
+new-style histo on 9425.
 .PP
 \fBMinistry\fP allows several different styles of TCP handling.  It can have one thread per connection
 (recommended for stats connections), or use a pool of threads (using either poll of epoll) to which
@@ -516,11 +574,11 @@ This does not change the UDP listener behaviour of one thread per port.
 .TP
 \fBTYPE.tcp.style\fI
 How to handle new connections, either with their own thread or on a thread pool.  The defaults are:
-stats/compat - thread, adder/gauge - epoll.
+stats/histo/compat - thread, adder/gauge - epoll.
 .TP
 \fBTYPE.tcp.threads\fI
 How many threads in the pool for listening for each type.  Defaults are stats:60, adder:30, gauge:10,
-compat:20.
+histo:30, compat:20.
 .TP
 \fBTYPE.tcp.pollMax\fI
 Max connections to a TCP listener thread (default 128).
@@ -588,6 +646,125 @@ The number of source metrics with a non-zero value.
 .TP
 \fBactive\fP
 Returns 0 or 1 depending on whether any data points were present.
+
+.SS [Fetch]
+.PP
+\fBMinistry\fP can fetch data from sources using \fIlibcurl\fP, and does so on a regular cycle.
+Sources can be either text (line format or Prometheus text format) or in JSON.  \fBMinistry\fP
+will auto-detect JSON by looking at the \fIContent-Type\fP header, but will \fBnot\fP attempt to
+look at the data and guess.
+.PP
+Converting Prometheus metrics into graphite-style metrics is quite a complex process, as metrics
+intended for Prometheus have simple, snake-case paths and then labels with values.  Conversion is
+done according to a profile, which is a set of matches against paths, and then a set of labels to
+take as fields.  These are defined in the \fB[Metrics]\fP section below.
+.PP
+\fBMinistry supports TLS-enabled sources, and can validate certificates or not, as commanded in
+the config for each individual source.  If given a DNS name rather than an IP address, it will
+re-evaluate the DNS periodically to confirm the host exists, but will pass \fIlibcurl\fP the name
+provided in config.
+.PP
+As with other timed operations, \fBMinistry\fP's fetch timing is extremely precise, and it will
+not drift from the requested period and offset, even if the server is slow to respond.  There is
+no specified limit to the number of fetches that can be configured, but each one runs in its own
+thread.
+.PP
+A fetch is specified as a config block ending in a \fIdone\fP statement.  The options within it
+are as follows:
+.TP
+\fBname\fP
+The name of the fetch used in logging.
+.TP
+\fBenable\fP
+Whether this fetch is enabled (booleans, defaults to true).
+.TP
+\fBhost\fP
+The remote host to connect to.  This is passed directly to \fIlibcurl\fP.
+.TP
+\fBtls\fP
+Whether the connection should be over TLS or not (boolean, defaults to false).
+.TP
+\fBport\fP
+The remote port (defaults to 80 or 443, depending on \fBtls\fP settings).
+.TP
+\fBvalidate\fP
+Whether to attempt to validate certificates (boolean, defaults to true).
+.TP
+\fBperiod\fP
+Milliseconds between fetches (default 10000).
+.TP
+\fBoffset\fP
+Milliseconds delay from the top of the period (default 0).
+.TP
+\fBrevalidate\fP
+Milliseconds between revalidation of the DNS (default 0).
+.TP
+\fBprometheus\fP
+Whether this fetch will retrieve Prometheus metrics (boolean, defaults to false).
+.TP
+\fBtype\fP
+Which data type this is (\fIadder\fP, \fIstats\fP, etc), if not Prometheus data.
+.TP
+\fBprofile\fP
+Which named metrics profile to parse the data with.
+
+.SS [Metrics]
+.PP
+\fBMinistry\fP can consume Prometheus-style metrics (in it's text format) from fetch targets.
+However, conversion to graphite-style paths is complex, and may well require a lot of config.
+Individual Prometheus metrics look like:
+.EX
+	<path_name>{<label1>="<value1">,<label2>="<value2>",...} <value>[ <timestamp>]
+	eg http_request_duration{env="prod",host="prodweb05",type="homepage"} 1.502 1234567890500
+.EE
+.PP
+Labels are optional and the {} are absent if no labels are present.  A full specification of
+Prometheus metrics format is available on their website, \fIhttps://prometheus.io/docs/instrumenting/exposition_formats/.\fP
+.PP
+To cope with this complexity, \fBMinistry\fP has the concept of profiles, whereby a set of paths
+and labels are combined to make graphite-style data.  A profile consists of a set of maps, each
+being a regular expression list and set of labels with their ordering.  The lists are defined
+separately and referenced in the maps.
+.PP
+A list is defined as a config block with a \fIdone\fP statement terminating it.
+.TP
+\fBlist\fP
+The name of the list being defined.
+.TP
+\fBattribute\fP
+A couplet of label name and its order, separated by a comma (eg host:2).  This can repeat.
+.PP
+Profiles are also config blocks ending with a \fIdone\fP statement, but they contain maps, each
+also a block, but which are terminated either by the start of the next map, or the end of the
+profile block.
+.TP
+\fBprofile\fP
+The name of the profile being created.
+.TP
+\fBdefault\fP
+Is this the default profile when fetches do not specify one (boolean, defaults to false).
+.TP
+\fBdefaultList\fP
+The name of the attribute list this profile defaults to.
+.TP
+\fBpath\fP
+Direct mapping of a Prometheus path to a named list (eg http_request_duration:some-named-list).
+.TP
+\fBmap.begin\fP
+Statement beginning a map (does not require a value).
+.TP
+\fBmap.enable\fP
+Is this map enabled? (boolean, defaults to true).
+.TP
+\fBmap.list\fP
+Named attribute list that a match on this map applies.
+.TP
+\fBmap.last\fP
+When set to true, this means that a match on this list ends map processing.
+.TP
+\fBmap.regex.[match|fail]\fB
+Repeating element - a regular expression to match or fail map matching.  These are run in the order
+presented in config.
 
 .SH SEE ALSO
 .BR ministry (1)

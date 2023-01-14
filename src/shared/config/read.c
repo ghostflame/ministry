@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * config/read.c - read config files                                       *
 *                                                                         *
@@ -115,7 +127,7 @@ int config_ignore_section( FILE *fh )
 
 
 // always returns a new string
-char *config_relative_path( char *inpath )
+char *config_relative_path( const char *inpath )
 {
 	char *ret;
 	int len;
@@ -146,12 +158,11 @@ char *config_relative_path( char *inpath )
 int __config_handle_line( AVP *av )
 {
 	int ret = 0;
+	WORDS w;
 
 	// spot includes - they inherit context
-	if( !strcasecmp( av->aptr, "include" ) )
+	if( attIs( "include" ) )
 	{
-		WORDS w;
-
 		if( !chkcfFlag( READ_INCLUDE ) )
 		{
 			warn( "Ignoring include directive due to --no-include option." );
@@ -167,6 +178,18 @@ int __config_handle_line( AVP *av )
 		}
 
 		return 0;
+	}
+	else if( attIs( "include-dir" ) )
+	{
+		if( !chkcfFlag( READ_INCLUDE ) )
+		{
+			warn( "Ingoring include-dir directive due to --no-include option." );
+			return 0;
+		}
+
+		strwords( &w, av->vptr, av->vlen, ' ' );
+
+		return config_handle_dir( w.wd[0], &w );
 	}
 
 	debug( "Config line: %s = %s", av->aptr, av->vptr );
@@ -211,21 +234,26 @@ int __config_read_file( FILE *fh )
 			vcpy = (char *) allocz( vlen + 2 );
 			vtmp = (char *) allocz( vlen + iter_longest( it ) + 2 );
 
-			memcpy( vcpy, av.vptr, av.vlen );
-			vcpy[av.vlen] = '\0';
-
 			// blanks have an autoassigned '1' we want to ignore
 			// if you really want a 1 with arguments, put a 1
 			if( av.blank )
+			{
 				vlen = 0;
+			}
 			else
-			 	vtmp[vlen++] = ' ';
+			{
+				memcpy( vcpy, av.vptr, vlen );
+				vcpy[vlen++] = ' ';
+				vcpy[vlen] = '\0';
+			}
 
 			// run while arguments...
 			while( iter_next( it, &arg, &alen ) == 0 )
 			{
 				// copy the base - might be 0, might be base + space
-				memcpy( vtmp, vcpy, vlen );
+				if( vlen )
+					memcpy( vtmp, vcpy, vlen );
+
 				// add the latest arg
 				memcpy( vtmp + vlen, arg, alen );
 
@@ -241,11 +269,11 @@ int __config_read_file( FILE *fh )
 				lrv = __config_handle_line( &av );
 
 				ret += lrv;
-				if( lrv )
+				if( lrv < 0 )
 				{
 					err( "Bad config in file '%s', line %d (repeat arg %s)",
 						context->source, context->lineno, arg );
-					info( "Bad line: %s = %s", av.aptr, av.vptr );
+					info( "Bad line: %s = %s", av.att, av.val );
 					break;
 				}
 			}
@@ -262,7 +290,7 @@ int __config_read_file( FILE *fh )
 			lrv = __config_handle_line( &av );
 			ret += lrv;
 
-			if( lrv )
+			if( lrv < 0 )
 			{
 				err( "Bad config in file '%s', line %d", context->source, context->lineno );
 				info( "Bad line: %s = %s", av.aptr, av.vptr );
@@ -286,9 +314,12 @@ int __config_read_file( FILE *fh )
 
 
 
-int config_read_file( char *path, int fail_ok )
+int config_read_file( const char *path, int fail_ok )
 {
 	FILE *fh = NULL;
+
+	// add this to the watch tree
+	fs_treemon_add( _proc->cfiles, path, 0 );
 
 	// die on not reading main config file, warn on others
 	if( !( fh = fopen( path, "r" ) ) )
@@ -312,7 +343,7 @@ int config_read_file( char *path, int fail_ok )
 
 
 
-int config_read_url( char *url, int fail_ok )
+int config_read_url( const char *url, int fail_ok )
 {
 	CURLWH ch;
 	int ret;
@@ -330,7 +361,7 @@ int config_read_url( char *url, int fail_ok )
 	// force to file
 	setCurlFl( ch, TOFILE );
 
-	if( curlw_fetch( &ch ) )
+	if( curlw_fetch( &ch, NULL, 0 ) )
 	{
 		if( fail_ok )
 		{
@@ -355,7 +386,7 @@ int config_read_url( char *url, int fail_ok )
 #undef CErr
 
 
-int config_read( char *inpath, WORDS *w )
+int config_read( const char *inpath, WORDS *w )
 {
 	int ret = 0, p_url = 0, p_ssl = 0, s, fail_ok = 0;
 	char *path;
@@ -458,7 +489,7 @@ Read_Done:
 
 
 
-void config_choose_section( CCTXT *c, char *section )
+void config_choose_section( CCTXT *c, const char *section )
 {
 	int i;
 

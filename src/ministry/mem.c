@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * mem.c - memory control, free list management                            *
 *                                                                         *
@@ -12,12 +24,12 @@
 
 
 
-PTLIST *mem_new_point( void )
+PTLIST *mem_new_points( void )
 {
 	return (PTLIST *) mtype_new( ctl->mem->points );
 }
 
-void mem_free_point( PTLIST **p )
+void mem_free_points( PTLIST **p )
 {
 	PTLIST *sp;
 
@@ -32,7 +44,7 @@ void mem_free_point( PTLIST **p )
 	mtype_free( ctl->mem->points, sp );
 }
 
-void mem_free_point_list( PTLIST *list )
+void mem_free_points_list( PTLIST *list )
 {
 	PTLIST *p, *freed, *end;
 	int j = 0;
@@ -57,7 +69,7 @@ void mem_free_point_list( PTLIST *list )
 
 
 
-DHASH *mem_new_dhash( char *str, int len )
+DHASH *mem_new_dhash( const char *str, int len )
 {
 	DHASH *d = mtype_new( ctl->mem->dhash );
 
@@ -81,6 +93,14 @@ DHASH *mem_new_dhash( char *str, int len )
 	d->path[len] = '\0';
 	d->len = len;
 
+	// for now, base points to path
+	d->base = d->path;
+	d->blen = d->len;
+
+	// we need this but it starts empty
+	d->tags = "";
+	d->tlen = 0;
+
 	return d;
 }
 
@@ -96,15 +116,26 @@ void mem_free_dhash( DHASH **d )
 
 	*(sd->path)  = '\0';
 	sd->len      = 0;
+	sd->blen     = 0;
 	sd->in.total = 0;
 	sd->in.count = 0;
 	sd->type     = 0;
 	sd->valid    = 0;
 	sd->empty    = 0;
 
+	if( sd->tlen )
+	{
+		free( sd->tags );
+		free( sd->base );
+	}
+
+	sd->tlen = 0;
+	sd->base = NULL;
+	sd->tags = NULL;
+
 	if( sd->in.points )
 	{
-		mem_free_point_list( sd->in.points );
+		mem_free_points_list( sd->in.points );
 		sd->in.points = NULL;
 	}
 
@@ -132,12 +163,23 @@ void mem_free_dhash_list( DHASH *list )
 
 		*(d->path)  = '\0';
 		d->len      = 0;
+		d->blen     = 0;
 		d->in.total = 0;
 		d->in.count = 0;
 		d->type     = 0;
 		d->valid    = 0;
 		d->do_pass  = 0;
 		d->empty    = 0;
+
+		if( d->tlen )
+		{
+			free( d->tags );
+			free( d->base );
+		}
+
+		d->tlen = 0;
+		d->base = NULL;
+		d->tags = NULL;
 
 		if( d->in.points )
 		{
@@ -162,7 +204,7 @@ void mem_free_dhash_list( DHASH *list )
 	mtype_free_list( ctl->mem->dhash, j, freed, end );
 
 	if( ptfree )
-		mem_free_point_list( ptfree );
+		mem_free_points_list( ptfree );
 }
 
 
@@ -293,7 +335,7 @@ void mem_free_history_list( HIST *list )
 }
 
 
-METRY *mem_new_metry( char *str, int len )
+METRY *mem_new_metry( const char *str, int len )
 {
 	METRY *m = (METRY *) mtype_new( ctl->mem->metry );
 
@@ -358,17 +400,13 @@ MEMT_CTL *memt_config_defaults( void )
 {
 	MEMT_CTL *m;
 
-	m = (MEMT_CTL *) allocz( sizeof( MEMT_CTL ) );
+	m = (MEMT_CTL *) mem_perm( sizeof( MEMT_CTL ) );
 
 	m->points = mem_type_declare( "points", sizeof( PTLIST ), MEM_ALLOCSZ_POINTS, 0, 1 );
 	m->dhash  = mem_type_declare( "dhashs", sizeof( DHASH ),  MEM_ALLOCSZ_DHASH,  128, 1 ); // guess on path length
 	m->preds  = mem_type_declare( "preds",  sizeof( PRED ),   MEM_ALLOCSZ_PREDS,  0, 1 );
 	m->histy  = mem_type_declare( "histy",  sizeof( HIST ),   MEM_ALLOCSZ_HISTY,  480, 1 ); // guess on points
 	m->metry  = mem_type_declare( "metry",  sizeof( METRY ),  MEM_ALLOCSZ_METRY,  64, 1 );
-
-	m->gc_enabled   = 1;
-	m->gc_thresh    = DEFAULT_GC_THRESH;
-	m->gc_gg_thresh = DEFAULT_GC_GG_THRESH;
 
 	return m;
 }

@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * selfstats.c - self reporting functions
 *                                                                         *
@@ -42,15 +54,23 @@ void stats_self_report_mtypes( ST_THR *t )
 #undef __srmt_ct
 
 
+float stats_self_report_hash_ratio( ST_CFG *c )
+{
+	return (float) c->dcurr / (float) c->hsize;
+}
+
+
 
 void stats_self_report_types( ST_THR *t, ST_CFG *c )
 {
-	float hr = (float) c->dcurr / (float) c->hsize;
+	float hr = stats_self_report_hash_ratio( c );
 
-	bprintf( t, "paths.%s.curr %d",         c->name, c->dcurr );
-	bprintf( t, "paths.%s.gc %lu",          c->name, lockless_fetch( &(c->gc_count) ) );
-	bprintf( t, "paths.%s.gc_total %lu",    c->name, c->gc_count.count );
-	bprintf( t, "paths.%s.hash_ratio %.6f", c->name, hr );
+	bprintf( t, "paths.%s.curr %d",           c->name, c->dcurr );
+	bprintf( t, "paths.%s.gc %lu",            c->name, lockless_fetch( &(c->gc_count) ) );
+	bprintf( t, "paths.%s.gc_total %lu",      c->name, c->gc_count.count );
+	bprintf( t, "paths.%s.creates %lu",       c->name, lockless_fetch( &(c->creates) ) );
+	bprintf( t, "paths.%s.creates_total %lu", c->name, c->creates.count );
+	bprintf( t, "paths.%s.hash_ratio %.6f",   c->name, hr );
 }
 
 
@@ -102,12 +122,14 @@ void stats_self_stats_pass( ST_THR *t )
 	stats_self_report_nettype( t, ctl->net->stats );
 	stats_self_report_nettype( t, ctl->net->adder );
 	stats_self_report_nettype( t, ctl->net->gauge );
+	stats_self_report_nettype( t, ctl->net->histo );
 	stats_self_report_nettype( t, ctl->net->compat );
 
 	// stats types
 	stats_self_report_types( t, ctl->stats->stats );
 	stats_self_report_types( t, ctl->stats->adder );
 	stats_self_report_types( t, ctl->stats->gauge );
+	stats_self_report_types( t, ctl->stats->histo );
 
 	// memory
 	stats_self_report_mtypes( t );
@@ -139,10 +161,11 @@ void stats_thread_report( ST_THR *t )
 	bprintf( t, "%s.total %ld",  t->wkrstr, t->total  );
 
 	if( t->conf->type == STATS_TYPE_STATS )
-	{
 		bprintf( t, "%s.workspace %d", t->wkrstr, t->wkspcsz );
-		bprintf( t, "%s.highest %d",   t->wkrstr, t->highest );
-	}
+
+	if( t->conf->type == STATS_TYPE_STATS
+	 || t->conf->type == STATS_TYPE_HISTO )
+		bprintf( t, "%s.highest %d", t->wkrstr, t->highest );
 
 	// how many predictions?
 	if( t->predict )
@@ -190,20 +213,22 @@ void stats_thread_report( ST_THR *t )
 
 void stats_self_report_http_types( json_object *js, ST_CFG *c )
 {
-	float hr = (float) c->dcurr / (float) c->hsize;
-	json_object *jt, *jc;;
+	json_object *jt, *jc;
+	float hr;
+
+	hr = stats_self_report_hash_ratio( c );
 
 	jt = json_object_new_object( );
 	jc = json_object_new_object( );
 
-	json_object_object_add( jt, "curr",      json_object_new_double( c->dcurr ) );
-	json_object_object_add( jt, "hashRatio", json_object_new_double( hr ) );
+	json_insert( jt, "curr",      double, c->dcurr );
+	json_insert( jt, "hashRatio", double, hr );
 
-	json_object_object_add( jc, "curr",      json_object_new_int64( lockless_fetch( &(c->gc_count) ) ) );
-	json_object_object_add( jc, "total",     json_object_new_int64( c->gc_count.count ) );
+	json_insert( jc, "curr",      int64, lockless_fetch( &(c->gc_count) ) );
+	json_insert( jc, "total",     int64, c->gc_count.count );
 
-	json_object_object_add( jt, "gc",        jc );
-	json_object_object_add( js, c->name,     jt );
+	json_object_object_add( jt, "gc",    jc );
+	json_object_object_add( js, c->name, jt );
 }
 
 
@@ -216,10 +241,53 @@ int stats_self_stats_cb_stats( json_object *jo )
 	stats_self_report_http_types( js, ctl->stats->stats );
 	stats_self_report_http_types( js, ctl->stats->adder );
 	stats_self_report_http_types( js, ctl->stats->gauge );
+	stats_self_report_http_types( js, ctl->stats->histo );
 
 	json_object_object_add( jo, "statsTypes", js );
 
 	return 0;
+}
+
+
+int stats_self_health_ratio_one( json_object *jo, ST_CFG *c )
+{
+	json_object *js;
+	float hr;
+	int ht;
+
+	hr = stats_self_report_hash_ratio( c );
+	ht = ( hr > 0.3 ) ? 0 : 1;
+
+	js = json_object_new_object( );
+
+	json_insert( js, "hashRatio", double, hr );
+	json_insert( js, "healthy", int, ht );
+
+	json_object_object_add( jo, c->name, js );
+
+	return ht;
+}
+
+
+int stats_self_health_ratios( json_object *jo )
+{
+	json_object *js;
+	int ret = 0;
+
+	js = json_object_new_object( );
+
+	if( !stats_self_health_ratio_one( js, ctl->stats->stats ) )
+		ret = -1;
+	if( !stats_self_health_ratio_one( js, ctl->stats->adder ) )
+		ret = -1;
+	if( !stats_self_health_ratio_one( js, ctl->stats->gauge ) )
+		ret = -1;
+	if( !stats_self_health_ratio_one( js, ctl->stats->histo ) )
+		ret = -1;
+
+	json_object_object_add( jo, "hashHealth", js );
+
+	return ret;
 }
 
 

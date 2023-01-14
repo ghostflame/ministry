@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * strings/buf.c - routines handling string buf objects                    *
 *                                                                         *
@@ -8,7 +20,7 @@
 **************************************************************************/
 
 
-#include "shared.h"
+#include "local.h"
 
 
 // permanent string buffer
@@ -17,20 +29,31 @@ BUF *strbuf( uint32_t size )
 	BUF *b = (BUF *) allocz( sizeof( BUF ) );
 	size_t sz;
 
-	if( size )
-	{
-		// make a little room
-		if( size < 128 )
-			size += 24;
+	if( !size )
+		size = 128;
 
-		sz       = mem_alloc_size( size );
-		b->space = (char *) allocz( sz );
-		b->sz    = (uint32_t) sz;
-	}
+	// make a little room
+	if( size < 128 )
+		size += 24;
 
-	b->buf = b->space;
+	sz     = mem_alloc_size( size );
+	b->buf = (char *) allocz( sz );
+	b->sz  = (uint32_t) sz;
+
 	return b;
 }
+
+void strbuf_free( BUF *b )
+{
+	if( !b )
+		return;
+
+	if( b->buf )
+		free( b->buf );
+
+	free( b );
+}
+
 
 BUF *strbuf_resize( BUF *b, uint32_t size )
 {
@@ -50,25 +73,20 @@ BUF *strbuf_resize( BUF *b, uint32_t size )
 
 	if( sz > b->sz )
 	{
-		old = b->space;
+		old = b->buf;
 
-		b->space  = (char *) allocz( sz );
-		b->sz     = sz;
-		b->buf    = b->space;
+		b->buf = (char *) allocz( sz );
+		b->sz  = sz;
 
 		if( b->len > 0 )
-			memcpy( b->space, old, b->len );
-
-		free( old );
+			memcpy( b->buf, old, b->len );
 	}
-
-	b->len    = 0;
-	b->buf[0] = '\0';
 
 	return b;
 }
 
-BUF *strbuf_copy( BUF *b, char *str, int len )
+
+BUF *strbuf_copy( BUF *b, const char *str, int len )
 {
 	if( !len )
 		len = strlen( str );
@@ -81,12 +99,33 @@ BUF *strbuf_copy( BUF *b, char *str, int len )
 
 	memcpy( b->buf, str, len );
 	b->len = len;
-	b->buf[b->len] = '\0';
+
+	buf_terminate( b );
 
 	return b;
 }
 
-BUF *strbuf_add( BUF *b, char *str, int len )
+int strbuf_copymax( BUF *b, const char *str, int len )
+{
+	int max;
+
+	if( !len )
+		len = strlen( str );
+
+	max = (int) ( b->sz - 1 );
+	if( len > max )
+		len = max;
+
+	memcpy( b->buf, str, len );
+	b->len = len;
+
+	buf_terminate( b );
+
+	return len;
+}
+
+
+BUF *strbuf_add( BUF *b, const char *str, int len )
 {
 	if( !len )
 		len = strlen( str );
@@ -99,7 +138,8 @@ BUF *strbuf_add( BUF *b, char *str, int len )
 
 	memcpy( b->buf + b->len, str, len );
 	b->len += len;
-	b->buf[b->len] = '\0';
+
+	buf_terminate( b );
 
 	return b;
 }
@@ -117,11 +157,10 @@ BUF *strbuf_json( BUF *b, json_object *o, int done )
 	if( (uint32_t) l > b->sz )
 		strbuf_resize( b, l + 2 );
 
-	memcpy( b->buf, str, (int) l );
-	b->buf[l++] = '\n';
-	b->buf[l] = '\0';
-
 	b->len = (uint32_t) l;
+	memcpy( b->buf, str, b->len );
+
+	buf_terminate( b );
 
 	if( done )
 		json_object_put( o );
@@ -129,7 +168,7 @@ BUF *strbuf_json( BUF *b, json_object *o, int done )
 	return b;
 }
 
-BUF *strbuf_create( char *str, int len )
+BUF *strbuf_create( const char *str, int len )
 {
 	int k, l;
 	BUF *b;
@@ -144,5 +183,35 @@ BUF *strbuf_create( char *str, int len )
 	strbuf_add( b, str, len );
 
 	return b;
+}
+
+
+// keep the data from the end of the buffer
+// put it at the start of the buffer
+void strbuf_keep( BUF *b, int len )
+{
+    register uint32_t l = len;
+    register char *p, *q;
+
+    if( l > b->len )
+        return;
+
+    if( l > 0 )
+    {
+        p = b->buf + ( b->len - l );
+
+        if( p > ( b->buf + l ) )
+            memcpy( b->buf, p, l );
+        else
+        {
+            q = b->buf;
+            while( l-- ) {
+                *q++ = *p++;
+            }
+        }
+    }
+
+    b->len = (uint32_t) len;
+    buf_terminate( b );
 }
 

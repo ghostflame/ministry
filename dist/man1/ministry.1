@@ -18,7 +18,7 @@ The main options are:
 \fB\-h\fR
 print help
 .TP
-\fB-v\fR
+\fB\-v\fR
 print version and exit
 .TP
 \fB\-t\fR
@@ -26,9 +26,6 @@ just test config and exit
 .TP
 \fB\-c\fR \fI<FILE|URI>\fR
 select config source instead of default file
-.TP
-\fB\-C\fR \fI<FILE|URI>\fR
-as -c but with strict processing
 .TP
 \fB\-E\fR
 disable reading variables from the environment
@@ -39,11 +36,20 @@ override the prefix for environment variable
 \fB\-F\fR
 disable reading config source (environment only)
 .TP
+\fB\-R\fR
+disable all including of other config
+.TP
 \fB\-U\fR
 disable reading any URI config (even if given with -c)
 .TP
 \fB\-u\fR
 disable URI config including other URI configs
+.TP
+\fB\-X\fR
+disable matching of config file suffix in include-dir
+.TP
+\fB\-x\fR \fI<suffix>\fR
+Set config file suffix for include-dir
 .TP
 \fB\-i\fR
 allow insecure URI's
@@ -59,6 +65,12 @@ Validate the certificates of any secure URI's
 .TP
 \fB\-W\fR
 Permit invalid certificates from fetch targets even if we are validating config certificates.
+.TP
+\fB\-x\fR \fI<suffix>\fR
+Set config file suffix filter for include-dir
+.TP
+\fB\-X\fR
+Disable matching config file suffix for include-dir (match all files)
 .TP
 \fB\-d\fR
 run in daemon mode (background)
@@ -83,25 +95,46 @@ It may use the keyword \fBinclude\fR to read in another file - the current secti
 .PP
 The default config file is /etc/ministry/ministry.conf
 .SH Behaviour
+.SS Line Ports
 .PP
-\fBMinistry\fR performs three separate functions, each storing data against input paths, which are
+\fBMinistry\fR performs four separate functions, each storing data against input paths, which are
 graphite-style, dot-delimited, directory-safe strings.  Those functions are: summation of data,
-keeping gauge values, and generating simple statistics about input values.
+keeping gauge values, generating histograms of input data and generating simple statistics about
+input values.
 .PP
 The stats port creates an array of values against the path and at submission time this array is
 sorted to assess the lowest, highest and median value.  Any configured threshold values are also
 calculated.  Then the data is summed to create the arithmetic mean.  The count is also submitted.
-.SH Formats
 .PP
-\fBMinistry\fR accepts data in two formats; a subset of the statsd format and a simpler, new format
-specific to \fBministry\fR.  The new format is:
+The histogram port expects to be configured with sets of histogram bounds, and regular expressions
+to match against incoming data, so permit it to calculate the count of each bucket.
+.SS Web Server
+.PP
+\fBMinistry\fR can run a webserver, powered by \fIlibmicrohttpd\fR, which both permits some control
+of the application during runtime, provides a /metrics endpoint for \fIPrometheus\fR and also four
+/submit/XXXX endpoints for data submission.  This is, naturally, not as performant as the line ports.
+It can receive either line data or JSON data - the latter must be signalled with the Content-Type.
+.SS Fetching Over HTTP
+.PP
+\fBMinistry\fR can also fetch data using HTTP(S), powered by \fIlibcurl\fR, and can be configured
+with endpoints which may also be either line data, or JSON data - again, a JSON Content-Type will
+trigger that parsing.
+.PP
+Also available is parsing of /metrics endpoints, intended for \fIPrometheus\fR.  \fBMinistry\fR
+requires considerable configuration to successfully parse these endpoints, due to the very different
+nature of the data - the config must map labels to field paths to generate output.
+.SH Formats
+.SS Line Format
+.PP
+\fBMinistry\fR accepts data in two line formats; a subset of the \fIStatsd\fR format and a simpler,
+new format specific to \fBministry\fR.  The new format is:
 .TP
 \fBpath\fR(dot-delimited string) \fIvalue\fR(double)\\n
 .PP
-\fBMinistry\fR would normally listen on three ports (or sets of ports) to delineate stats traffic
-from adder traffic.
+\fBMinistry\fR would normally listen on four ports (or sets of ports) to delineate different types
+of traffic.
 .PP
-The subset of statsd formats supported is:
+The subset of \fIStatsd\fR formats supported is:
 .TP
 \fBpath\fR(dot-delimited string):\fIvalue\fR(float)|ms\\n
 .TP
@@ -112,12 +145,30 @@ The subset of statsd formats supported is:
 The first format is used to create stats, the second to aggregate values submitted - they are just
 added up - and the third for gauges - keeping track of differences in a value.
 .PP
-Ministry accepts on either type of port a plain line consisting entirely of:
+\fBMinistry\fR does not recognise the sampling rate construct from \fIStatsd\fR formats; it is
+capable of such a rate of data ingestion that it is simply better to send everything.
+.SS Keepalives
+.PP
+\fBMinistry\fR accepts a simple keepalive to prevent connections from being reaped for inactivity.
+The line is ignored but resets the last-metric timer.  It consists entirely of:
 .TP
 \fBkeepalive\fR\\n
 .PP
-This will prevent connections from being reaped by ministry if no actual metrics are sent over them.
-This line is otherwise ignored.
+.SS Graphite Tags
+.PP
+\fBMinistry\fP supports the new tags format in graphite 1.1 and higher, meaning in the new format
+given above, \fBpath\fP can be \fBdot-delimited-path;var=val;var=val...\fP \fIvalue\fR(double)\\n
+.PP
+This is supported even with stats metrics, where the tags must be transplanted onto the end of the
+path suffixes of \fI.count\fP, \fI.upper\fP, \fI.lower\fP, etc.
+.SS JSON Format
+.PP
+\fBMinistry\fR accepts JSON in both fetched data and posted data.  The expected JSON format is:
+.EX
+[ { "path": "<path>", "values": [ <values, either strings or double> ]}, ... ]
+.EE
+.PP
+\fBNote\fP, gauge values may have to be strings, as "\fB+3.0\fR" has different meaning to "\fB3\fR".
 .SH Threading
 .PP
 \fBMinistry\fR can open up a number of ports, listening on both TCP and UDP for data.  The threading

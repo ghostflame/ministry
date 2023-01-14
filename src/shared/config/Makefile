@@ -1,6 +1,6 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-FILES  = args context env read config
+FILES  = args context dir env read config
 HEADS  = local config
 
 VERS  ?= 0.1.0
@@ -12,7 +12,7 @@ HDRS   = $(HEADS:%=%.h)
 
 WFLAGS = -Wall -Wshadow
 IFLAGS = -I. -I..
-DFLAGS = -g -pg -ggdb3 -DDEBUG
+DFLAGS = -g -pg -ggdb3 -DMINDEBUG
 TFLAGS = -pthread
 CFLAGS = -c $(TFLAGS) $(IFLAGS) -DVERSION_STRING='"$(VERS)"' $(EARGS)
 

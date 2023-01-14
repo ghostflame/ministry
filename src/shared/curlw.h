@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * curlw.h - defines curl wrapper functions                                *
 *                                                                         *
@@ -44,6 +56,8 @@
 #define CURLW_FLAG_TOFILE			0x0020
 #define CURLW_FLAG_PARSE_JSON		0x0040
 #define CURLW_FLAG_TIMINGS			0x0080
+#define CURLW_FLAG_SEND_JSON		0x0100
+#define CURLW_FLAG_DEBUG			0x8000
 
 #define setCurlF( _h, F )			_h->flags |= CURLW_FLAG_##F
 #define cutCurlF( _h, F )			_h->flags &= ~CURLW_FLAG_##F
@@ -58,12 +72,6 @@
 #define JSON_CONTENT_TYPE_LEN		16
 
 
-struct curlw_container
-{
-	CURL						*	handle;
-	struct curl_slist			*	hdrs;
-};
-
 struct curlw_times
 {
 	double							dns;
@@ -77,22 +85,25 @@ struct curlw_times
 
 struct curlw_handle
 {
-	char						*	url;
+	const char					*	url;
+	char						*	proxy;
 	FILE						*	fh;			// may be allocated by curl_to_buffer
-	CURLWC						*	ctr;		// container for libcurl objects
+	struct curl_slist			*	hdrs;
 	CURLWT						*	times;		// timings for the fetch
 	IOBUF						*	iobuf;		// may be allocated by curl_to_buffer
 	int64_t							size;		// filled in after fetch
 	int								flags;		// fetch flags
+	int								error;		// setup error
 	curlw_cb					*	cb;			// callback for full iobuf
 	curlw_jcb					*	jcb;		// callback for json object
 	void						*	arg;		// argument for callback
-	json_object					*	jso;		// parsed json object
+	JSON						*	jso;		// parsed json object
 };
 
 
-// fetch to iobuf or file
-int curlw_fetch( CURLWH *ch );
+// fetch to iobuf or file; send data to POST
+int curlw_fetch( CURLWH *ch, char *data, size_t len );
+CURLWH *curlw_handle( char *url, int flags, curlw_cb *cb, curlw_jcb *jcb, void *arg, IOBUF *buf );
 
 
 #endif

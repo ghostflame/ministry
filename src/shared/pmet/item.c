@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * pmet/item.c - functions to provide prometheus metrics items             *
 *                                                                         *
@@ -45,7 +57,7 @@ PMET *pmet_item_create( PMETM *metric, PMETS *source, int gentype, void *genptr,
 		}
 	}
 
-	item = (PMET *) allocz( sizeof( PMET ) );
+	item = (PMET *) mem_perm( sizeof( PMET ) );
 	item->metric = metric;
 	item->source = source;
 	item->type = metric->type->type;
@@ -60,11 +72,11 @@ PMET *pmet_item_create( PMETM *metric, PMETS *source, int gentype, void *genptr,
 	switch( item->type )
 	{
 		case PMET_TYPE_SUMMARY:
-			item->value.summ = (PMET_SUMM *) allocz( sizeof( PMET_SUMM ) );
+			item->value.summ = (PMET_SUMM *) mem_perm( sizeof( PMET_SUMM ) );
 			break;
 
 		case PMET_TYPE_HISTOGRAM:
-			item->value.hist = (PMET_HIST *) allocz( sizeof( PMET_HIST ) );
+			item->value.hist = (PMET_HIST *) mem_perm( sizeof( PMET_HIST ) );
 			break;
 	}
 
@@ -83,7 +95,7 @@ PMET *pmet_item_create( PMETM *metric, PMETS *source, int gentype, void *genptr,
 
 
 // useful for making a set of items with different labels
-PMET *pmet_item_clone( PMET *item, PMETS *source, void *genptr, pmet_gen_fn *fp, void *genarg )
+PMET *pmet_item_clone( PMET *item, PMETS *source, void *genptr, pmet_gen_fn *fp, void *genarg, PMET_LBL *lbl )
 {
 	void *ga;
 	PMET *i;
@@ -105,7 +117,8 @@ PMET *pmet_item_clone( PMET *item, PMETS *source, void *genptr, pmet_gen_fn *fp,
 	// recreate the labels, because they are a list
 	// and we may add a new label to each of them
 	// cloned items
-	i->labels = pmet_label_clone( item->labels, -1 );
+	// the last arg is a way of varying the labels by one
+	i->labels = pmet_label_clone( item->labels, -1, lbl );
 
 	// and clone histogram/summary setup
 	switch( item->type )
@@ -124,5 +137,6 @@ PMET *pmet_item_clone( PMET *item, PMETS *source, void *genptr, pmet_gen_fn *fp,
 
 	return i;
 }
+
 
 

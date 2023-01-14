@@ -1,6 +1,19 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
+*                                                                         *
 *                                                                         *
 * metrics/metrics.c - functions for prometheus-style metrics              *
 *                                                                         *
@@ -368,19 +381,19 @@ void metrics_parse_line( FETCH *f, char *line, int len )
 void metrics_fetch_cb( void *arg, IOBUF *b )
 {
 	FETCH *f = (FETCH *) arg;
-	char *q, *s = b->buf;
+	char *q, *s = b->bf->buf;
 	int len, l;
 
 	// we need attributes and other things from the fetch
 	if( !f )
 		return;
 
-	len = b->len;
+	len = b->bf->len;
 
 	while( len > 0 )
 	{
 		// look for newlines
-		if( !( q = memchr( s, LINE_SEPARATOR, len ) ) )
+		if( !( q = memchr( s, LINE_SEP_CHAR, len ) ) )
 			// and we're done, with len > 0
 			break;
 
@@ -404,7 +417,7 @@ void metrics_fetch_cb( void *arg, IOBUF *b )
 	}
 
 	// and update the buffer length
-	io_buf_keep( b, len );
+	strbuf_keep( b->bf, len );
 }
 
 

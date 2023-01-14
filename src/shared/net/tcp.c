@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * tcp.c - handles TCP connections                                         *
 *                                                                         *
@@ -70,7 +82,7 @@ const struct tcp_style_data tcp_styles[TCP_STYLE_MAX] =
 
 void tcp_close_host( HOST *h )
 {
-	io_disconnect( h->net );
+	io_disconnect( h->net, 1 );
 	debug( "Closed connection from host %s.", h->net->name );
 
 	if( _net->host_finish )
@@ -118,7 +130,7 @@ HOST *tcp_get_host( int sock, NET_PORT *np )
 		return NULL;
 	}
 
-	// are we doing blacklisting/whitelisting?
+	// are we doing filtering?
 	if( net_ip_check( _net->filter, &from ) != 0 )
 	{
 		if( _net->filter && _net->filter->verbose )

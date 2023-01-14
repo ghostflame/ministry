@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * target.h - defines network targets                                      *
 *                                                                         *
@@ -10,15 +22,11 @@
 #ifndef SHARED_TARGET_H
 #define SHARED_TARGET_H
 
-#ifdef DEBUG
-#define tgdebug( fmt, ... )		debug( "[%d:%s] " fmt, t->id, t->name, ##__VA_ARGS__ )
-#else
-#define tgdebug( fmt, ... )
-#endif
-
+#define tgdebug( fmt, ... )		debug(  "[%d:%s] " fmt, t->id, t->name, ##__VA_ARGS__ )
 #define tginfo( fmt, ... )		info(   "[%d:%s] " fmt, t->id, t->name, ##__VA_ARGS__ )
 #define tgnotice( fmt, ... )	notice( "[%d:%s] " fmt, t->id, t->name, ##__VA_ARGS__ )
-
+#define tgwarn( fmt, ... )		warn(   "[%d:%s] " fmt, t->id, t->name, ##__VA_ARGS__ )
+#define tgerr( fmt, ... )		err(    "[%d:%s] " fmt, t->id, t->name, ##__VA_ARGS__ )
 
 
 
@@ -29,8 +37,6 @@ typedef pthread_spinlock_t io_lock_t;
 #define io_lock_init( l )		pthread_spin_init(    &(l), PTHREAD_PROCESS_PRIVATE )
 #define io_lock_destroy( l )	pthread_spin_destroy( &(l) )
 
-#define lock_target( t )		pthread_spin_lock(   &(t->lock) )
-#define unlock_target( t )		pthread_spin_unlock( &(t->lock) )
 #define target_set_id( t )		pthread_spin_lock( &(_proc->io->idlock) ); t->id = ++(_proc->io->tgt_id); pthread_spin_unlock( &(_proc->io->idlock) );
 
 // this is measured against the buffer size; the bitshift should mask off at least buffer size
@@ -44,8 +50,6 @@ typedef pthread_mutex_t io_lock_t;
 #define io_lock_init( l )		pthread_mutex_init(    &(l), NULL )
 #define io_lock_destroy( l )	pthread_mutex_destroy( &(l) )
 
-#define lock_target( t )		pthread_mutex_lock(   &(t->lock) )
-#define unlock_target( t )		pthread_mutex_unlock( &(t->lock) )
 #define target_set_id( t )		pthread_mutex_lock( &(_proc->io->idlock) ); t->id = ++(_proc->io->tgt_id); pthread_mutex_unlock( &(_proc->io->idlock) );
 
 // this is measured against the buffer size; the bitshift should mask off at least buffer size
@@ -56,6 +60,11 @@ typedef pthread_mutex_t io_lock_t;
 
 
 
+#define TGT_FLAG_ENABLED		0x00000001
+#define TGT_FLAG_STDOUT			0x00000002
+#define TGT_FLAG_TLS			IO_TLS
+#define TGT_FLAG_TLS_VERIFY		IO_TLS_VERIFY
+
 
 struct target
 {
@@ -63,18 +72,23 @@ struct target
 	TGTL				*	list;
 	char				*	name;
 	char				*	host;
+	char				*	path;
 	char				*	typestr;
 	char				*	handle;
 
 	// io data
 	SOCK				*	sock;
+	FILE				*	fh;
 	io_fn				*	iofp;
 
+	// metrics data
+	PMET				*	pm_bytes;
+	PMET				*	pm_conn;
+	PMET_LBL			*	pm_lbls;
+
 	// io queue
-	IOBP				*	head;
-	IOBP				*	tail;
-	int32_t					curr;
-	int32_t					max;
+	MEMHL				*	queue;
+	int64_t					max;
 
 	// current buffer
 	int32_t					curr_off;
@@ -85,18 +99,12 @@ struct target
 	int32_t					rc_limit;
 
 	// misc
-	io_lock_t				lock;
 	int64_t					bytes;
-	int						to_stdout;
-	int						enabled;
-	int						proto;
-	int						nlen;
-	int32_t					id;
+	uint32_t				flags;
 	uint16_t				port;
-
-	PMET				*	pm_bytes;
-	PMET				*	pm_conn;
-	PMET_LBL			*	pm_lbls;
+	int16_t					nlen;
+	int32_t					id;
+	int8_t					proto;
 
 	// for callers to fill in
 	void				*	ptr;
@@ -111,15 +119,6 @@ struct target_list
 	TGT					*	targets;
 	int						count;
 	int						enabled;
-};
-
-
-struct target_alter
-{
-	TGTL				*	list;
-	TGT					*	tgt;
-	int						state_set;
-	int						state;
 };
 
 
@@ -144,6 +143,8 @@ struct target_control
 };
 
 
+// write to all targets
+void target_write_all( IOBUF *buf );
 
 // run targets (list is optional)
 int target_run_one( TGT *t, int idx );
@@ -171,6 +172,6 @@ throw_fn target_loop;
 void target_set_handle( TGT *t, char *prefix );
 
 TGT_CTL *target_config_defaults( void );
-int target_config_line( AVP *av );
+conf_line_fn target_config_line;
 
 #endif

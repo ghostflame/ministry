@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * udp.c - handles connectionless data receiving                           *
 *                                                                         *
@@ -84,9 +96,10 @@ void udp_loop_checks( THRD *t )
 	NET_PORT *n;
 	NET_PFX *p;
 	IPNET *ipn;
-	IOBUF *b;
+	int sz, rb;
+	IOBUF *ib;
 	HOST *h;
-	int sz;
+	BUF *b;
 
 	n = (NET_PORT *) t->arg;
 
@@ -95,11 +108,12 @@ void udp_loop_checks( THRD *t )
 	sa.sin_port = htons( n->port );
 
 	// make some space for hosts
-	n->phosts = (HOST **) allocz( NET_IP_HASHSZ * sizeof( HOST * ) );
+	n->phosts = (HOST **) mem_perm( NET_IP_HASHSZ * sizeof( HOST * ) );
 	n->phsz = NET_IP_HASHSZ;
 
-	h = mem_new_host( &sa, NET_BUF_SZ );
-	b = h->net->in;
+	h  = mem_new_host( &sa, NET_BUF_SZ );
+	ib = h->net->in;
+	b  = ib->bf;
 
 	h->type = n->type;
 
@@ -121,7 +135,7 @@ void udp_loop_checks( THRD *t )
 	{
 		// get a packet, set the from
 		sl = sizeof( struct sockaddr_in );
-		if( ( b->len = recvfrom( n->fd, b->buf, sz, 0, sp, &sl ) ) < 0 )
+		if( ( rb = recvfrom( n->fd, b->buf, sz, 0, sp, &sl ) ) < 0 )
 		{
 			if( errno == EINTR || errno == EAGAIN )
 				continue;
@@ -131,10 +145,12 @@ void udp_loop_checks( THRD *t )
 			loop_end( "receive error on udp socket" );
 			break;
 		}
-		else if( !b->len )
+		else if( !rb )
 			continue;
 
-		// do IP whitelist/blacklist check
+		b->len = rb;
+
+		// do IP filter check
 		if( net_ip_check( _net->filter, h->peer ) != 0 )
 		{
 			++(n->drops.count);
@@ -150,7 +166,7 @@ void udp_loop_checks( THRD *t )
 			b->buf[b->len++]  = '\n';
 
 		// and make sure to cap it all
-		b->buf[b->len] = '\0';
+		buf_terminate( b );
 
 		// do a prefix check on that
 		for( p = _net->prefix; p; p = p->next )
@@ -158,9 +174,9 @@ void udp_loop_checks( THRD *t )
 				break;
 
 		if( ipn && ipn->tlen )
-			(*(h->receiver))( udp_get_phost( n, ipn ), b );
+			(*(h->receiver))( udp_get_phost( n, ipn ), ib );
 		else
-			(*(h->receiver))( h, b );
+			(*(h->receiver))( h, ib );
 	}
 
 	loop_mark_done( "udp", 0, 0 );
@@ -177,9 +193,10 @@ void udp_loop_flat( THRD *t )
 	struct sockaddr *sp;
 	socklen_t sl;
 	NET_PORT *n;
-	IOBUF *b;
+	int sz, rb;
+	IOBUF *ib;
 	HOST *h;
-	int sz;
+	BUF *b;
 
 	n = (NET_PORT *) t->arg;
 
@@ -187,8 +204,9 @@ void udp_loop_flat( THRD *t )
 	sa.sin_addr.s_addr = n->ip;
 	sa.sin_port = htons( n->port );
 
-	h = mem_new_host( &sa, NET_BUF_SZ );
-	b = h->net->in;
+	h  = mem_new_host( &sa, NET_BUF_SZ );
+	ib = h->net->in;
+	b  = ib->bf;
 
 	h->type   = n->type;
 	// for now we don't do prefixing or tokens on UDP
@@ -205,7 +223,7 @@ void udp_loop_flat( THRD *t )
 	{
 		// get a packet, set the from
 		sl = sizeof( struct sockaddr_in );
-		if( ( b->len = recvfrom( n->fd, b->buf, sz, 0, sp, &sl ) ) < 0 )
+		if( ( rb = recvfrom( n->fd, b->buf, sz, 0, sp, &sl ) ) < 0 )
 		{
 			if( errno == EINTR || errno == EAGAIN )
 				continue;
@@ -215,8 +233,10 @@ void udp_loop_flat( THRD *t )
 			loop_end( "receive error on udp socket" );
 			break;
 		}
-		else if( !b->len )
+		else if( !rb )
 			continue;
+
+		b->len = rb;
 
 		++(n->accepts.count);
 
@@ -227,10 +247,10 @@ void udp_loop_flat( THRD *t )
 			b->buf[b->len++]  = '\n';
 
 		// and make sure to cap it all
-		b->buf[b->len] = '\0';
+		buf_terminate( b );
 
 		// and try to parse that log
-		(*(h->receiver))( h, b );
+		(*(h->receiver))( h, ib );
 	}
 
 	loop_mark_done( "udp", 0, 0 );

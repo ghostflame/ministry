@@ -1,0 +1,29 @@
+[Unit]
+Description=The Ministry of Statistics Archive server
+After=network.target
+
+[Service]
+Type=forking
+Restart=on-abnormal
+User=ministry
+Group=ministry
+PermissionsStartOnly=true
+
+# set higher limits than defaults - ministry needs resources
+# ministry needs an fd per connected client
+LimitNOFILE=131072
+# ministry has a process per connected client, plus some
+LimitNPROC=65536
+
+ExecStartPre=/bin/mkdir -p -m755 /run/archivist
+ExecStartPre=/bin/chown ministry:ministry /run/archivist
+PIDFile=/run/ministry/archivist.pid
+
+ExecStart=/usr/bin/archivist -p /run/ministry/archivist.pid -d
+
+# allow a while for shutdown, depending on how busy it is
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target
+

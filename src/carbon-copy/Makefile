@@ -11,13 +11,12 @@ SUBO   = $(SUBS:%=%/*.o)
 RKVS   = ../shared/app_shared.a
 
 EARGS ?=
-LARGS ?=
+LARGS ?= -lm -lcurl -lmicrohttpd -ljson-c
 
 WFLAGS = -Wall -Wshadow
 #IFLAGS = -I. -I../shared
 IFLAGS = -I.
-#DFLAGS = -g -pg -ggdb3 -DDEBUG -DDEBUG_IO -DDEBUG_RELAY
-DFLAGS = -g -pg -ggdb3 -DDEBUG
+DFLAGS = -g -pg -ggdb3 -DMINDEBUG
 TFLAGS = -pthread
 CFLAGS = $(TFLAGS) $(IFLAGS) $(EARGS)
 LFLAGS = $(TFLAGS) $(IFLAGS) $(LARGS)
@@ -46,7 +45,7 @@ with_old_gcc:  subs
 with_old_gcc:  $(BIN)
 
 subs:
-	@for d in $(SUBS); do ( cd $$d && $(MAKE) $(MFLAGS) $(TARGET) ); done
+	@for d in $(SUBS); do ( cd $$d && $(MAKE) -j4 $(MFLAGS) $(TARGET) ); done
 
 $(BIN): $(HDRS) $(OBJS)
 	$(CC) -o $(BIN) $(LFLAGS) $(OBJS) $(SUBO) $(RKVS)

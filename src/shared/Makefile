@@ -1,9 +1,9 @@
 CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
 
-SUBS   = config log mem pmet http ha utils strings io target net
+SUBS   = config log mem fs pmet http iplist slack ha utils strings io target net rkv
 
-FILES  = iter regexp curlw iplist thread loop app
-HEADS  = iter regexp curlw iplist thread loop app run json
+FILES  = regexp curlw thread app
+HEADS  = regexp curlw thread app run json
 
 VERS  ?= 0.1.0
 RKV    = app_shared.a
@@ -15,7 +15,7 @@ SUBO   = $(SUBS:%=%/*.o)
 
 WFLAGS = -Wall -Wshadow
 IFLAGS = -I. 
-DFLAGS = -g -pg -ggdb3 -DDEBUG
+DFLAGS = -g -pg -ggdb3 -DMINDEBUG
 TFLAGS = -pthread
 CFLAGS = -c $(TFLAGS) $(IFLAGS) $(EARGS)
 #CFLAGS = -c $(TFLAGS) $(IFLAGS) -DMIN_MHD_PASS=0
@@ -40,7 +40,7 @@ with_old_gcc: $(RKV)
 
 
 subs:
-	for d in $(SUBS); do ( cd $$d && EARGS=$(EARGS) VERS=$(VERS) $(MAKE) $(MFLAGS) $(TARGET) ); done
+	for d in $(SUBS); do ( cd $$d && EARGS=$(EARGS) VERS=$(VERS) $(MAKE) -j10 $(MFLAGS) $(TARGET) ); done
 
 $(RKV): $(OBJS)
 	ar crs $(RKV) $(OBJS) $(SUBO)

@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * net/conf.c - handles network configuration                              *
 *                                                                         *
@@ -74,7 +86,7 @@ void net_host_callbacks( tcp_fn *setup, tcp_fn *finish )
 
 NET_CTL *net_config_defaults( void )
 {
-	_net              = (NET_CTL *) allocz( sizeof( NET_CTL ) );
+	_net              = (NET_CTL *) mem_perm( sizeof( NET_CTL ) );
 	_net->dead_time   = NET_DEAD_CONN_TIMER;
 	_net->rcv_tmout   = NET_RCV_TMOUT;
 
@@ -111,8 +123,8 @@ int net_add_prefixes( char *name, int len )
 		}
 
 	p = (NET_PFX *) allocz( sizeof( NET_PFX ) );
-	p->name = str_dup( w.wd[0], w.len[0] );
-	p->text = str_dup( w.wd[1], w.len[1] );
+	p->name = str_perm( w.wd[0], w.len[0] );
+	p->text = str_perm( w.wd[1], w.len[1] );
 
 	p->next = _net->prefix;
 	_net->prefix = p;
@@ -151,7 +163,7 @@ int net_config_line( AVP *av )
 		}
 		else if( attIs( "filterList" ) )
 		{
-			_net->filter_list = str_copy( av->vptr, av->vlen );
+			_net->filter_list = av_copy( av );
 		}
 		else
 			return -1;
@@ -199,7 +211,7 @@ int net_config_line( AVP *av )
 			if( _net->tokens->filter_name )
 				free( _net->tokens->filter_name );
 
-			_net->tokens->filter_name = str_copy( av->vptr, av->vlen );
+			_net->tokens->filter_name = av_copy( av );
 		}
 		else
 			return -1;
@@ -363,13 +375,13 @@ int net_config_line( AVP *av )
 			if( w->wc > 0 )
 			{
 				nt->udp_count = w->wc;
-				nt->udp       = (NET_PORT **) allocz( w->wc * sizeof( NET_PORT * ) );
+				nt->udp       = (NET_PORT **) mem_perm( w->wc * sizeof( NET_PORT * ) );
 
 				debug( "Discovered %d udp ports for %s", w->wc, nt->label );
 
 				for( i = 0; i < w->wc; ++i )
 				{
-					nt->udp[i]       = (NET_PORT *) allocz( sizeof( NET_PORT ) );
+					nt->udp[i]       = (NET_PORT *) mem_perm( sizeof( NET_PORT ) );
 					nt->udp[i]->port = (unsigned short) strtoul( w->wd[i], NULL, 10 );
 					nt->udp[i]->type = nt;
 				}

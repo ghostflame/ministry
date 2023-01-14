@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * main.c - program entry and startup/shutdown                             *
 *                                                                         *
@@ -41,10 +53,11 @@ void main_loop( void )
 	io_stop( );
 }
 
+RCTL *ctl = NULL;
 
 void main_create_conf( void )
 {
-	ctl				= (RCTL *) allocz( sizeof( RCTL ) );
+	ctl				= (RCTL *) mem_perm( sizeof( RCTL ) );
 	ctl->proc		= app_control( );
 	ctl->mem		= memt_config_defaults( );
 	ctl->relay		= relay_config_defaults( );
@@ -58,13 +71,16 @@ void main_create_conf( void )
 
 
 
-int main( int ac, char **av, char **env )
+int main( int ac, char **av, const char **env )
 {
 	char *pidfile = NULL, *optstr;
 	int oc;
 
 	// start us up
-	app_init( "carbon-copy", "ministry" );
+	app_init( "carbon-copy", "ministry", RUN_NO_RKV );
+
+	// set out default HTTP ports
+	http_set_default_ports( CC_DEFAULT_HTTP_PORT, CC_DEFAULT_HTTPS_PORT );
 
 	if( !( optstr = config_arg_string( "p:" ) ) )
 		return 1;
@@ -83,6 +99,8 @@ int main( int ac, char **av, char **env )
 				break;
 		}
 
+	mem_set_max_kb( DEFAULT_CC_MAX_KB );
+
 	// read our env; has to happen before parsing config
 	// because we might get handed a config file in env
 	config_read_env( env );
@@ -97,7 +115,6 @@ int main( int ac, char **av, char **env )
 	if( pidfile )
 		snprintf( ctl->proc->pidfile, CONF_LINE_MAX, "%s", pidfile );
 
-	mem_set_max_kb( DEFAULT_CC_MAX_KB );
 	app_start( 1 );
 
 	// resolve relay targets

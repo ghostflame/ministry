@@ -1,0 +1,8 @@
+/var/log/ministry/metric-filter/metric-filter.log {
+    weekly
+    missingok
+    rotate 7
+    compress
+    notifempty
+    lastaction 'pkill -HUP metric-filter'
+}

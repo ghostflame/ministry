@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * http/init.c - functions to set up / stop httpd server                   *
 *                                                                         *
@@ -16,7 +28,7 @@ int http_tls_load_file( TLS_FILE *sf, char *type )
 {
 	char desc[32];
 
-	sf->type = str_dup( type, 0 );
+	sf->type = str_perm( type, 0 );
 
 	snprintf( desc, 32, "TLS %s file", sf->type );
 
@@ -43,9 +55,9 @@ void http_clean_password( HTTP_CTL *h )
 {
 	if( h->tls->password )
 	{
-		if( h->tls->passlen )
-			memset( (void *) h->tls->password, 0, h->tls->passlen );
-
+		// scrub the data out of that field before freeing it
+		// https://cwe.mitre.org/data/definitions/244.html
+		explicit_bzero( (void *) h->tls->password, MAX_TLS_PASS_SIZE );
 		free( (void *) h->tls->password );
 	}
 
@@ -134,9 +146,9 @@ int http_start( void )
 		h->server = MHD_start_daemon( h->flags, 0,
 			h->calls->policy,                (void *) h->web_ips,
 			h->calls->handler,               (void *) h,
+			mop( EXTERNAL_LOGGER ),          h->calls->log, (void *) h,
 			mop( SOCK_ADDR ),                (struct sockaddr *) h->sin,
 			mop( URI_LOG_CALLBACK ),         h->calls->reqlog, NULL,
-			mop( EXTERNAL_LOGGER ),          h->calls->log, (void *) h,
 			mop( NOTIFY_COMPLETED ),         h->calls->complete, NULL,
 			mop( CONNECTION_LIMIT ),         h->conns_max,
 			mop( PER_IP_CONNECTION_LIMIT ),  h->conns_max_ip,
@@ -155,9 +167,9 @@ int http_start( void )
 		h->server = MHD_start_daemon( h->flags, 0,
 			h->calls->policy,                (void *) h->web_ips,
 			h->calls->handler,               (void *) h,
+			mop( EXTERNAL_LOGGER ),          h->calls->log, (void *) h,
 			mop( SOCK_ADDR ),                (struct sockaddr *) h->sin,
 			mop( URI_LOG_CALLBACK ),         h->calls->reqlog, NULL,
-			mop( EXTERNAL_LOGGER ),          h->calls->log, (void *) h,
 			mop( NOTIFY_COMPLETED ),         h->calls->complete, NULL,
 			mop( CONNECTION_LIMIT ),         h->conns_max,
 			mop( PER_IP_CONNECTION_LIMIT ),  h->conns_max_ip,
@@ -191,6 +203,13 @@ void http_stop( void )
 		pthread_mutex_destroy( &(h->hitlock) );
 		notice( "Shut down %s server.", h->proto );
 	}
+}
+
+
+// turn on the http server by default
+void http_enable( void )
+{
+	_http->enabled = 1;
 }
 
 

@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * mem.h - defines main memory control structures                          *
 *                                                                         *
@@ -17,10 +29,6 @@
 #define MEM_ALLOCSZ_HISTY			128
 #define MEM_ALLOCSZ_METRY			128
 
-#define DEFAULT_GC_THRESH			8640		// 1 day @ 10s
-#define DEFAULT_GC_GG_THRESH		25920		// 3 days @ 10s
-
-
 struct memt_control
 {
 	MTYPE			*	points;
@@ -28,18 +36,14 @@ struct memt_control
 	MTYPE			*	preds;
 	MTYPE			*	histy;
 	MTYPE			*	metry;
-
-	int64_t				gc_enabled;
-	int64_t				gc_thresh;
-	int64_t				gc_gg_thresh;
 };
 
 
-PTLIST *mem_new_point( void );
-void mem_free_point( PTLIST **p );
-void mem_free_point_list( PTLIST *list );
+PTLIST *mem_new_points( void );
+void mem_free_points( PTLIST **p );
+void mem_free_points_list( PTLIST *list );
 
-DHASH *mem_new_dhash( char *str, int len );
+DHASH *mem_new_dhash( const char *str, int len );
 void mem_free_dhash( DHASH **d );
 void mem_free_dhash_list( DHASH *list );
 
@@ -51,11 +55,10 @@ HIST *mem_new_history( uint16_t size );
 void mem_free_history( HIST **h );
 void mem_free_history_list( HIST *list );
 
-METRY *mem_new_metry( char *str, int len );
+METRY *mem_new_metry( const char *str, int len );
 void mem_free_metry( METRY **m );
 void mem_free_metry_list( METRY *list );
 
-int memt_config_line( AVP *av );
 MEMT_CTL *memt_config_defaults( void );
 
 

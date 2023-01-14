@@ -96,3 +96,41 @@ explained in it, as well as a manual page for its config file.
 
 Ministry can take HTTP URI's as config sources, even for includes.
 
+
+## Other Apps
+
+Ministry ships with three other apps - carbon-copy, metric-filter and ministry-test.  Each comes with its own
+default config file and man pages.
+
+### Carbon-Copy
+
+This is a drop-in replacement for carbon-relay or carbon-c-relay.  It copies metrics to multiple targets, with
+hashing or duplication as desired.
+
+### Metric-Filter
+
+This performs a related function to carbon-relay, but does filtering based on JSON files, allowing regexes to
+determine which hosts may send which metrics.  Good for handling spammy sources, or developers cutting their
+own sending clients.
+
+### Ministry-Test
+
+This is used primarily in development, but is provided as a means to load-test your installation and get a
+sense of the resources needed for your anticipated metrics load.  It generates metrics defined in config, with
+quasi-realistic behaviour and several different models for a metric.
+
+
+## Build
+
+Ministry is provided as a tar.gz release, but it relatively easily built into an RPM.  However, given its
+dependency on relatively modern versions of libcurl and libmicrohttpd, and the lack of those in enterprise
+versions of linux such as RHEL7, it is more normal to run ministry as a container.  It has no meaningful
+interaction with disk, and logs to stdout.   It can accept config from file or HTTP or environment.  It makes
+for a good candidate for containerisation.
+
+This being true, most releases are built as containers as well, with the path:
+```
+hub.docker.com/ghostflame/ministry
+```
+The latest tag is kept up to date with each release.
+

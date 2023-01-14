@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * target.c - functions to write to different backend targets              *
 *                                                                         *
@@ -32,10 +44,10 @@ TTYPE targets_type_defns[TGTS_TYPE_MAX] =
 		.wrfp  = &targets_write_graphite
 	},
 	{
-		.type  = TGTS_TYPE_COAL,
-		.name  = "coal",
+		.type  = TGTS_TYPE_ARCHIVIST,
+		.name  = "archivist",
 		.port  = 3801,
-		.tsfp  = &stats_tsf_nsec,
+		.tsfp  = &stats_tsf_usec,
 		.wrfp  = &targets_write_graphite
 	},
 	{
@@ -53,16 +65,13 @@ TTYPE targets_type_defns[TGTS_TYPE_MAX] =
 void targets_write_graphite( ST_THR *t, BUF *ts, IOBUF *b )
 {
 	// copy the prefix
-	memcpy( b->buf + b->len, t->prefix->buf, t->prefix->len );
-	b->len += t->prefix->len;
+	buf_append( b->bf, t->prefix );
 
 	// then the path and value
-	memcpy( b->buf + b->len, t->path->buf, t->path->len );
-	b->len += t->path->len;
+	buf_append( b->bf, t->path );
 
 	// add the timestamp and newline
-	memcpy( b->buf + b->len, ts->buf, ts->len );
-	b->len += ts->len;
+	buf_append( b->bf, ts );
 }
 
 
@@ -82,31 +91,26 @@ void targets_write_opentsdb( ST_THR *t, BUF *ts, IOBUF *b )
 	l = t->path->len - k - 1;
 
 	// it starts with a put
-	memcpy( b->buf + b->len, "put ", 4 );
-	b->len += 4;
+	buf_appends( b->bf, "put ", 4 );
 
 	// copy the prefix
-	memcpy( b->buf + b->len, t->prefix->buf, t->prefix->len );
-	b->len += t->prefix->len;
+	buf_append( b->bf, t->prefix );
 
 	// then just the path
-	memcpy( b->buf + b->len, t->path->buf, k );
-	b->len += k;
+	buf_appends( b->bf, t->path->buf, k );
 
 	// now the timestamp, but without the newline
-	memcpy( b->buf + b->len, ts->buf, ts->len - 1 );
-	b->len += ts->len - 1;
+	buf_append( b->bf, ts );
+	strbuf_chop( b->bf );
 
 	// now another space
-	b->buf[b->len++] = ' ';
+	buf_addchar( b->bf, ' ' );
 
 	// then the value
-	memcpy( b->buf + b->len, space, l );
-	b->len += l;
+	buf_appends( b->bf, space, l );
 
 	// then a space, a tag and a newline
-	memcpy( b->buf + b->len, " source=ministry\n", 17 );
-	b->len += 17;
+	buf_appends( b->bf, " source=ministry\n", 17 );
 }
 
 
@@ -134,7 +138,7 @@ int targets_init( void )
 	// create the target sets
 	for( l = target_list_all( ); l; l = l->next )
 	{
-		s = (TSET *) allocz( sizeof( TSET ) );
+		s = (TSET *) mem_perm( sizeof( TSET ) );
 		s->targets = l;
 		s->type = (TTYPE *) l->targets->ptr;
 
@@ -150,7 +154,7 @@ int targets_init( void )
 	}
 
 	// and make the flat list of set pointers
-	c->setarr = (TSET **) allocz( c->set_count * sizeof( TSET * ) );
+	c->setarr = (TSET **) mem_perm( c->set_count * sizeof( TSET * ) );
 
 
 	// start each target set
@@ -208,7 +212,7 @@ int targets_set_type( TGT *t, char *type, int len )
 
 TGTS_CTL *targets_config_defaults( void )
 {
-	TGTS_CTL *t = (TGTS_CTL *) allocz( sizeof( TGTS_CTL ) );
+	TGTS_CTL *t = (TGTS_CTL *) mem_perm( sizeof( TGTS_CTL ) );
 	return t;
 }
 

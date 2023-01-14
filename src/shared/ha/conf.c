@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * ha/conf.c - high-availability configuration functions                   *
 *                                                                         *
@@ -140,9 +152,9 @@ HAPT *ha_add_partner( char *spec, int dupe_fail )
 
 	curl_url_cleanup( ch );
 
-	len = strlen( p->host ) + 6;
-	p->name = str_perm( len );
-	p->nlen = snprintf( p->name, len + 1, "%s:%hu", p->host, p->port );
+	len = strlen( p->host ) + 7;
+	p->name = mem_perm( len );
+	p->nlen = snprintf( p->name, len, "%s:%hu", p->host, p->port );
 
 	p->next = _ha->partners;
 	_ha->partners = p;
@@ -160,7 +172,7 @@ FailURL:
 
 HA_CTL *ha_config_defaults( void )
 {
-	_ha = (HA_CTL *) allocz( sizeof( HA_CTL ) );
+	_ha = (HA_CTL *) mem_perm( sizeof( HA_CTL ) );
 
 	_ha->enabled = 0;
 	// we default to being master, this enables solo behaviour
@@ -189,7 +201,7 @@ int ha_config_line( AVP *av )
 	}
 	else if( attIs( "hostname" ) )
 	{
-		_ha->hostname = str_copy( av->vptr, av->vlen );
+		_ha->hostname = av_copy( av );
 	}
 	else if( attIs( "partner" ) || attIs( "member" ) )
 	{

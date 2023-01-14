@@ -1,0 +1,94 @@
+All functions act on the innermost list of series
+
+COMBINE:  Produces one series from many
+
+sum() .
+average() .
+product() .
+min values() .
+max values() .
+group() - does what?
+range() - does what? diff between lowest and highest?
+count()
+
+TRANSFORM:  Works on each series separately
+
+scale(double) .
+scaleToSeconds(int)
+offset(double) .
+derivative() .
+time-adjusted derivative(int?)  does what?
+integral()
+percentile values(double)  no argument - of highest?
+non-negative derivative() .
+log()
+absolute value()
+timeShift(span)  -  this one is hard
+summarize(span, metric)  -  how does this one work?
+Hit Count - does what?
+
+CALCULATE:  Works on each series separately
+
+moving average(int)
+moving median(int)
+moving standard dev(int)
+Holt-Winters forecast - research
+Holt-Winters Confidence bands - research
+Holt-Winters aberration - research
+As Percent - differs from percentile value how?
+Difference(2 series)
+Ratio(2 series)
+
+FILTERS:  Works on set of series, mostly
+
+Most Deviant - ??
+Highest Current Value()
+Lowest Current Value()
+Highest Maximum Value()
+Nth Percentile Value(int)
+Current Value Above(double?) - ??
+Current Value Below(double?) - ??
+Highest Average Value() - ??
+Lowest Average Value() - ??
+Average Value Above(double?) - ??
+Average Value Below(double?) - ??
+Maximum Value Above(double?) - ??
+Maximum Value Below(double?) - ??
+Minimum Value Above(double?) - ??
+Minimum Value Below(double?) - ??
+sortByTotal - ??
+sortByMaxima - ??
+sortByMinima - ??
+limit - ??
+Exclude - ??
+Data Filters >
+	Remove Above Value(double)
+	Remove Above Percentile(int)
+	Remove Below Value(double)
+	Remove Below Percentile(int)
+
+
+SPECIAL: weird ones
+
+Set Legend Name(str)
+Set Legend Name By Metric(int)
+Set Legent Name By Node(int?)
+Add Values To Legend Name >
+	Cacti Style Legend
+	Last Value
+	Average Value
+	Total Value
+	Min Value
+	Max Value
+Consolidate By >
+	Sum
+	Min
+	Max
+Keep Last Value() - ??
+Changed() - ??
+Transform Nulls(double) - ??
+Substring(str?) - ??
+Group - ??
+sortByName
+Area Between(series list?) -- ??
+

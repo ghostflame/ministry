@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * stats/stats.c - statistics functions and config                         *
 *                                                                         *
@@ -25,9 +37,9 @@ void stats_report_moments( ST_THR *t, DHASH *d, int64_t ct, double mean )
 
 	maths_moments( &m );
 
-	bprintf( t, "%s.stddev %f",   d->path, m.sdev );
-	bprintf( t, "%s.skewness %f", d->path, m.skew );
-	bprintf( t, "%s.kurtosis %f", d->path, m.kurt );
+	bprintf( t, "%s.stddev%s %f",   d->base, d->tags, m.sdev );
+	bprintf( t, "%s.skewness%s %f", d->base, d->tags, m.skew );
+	bprintf( t, "%s.kurtosis%s %f", d->base, d->tags, m.kurt );
 }
 
 
@@ -64,8 +76,8 @@ void stats_report_mode( ST_THR *t, DHASH *d, int64_t ct )
 
 	if( mdmx > 1 )
 	{
-		bprintf( t, "%s.mode %f",    d->path, mode );
-		bprintf( t, "%s.mode_ct %f", d->path, mdmx );
+		bprintf( t, "%s.mode%s %f",    d->base, d->tags, mode );
+		bprintf( t, "%s.mode_ct%s %f", d->base, d->tags, mdmx );
 	}
 }
 
@@ -114,7 +126,7 @@ void stats_report_one( ST_THR *t, DHASH *d )
 	if( ( ct = (int32_t) d->proc.count ) == 0 )
 	{
 		if( list )
-			mem_free_point_list( list );
+			mem_free_points_list( list );
 		return;
 	}
 
@@ -158,18 +170,18 @@ void stats_report_one( ST_THR *t, DHASH *d )
 	else
 		sort_radix11( t, (int32_t) ct );
 
-	bprintf( t, "%s.count %d",  d->path, ct );
-	bprintf( t, "%s.mean %f",   d->path, mean );
-	bprintf( t, "%s.upper %f",  d->path, t->wkspc[ct-1] );
-	bprintf( t, "%s.lower %f",  d->path, t->wkspc[0] );
-	bprintf( t, "%s.median %f", d->path, t->wkspc[idx] );
+	bprintf( t, "%s.count%s %d",  d->base, d->tags, ct );
+	bprintf( t, "%s.mean%s %f",   d->base, d->tags, mean );
+	bprintf( t, "%s.upper%s %f",  d->base, d->tags, t->wkspc[ct-1] );
+	bprintf( t, "%s.lower%s %f",  d->base, d->tags, t->wkspc[0] );
+	bprintf( t, "%s.median%s %f", d->base, d->tags, t->wkspc[idx] );
 
 	// variable thresholds
 	for( thr = ctl->stats->thresholds; thr; thr = thr->next )
 	{
 		// find the right index into our values
 		idx = ( thr->val * ct ) / thr->max;
-		bprintf( t, "%s.%s %f", d->path, thr->label, t->wkspc[idx] );
+		bprintf( t, "%s.%s%s %f", d->base, thr->label, d->tags, t->wkspc[idx] );
 	}
 
 	// are we doing std deviation and friends?
@@ -180,7 +192,7 @@ void stats_report_one( ST_THR *t, DHASH *d )
 	if( dhash_do_mode( d ) && ct >= ctl->stats->mode->min_pts )
 		stats_report_mode( t, d, ct );
 
-	mem_free_point_list( list );
+	mem_free_points_list( list );
 
 	// keep count
 	t->points += ct;
@@ -203,10 +215,6 @@ void stats_stats_pass( ST_THR *t )
 	PTLIST *p;
 	DHASH *d;
 
-#ifdef DEBUG
-	//debug( "[%02d] Stats claim", t->id );
-#endif
-
 	st_thr_time( steal );
 
 	// take the data
@@ -220,7 +228,7 @@ void stats_stats_pass( ST_THR *t )
 					// outside the lock
 					// this may fix some of the
 					// locking issues under high load
-					p = mem_new_point( );
+					p = mem_new_points( );
 
 					lock_stats( d );
 
@@ -235,10 +243,6 @@ void stats_stats_pass( ST_THR *t )
 				else if( d->empty >= 0 )
 					++(d->empty);
 		}
-
-#ifdef DEBUG
-	//debug( "[%02d] Stats report", t->id );
-#endif
 
 	st_thr_time( stats );
 

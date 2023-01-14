@@ -1,12 +1,12 @@
 ODIRS  = shared
-ADIRS  = ministry ministry-test carbon-copy
+ADIRS  = ministry ministry-test carbon-copy metric-filter archivist
 TARGET = unknown
 VERS  ?= 0.0.1
 
 #EARGS  = -DMTYPE_TRACING
 EARGS  = 
 
-LARGS  = -lm -lcurl -lmicrohttpd -ljson-c
+LARGS  = -lm -lcurl -lmicrohttpd -ljson-c -lgnutls
 
 all: TARGET = all
 all: subdirs
@@ -20,8 +20,6 @@ clean: subdirs
 
 debug: TARGET = debug
 debug: subdirs
-
-
 
 subdirs:
 	for d in $(ODIRS); do cd $$d; EARGS="$(EARGS)" VERS=$(VERS)     $(MAKE) $(MFLAGS) $(TARGET); cd ..; done

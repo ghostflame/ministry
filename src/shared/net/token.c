@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * token.c - handles tokens                                                *
 *                                                                         *
@@ -89,8 +101,8 @@ TOKEN *token_find( uint32_t ip, int8_t bit, int64_t val )
 
 static int64_t token_id = 0;
 
-static char *token_type_names[4] = {
-	"stats", "adder", "gauge", "weird"
+static char *token_type_names[5] = {
+	"stats", "adder", "gauge", "histo", "weird"
 };
 
 TOKEN *__token_generate_type( uint32_t ip, int16_t type )
@@ -116,11 +128,14 @@ TOKEN *__token_generate_type( uint32_t ip, int16_t type )
 		case TOKEN_TYPE_ADDER:
 			t->name = token_type_names[1];
 			break;
-			case TOKEN_TYPE_GAUGE:
+		case TOKEN_TYPE_GAUGE:
 			t->name = token_type_names[2];
 			break;
-		default:
+		case TOKEN_TYPE_HISTO:
 			t->name = token_type_names[3];
+			break;
+		default:
+			t->name = token_type_names[4];
 			break;
 	}
 
@@ -187,7 +202,7 @@ int token_url_handler( HTREQ *req )
 	for( i = 0; i < count; ++i )
 	{
 		t = tlist[i];
-		json_object_object_add( jo, t->name, json_object_new_int64( t->nonce ) );
+		json_insert( jo, t->name, int64, t->nonce );
 	}
 
 	strbuf_json( req->text, jo, 1 );
@@ -298,7 +313,7 @@ int token_init( void )
 
 	if( ts->enable )
 	{
-		ts->hash      = (TOKEN **) allocz( ts->hsize * sizeof( TOKEN * ) );
+		ts->hash      = (TOKEN **) mem_perm( ts->hsize * sizeof( TOKEN * ) );
 		// convert to nsec
 		ts->lifetime *= 1000000;
 	}
@@ -324,7 +339,7 @@ TOKENS *token_setup( void )
 {
 	TOKENS *ts;
 
-	ts           = (TOKENS *) allocz( sizeof( TOKENS ) );
+	ts           = (TOKENS *) mem_perm( sizeof( TOKENS ) );
 	ts->hsize    = hash_size( "tiny" );
 	ts->lifetime = DEFAULT_TOKEN_LIFETIME;
 	// off by default
@@ -333,7 +348,7 @@ TOKENS *token_setup( void )
 	// all types by default
 	ts->mask     = DEFAULT_TOKEN_MASK;
 
-	pthread_mutex_init( &(ts->lock), &(_proc->mtxa) );
+	pthread_mutex_init( &(ts->lock), &(_proc->mem->mtxa) );
 
 	return ts;
 }

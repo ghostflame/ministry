@@ -5,26 +5,44 @@ DELAY=''
 
 function submit_ministry( )
 {
-	echo "Sending plain to $PORT"
-	( while true; do
+    echo "Sending plain to $PORT"
+    ( while true; do
 
-		a=$(($RANDOM / 20))
-		b=$((1000 + ( $RANDOM / 100)))
-		c=$((1000 - ( $RANDOM / 32)))
-		d=$(($RANDOM / 200))
+        a=$(($RANDOM / 20))
+        b=$((1000 + ( $RANDOM / 100)))
+        c=$((1000 - ( $RANDOM / 32)))
+        d=$(($RANDOM / 200))
 
-		echo "\
+        echo "\
 lamp.requests $a
 lamp.timings.bet.total.mean $b
 this.that.theother $c
 tx.bets $d
 basic.counter 1
 foo.bar $RANDOM" 
-	if [ -n "$DELAY" ]
-	then
-		sleep $DELAY
-	fi
-	done ) | nc 127.0.0.1 $PORT
+    if [ -n "$DELAY" ]
+    then
+        sleep $DELAY
+    fi
+    done ) | nc 127.0.0.1 $PORT
+}
+
+
+function submit_histo( )
+{
+    echo "Sending 0 < x < 2 to $PORT"
+    ( while true; do
+      a=$(($RANDOM/16384))
+      b=$RANDOM
+
+      echo "\
+test.value $a.$b"
+
+      if [ -n "$DELAY" ]
+      then
+          sleep $DELAY
+      fi
+      done ) | nc 127.0.0.1 $PORT
 }
 
 
@@ -35,10 +53,10 @@ function submit_ministry_one( )
 
       a=$((100 + ( $RANDOM / 200 ) ))
       echo "lamp.timings.bet.total.mean $a"
-	if [ -n "$DELAY" ]
-	then
-		sleep $DELAY
-	fi
+    if [ -n "$DELAY" ]
+    then
+        sleep $DELAY
+    fi
     done ) | nc 127.0.0.1 $PORT
 }
 
@@ -49,35 +67,35 @@ function submit_ministry_single( )
 
       a=$((100 + ( $RANDOM / 200 ) ))
       echo "lamp.timings.bet.total.mean $a"
-	if [ -n "$DELAY" ]
-	then
-		sleep $DELAY
-	fi
+    if [ -n "$DELAY" ]
+    then
+        sleep $DELAY
+    fi
 
     done ) | nc 127.0.0.1 $PORT
 }
 
 function submit_compat( )
 {
-	echo "Sending stats to 9125."
-	( while true; do
+    echo "Sending stats to 9125."
+    ( while true; do
 
-		a=$(($RANDOM / 20))
-		b=$((1000 + ( $RANDOM / 100)))
-		c=$((1000 - ( $RANDOM / 32)))
-		d=$(($RANDOM / 200))
+        a=$(($RANDOM / 20))
+        b=$((1000 + ( $RANDOM / 100)))
+        c=$((1000 - ( $RANDOM / 32)))
+        d=$(($RANDOM / 200))
 
-		echo "\
+        echo "\
 lamp.requests:$a|ms
 lamp.timings.bet.total.mean:$b|ms
 this.that.theother:$c|ms
 tx.bets:$d|ms
 foo.bar:$RANDOM|ms"
-	if [ -n "$DELAY" ]
-	then
-		sleep $DELAY
-	fi
-	done ) | nc -u 127.0.0.1 8125
+    if [ -n "$DELAY" ]
+    then
+        sleep $DELAY
+    fi
+    done ) | nc -u 127.0.0.1 8125
 }
 
 
@@ -85,7 +103,7 @@ cmd=$1
 shift
 
 if [ -n "$1" ]; then
-	DELAY="$1"
+    DELAY="$1"
 fi
 
 case $cmd in
@@ -103,9 +121,12 @@ case $cmd in
             ;;
     compat) submit_stats
             ;;
-	relay)  PORT=2003
-			submit_ministry
-			;;
+    histo)  PORT=9425
+            submit_histo
+            ;;
+    relay)  PORT=2003
+            submit_ministry
+            ;;
     *)      echo "$0 <delay> <stats|paths|compat|single|one>"
             ;;
 esac

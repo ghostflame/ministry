@@ -1,0 +1,108 @@
+.\" metric-filter config manual page
+.TH METRIC-FILTER "1" "Oct 2019" "Networking Utilities" "User Commands"
+.SH NAME
+metric-filter.conf \- metric-filter config file
+.SH SYNOPSIS
+.nf
+.BI /etc/ministry/metric-filter.conf
+.fi
+.SH DESCRIPTION
+.PP
+This manual page describes the configuration file for \fBmetric-filter(1)\fP.  The file is in
+sections, and including other files is permitted, though wildcard expansion is not performed -
+included file paths must be complete.  Config is read before \fBmetric-filter\fP changes to the
+configured working directory, so non-absolute paths included are interpreted relative to the
+current working directory.
+.PP
+\fBMetric-filter\fP has a lot of shared code with \fBministry(1)\fP and some sections are not
+described here.  Refer to \fBministry.conf(5)\fP for details.
+.SH FORMAT
+See \fBministry.conf(5)\fP.
+.SS [Main]
+See \fBministry.conf(5)\fP.
+.SS [Logging]
+See \fBministry.conf(5)\fP.
+.SS [IO]
+See \fBministry.conf(5)\fP.
+.SS [HTTP]
+See \fBministry.conf(5)\fP.
+.SS [Pmet]
+See \fBministry.conf(5)\fP.
+(Note - \fBmetric-filter\fP lacks the 'stats' source.)
+.SS [Target]
+See \fBministry.conf(5)\fP.
+.SS [Network]
+.PP
+Networking configuration for \fBmetric-filter\fP greatly resembles that found in \fBministry\fP,
+with the exception that \fBmetric-filter\fP filters processed metrics, and therefore does not
+discriminate between stats, adder, gauge or histogram metrics.
+.SS [Filter]
+.PP
+\fBMetric-filter\fP accepts its filter configuration as a directory of JSON files, which it watches
+for changes.  The format of the files should be:
+.EX
+	{
+		"disabled": <bool>,
+		"type": "<all|allow|drop>",
+		"ips": [
+			"a.b.c.d",
+			"e.f.g.h/i"
+		],
+		"matches": [
+			"^this\\\\.is\\\\.a\\\\.match\\\\.",
+			"!^this\\\\.is\\\\.not\\\\.",
+			"^this\\\\.is\\\\."
+		]
+	}
+.EE
+.PP
+The match types are:
+.TP
+\fBall\fR
+Pass all metrics
+.TP
+\fBallow\fR
+Allow only metrics which match the regex list
+.TP
+\fBdrop\fR
+Allow all metrics \fBexcept\fP those matching the list
+.PP
+NOTE:  A leading ! inverts the sense of the regex, but does not form part of it.
+.PP
+These filters should be placed in a directory separate from the normal \fBmetric-filter\fP
+config, and will be watched for changes.  \fBMetric-filter\fP initiates a small delay upon being
+informed by \fIinotify\fP of a change to any file (or an addition), and any further changes during
+this delay are folded into the reload.  This makes it easier to change a couple of files without
+generating multiple reloads.  Several configuration items control the filter directory and reload
+behaviour.
+.TP
+\fBfilters\fR
+The directory to search for filter JSON files
+.TP
+\fBchangeDelay\fR
+Number of milliseconds to wait before a reload (default 10000)
+.TP
+\fBdisconnect\fR
+A boolean, whether hosts accepted on previous config are disconnected (default true)
+.SS Metric Flush
+.PP
+Normal behaviour of the \fBministry\fP family of applications is asynchronous IO, with network
+writes occuring to buffer before the buffers are passed for sending.  \fBMetric-filter\fP does
+not write metrics to the targets immediately.  A thread for each host will watch and flush
+metrics either when the output buffer is full, or upon a max-age timer.  If \fBmetric-filter\fP
+is being used with data that contains timestamps, there is likely no need for an aggressive
+flush, and the default of 1000msec is probably file.  If it is being used for raw data, such
+as stats values, then it should be set low to prevent it interfering with the perceived flow
+of data - 20ms is a good number.
+.TP
+\fBflushMax\fR
+Milliseconds representing the max allowed age of unflushed lines (default 1000)
+
+
+.SH SEE ALSO
+.BR metric-filter (1)
+.BR ministry.conf (5)
+.BR ministry (1)
+
+.SH AUTHOR
+\fBMetric-filter\fP is written and maintained by John Denholm, Sky Betting And Gaming.

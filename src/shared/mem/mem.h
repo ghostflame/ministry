@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * mem.h - defines main memory control structures                          *
 *                                                                         *
@@ -25,50 +37,90 @@
 #define MEM_TYPES_MAX				128
 
 
+// points to add to a ptlist
+#define MEM_PTLIST_SIZE				256
+
+
+
+struct mem_hanger
+{
+	MEMHG				*	next;
+	MEMHG				*	prev;
+	void				*	ptr;
+	MEMHL				*	list;
+};
+
+struct mem_hanger_list
+{
+	MEMHL				*	next;
+	MEMHG				*	head;
+	MEMHG				*	tail;
+	mem_free_cb			*	memcb;
+	int64_t					count;
+	uint64_t				id;
+
+	pthread_mutex_t			lock;
+	int8_t					use_lock;	// use locking for updates
+	int8_t					act_lock;	// 1 when lockable, 0 when locked
+};
+
 
 struct mem_call_counters
 {
-	int64_t				ctr;
-	int64_t				sum;
+	int64_t					ctr;
+	int64_t					sum;
 };
 
 struct mem_type_counters
 {
-	uint32_t			fcount;
-	uint32_t			total;
+	uint32_t				fcount;
+	uint32_t				total;
 
 #ifdef MTYPE_TRACING
-	MCCTR				all;
-	MCCTR				fre;
-	MCCTR				pre;
-	MCCTR				ref;
+	MCCTR					all;
+	MCCTR					fre;
+	MCCTR					pre;
+	MCCTR					ref;
 #endif
 };
 
 
 struct mem_type_stats
 {
-	char			*	name;
-	uint64_t			bytes;
+	char				*	name;
+	uint64_t				bytes;
 
-	MTCTR				ctrs;
+	MTCTR					ctrs;
 };
 
 struct mem_control
 {
-	MTYPE			*	types[MEM_TYPES_MAX];
+	MTYPE				*	types[MEM_TYPES_MAX];
 
-	MCHK			*	mcheck;
+	MCHK				*	mcheck;
 
-	int64_t				prealloc;	// msec
-	int16_t				type_ct;
+	int64_t					prealloc;	// msec
+	int16_t					type_ct;
+	pthread_mutex_t			idlock;
+	uint64_t				id;
+
+	pthread_mutexattr_t		mtxa;
+
+	PERM				*	perm;		// permie string space
 
 	// known types
-	MTYPE			*	iobufs;
-	MTYPE			*	iobps;
-	MTYPE			*	htreq;
-	MTYPE			*	hosts;
-	MTYPE			*	token;
+	MTYPE				*	iobufs;
+	MTYPE				*	htreq;
+	MTYPE				*	htprm;
+	MTYPE				*	hosts;
+	MTYPE				*	token;
+	MTYPE				*	hanger;
+	MTYPE				*	slkmsg;
+	MTYPE				*	store;
+	MTYPE				*	ptser;
+	MTYPE				*	ptlst;
+	MTYPE				*	treel;
+	MTYPE				*	tleaf;
 };
 
 
@@ -77,6 +129,7 @@ uint32_t mem_alloc_size( int len );
 
 // zero'd memory
 void *allocz( size_t size );
+void *mem_perm( uint32_t len );
 
 sort_fn mem_cmp_dbl;
 sort_fn mem_cmp_i64;
@@ -110,11 +163,12 @@ IOBUF *mem_new_iobuf( int sz );
 void mem_free_iobuf( IOBUF **b );
 void mem_free_iobuf_list( IOBUF *list );
 
-IOBP *mem_new_iobp( void );
-void mem_free_iobp( IOBP **b );
-
 HTREQ *mem_new_request( void );
 void mem_free_request( HTREQ **h );
+
+HTPRM *mem_new_htprm( void );
+void mem_free_htprm( HTPRM **a );
+void mem_free_htprm_list( HTPRM *list );
 
 HOST *mem_new_host( struct sockaddr_in *peer, uint32_t bufsz );
 void mem_free_host( HOST **h );
@@ -123,5 +177,59 @@ TOKEN *mem_new_token( void );
 void mem_free_token( TOKEN **t );
 void mem_free_token_list( TOKEN *list );
 
+MEMHG *mem_new_hanger( void *ptr, MEMHL *list );
+void mem_free_hanger( MEMHG **m );
+void mem_free_hanger_list( MEMHG *list );
+
+SLKMSG *mem_new_slack_msg( size_t sz );
+void mem_free_slack_msg( SLKMSG **m );
+
+SSTE *mem_new_store( void );
+void mem_free_store( SSTE **s );
+void mem_free_store_list( SSTE *list );
+
+PTL *mem_new_ptser( int count );
+void mem_free_ptser( PTL **p );
+void mem_free_ptser_list( PTL *list );
+
+// same as ptser but fixed points, and not freed
+PTL *mem_new_ptlst( void );
+void mem_free_ptlst( PTL **p );
+void mem_free_ptlst_list( PTL *list );
+
+TEL *mem_new_treel( const char *str, int len );
+void mem_free_treel( TEL **t );
+void mem_free_treel_branch( TEL *t );
+
+LEAF *mem_new_tleaf( void );
+void mem_free_tleaf( LEAF **l );
+
+
+// hanger list
+
+MEMHL *mem_list_filter_new( MEMHL *mhl, void *arg, mhl_callback *cb );
+int mem_list_filter_self( MEMHL *mhl, void *arg, mhl_callback *cb );
+int mem_list_iterator( MEMHL *mhl, void *arg, mhl_callback *cb );
+MEMHG *mem_list_search( MEMHL *mhl, void *arg, mhl_callback *cb );
+MEMHG *mem_list_find( MEMHL *mhl, void *ptr );
+
+// add/fetch void ptrs to your objects
+int mem_list_remove( MEMHL *mhl, MEMHG *hg );
+int mem_list_excise( MEMHL *mhl, void *ptr );
+void mem_list_add_tail( MEMHL *mhl, void *ptr );
+void mem_list_add_head( MEMHL *mhl, void *ptr );
+void *mem_list_get_head( MEMHL *mhl );
+void *mem_list_get_tail( MEMHL *mhl );
+
+// external locking - disables internal locking!
+int mem_list_lock( MEMHL *mhl );
+int mem_list_unlock( MEMHL *mhl );
+
+// info
+int64_t mem_list_size( MEMHL *mhl );
+
+// setup/teardown
+void mem_list_free( MEMHL *mhl );
+MEMHL *mem_list_create( int use_lock, mem_free_cb *cb );
 
 #endif

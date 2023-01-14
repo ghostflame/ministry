@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * target/conf.c - network targets config                                  *
 *                                                                         *
@@ -25,7 +37,7 @@ void target_set_handle( TGT *t, char *prefix )
 	if( !prefix )
 		prefix = t->name;
 
-	if( t->to_stdout )
+	if( flagf_has( t, TGT_FLAG_ENABLED ) )
 		l = snprintf( buf, 1024, "%s - stdout", prefix );
 	else
 		l = snprintf( buf, 1024, "%s - %s:%hu", prefix, t->host, t->port );
@@ -54,7 +66,7 @@ int __target_set_maxw( TGT *t, char *max )
 		return -2;
 	}
 
-	t->max = (int32_t) i;
+	t->max = i;
 	return 0;
 }
 
@@ -77,13 +89,13 @@ int __target_set_host( TGT *t, char *host )
 			err( "Can only have one target writing to stdout." );
 			return -1;
 		}
+		flagf_add( t, TGT_FLAG_STDOUT );
 
-		t->to_stdout = 1;
 		++(io->stdout_count);
 		debug( "Target writing to stdout." );
 	}
 
-	t->host = str_dup( host, 0 );
+	t->host = str_perm( host, 0 );
 	return 0;
 }
 
@@ -106,8 +118,8 @@ TGTL *__target_list_find_create( char *name )
 
 	if( !( l = target_list_find( name ) ) )
 	{
-		l           = (TGTL *) allocz( sizeof( TGTL ) );
-		l->name     = str_dup( name, 0 );
+		l           = (TGTL *) mem_perm( sizeof( TGTL ) );
+		l->name     = str_perm( name, 0 );
 		l->next     = _tgt->lists;
 		_tgt->lists = l;
 		++(_tgt->count);
@@ -125,7 +137,7 @@ void target_list_check_enabled( TGTL *l )
 		return;
 
 	for( t = l->targets; t; t = t->next )
-		if( t->enabled )
+		if( flagf_has( t, TGT_FLAG_ENABLED ) )
 			++e;
 
 	if( !e && l->enabled )
@@ -153,12 +165,12 @@ TGT *target_create( char *list, char *name, char *proto, char *host, uint16_t po
 
 	l = strlen( name );
 
-	t = (TGT *) allocz( sizeof( TGT ) );
+	t = (TGT *) mem_perm( sizeof( TGT ) );
 	t->port = port;
 	t->name = str_copy( name, l );
-	t->nlen = l;
+	t->nlen = (int16_t) l;
 	t->list = __target_list_find_create( list );
-	t->enabled = enabled;
+	flagf_set( t, TGT_FLAG_ENABLED, enabled );
 
 	t->typestr = str_copy( type, 0 );
 
@@ -214,16 +226,20 @@ TGT_CTL *target_config_defaults( void )
 {
 	TGTMT *m;
 
-	_tgt = (TGT_CTL *) allocz( sizeof( TGT_CTL ) );
+	_tgt = (TGT_CTL *) mem_perm( sizeof( TGT_CTL ) );
 
-	m = (TGTMT *) allocz( sizeof( TGTMT ) );
-	m->source = pmet_add_source( "targets" );
-	m->bytes = pmet_new( PMET_TYPE_COUNTER, "ministry_target_sent_bytes",
+	m = (TGTMT *) mem_perm( sizeof( TGTMT ) );
+
+	if( !runf_has( RUN_NO_HTTP ) )
+	{
+		m->source = pmet_add_source( "targets" );
+		m->bytes = pmet_new( PMET_TYPE_COUNTER, "ministry_target_sent_bytes",
 	                    "Number of bytes sent to a target" );
-	m->conn = pmet_new( PMET_TYPE_GAUGE, "ministry_target_connected",
-                        "Connection status of target" );
+		m->conn = pmet_new( PMET_TYPE_GAUGE, "ministry_target_connected",
+	                        "Connection status of target" );
 
-	_tgt->metrics = m;
+		_tgt->metrics = m;
+	}
 
 	return _tgt;
 }
@@ -241,7 +257,7 @@ int target_config_line( AVP *av )
 	{
 		memset( t, 0, sizeof( TGT ) );
 		t->max = IO_MAX_WAITING;
-		t->enabled = 1;
+		flagf_add( t, TGT_FLAG_ENABLED );
 	}
 
 	if( attIs( "target" ) )
@@ -260,10 +276,13 @@ int target_config_line( AVP *av )
 	else if( attIs( "name" ) )
 	{
 		if( t->name )
-			free( t->name );
+		{
+			err( "Target %s already has a name.", t->name );
+			return -1;
+		}
 
-		t->name = str_copy( av->vptr, av->vlen );
-		t->nlen = av->vlen;
+		t->name = av_copyp( av );
+		t->nlen = (int16_t) av->vlen;
 		__tgt_cfg_state = 1;
 	}
 	else if( attIs( "host" ) )
@@ -285,13 +304,23 @@ int target_config_line( AVP *av )
 	}
 	else if( attIs( "enable" ) || attIs( "enabled" ) )
 	{
-		t->enabled = config_bool( av );
+		flagf_set( t, TGT_FLAG_ENABLED, config_bool( av ) );
 		__tgt_cfg_state = 1;
 	}
 	else if( attIs( "protocol" ) )
 	{
 		if( __target_set_protocol( t, av->vptr ) )
 			return -1;
+		__tgt_cfg_state = 1;
+	}
+	else if( attIs( "tls" ) )
+	{
+		flagf_set( t, TGT_FLAG_TLS, config_bool( av ) );
+		__tgt_cfg_state = 1;
+	}
+	else if( attIs( "verify" ) )
+	{
+		flagf_set( t, TGT_FLAG_TLS_VERIFY, config_bool( av ) );
 		__tgt_cfg_state = 1;
 	}
 	else if( attIs( "type" ) )
@@ -301,7 +330,7 @@ int target_config_line( AVP *av )
 			warn( "Target already has a type set." );
 			free( t->typestr );
 		}
-		t->typestr = str_copy( av->vptr, av->vlen );
+		t->typestr = av_copy( av );
 
 		if( _tgt->type_fn )
 		{
@@ -350,8 +379,8 @@ int target_config_line( AVP *av )
 		if( !t->list )
 			t->list = __target_list_find_create( t->name );
 
-		n = (TGT *) allocz( sizeof( TGT ) );
-		memcpy( n, t, sizeof( TGT ) );
+		n = (TGT *) mem_perm( sizeof( TGT ) );
+		*n = *t;
 
 		// add it into the list - preserve order, so append
 		if( !n->list->targets )
@@ -375,6 +404,4 @@ int target_config_line( AVP *av )
 
 	return 0;
 }
-
-
 

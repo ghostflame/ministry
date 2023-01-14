@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * post.c - functions to handle HTTP posts                                 *
 *                                                                         *
@@ -42,7 +54,7 @@ int post_handle_finish( HTREQ *req )
 
 	// this happens most times, due to the
 	// hwmk check in post_handle_data
-	if( b->len )
+	if( b->bf->len )
 		data_parse_buf( h, b );
 
 	// then free up the host
@@ -67,17 +79,16 @@ int post_handle_data( HTREQ *req )
 
 	while( l > 0 )
 	{
-		if( ( l + b->len ) > b->sz )
-			len = b->sz - b->len - 1;
-		else
+		if( buf_hasspace( b->bf, l ) )
 			len = l;
+		else
+			len = buf_space( b->bf );
 
 		if( !len )
 			break;
 
-		memcpy( b->buf + b->len, p, len );
-		b->len += len;
-		b->buf[b->len] = '\0';
+		buf_appends( b->bf, p, len );
+		buf_terminate( b->bf );
 
 		p += len;
 		l -= len;
@@ -91,8 +102,26 @@ int post_handle_data( HTREQ *req )
 
 
 
+
+
 int post_handler( HTREQ *req )
 {
+	int ret = 0;
+
+	if( req->is_json )
+	{
+		//notice( "Received a submission as json." );
+
+		// we won't get called until the json is parsed
+		// and called just a single time
+		ret = data_parse_json( req->post->jo, (DTYPE *) req->path->arg );
+
+		if( ret < 0 )
+			req->code = UNPROC_ITEM;
+
+		return ret;
+	}
+
 	switch( req->post->state )
 	{
 		case HTTP_POST_START:

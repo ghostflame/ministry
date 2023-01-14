@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * pmet.h - definitions and structs for prometheus metrics endpoint        *
 *                                                                         *
@@ -51,6 +63,12 @@ struct pmet_shared
 
 	PMETM			*	memmet;
 	PMET			*	mem;
+
+	PMETM			*	cfgmet;
+	PMET			*	cfgChg;
+
+	PMETM			*	logmet;
+	PMET			*	logs[LOG_LEVEL_MAX];
 };
 
 
@@ -74,6 +92,10 @@ struct pmet_control
 
 	int64_t				period;
 	int					enabled;
+
+	int64_t				last_scrape;
+	int64_t				last_alert;
+	int64_t				alert_period;
 };
 
 
@@ -96,7 +118,7 @@ int pmet_label_common( char *name, char *valptr );
 
 // clone a list of labels
 // max -1 means all, no matter the length
-PMET_LBL *pmet_label_clone( PMET_LBL *in, int max );
+PMET_LBL *pmet_label_clone( PMET_LBL *in, int max, PMET_LBL *except );
 
 
 // wrapper fns
@@ -110,6 +132,7 @@ PMET *pmet_create_gen( PMETM *metric, PMETS *source, int gentype, void *genptr, 
 PMET *pmet_create( PMETM *metric, PMETS *source );
 PMET *pmet_clone_gen( PMET *item, PMETS *source, void *genptr, pmet_gen_fn *fp, void *genarg );
 PMET *pmet_clone( PMET *item );
+PMET *pmet_clone_vary( PMET *item, PMET_LBL *lbl ); // clones but for this label
 
 // new metric
 PMETM *pmet_new( int type, char *path, char *help );
@@ -134,6 +157,8 @@ PMETM *pmet_metric_find( char *name );
 
 
 // pmet.c
+loop_call_fn pmet_scrape_check;
+throw_fn pmet_scrape_loop;
 
 http_callback pmet_source_control;
 http_callback pmet_source_list;
@@ -145,7 +170,6 @@ void pmet_report( BUF *into );
 
 int pmet_init( void );
 PMET_CTL *pmet_config_defaults( void );
-int pmet_config_line( AVP *av );
-
+conf_line_fn pmet_config_line;
 
 #endif

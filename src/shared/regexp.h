@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * regexp.h - defines regex handling functions and structures              *
 *                                                                         *
@@ -21,7 +33,7 @@ enum regex_responses
 struct regex_entry
 {
 	RGX					*	next;
-	regex_t				*	r;
+	regex_t					r;
 	char				*	src;
 	int						slen;
 	int						ret;
@@ -32,9 +44,13 @@ struct regex_entry
 struct regex_list
 {
 	RGX					*	list;
+	RGX					*	last;
 	int						count;
 	int						fb;
 };
+
+// tidy up
+void regex_list_destroy( RGXL *rl );
 
 // create a list structure
 RGXL *regex_list_create( int fallback_match );

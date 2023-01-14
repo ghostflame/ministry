@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * selfstats.c - self reporting functions
 *                                                                         *
@@ -110,7 +122,7 @@ void self_stats_pass( int64_t tval, void *arg )
 
 	// do we need set a timestamp?
 	if( sc->tsdiv )
-		sc->tslen = snprintf( sc->ts, 32, " %ld\n", tval / sc->tsdiv );
+		sc->tslen = snprintf( sc->ts, 32, " %ld", tval / sc->tsdiv );
 
 	// network stats
 	self_report_nettype( ctl->relay->net );
@@ -192,7 +204,7 @@ void self_stats_init( void )
 
 SST_CTL *self_stats_config_defaults( void )
 {
-	SST_CTL *sc = (SST_CTL *) allocz( sizeof( SST_CTL ) );
+	SST_CTL *sc = (SST_CTL *) mem_perm( sizeof( SST_CTL ) );
 
 	sc->enabled = 1;
 	sc->intv    = DEFAULT_SELF_INTERVAL;
@@ -215,7 +227,7 @@ int self_stats_config_line( AVP *av )
 	else if( attIs( "prefix" ) )
 	{
 		free( sc->prefix );
-		sc->prefix = str_copy( av->vptr, av->vlen );
+		sc->prefix = av_copy( av );
 	}
 	else if( attIs( "timestamp" ) )
 	{

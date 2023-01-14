@@ -1,6 +1,18 @@
 /**************************************************************************
-* This code is licensed under the Apache License 2.0.  See ../LICENSE     *
 * Copyright 2015 John Denholm                                             *
+*                                                                         *
+* Licensed under the Apache License, Version 2.0 (the "License");         *
+* you may not use this file except in compliance with the License.        *
+* You may obtain a copy of the License at                                 *
+*                                                                         *
+*     http://www.apache.org/licenses/LICENSE-2.0                          *
+*                                                                         *
+* Unless required by applicable law or agreed to in writing, software     *
+* distributed under the License is distributed on an "AS IS" BASIS,       *
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
+* See the License for the specific language governing permissions and     *
+* limitations under the License.                                          *
+*                                                                         *
 *                                                                         *
 * main.c - program entry and startup/shutdown                             *
 *                                                                         *
@@ -37,10 +49,7 @@ void main_loop( void )
 	targets_start( );
 
 	// throw the data submission loops
-	stats_start( ctl->stats->stats );
-	stats_start( ctl->stats->adder );
-	stats_start( ctl->stats->gauge );
-	stats_start( ctl->stats->self );
+	stats_start( );
 
 	// and init posts
 	post_init( );
@@ -64,9 +73,6 @@ void main_loop( void )
 	while( RUNNING( ) )
 		sleep( 1 );
 
-	// and http server
-	http_stop( );
-
 	// shut down stats
 	stats_stop( );
 
@@ -75,10 +81,11 @@ void main_loop( void )
 }
 
 
+MIN_CTL *ctl = NULL;
 
 void main_create_conf( void )
 {
-	ctl             = (MIN_CTL *) allocz( sizeof( MIN_CTL ) );
+	ctl             = (MIN_CTL *) mem_perm( sizeof( MIN_CTL ) );
 	ctl->proc       = app_control( );
 	ctl->mem        = memt_config_defaults( );
 	ctl->gc         = gc_config_defaults( );
@@ -100,13 +107,13 @@ void main_create_conf( void )
 }
 
 
-int main( int ac, char **av, char **env )
+int main( int ac, char **av, const char **env )
 {
 	char *pidfile = NULL, *optstr;
 	int oc;
 
 	// start the app up
-	app_init( "ministry", "ministry" );
+	app_init( "ministry", "ministry", RUN_NO_RKV );
 
 	// make our combined arg string
 	if( !( optstr = config_arg_string( "p:" ) ) )
@@ -152,6 +159,9 @@ int main( int ac, char **av, char **env )
 
 	// and any synethics
 	synth_init( );
+
+	// add rmpaths
+	data_http_init( );
 
 	// lights up networking and starts listening
 	// also connects to graphite
