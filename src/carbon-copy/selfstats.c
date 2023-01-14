@@ -227,7 +227,7 @@ int self_stats_config_line( AVP *av )
 	else if( attIs( "prefix" ) )
 	{
 		free( sc->prefix );
-		sc->prefix = str_copy( av->vptr, av->vlen );
+		sc->prefix = av_copy( av );
 	}
 	else if( attIs( "timestamp" ) )
 	{

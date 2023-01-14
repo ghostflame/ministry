@@ -61,7 +61,7 @@ int query_config_line( AVP *av )
 	}
 	else if( attIs( "maxPaths" ) )
 	{
-		if( parse_number( av->vptr, &v, NULL ) == NUM_INVALID )
+		if( av_int( v ) == NUM_INVALID )
 		{
 			err( "Invalid max query paths: %s", av->vptr );
 			return -1;

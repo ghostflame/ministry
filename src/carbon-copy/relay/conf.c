@@ -79,7 +79,7 @@ int relay_config_line( AVP *av )
 
 	if( attIs( "flush" ) || attIs( "flushMsec" ) )
 	{
-		if( parse_number( av->vptr, &ms, NULL ) == NUM_INVALID )
+		if( av_int( ms ) == NUM_INVALID )
 		{
 			err( "Invalid flush milliseconds value '%s'", av->vptr );
 			return -1;
@@ -105,7 +105,7 @@ int relay_config_line( AVP *av )
 			free( r->name );
 		}
 
-		r->name = str_copy( av->vptr, av->vlen );
+		r->name = av_copy( av );
 		__relay_cfg_state = 1;
 	}
 	else if( attIs( "regex" ) )
@@ -132,7 +132,7 @@ int relay_config_line( AVP *av )
 		}
 
 		// keep a copy of the string
-		r->rgxstr[r->mcount] = str_perm( av->vptr, av->vlen );
+		r->rgxstr[r->mcount] = av_copyp( av );
 
 		++(r->mcount);
 		r->type = RTYPE_REGEX;
@@ -176,7 +176,7 @@ int relay_config_line( AVP *av )
 	}
 	else if( attIs( "target" ) || attIs( "targets" ) )
 	{
-		r->target_str = str_copy( av->vptr, av->vlen );
+		r->target_str = av_copy( av );
 		__relay_cfg_state = 1;
 	}
 	else if( attIs( "done" ) )

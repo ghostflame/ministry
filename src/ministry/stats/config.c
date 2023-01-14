@@ -419,7 +419,7 @@ int stats_config_line( AVP *av )
 				free( h->name );
 			}
 
-			h->name = str_copy( av->vptr, av->vlen );
+			h->name = av_copy( av );
 
 			if( !h->rgx )
 				h->rgx = regex_list_create( 1 );

@@ -201,7 +201,7 @@ int ha_config_line( AVP *av )
 	}
 	else if( attIs( "hostname" ) )
 	{
-		_ha->hostname = str_copy( av->vptr, av->vlen );
+		_ha->hostname = av_copy( av );
 	}
 	else if( attIs( "partner" ) || attIs( "member" ) )
 	{
