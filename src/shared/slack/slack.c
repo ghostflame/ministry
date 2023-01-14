@@ -84,7 +84,7 @@ int slack_message_add_attachment( SLKMSG *msg, int argc, ... )
 		k = va_arg( args, char * );
 		v = va_arg( args, char * );
 
-		json_object_object_add( jo, k, json_object_new_string( v ) );
+		json_insert( jo, k, string, v );
 	}
 	va_end( args );
 

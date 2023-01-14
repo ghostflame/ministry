@@ -117,7 +117,7 @@ int config_line( AVP *av )
 	else if( attIs( "tmpdir" ) )
 	{
 		free( _proc->tmpdir );
-		_proc->tmpdir = str_copy( av->vptr, av->vlen );
+		_proc->tmpdir = av_copy( av );
 	}
 	else if( attIs( "maxJsonSz" ) )
 	{

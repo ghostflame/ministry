@@ -204,7 +204,7 @@ int metric_config_line( AVP *av )
 
 	if( attIs( "maxAge" ) )
 	{
-		if( parse_number( av->vptr, &v, NULL ) == NUM_INVALID )
+		if( av_int( v ) == NUM_INVALID )
 			return -1;
 		ctl->metric->max_age = v;
 	}

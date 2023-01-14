@@ -170,7 +170,7 @@ int metrics_config_line( AVP *av )
 			free( a->name );
 		}
 
-		a->name = str_copy( av->vptr, av->vlen );
+		a->name = av_copy( av );
 		a->nlen = av->vlen;
 		__metrics_metal_state = 1;
 	}
@@ -192,7 +192,7 @@ int metrics_config_line( AVP *av )
 			free( p->name );
 		}
 
-		p->name = str_copy( av->vptr, av->vlen );
+		p->name = av_copy( av );
 		p->nlen = av->vlen;
 		__metrics_prof_state = 1;
 	}
@@ -210,7 +210,7 @@ int metrics_config_line( AVP *av )
 		if( p->default_att )
 			free( p->default_att );
 
-		p->default_att = str_copy( av->vptr, av->vlen );
+		p->default_att = av_copy( av );
 		__metrics_prof_state = 1;
 	}
 	else if( attIs( "path" ) )
@@ -245,7 +245,7 @@ int metrics_config_line( AVP *av )
 			if( p->maps->lname )
 				free( p->maps->lname );
 
-			p->maps->lname = str_copy( av->vptr, av->vlen );
+			p->maps->lname = av_copy( av );
 		}
 		else if( attIs( "id" ) )
 		{

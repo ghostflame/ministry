@@ -70,7 +70,7 @@ int synth_config_path( SYNTH *s, AVP *av )
 		return -1;
 	}
 
-	s->paths[s->parts] = str_copy( av->vptr, av->vlen );
+	s->paths[s->parts] = av_copy( av );
 	s->plens[s->parts] = av->vlen;
 
 	++(s->parts);
@@ -101,7 +101,7 @@ int synth_config_line( AVP *av )
 		if( s->target_path )
 			free( s->target_path );
 
-		s->target_path = str_copy( av->vptr, av->vlen );
+		s->target_path = av_copy( av );
 		__synth_cfg_state = 1;
 	}
 	else if( attIs( "source" ) )

@@ -101,7 +101,6 @@ enum MHD_Result http_send_response( HTREQ *req )
 
 
 
-
 void http_request_complete( void *cls, HTTP_CONN *conn,
 	void **arg, HTTP_CODE toe )
 {
@@ -256,12 +255,27 @@ enum MHD_Result http_get_url_param( void *cls, HTTP_VAL kind, const char *key, c
 }
 
 
+// TODO, and a big todo
+int http_fetch_creds( HTUSR *user )
+{
+	if( !strcasecmp( user->name, "failme" ) )
+		return 1;
+
+	user->creds = str_copy( "abcdef1234567890abcdef1234567890abcdef1234567890", 0 );
+	return 0;
+}
+
+#define USER_NOPE()			req->text = strbuf_copy( req->text, "Unauthorized.", 0 ); \
+							req->code = MHD_HTTP_UNAUTHORIZED; \
+							http_send_response( req )
+
 
 HTREQ *http_request_creator( HTTP_CONN *conn, const char *url, const char *method )
 {
 	union MHD_ConnectionInfo *ci;
 	HTHDLS *hd;
 	HTREQ *req;
+	char *ustr;
 	int rlen;
 
 	req = mem_new_request( );
@@ -291,6 +305,41 @@ HTREQ *http_request_creator( HTTP_CONN *conn, const char *url, const char *metho
 		req->code = MHD_HTTP_METHOD_NOT_ALLOWED;
 		http_send_response( req );
 		return NULL;
+	}
+
+	// do we have auth?
+	if( flagf_has( _http, HTTP_FLAGS_AUTH ) )
+	{
+		if( ( ustr = MHD_digest_auth_get_username( conn ) ) )
+		{
+			if( !req->user )
+				req->user = (HTUSR *) allocz( sizeof( HTUSR ) );
+
+			req->user->name = str_copy( ustr, 0 );
+			MHD_free( ustr );
+
+			if( http_fetch_creds( req->user ) )
+			{
+				USER_NOPE();
+				return NULL;
+			}
+
+			// do the digest check
+			req->user->validated = MHD_digest_auth_check2( conn, _http->realm, req->user->name,
+			                           req->user->creds, 300, MHD_DIGEST_ALG_SHA256 );
+
+			if( ! req->user->validated )
+			{
+				USER_NOPE();
+				return NULL;
+			}
+		}
+		// do we *need* auth?
+		else if( flagf_has( _http, HTTP_FLAGS_AUTH_REQ ) )
+		{
+			USER_NOPE();
+			return NULL;
+		}
 	}
 
 	// find the handler
@@ -420,7 +469,7 @@ enum MHD_Result http_request_handler( void *cls, HTTP_CONN *conn, const char *ur
 				if( req->is_json )
 					http_calls_json_done( req );
 
-				req->code = MHD_HTTP_CONTENT_TOO_LARGE;
+				req->code = ITS_TOO_LARGE;
 				http_send_response( req );
 				return MHD_NO;
 			}

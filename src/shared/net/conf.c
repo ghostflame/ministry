@@ -163,7 +163,7 @@ int net_config_line( AVP *av )
 		}
 		else if( attIs( "filterList" ) )
 		{
-			_net->filter_list = str_copy( av->vptr, av->vlen );
+			_net->filter_list = av_copy( av );
 		}
 		else
 			return -1;
@@ -211,7 +211,7 @@ int net_config_line( AVP *av )
 			if( _net->tokens->filter_name )
 				free( _net->tokens->filter_name );
 
-			_net->tokens->filter_name = str_copy( av->vptr, av->vlen );
+			_net->tokens->filter_name = av_copy( av );
 		}
 		else
 			return -1;

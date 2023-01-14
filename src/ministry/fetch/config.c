@@ -65,7 +65,7 @@ int fetch_config_line( AVP *av )
 	if( attIs( "name" ) )
 	{
 		free( f->name );
-		f->name = str_copy( av->vptr, av->vlen );
+		f->name = av_copy( av );
 		__fetch_config_state = 1;
 	}
 	else if( attIs( "host" ) )
@@ -81,7 +81,7 @@ int fetch_config_line( AVP *av )
 	}
 	else if( attIs( "port" ) )
 	{
-		if( parse_number( av->vptr, &v, NULL ) == NUM_INVALID )
+		if( av_int( v ) == NUM_INVALID )
 		{
 			err( "Invalid remote port for fetch block %s: '%s'", f->name, av->vptr );
 			return -1;
@@ -153,7 +153,7 @@ int fetch_config_line( AVP *av )
 	}
 	else if( attIs( "typehash" ) )
 	{
-		if( parse_number( av->vptr, &v, NULL ) == NUM_INVALID )
+		if( av_int( v ) == NUM_INVALID )
 		{
 			err( "Invalid metric type hash size: %s", av->vptr );
 			return -1;
@@ -185,7 +185,7 @@ int fetch_config_line( AVP *av )
 	}
 	else if( attIs( "period" ) )
 	{
-		if( parse_number( av->vptr, &v, NULL ) == NUM_INVALID )
+		if( av_int( v ) == NUM_INVALID )
 		{
 			err( "Invalid fetch period in block %s: %s", f->name, av->vptr );
 			return -1;
@@ -196,7 +196,7 @@ int fetch_config_line( AVP *av )
 	}
 	else if( attIs( "revalidate" ) )
 	{
-		if( parse_number( av->vptr, &v, NULL ) == NUM_INVALID )
+		if( av_int( v ) == NUM_INVALID )
 		{
 			err( "Invalid DNS revalidation period in block %s: %s", f->name, av->vptr );
 			return -1;
@@ -206,7 +206,7 @@ int fetch_config_line( AVP *av )
 	}
 	else if( attIs( "offset" ) )
 	{
-		if( parse_number( av->vptr, &v, NULL ) == NUM_INVALID )
+		if( av_int( v ) == NUM_INVALID )
 		{
 			err( "Invalid fetch offset in block %s: %s", f->name, av->vptr );
 			return -1;
@@ -217,7 +217,7 @@ int fetch_config_line( AVP *av )
 	}
 	else if( attIs( "buffer" ) )
 	{
-		if( parse_number( av->vptr, &v, NULL ) == NUM_INVALID )
+		if( av_int( v ) == NUM_INVALID )
 		{
 			err( "Invalid buffer size for block %s: %s", f->name, av->vptr );
 			return -1;
@@ -239,6 +239,7 @@ int fetch_config_line( AVP *av )
 	else if( attIs( "attribute" ) )
 	{
 		// prometheus attribute map
+		// TODO
 		__fetch_config_state = 1;
 	}
 	else if( attIs( "enable" ) )

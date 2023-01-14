@@ -176,7 +176,7 @@ int rkv_config_line( AVP *av )
 		}
 		else if( attIs( "ioThreads" ) || attIs( "threads" ) )
 		{
-			if( parse_number( av->vptr, &v, NULL ) == NUM_INVALID )
+			if( av_int( v ) == NUM_INVALID )
 			{
 				warn( "Invalid writer threads count." );
 				return -1;
@@ -202,7 +202,7 @@ int rkv_config_line( AVP *av )
 		}
 		else if( attIs( "maxFileOpenSec" ) )
 		{
-			if( parse_number( av->vptr, &v, NULL ) == NUM_INVALID )
+			if( av_int( v ) == NUM_INVALID )
 			{
 				err( "Invalid max seconds to hold open inactive files: %s", av->vptr );
 				return -1;
@@ -212,7 +212,7 @@ int rkv_config_line( AVP *av )
 		}
 		else if( attIs( "maxPathLength" ) )
 		{
-			if( parse_number( av->vptr, &v, NULL ) == NUM_INVALID )
+			if( av_int( v ) == NUM_INVALID )
 			{
 				err( "Invalid max path length: %s", av->vptr );
 				return -1;
@@ -247,7 +247,7 @@ int rkv_config_line( AVP *av )
 				return -1;
 			}
 
-			m->name = str_perm( av->vptr, av->vlen );
+			m->name = av_copyp( av );
 		}
 		else if( attIs( "match" ) )
 		{

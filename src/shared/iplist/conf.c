@@ -127,7 +127,7 @@ int iplist_config_line( AVP *av )
 	{
 		if( l->name )
 			free( l->name );
-		l->name = str_copy( av->vptr, av->vlen );
+		l->name = av_copy( av );
 		_iplist_cfg_set = 1;
 	}
 	else if( attIs( "default" ) )

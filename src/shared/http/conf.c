@@ -51,6 +51,7 @@ HTTP_CTL *http_config_defaults( void )
 	h->conns_tmout     = DEFAULT_HTTP_CONN_TMOUT;
 	h->post_max        = DEFAULT_POST_MAX_SZ;
 	h->port            = DEFAULT_HTTP_PORT;
+	h->realm           = str_copy( "ministry", 0 );
 	h->addr            = NULL;
 	// MHD_USE_DEBUG does *weird* things.  Points *con_cls at the request buffer
 	// without it, *con_cls seems to relate to the length of the requested url
@@ -118,7 +119,7 @@ int http_config_line( AVP *av )
 		{
 			if( h->addr )
 				free( h->addr );
-			h->addr = str_copy( av->vptr, av->vlen );
+			h->addr = av_copy( av );
 
 			if( !inet_aton( h->addr, &(h->sin->sin_addr) ) )
 			{
@@ -143,7 +144,7 @@ int http_config_line( AVP *av )
 			if( h->web_iplist )
 				free( h->web_iplist );
 
-			h->web_iplist = str_copy( av->vptr, av->vlen );
+			h->web_iplist = av_copy( av );
 			debug( "Using HTTP IP filter %s.", h->web_iplist );
 		}
 		else if( attIs( "controlFilter" ) )
@@ -151,7 +152,7 @@ int http_config_line( AVP *av )
 			if( h->ctl_iplist )
 				free( h->ctl_iplist );
 
-			h->ctl_iplist = str_copy( av->vptr, av->vlen );
+			h->ctl_iplist = av_copy( av );
 			debug( "Using HTTP controls IP filter %s.", h->ctl_iplist );
 		}
 		else if( attIs( "postMax" ) )
@@ -215,6 +216,51 @@ int http_config_line( AVP *av )
 		else
 			return -1;
 	}
+	else if( !strncasecmp( av->aptr, "auth.", 5 ) )
+	{
+		av->alen -= 5;
+		av->aptr += 5;
+
+		if( attIs( "enable" ) )
+		{
+			if( config_bool( av ) )
+			{
+				flagf_add( h, HTTP_FLAGS_AUTH );
+				notice( "Auth is enabled." );
+			}
+			else
+			{
+				flagf_rmv( h, HTTP_FLAGS_AUTH );
+				notice( "Auth is disabled." );
+			}
+		}
+		else if( attIs( "require" ) || attIs( "enforce" ) )
+		{
+			if( config_bool( av ) )
+			{
+				flagf_add( h, HTTP_FLAGS_AUTH_REQ );
+				notice( "Auth, if enabled, is required - no anonymous access." );
+			}
+			else
+			{
+				flagf_rmv( h, HTTP_FLAGS_AUTH_REQ );
+				notice( "Auth, if enabled, is optional - anonymous access allowed." );
+			}
+		}
+		else if( attIs( "realm" ) )
+		{
+			free( h->realm );
+			h->realm = av_copy( av );
+			notice( "Auth realm set to '%s'.", h->realm );
+		}
+		else if( attIs( "source" ) )
+		{
+			free( h->source );
+			h->source = av_copy( av );
+		}
+		else
+			return -1;
+	}
 	else if( !strncasecmp( av->aptr, "tls.", 4 ) )
 	{
 		av->alen -= 4;
@@ -224,13 +270,13 @@ int http_config_line( AVP *av )
 		{
 			if( h->tls->cert.path )
 				free( h->tls->cert.path );
-			h->tls->cert.path = str_copy( av->vptr, av->vlen );
+			h->tls->cert.path = av_copy( av );
 		}
 		else if( attIs( "keyFile" ) || attIs( "key" ) )
 		{
 			if( h->tls->key.path )
 				free( h->tls->key.path );
-			h->tls->key.path = str_copy( av->vptr, av->vlen );
+			h->tls->key.path = av_copy( av );
 		}
 		else if( attIs( "keyPass" ) || attIs( "pass" ) || attIs( "password" ) )
 		{
@@ -245,14 +291,14 @@ int http_config_line( AVP *av )
 
 			if( !valIs( "null" ) )
 			{
-				h->tls->password = str_copy( av->vptr, av->vlen );
+				h->tls->password = av_copy( av );
 				h->tls->passlen  = (uint16_t) av->vlen;
 			}
 		}
 		else if( attIs( "priorities" ) )
 		{
 			free( h->tls->priorities );
-			h->tls->priorities = str_copy( av->vptr, av->vlen );
+			h->tls->priorities = av_copy( av );
 		}
 		else if( attIs( "enable" ) )
 		{

@@ -330,7 +330,7 @@ int target_config_line( AVP *av )
 			warn( "Target already has a type set." );
 			free( t->typestr );
 		}
-		t->typestr = str_copy( av->vptr, av->vlen );
+		t->typestr = av_copy( av );
 
 		if( _tgt->type_fn )
 		{
