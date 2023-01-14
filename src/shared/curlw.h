@@ -70,8 +70,6 @@
 #define DEFAULT_CURLW_BUFFER		0x10000		// 64k
 #define JSON_CONTENT_TYPE			"application/json"
 #define JSON_CONTENT_TYPE_LEN		16
-#define CONTENT_TYPE_HDR			"Content-Type"
-#define ACCEPT_HDR					"Accept"
 
 
 struct curlw_times

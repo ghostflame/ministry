@@ -58,7 +58,7 @@ void query_path_get_data( QP *p, QRY *q )
 
 void query_write( HTREQ *req, QRY *q )
 {
-	JSON *res, *jpth, *jpts, *jva, *jt, *jv;
+	JSON *res, *jpth, *jpts, *jva;
 	//int64_t ts;
 	PNT *pt;
 	QP *p;
@@ -79,10 +79,8 @@ void query_write( HTREQ *req, QRY *q )
 			if( pt->ts )
 			{
 				jva = json_object_new_array( );
-				jt = json_object_new_int64( pt->ts );
-				jv = json_object_new_double( pt->val );
-				json_object_array_add( jva, jt );
-				json_object_array_add( jva, jv );
+				json_append( jva, int64, pt->ts );
+				json_append( jva, double, pt->val );
 				json_object_array_add( jpts, jva );
 			}
 		}

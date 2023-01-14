@@ -117,7 +117,7 @@ int post_handler( HTREQ *req )
 		ret = data_parse_json( req->post->jo, (DTYPE *) req->path->arg );
 
 		if( ret < 0 )
-			req->code = MHD_HTTP_UNPROCESSABLE_ENTITY;
+			req->code = UNPROC_ITEM;
 
 		return ret;
 	}

@@ -27,6 +27,7 @@
 #define HTTP_FLAGS_CONTROL				0x0001
 #define HTTP_FLAGS_JSON					0x0002
 #define HTTP_FLAGS_AUTH					0x0004
+#define HTTP_FLAGS_AUTH_REQ				0x0008
 
 #define HTTP_FLAGS_NO_OUT				0x0010
 
@@ -40,6 +41,18 @@ typedef struct MHD_Response             HTTP_RESP;
 typedef enum MHD_RequestTerminationCode HTTP_CODE;
 typedef enum MHD_ValueKind              HTTP_VAL;
 
+
+// MHD changes
+#ifdef MHD_HTTP_UNPROCESSABLE_CONTENT
+	#define UNPROC_ITEM	MHD_HTTP_UNPROCESSABLE_CONTENT
+#else
+	#define UNPROC_ITEM MHD_HTTP_UNPROCESSABLE_ENTITY
+#endif
+#ifdef MHD_HTTP_CONTENT_TOO_LARGE
+	#define ITS_TOO_LARGE MHD_HTTP_CONTENT_TOO_LARGE
+#else
+	#define ITS_TOO_LARGE MHD_HTTP_PAYLOAD_TOO_LARGE
+#endif
 
 
 enum http_method_shortcuts
@@ -89,6 +102,15 @@ struct http_param
 	char					val[HTTP_PARAM_MAX_VAL];
 };
 
+
+struct http_user
+{
+	char				*	name;
+	char				*	creds;
+	int						validated;
+};
+
+
 #define HTTP_CLS_CHECK		0xdeadbeefdeadbeef
 
 struct http_req_data
@@ -102,6 +124,7 @@ struct http_req_data
 	struct sockaddr_in		sin;
 	HTPRM				*	params;
 	HTTP_POST			*	post;
+	HTUSR				*	user;
 	int						code;
 	int						meth;
 	int						sent;
@@ -171,6 +194,10 @@ struct http_control
 	uint16_t				server_port; // what we end up using
 	char				*	addr;
 	char				*	proto;
+
+	// auth vars
+	char				*	realm;
+	char				*	source;
 
 	char				*	ctl_iplist;
 	char				*	web_iplist;

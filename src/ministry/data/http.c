@@ -42,7 +42,7 @@ int data_http_rm_path( DTYPE *dt, const char *path, int len )
 
 int data_http_rmpaths( HTREQ *req )
 {
-	JSON *to, *po, *ro, *rro, *rno, *rrto, *rnto, *rpo;
+	JSON *to, *po, *ro, *rro, *rno, *rrto, *rnto;
 	int i, sl, rc = 0, nc = 0;
 	const char *path;
 	size_t j, len;
@@ -50,7 +50,7 @@ int data_http_rmpaths( HTREQ *req )
 
 	if( !req->is_json || !req->post->jo )
 	{
-		req->code = MHD_HTTP_UNPROCESSABLE_ENTITY;
+		req->code = UNPROC_ITEM;
 		return -1;
 	}
 
@@ -87,15 +87,13 @@ int data_http_rmpaths( HTREQ *req )
 			 || !( sl = json_object_get_string_len( po ) ) )
 				continue;
 
-			rpo = json_object_new_string( path );
-
 			if( data_http_rm_path( dt, path, sl ) )
 			{
 				if( !rrto )
 					rrto = json_object_new_array( );
 
 				++rc;
-				json_object_array_add( rrto, rpo );
+				json_append( rrto, string, path );
 			}
 			else
 			{
@@ -103,7 +101,7 @@ int data_http_rmpaths( HTREQ *req )
 					rnto = json_object_new_array( );
 
 				++nc;
-				json_object_array_add( rnto, rpo );
+				json_append( rnto, string, path );
 			}
 		}
 

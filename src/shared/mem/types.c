@@ -111,12 +111,14 @@ void mem_free_request( HTREQ **h )
 	HTTP_POST *p = NULL;
 	BUF *b = NULL;
 	HTREQ *r;
+	HTUSR *u;
 
 	r  = *h;
 	*h = NULL;
 
 	b = r->text;
 	p = r->post;
+	u = r->user;
 
 	if( r->params )
 		mem_free_htprm_list( r->params );
@@ -126,10 +128,21 @@ void mem_free_request( HTREQ **h )
 	if( p )
 		memset( p, 0, sizeof( HTTP_POST ) );
 
+	if( u )
+	{
+		if( u->name )
+			free( u->name );
+		if( u->creds )
+			free( u->creds );
+
+		memset( u, 0, sizeof( HTUSR ) );
+	}
+
 	strbuf_empty( b );
 
 	r->text = b;
 	r->post = p;
+	r->user = u;
 
 	mtype_free( _mem->htreq, r );
 }

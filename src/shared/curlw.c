@@ -109,14 +109,14 @@ void curlw_setup( CURLWH *ch, CURL *c, char *data, size_t len )
 	// say that we accept json
 	if( chkCurlF( ch, PARSE_JSON ) )
 	{
-		snprintf( hdrbuf, 8192, "%s: %s", ACCEPT_HDR, JSON_CONTENT_TYPE );
+		snprintf( hdrbuf, 8192, "%s: %s", MHD_HTTP_HEADER_ACCEPT, JSON_CONTENT_TYPE );
 		ch->hdrs = curl_slist_append( ch->hdrs, hdrbuf );
 	}
 
 	// are we posting json?
 	if( len && chkCurlF( ch, SEND_JSON ) )
 	{
-		snprintf( hdrbuf, 8192, "%s: %s", CONTENT_TYPE_HDR, JSON_CONTENT_TYPE );
+		snprintf( hdrbuf, 8192, "%s: %s", MHD_HTTP_HEADER_CONTENT_TYPE, JSON_CONTENT_TYPE );
 		ch->hdrs = curl_slist_append( ch->hdrs, hdrbuf );
 	}
 
