@@ -29,7 +29,7 @@ void *__thread_wrapper( void *arg )
 
 	pthread_detach( t->id );
 
-	if( t->name )
+	if( t->name[0] )
 	{
 		// complain if it fails
 		if( pthread_setname_np( t->id, t->name ) )
@@ -38,7 +38,7 @@ void *__thread_wrapper( void *arg )
 
 	(*(t->call))( t );
 
-	if( t->name )
+	if( t->name[0] )
 		debug( "Thread has ended: %s", t->name );
 
 	// minor risk of use-after-free - the caller

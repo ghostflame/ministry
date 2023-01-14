@@ -48,3 +48,5 @@ src/ministry-test/ministry-test
 src/metric-filter/metric-filter
 src/archivist/archivist
 
+# dev scripts
+dist/setcopy.sh

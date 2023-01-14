@@ -202,7 +202,7 @@ int is_url( const char *str );
 // json shortcuts
 #define json_fetch( _obj, _key, _type )         json_object_get_##_type( json_object_object_get( _obj, _key ) )
 #define json_insert( _obj, _key, _type, _item ) json_object_object_add( _obj, _key, json_object_new_##_type( _item ) )
-
+#define json_append( _arr, _type, _item )       json_object_array_add( _arr, json_object_new_##_type( _item ) )
 
 // hash size lookup
 uint64_t hash_size( const char *str );
