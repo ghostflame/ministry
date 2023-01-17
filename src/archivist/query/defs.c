@@ -21,7 +21,7 @@
 
 #include "local.h"
 
-QRFN query_function_defns[11] =
+QRFN query_function_defns[21] =
 {
 	// transform one series
 	{
@@ -103,6 +103,89 @@ QRFN query_function_defns[11] =
 		.argc  = 2,
 		.argm  = 0,
 		.types = { QARG_TYPE_INTEGER, QARG_TYPE_INTEGER, QARG_TYPE_NONE, QARG_TYPE_NONE }
+	},
+
+	// filter functions
+
+	{
+		.name  = "",
+		.fn    = &query_filter_avg_above,
+		.argc  = 1,
+		.argm  = 1,
+		.types = { QARG_TYPE_DOUBLE }
+	},
+
+	{
+		.name  = "",
+		.fn    = &query_filter_avg_below,
+		.argc  = 1,
+		.argm  = 1,
+		.types = { QARG_TYPE_DOUBLE }
+	},
+
+	{
+		.name  = "",
+		.fn    = &query_filter_avg_between,
+		.argc  = 2,
+		.argm  = 2,
+		.types = { QARG_TYPE_DOUBLE, QARG_TYPE_DOUBLE }
+	},
+
+	{
+		.name  = "",
+		.fn    = &query_filter_max_above,
+		.argc  = 1,
+		.argm  = 1,
+		.types = { QARG_TYPE_DOUBLE }
+	},
+
+	{
+		.name  = "",
+		.fn    = &query_filter_max_below,
+		.argc  = 1,
+		.argm  = 1,
+		.types = { QARG_TYPE_DOUBLE }
+	},
+
+	{
+		.name  = "",
+		.fn    = &query_filter_max_between,
+		.argc  = 2,
+		.argm  = 2,
+		.types = { QARG_TYPE_DOUBLE, QARG_TYPE_DOUBLE }
+	},
+
+	{
+		.name  = "",
+		.fn    = &query_filter_min_above,
+		.argc  = 1,
+		.argm  = 1,
+		.types = { QARG_TYPE_DOUBLE }
+	},
+
+	{
+		.name  = "",
+		.fn    = &query_filter_min_below,
+		.argc  = 1,
+		.argm  = 1,
+		.types = { QARG_TYPE_DOUBLE }
+	},
+
+	{
+		.name  = "",
+		.fn    = &query_filter_min_between,
+		.argc  = 2,
+		.argm  = 2,
+		.types = { QARG_TYPE_DOUBLE, QARG_TYPE_DOUBLE }
+	},
+
+	// end
+	{
+		.name  = NULL,
+		.fn    = NULL,
+		.argc  = 0,
+		.argm  = 0,
+		.types = { 0 }
 	}
 };
 

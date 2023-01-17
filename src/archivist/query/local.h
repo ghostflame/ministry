@@ -54,6 +54,16 @@ query_data_fn query_combine_sum;
 query_data_fn query_combine_average;
 query_data_fn query_combine_presence;
 
+query_data_fn query_filter_avg_above;
+query_data_fn query_filter_avg_below;
+query_data_fn query_filter_avg_between;
+query_data_fn query_filter_max_above;
+query_data_fn query_filter_max_below;
+query_data_fn query_filter_max_between;
+query_data_fn query_filter_min_above;
+query_data_fn query_filter_min_below;
+query_data_fn query_filter_min_between;
+
 
 int query_add_current( void );
 void query_rem_current( void );
