@@ -1,4 +1,4 @@
-CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
+CC     = /usr/bin/gcc -std=c18 $(WFLAGS)
 
 FILES  = config init read scan tree update rkv
 HEADS  = local rkv

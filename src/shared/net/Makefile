@@ -1,4 +1,4 @@
-CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
+CC     = /usr/bin/gcc -std=c18 $(WFLAGS)
 
 FILES  = thread pool epoll tcp udp token conf net
 HEADS  = local udp token net

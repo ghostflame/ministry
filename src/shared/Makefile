@@ -1,4 +1,4 @@
-CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
+CC     = /usr/bin/gcc -std=c18 $(WFLAGS)
 
 SUBS   = config log mem fs pmet http iplist slack ha utils strings io target net rkv
 

@@ -1,4 +1,4 @@
-CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
+CC     = /usr/bin/gcc -std=c18 $(WFLAGS)
 
 FILES  = const dhash json point update http data
 HEADS  = local data

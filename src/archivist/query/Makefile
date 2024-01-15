@@ -1,4 +1,4 @@
-CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
+CC     = /usr/bin/gcc -std=c18 $(WFLAGS)
 
 FILES  = config defs http fn_xform fn_combine fn_filter query
 HEADS  = local query

@@ -1,4 +1,4 @@
-CC     = /usr/bin/gcc -std=c11 $(WFLAGS)
+CC     = /usr/bin/gcc -std=c18 $(WFLAGS)
 
 FILES  = mem hash host selfstats main
 HEADS  = mem carbon_copy hash host selfstats typedefs
