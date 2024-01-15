@@ -79,7 +79,11 @@ BUF *strbuf_resize( BUF *b, uint32_t size )
 		b->sz  = sz;
 
 		if( b->len > 0 )
+		{
 			memcpy( b->buf, old, b->len );
+			// argh!  Leak!  Fixed.
+			free( old );
+		}
 	}
 
 	return b;
