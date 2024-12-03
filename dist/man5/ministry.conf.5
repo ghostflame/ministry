@@ -10,7 +10,7 @@ ministry.conf \- ministry stats daemon config file
 .PP
 This manual page describes the configuration file for \fBministry(1)\fP.  The file is in sections,
 and including other files is permitted, though wildcard expansion is not performed - included file
-paths must be complete.  Config is read before \fBministry\fP changes directory to it's configured
+paths must be complete.  Config is read before \fBministry\fP changes directory to its configured
 base directory, so non-absolute paths included are interpreted relative to the current working
 directory.
 .PP
@@ -180,7 +180,7 @@ Number of instances to allocate at once.
 .PP
 \fBMinistry\fP has an in-built webserver, provided by \fBlibmicrohttpd\fP.  It is used for a variety
 of tasks - metric submission, issuing tokens, controlling targets and offering stats and status.
-\fBLibmicrohttpd\fP understands HTTPS and can manage ciphers anc certificates, so some config is
+\fBLibmicrohttpd\fP understands HTTPS and can manage ciphers and certificates, so some config is
 offered to control those functions.
 .PP
 The HTTP interface documentation can be read by fetching /.
@@ -268,6 +268,14 @@ many times it is fetched.  This controls the period of this page generation (def
 A single source to be disabled.  This option can repeat.  Sources include: shared, targets, stats
 
 .SS [GC]
+.PP
+Not quite as exciting as it sounds, \fBministry\fP has limited recycling, of data path object.  If
+enabled, \fBministry\fP scans the stats and adder paths looking for entries that have gone quiet.
+They are then disabled, and then removed from the hash tables.  This is a protection against a source
+of metrics that has accidentally included a timestamp or other never-repeating string in the metric
+path, though it is worth noting that a very active source with, say, milliseconds timestamps in the
+path, can still drive \fBministry\fP to memory exhaustion.  Furthermore, such paths do not make good
+graphs.
 .TP
 \fBenable\fP
 Whether gc is enabled or not (boolean, default 1).
@@ -364,7 +372,7 @@ A boolean to control whether this target is used (default 1).
 .TP
 \fBtype\fP
 What type of target this is - it affects the format of message is sent.  Recognised types include: graphite,
-coal, opentsdb.
+archivist, and opentsdb.
 .TP
 \fBport\fP
 Network port to connect to the target on; if none is supplied then a default is guessed from the type.
@@ -387,6 +395,11 @@ Whether to attempt certificate verification, boolean, defaults to false.
 Signals the end of one target block.
 
 .SS [Stats]
+.PP
+This is the Etsy Statsd equivalent data type.  A path is provided (eg a.b.c.d) and individual metrics for that
+path are sent, one at a time.  They are collected together during a reporting interval and then aggregated
+together, producing a number of values \fIabout\fP these values, not reporting them directly.  Each metric is
+appended to the provided path, so what is reported is of the form a.b.c.d.mean, a.b.c.d.lower, a.b.c.d.count.
 .TP
 \fBthresholds\fP
 A list of integer percentage values to generate thresholds at.  Must be 0 < x < 100.  Per-mille values are
@@ -714,7 +727,7 @@ Which named metrics profile to parse the data with.
 However, conversion to graphite-style paths is complex, and may well require a lot of config.
 Individual Prometheus metrics look like:
 .EX
-	<path_name>{<label1>="<value1">,<label2>="<value2>",...} <value>[ <timestamp>]
+	<path_name>{<label1>="<value1>",<label2>="<value2>",...} <value>[ <timestamp>]
 	eg http_request_duration{env="prod",host="prodweb05",type="homepage"} 1.502 1234567890500
 .EE
 .PP
