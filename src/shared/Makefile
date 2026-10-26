@@ -1,4 +1,5 @@
-CC     = /usr/bin/gcc -std=c18 $(WFLAGS)
+CC     = /usr/bin/gcc -std=$(STD) $(WFLAGS)
+STD   ?= c23
 
 SUBS   = config log mem fs pmet http iplist slack ha utils strings io target net rkv
 
@@ -40,7 +41,7 @@ with_old_gcc: $(RKV)
 
 
 subs:
-	for d in $(SUBS); do ( cd $$d && EARGS=$(EARGS) VERS=$(VERS) $(MAKE) -j10 $(MFLAGS) $(TARGET) ); done
+	for d in $(SUBS); do ( cd $$d && EARGS=$(EARGS) VERS=$(VERS) STD=$(STD) $(MAKE) -j10 $(MFLAGS) $(TARGET) ); done
 
 $(RKV): $(OBJS)
 	ar crs $(RKV) $(OBJS) $(SUBO)

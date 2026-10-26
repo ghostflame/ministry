@@ -1,4 +1,4 @@
-CC     = /usr/bin/gcc -std=c18 $(WFLAGS)
+CC     = /usr/bin/gcc -std=$(STD) $(WFLAGS)
 
 FILES  = json loop iter time utils var_val
 HEADS  = loop iter utils

@@ -1,6 +1,6 @@
 CC     = /usr/bin/gcc -std=c18 $(WFLAGS)
 
-FILES  = config defs http fn_xform fn_combine fn_filter query
+FILES  = config defs http fn_xform fn_combine query
 HEADS  = local query
 
 RKV    = query_shared.a

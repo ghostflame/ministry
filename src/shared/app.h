@@ -34,4 +34,7 @@ void app_finish( int exval );
 
 PROC_CTL *app_control( void );
 
+// env vars to fix
+#define ENV_LINUX_TZ_FILE			":/etc/localtime"
+
 #endif

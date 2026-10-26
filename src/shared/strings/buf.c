@@ -75,8 +75,9 @@ BUF *strbuf_resize( BUF *b, uint32_t size )
 	{
 		old = b->buf;
 
-		b->buf = (char *) allocz( sz );
-		b->sz  = sz;
+		b->buf  = (char *) allocz( sz );
+		b->sz   = sz;
+		b->klen = 0;	// lose keeping at this point
 
 		if( b->len > 0 )
 		{
@@ -103,6 +104,7 @@ BUF *strbuf_copy( BUF *b, const char *str, int len )
 
 	memcpy( b->buf, str, len );
 	b->len = len;
+	b->klen = 0;
 
 	buf_terminate( b );
 
@@ -122,6 +124,7 @@ int strbuf_copymax( BUF *b, const char *str, int len )
 
 	memcpy( b->buf, str, len );
 	b->len = len;
+	b->klen = 0;
 
 	buf_terminate( b );
 
@@ -216,6 +219,10 @@ void strbuf_keep( BUF *b, int len )
     }
 
     b->len = (uint32_t) len;
+	// this signals we kept the end of a buffer back at it's start
+	// we need this to detect an entire useless buffer in ministry
+	// and other line-based systems
+	b->klen = len;
     buf_terminate( b );
 }
 

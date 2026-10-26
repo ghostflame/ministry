@@ -43,9 +43,10 @@ int data_http_rm_path( DTYPE *dt, const char *path, int len )
 int data_http_rmpaths( HTREQ *req )
 {
 	JSON *to, *po, *ro, *rro, *rno, *rrto, *rnto;
-	int i, sl, rc = 0, nc = 0;
+	//int rc = 0, nc = 0;
 	const char *path;
 	size_t j, len;
+	int i, sl;
 	DTYPE *dt;
 
 	if( !req->is_json || !req->post->jo )
@@ -92,7 +93,7 @@ int data_http_rmpaths( HTREQ *req )
 				if( !rrto )
 					rrto = json_object_new_array( );
 
-				++rc;
+				//++rc;
 				json_append( rrto, string, path );
 			}
 			else
@@ -100,7 +101,7 @@ int data_http_rmpaths( HTREQ *req )
 				if( !rnto )
 					rnto = json_object_new_array( );
 
-				++nc;
+				//++nc;
 				json_append( rnto, string, path );
 			}
 		}

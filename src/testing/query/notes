@@ -1,0 +1,13 @@
+From RegexBuilder
+
+// Matches list of arguments
+::  ^((?:[a-zA-Z0-9_]+|\*)(?:\.(?:[a-zA-Z0-9_]+|\*))*)(?:,(.+))?$
+
+
+// Matches function and arguments
+::  ^([a-zA-Z_]+)\((.*)\)$
+
+parse along the string
+
+
+

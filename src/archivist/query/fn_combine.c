@@ -25,7 +25,7 @@
 // These functions iterate across the linked list of in - order may matter!
 // they create an out series
 
-int query_combine_sum( QRY *q, PTL *in, PTL **out, int argc, void **argv )
+int query_combine_sum( QRY *q, PTL *in, PTL **out, int argc, va_list args )
 {
 	register int32_t j;
 	int32_t isize;
@@ -51,7 +51,7 @@ int query_combine_sum( QRY *q, PTL *in, PTL **out, int argc, void **argv )
 
 
 // multiply together *present* values.  If only one present, use that
-int query_combine_product( QRY *q, PTL *in, PTL **out, int argc, void **argv )
+int query_combine_product( QRY *q, PTL *in, PTL **out, int argc, va_list args )
 {
 	register int32_t j;
 	int32_t isize;
@@ -82,7 +82,7 @@ int query_combine_product( QRY *q, PTL *in, PTL **out, int argc, void **argv )
 
 
 
-int query_combine_min( QRY *q, PTL *in, PTL **out, int argc, void **argv )
+int query_combine_min( QRY *q, PTL *in, PTL **out, int argc, va_list args )
 {
 	register int32_t j;
 	int32_t isize;
@@ -111,7 +111,7 @@ int query_combine_min( QRY *q, PTL *in, PTL **out, int argc, void **argv )
 	return 0;
 }
 
-int query_combine_max( QRY *q, PTL *in, PTL **out, int argc, void **argv )
+int query_combine_max( QRY *q, PTL *in, PTL **out, int argc, va_list args )
 {
 	register int32_t j;
 	int32_t isize;
@@ -141,13 +141,13 @@ int query_combine_max( QRY *q, PTL *in, PTL **out, int argc, void **argv )
 }
 
 
-int query_combine_average( QRY *q, PTL *in, PTL **out, int argc, void **argv )
+int query_combine_average( QRY *q, PTL *in, PTL **out, int argc, va_list args )
 {
 	register int32_t j;
 	double ctr;
 	PTL *l;
 
-	query_combine_sum( q, in, out, argc, argv );
+	query_combine_sum( q, in, out, argc, args );
 
 	ctr = 0.0;
 	for( l = in; l; l = l->next )
@@ -159,7 +159,7 @@ int query_combine_average( QRY *q, PTL *in, PTL **out, int argc, void **argv )
 	return 0;
 }
 
-int query_combine_presence( QRY *q, PTL *in, PTL **out, int argc, void **argv )
+int query_combine_presence( QRY *q, PTL *in, PTL **out, int argc, va_list args )
 {
 	int segs, *ptct, k, expc;
 	register int32_t j;
@@ -167,7 +167,7 @@ int query_combine_presence( QRY *q, PTL *in, PTL **out, int argc, void **argv )
 
 	if( argc > 0 )
 	{
-		segs = *((int *) argv[0]);
+		segs = va_arg( args, int );
 
 		if( segs < 1 )
 			segs = 1;

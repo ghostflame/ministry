@@ -98,4 +98,18 @@ void thread_throw_named_f( throw_fn *fp, void *arg, int64_t num, char *fmt, ... 
 	__thread_throw( fp, arg, num, buf );
 }
 
+void thread_throw_named_group( throw_fn *fp, void *arg, int64_t count, char *name )
+{
+	int64_t i;
+
+	if( count <= 0 || count > THREAD_MAX_GROUP_SZ )
+	{
+		warn( "Invalid thread group size %ld (%s)", count, name );
+		return;
+	}
+
+	for( i = 0; i < count; ++i )
+		__thread_throw( fp, arg, i, name );
+}
+
 

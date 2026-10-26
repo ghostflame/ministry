@@ -1,4 +1,4 @@
-CC     = /usr/bin/gcc -std=c18 $(WFLAGS)
+CC     = /usr/bin/gcc -std=$(STD) $(WFLAGS)
 
 FILES  = args context dir env read config
 HEADS  = local config

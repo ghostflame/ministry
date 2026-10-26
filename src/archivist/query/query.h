@@ -41,27 +41,63 @@ enum query_arg_types
 	QARG_TYPE_INTEGER,
 	QARG_TYPE_STRING,
 	QARG_TYPE_FUNCTION,
+	QARG_TYPE_SERIES,
+	QARG_TYPE_MULTI,
 	QARG_TYPE_MAX
 };
 
+#define QARG_MAX			4
 
 struct query_fn
 {
 	char				*	name;
 	query_data_fn		*	fn;
+	int8_t					nlen;
 	int8_t					argc;	// max args
 	int8_t					argm;	// min args
-	int8_t					types[4];
+	int8_t					types[QARG_MAX];
+};
+
+union query_arg_val
+{
+	double					avd;
+	int						avi;
+	char				*	avs;
+};
+
+struct query_arg
+{
+	QARG				*	next;
+	int						type;
+	int						len;
+	QVAL					val;
 };
 
 struct query_fn_call
 {
 	QRFC				*	next;
-	QRFN				*	fn;
+	QRY					*	qry;
+	QRFN				*	fn;		// definition
+	PTL					*	in;		// linked list of points lists
+	PTL					*	out;	// linked list of treated lists
 	int						argc;
-	char				**	argv;
+	QARG					args[QARG_MAX];
 };
 
+struct query_parse_res
+{
+	QPRES				*	next;
+	QRY					*	qry;
+	QRFC				*	fn;
+	char				*	in;
+	char				*	fpar;
+	char				*	bpar;
+	int16_t					inlen;
+	int16_t					flen;
+	int16_t					blen;
+	char					got_args;
+	char					got_nest;
+};
 
 struct query_path
 {
@@ -71,11 +107,14 @@ struct query_path
 };
 
 
+
+
+
 struct query_data
 {
 	QRY					*	next;
 	char				*	search;
-	QRFN				*	fns;		// innermost first
+	QRFC				*	fns;		// innermost first
 	QP					*	paths;
 
 	int64_t					q_when;		// when it was asked for
@@ -94,6 +133,43 @@ struct query_data
 
 	char					partbuf[512];
 };
+
+
+
+// nested fn call structure
+struct query_layer
+{
+	QLYR				*	next;		// for peers
+	QLYR				*	child;		// for inner layers
+	QLYR				*	parent;		// NULL only at top layer
+	QRY					*	q;			// link up to the query
+	QP					*	paths;
+	QRFC				*	fn;			// function and args
+	char				*	start;
+	char				*	end;
+	char				*	b_open;
+	char				*	b_close;
+};
+
+
+struct query_data_new
+{
+	QRY					*	next;
+	char				*	search;
+	QLYR				*	layers;		// per fn (might have their own path lookups)
+
+	int16_t					slen;
+	uint16_t				flags;
+	int32_t					metric;		// display metrics
+
+	int64_t					start;
+	int64_t					end;
+
+	int64_t					q_when;		// when it was asked for
+
+	char					workbuf[512];
+};
+
 
 
 struct query_metrics

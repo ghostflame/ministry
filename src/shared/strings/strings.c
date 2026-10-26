@@ -56,7 +56,7 @@ char *str_copy( const char *src, int len )
 // a capped version of strlen
 int str_nlen( const char *src, int max )
 {
-	char *p;
+	const char *p;
 
 	if( ( p = memchr( src, '\0', max ) ) )
 		return p - src;

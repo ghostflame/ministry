@@ -1,4 +1,4 @@
-CC     = /usr/bin/gcc -std=c18 $(WFLAGS)
+CC     = /usr/bin/gcc -std=$(STD) $(WFLAGS)
 
 FILES  = histogram summary counter gauge metric item label wrapper conf utils pmet
 HEADS  = local pmet

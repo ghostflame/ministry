@@ -24,7 +24,9 @@
 #define METRIC_FILTER_MEM_H
 
 #define MEM_ALLOCSZ_QRYPT			256		// 16b, so 4k
+#define MEM_ALLOCSZ_QRLYR			512		// 80b, so 40k
 #define MEM_ALLOCSZ_RKQRY			256
+#define MEM_ALLOCSZ_QARGS			256
 
 // 4GB
 #define DEFAULT_RK_MAX_KB			( 6 * 1024 * 1024 )
@@ -36,10 +38,16 @@ struct memt_control
 	MTYPE			*	rkqry;
 };
 
+QLYR *mem_new_query_layer( void );
+void mem_free_query_layer( QLYR **l );
 
 QP *mem_new_qrypt( void );
 void mem_free_qrypt( QP **q );
 void mem_free_qrypt_list( QP *list );
+
+QARG *mem_new_qarg( void );
+void mem_free_qarg( QARG **ap );
+void mem_free_qarg_list( QARG *list );
 
 RKQR *mem_new_rkqry( void );
 void mem_free_rkqry( RKQR **r );

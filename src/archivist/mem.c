@@ -22,6 +22,58 @@
 #include "archivist.h"
 
 
+QLYR *mem_new_query_layer( void )
+{
+	return (QLYR *) mtype_new( ctl->mem->qrlyr );
+}
+
+// two-way recursion
+void __mem_flatten_query_layer_tree( QLYR *top, QLYR **list, int *count )
+{
+	// depth first
+	if( top->child )
+	{
+		__mem_flatten_query_layer_tree( top->child, list, count )
+	}
+
+	// now next pointers
+	if( top->next )
+	{
+		__mem_flatten_query_layer_tree( top->next, list, count )
+	}
+
+	// free any paths
+	if( top->paths )
+		mem_free_qrypt_list( top->paths );
+
+	// remove some pieces
+	memset( top, 0, sizeof( QLYR ) );
+
+	top->next = *list;
+	*list = top;
+	++count;
+}
+
+
+// this is a tree structure
+void mem_free_query_layer( QLYR **l )
+{
+	QLRY *lp, *list;
+	int ct;
+
+	lp = *l;
+	list = NULL;
+	ct = 0;
+
+	// flatten that list
+	__mem_flatten_query_layer_tree( lp, &list, &ct );
+
+	// need to find the end of the list
+	for( lp = list; lp->next; lp = lp->next );
+
+	// now we have a flat list of layers (albeit NOT likely in ptr order)
+	mtype_free_list( ctl->mem->qrlyr, ct, list, lp );
+}
 
 
 QP *mem_new_qrypt( void )
@@ -133,6 +185,22 @@ void mem_free_rkqry_list( RKQR *list )
 	mtype_free_list( ctl->mem->rkqry, j, list, q );
 }
 
+QARG *mem_new_qarg( void )
+{
+	return (QARG *) mtype_new( ctl->mem->qargs );
+}
+
+void mem_free_qarg( QARG **ap )
+{
+	QARG *a;
+
+	a = *ap;
+	*ap = a;
+
+	if( a->type == 
+}
+
+
 
 MEMT_CTL *memt_config_defaults( void )
 {
@@ -141,7 +209,9 @@ MEMT_CTL *memt_config_defaults( void )
 	m = (MEMT_CTL *) allocz( sizeof( MEMT_CTL ) );
 
 	m->qrypt = mem_type_declare( "qrypt", sizeof( QP ),    MEM_ALLOCSZ_QRYPT, 0, 1 );
+	m->qrlyr = mem_type_declare( "qrlyr", sizeof( QLYR ),  MEM_ALLOCSZ_QRLYR, 0, 1 );
 	m->rkqry = mem_type_declare( "rkqry", sizeof( RKQR ),  MEM_ALLOCSZ_RKQRY, 0, 1 );
+	m->qargs = mem_type_declare( "qargs". sizeof( QARG ),  MEM_ALLOCSZ_QARGS, 0, 1 );
 
 	return m;
 }

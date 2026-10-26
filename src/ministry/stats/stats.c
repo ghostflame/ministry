@@ -50,6 +50,7 @@ void stats_report_mode( ST_THR *t, DHASH *d, int64_t ct )
 
 	mdmx = 0;
 	mdct = 0;
+	mode = 0;
 
 	mtmp = t->wkspc[0] - 1;
 

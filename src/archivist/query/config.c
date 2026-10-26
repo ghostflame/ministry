@@ -60,6 +60,8 @@ void query_init( void )
 
 QRY_CTL *query_config_defaults( void )
 {
+	QRFN *fp;
+
 	_qry = (QRY_CTL *) allocz( sizeof( QRY_CTL ) );
 
 	_qry->default_timespan = DEFAULT_QUERY_TIMESPAN * MILLION;
@@ -76,6 +78,10 @@ QRY_CTL *query_config_defaults( void )
 	_qry->metrics->timings	= pmet_new( PMET_TYPE_SUMMARY, "archivist_queries_times",
 	                                    "Ministry archivist summary of query times" );
 
+
+	// set up the lengths of our function definitions
+	for( fp = query_function_defns; fp->name != NULL; ++fp )
+		fp->nlen = strlen( fp->name );
 
 	return _qry;
 }

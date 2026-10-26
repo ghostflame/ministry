@@ -381,3 +381,5 @@ CURLWH *curlw_handle( char *url, int flags, curlw_cb *cb, curlw_jcb *jcb, void *
 
 	return ch;
 }
+
+#undef curlsetopt

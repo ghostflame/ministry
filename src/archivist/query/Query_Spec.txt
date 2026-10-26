@@ -1,0 +1,46 @@
+Query Specification
+===================
+
+Archivist Query Language resembles Graphite's query language.
+This specification lays out the nested nature of the queries.
+
+Terms
+-----
+
+FUNC := function_name( ARGS )
+ARGS := ARG [, ARG [, ... ]]
+ARG  := CONST | PATHSPEC | FUNC()
+
+FUNC may return either a constant, a path sequence or a series
+of path sequences - anything that is a valid ARG.  Interpolation
+is not performed on function returns - a function may not return
+the name of another function and expect it to be executed.
+
+All functions have fixed argument expectations and users must
+supply suitable arguments at each position.  All arguments are
+interpreted as strings - where an argument is expected to be
+numeric, that conversion is performed at the last moment.
+
+PATHSPEC is a simple globbing match on Archivist data paths.
+These are dot-delimited paths, of the same specification as
+Ministry paths.  In addition to globbing match (on '*' only),
+the special character '#' (which is not valid in paths) is taken
+to mean the entire tree from this point.
+
+[Note, that means that the search of "#" alone would return the
+entire metric tree.  This is unlikely to be what you wanted.]
+
+This specification does not require simple nesting - a function
+may take two path lists as arguments, each created by a separate
+inner function, eg:
+
+filterOver(seriesQuotient(filterOver(httpd.servers.london*.load, 5),
+	filterOver(httpd.servers.london*.cpu, 10)), 0.3)
+
+The parsing approaches each nest by parsing forwards to a '(',
+interpreting the function name behind it, then seeking the nest-
+matching ')' and repeating the parsing for the enclosed text,
+but with the expectation of the correct number of arguments.
+
+
+

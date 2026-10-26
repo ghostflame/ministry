@@ -25,6 +25,47 @@
 PROC_CTL *_proc = NULL;
 
 
+void app_set_tz( char *evar, char *default_value )
+{
+	char *tz;
+
+	if( !evar || !*evar )
+		evar = "TZ";
+
+	tz = getenv( evar );
+
+	printf( "TZ=%s\n", tz );
+
+	if( !tz || !*tz )
+	{
+		// only use something actually there
+		// default to the Linux timezone file
+		if( default_value && *default_value )
+			tz = default_value;
+		else
+			tz = ENV_LINUX_TZ_FILE;
+
+		if( setenv( evar, tz, 1 ) != 0 )
+		{
+			warn( "Unable to set timezone env (%s) to '%s' -- %s", evar, tz, Err );
+		}
+		else
+		{
+			info( "Set timezone env (%s) to '%s'.", evar, tz );
+		}
+	}
+	else
+	{
+		debug( "Existing timezone env (%s) is '%s'.", evar, tz );
+	}
+
+	// now call tzset to make sure we have it ingested
+	tzset( );
+
+	printf( "TZ=%s\n", getenv("TZ"));
+}
+
+
 void app_catch_pipe( int sig )
 {
 	debug( "Caught SIGPIPE." );
@@ -103,6 +144,9 @@ int app_init( const char *name, const char *cfgdir, unsigned int flags )
 	_proc->ipl  = iplist_config_defaults( );
 	_proc->net  = net_config_defaults( );
 	_proc->slk  = slack_config_defaults( );
+
+	// we don't use defaults for this, yet
+	app_set_tz( NULL, NULL );
 
 	config_register_section( "main",    &config_line );
 	config_register_section( "logging", &log_config_line );

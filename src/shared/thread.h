@@ -22,6 +22,8 @@
 #ifndef SHARED_THREAD_H
 #define SHARED_THREAD_H
 
+#define THREAD_MAX_GROUP_SZ		64
+
 
 struct thread_data
 {
@@ -36,6 +38,6 @@ struct thread_data
 void thread_throw( throw_fn *fp, void *arg, int64_t num );
 void thread_throw_named( throw_fn *fp, void *arg, int64_t num, char *name );
 void thread_throw_named_f( throw_fn *fp, void *arg, int64_t num, char *fmt, ... );
-
+void thread_throw_named_group( throw_fn *fp, void *arg, int64_t count, char *name );
 
 #endif

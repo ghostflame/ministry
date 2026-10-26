@@ -47,6 +47,8 @@ void io_buf_decr( IOBUF *buf );
 int io_write_data( SOCK *s, int off );
 int io_connected( SOCK *s );
 int io_connect( SOCK *s );
+int io_reconnect( SOCK *s );
+
 
 // tls
 IOTLS *io_tls_make_session( uint32_t flags, char *peername );

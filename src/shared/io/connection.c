@@ -101,7 +101,7 @@ int io_connect( SOCK *s )
 
 
 
-void io_disconnect( SOCK *s, int sd )
+void io_disconnect( SOCK *s, int shut )
 {
 	if( s->fd < 0 )
 		return;
@@ -109,12 +109,23 @@ void io_disconnect( SOCK *s, int sd )
 	if( s->tls )
 		io_tls_disconnect( s );
 
-	if( sd && shutdown( s->fd, SHUT_RDWR ) )
+	if( shut && shutdown( s->fd, SHUT_RDWR ) )
 		err( "Shutdown error on connection with %s -- %s",
 			s->name, Err );
 
 	close( s->fd );
 	s->fd = -1;
 	s->connected = 0;
+}
+
+
+// just wraps other functions
+int io_reconnect( SOCK *s )
+{
+	// shut down the existing
+	if( io_connected( s ) == 0 )
+		io_disconnect( s, 1 );
+
+	return io_connect( s );
 }
 

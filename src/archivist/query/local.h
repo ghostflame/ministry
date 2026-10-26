@@ -63,6 +63,7 @@ query_data_fn query_filter_max_between;
 query_data_fn query_filter_min_above;
 query_data_fn query_filter_min_below;
 query_data_fn query_filter_min_between;
+query_data_fn query_filter_value;
 
 
 int query_add_current( void );

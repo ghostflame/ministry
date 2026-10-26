@@ -25,12 +25,12 @@
  * Typically in this file, we don't touch **out, and just do work on *in
  */
 
-int query_xform_scale( QRY *q, PTL *in, PTL **out, int argc, void **argv )
+int query_xform_scale( QRY *q, PTL *in, PTL **out, int argc, va_list args )
 {
 	register double scale;
 	register int j;
 
-	scale = *((double *) argv[0]);
+	scale = va_arg( args, double );
 
 	for( j = 0; j < in->count; ++j )
 		in->points[j].val *= scale;
@@ -39,12 +39,12 @@ int query_xform_scale( QRY *q, PTL *in, PTL **out, int argc, void **argv )
 }
 
 
-int query_xform_offset( QRY *q, PTL *in, PTL **out, int argc, void **argv )
+int query_xform_offset( QRY *q, PTL *in, PTL **out, int argc, va_list args )
 {
 	register double offs;
 	register int j;
 
-	offs = *((double *) argv[0]);
+	offs = va_arg( args, double );
 
 	for( j = 0; j < in->count; ++j )
 		in->points[j].val += offs;
@@ -52,7 +52,7 @@ int query_xform_offset( QRY *q, PTL *in, PTL **out, int argc, void **argv )
 	return 0;
 }
 
-int query_xform_abs( QRY *q, PTL *in, PTL **out, int argc, void **argv )
+int query_xform_abs( QRY *q, PTL *in, PTL **out, int argc, va_list args )
 {
 	register int j;
 
@@ -62,13 +62,13 @@ int query_xform_abs( QRY *q, PTL *in, PTL **out, int argc, void **argv )
 	return 0;
 }
 
-int query_xform_log( QRY *q, PTL *in, PTL **out, int argc, void **argv )
+int query_xform_log( QRY *q, PTL *in, PTL **out, int argc, va_list args )
 {
 	register int j;
 	int base;
 
 	if( argc > 0 )
-		base = *((int *) argv[0]);
+		base = va_arg( args, int );
 	else
 		base = 1;
 
@@ -91,7 +91,7 @@ int query_xform_log( QRY *q, PTL *in, PTL **out, int argc, void **argv )
 	return 0;
 }
 
-int query_xform_deriv( QRY *q, PTL *in, PTL **out, int argc, void **argv )
+int query_xform_deriv( QRY *q, PTL *in, PTL **out, int argc, va_list args )
 {
 	register int j;
 	int64_t tdiff;
@@ -115,7 +115,7 @@ int query_xform_deriv( QRY *q, PTL *in, PTL **out, int argc, void **argv )
 	return 0;
 }
 
-int query_xform_nn_deriv( QRY *q, PTL *in, PTL **out, int argc, void **argv )
+int query_xform_nn_deriv( QRY *q, PTL *in, PTL **out, int argc, va_list args )
 {
 	register int j;
 	int64_t tdiff;
@@ -140,7 +140,7 @@ int query_xform_nn_deriv( QRY *q, PTL *in, PTL **out, int argc, void **argv )
 }
 
 
-int query_xform_integral( QRY *q, PTL *in, PTL **out, int argc, void **argv )
+int query_xform_integral( QRY *q, PTL *in, PTL **out, int argc, va_list args )
 {
 	register int j;
 	double sum;
@@ -156,14 +156,14 @@ int query_xform_integral( QRY *q, PTL *in, PTL **out, int argc, void **argv )
 
 // we expect the offset to be parsed, in nsec, where going backwards is a
 // negative offset.
-int query_xform_timeshift( QRY *q, PTL *in, PTL **out, int argc, void **argv )
+int query_xform_timeshift( QRY *q, PTL *in, PTL **out, int argc, va_list args )
 {
 	register int j;
 	int64_t offs;
 
 	if( argc > 0 )
 	{
-		offs = *((int64_t *) argv[0]);
+		offs = va_arg( args, int64_t );
 
 		for( j = 0; j < in->count; ++j )
 			in->points[j].ts += offs;
@@ -271,18 +271,18 @@ void _query_xform_op_mean( QRY *q, PTL *in, PTL *out, int64_t first, int64_t per
 
 
 // we need a period, in nsec
-int query_xform_summarize( QRY *q, PTL *in, PTL **out, int argc, void **argv )
+int query_xform_summarize( QRY *q, PTL *in, PTL **out, int argc, va_list args )
 {
 	int64_t period, start;
 	int32_t nct, op;
 
 	if( argc > 0 )
-		period = *((int64_t *) argv[0]);
+		period = va_arg( args, int64_t );
 	else
 		return 0;
 
 	if( argc > 1 )
-		op = *((int32_t *) argv[1]);
+		op = va_arg( args, int32_t );
 	else
 		op = XFORM_OP_SUM;
 

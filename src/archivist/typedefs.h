@@ -33,12 +33,16 @@ typedef struct network_type_data	NWTYPE;
 
 typedef struct query_path           QP;
 typedef struct query_data           QRY;
+typedef struct query_layer          QLYR;
+typedef union query_arg_val         QVAL;
+typedef struct query_arg			QARG;
 typedef struct query_fn             QRFN;
 typedef struct query_fn_call		QRFC;
 typedef struct query_metrics		QRMET;
+typedef struct query_parse_res		QPRES;
 
 
 // function types
-typedef int query_data_fn ( QRY *q, PTL *in, PTL **out, int argc, void **argv );
+typedef int query_data_fn ( QRY *q, PTL *in, PTL **out, int argc, va_list args );
 
 #endif

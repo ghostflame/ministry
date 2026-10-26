@@ -59,6 +59,7 @@ struct string_buffer
 	char				*	buf;
 	uint32_t				len;
 	uint32_t				sz;
+	uint32_t				klen;	// length kept, needed to detect data problems
 };
 
 

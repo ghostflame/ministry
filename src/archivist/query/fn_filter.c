@@ -44,6 +44,43 @@ enum qfilter_criteria
 	QFILTER_CRITERIA_END
 };
 
+const char *qfilter_value_names[QFILTER_VALUE_END] =
+{
+	"min",
+	"average",
+	"max"
+};
+
+const char *qfilter_criteria_names[QFILTER_CRITERIA_END] =
+{
+	"above",
+	"between",
+	"below"
+};
+
+
+int __qfilter_value_from_name( char *name )
+{
+	int i;
+
+	for( i = QFILTER_VALUE_MIN; i < QFILTER_VALUE_END; ++i )
+		if( !strcasecmp( name, qfilter_value_names[i] ) )
+			return i;
+
+	return -1;
+}
+
+int __qfilter_criteria_from_name( char *name )
+{
+	int i;
+
+	for( i = QFILTER_CRITERIA_ABOVE; i < QFILTER_CRITERIA_END; ++i )
+		if( !strcasecmp( name, qfilter_criteria_names[i] ) )
+			return i;
+
+	return -1;
+}
+
 
 void __query_get_marks( PTL *l, PNT *min, PNT *avg, PNT *max )
 {
@@ -72,7 +109,7 @@ void __query_get_marks( PTL *l, PNT *min, PNT *avg, PNT *max )
 		avg->val /= (double) j;
 }
 
-int __query_filter_series( QRY *q, PTL *in, PTL **out, int mk, int crit, double a, double b )
+int __query_filter_series( QRY *q, PTL *in, PTL **out, int val, int crit, double a, double b )
 {
 	PNT min, avg, max, *mp;
 	PTL *list, *pl, *dead;
@@ -80,7 +117,7 @@ int __query_filter_series( QRY *q, PTL *in, PTL **out, int mk, int crit, double 
 
 	// safety check of those.
 	if( crit >= QFILTER_CRITERIA_END || crit < 0
-	 || mk   >= QFILTER_VALUE_END     || mk < 0 )
+	 || val  >= QFILTER_VALUE_END    || val < 0 )
 		return -1;
 
 	// final check - b must not be less than a
@@ -91,7 +128,7 @@ int __query_filter_series( QRY *q, PTL *in, PTL **out, int mk, int crit, double 
 	list = in;
 	dead = NULL;
 
-	switch( mk )
+	switch( val )
 	{
 		case QFILTER_VALUE_MIN:
 			mp = &min;
@@ -163,20 +200,12 @@ int query_filter_min_above( QRY *q, PTL *in, PTL **out, int argc, void **argv )
 {
 	double a;
 
-	if( argc < 1 )
-		return -1;
-
-	a = *((double *) argv[0]);
-
 	return __query_filter_series( q, in, out, QFILTER_VALUE_MIN, QFILTER_CRITERIA_ABOVE, a, 0.0 );
 }
 
 int query_filter_min_below( QRY *q, PTL *in, PTL **out, int argc, void **argv )
 {
 	double a;
-
-	if( argc < 1 )
-		return -1;
 
 	a = *((double *) argv[0]);
 
@@ -186,9 +215,6 @@ int query_filter_min_below( QRY *q, PTL *in, PTL **out, int argc, void **argv )
 int query_filter_min_between( QRY *q, PTL *in, PTL **out, int argc, void **argv )
 {
 	double a, b;
-
-	if( argc < 2 )
-		return -1;
 
 	a = *((double *) argv[0]);
 	b = *((double *) argv[1]);
@@ -200,9 +226,6 @@ int query_filter_max_above( QRY *q, PTL *in, PTL **out, int argc, void **argv )
 {
 	double a;
 
-	if( argc < 1 )
-		return -1;
-
 	a = *((double *) argv[0]);
 
 	return __query_filter_series( q, in, out, QFILTER_VALUE_MIN, QFILTER_CRITERIA_ABOVE, a, 0.0 );
@@ -212,8 +235,6 @@ int query_filter_max_below( QRY *q, PTL *in, PTL **out, int argc, void **argv )
 {
 	double a;
 
-	if( argc < 1 )
-		return -1;
 	a = *((double *) argv[0]);
 
 	return __query_filter_series( q, in, out, QFILTER_VALUE_MIN, QFILTER_CRITERIA_ABOVE, a, 0.0 );
@@ -222,9 +243,6 @@ int query_filter_max_below( QRY *q, PTL *in, PTL **out, int argc, void **argv )
 int query_filter_max_between( QRY *q, PTL *in, PTL **out, int argc, void **argv )
 {
 	double a, b;
-
-	if( argc < 2 )
-		return -1;
 
 	a = *((double *) argv[0]);
 	b = *((double *) argv[1]);
@@ -236,9 +254,6 @@ int query_filter_avg_above( QRY *q, PTL *in, PTL **out, int argc, void **argv )
 {
 	double a;
 
-	if( argc < 1 )
-		return -1;
-
 	a = *((double *) argv[0]);
 
 	return __query_filter_series( q, in, out, QFILTER_VALUE_MIN, QFILTER_CRITERIA_ABOVE, a, 0.0 );
@@ -247,9 +262,6 @@ int query_filter_avg_above( QRY *q, PTL *in, PTL **out, int argc, void **argv )
 int query_filter_avg_below( QRY *q, PTL *in, PTL **out, int argc, void **argv )
 {
 	double a;
-
-	if( argc < 1 )
-		return -1;
 
 	a = *((double *) argv[0]);
 
@@ -260,14 +272,41 @@ int query_filter_avg_between( QRY *q, PTL *in, PTL **out, int argc, void **argv 
 {
 	double a, b;
 
-	if( argc < 2 )
-		return -1;
-
 	a = *((double *) argv[0]);
 	b = *((double *) argv[1]);
 
 	return __query_filter_series( q, in, out, QFILTER_VALUE_MIN, QFILTER_CRITERIA_ABOVE, a, b );
 }
+
+
+
+int query_filter_value( QRY *q, PTL *in, PTL **out, int argc, void **argv )
+{
+	char *val, *crit;
+	double a, b;
+	int c, v;
+
+	val  = (char *) argv[0];
+	crit = (char *) argv[1];
+
+	v = __qfilter_value_from_name( val );
+	c = __qfilter_criteria_from_name( crit );
+
+	if( c < 0 || v < 0 )
+	{
+		info( "Rejecting invalid val/crit - '%s/%s'", val, crit );
+		return -1;
+	}
+
+	a = *((double *) argv[2]);
+	if( argc > 3 )
+		b = *((double *) argv[3]);
+	else
+		b = 0.0;
+
+	return __query_filter_series( q, in, out, v, c, a, b ); 
+}
+
 
 
 
